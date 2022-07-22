@@ -8,17 +8,17 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
 type BuildpackInfo struct {
-	BuildpackMetadata buildpack.Metadata
+	BuildpackMetadata buildmodule.Metadata
 	Buildpacks        []dist.ModuleInfo
 	Order             dist.Order
 	BuildpackLayers   dist.ModuleLayers
-	Location          buildpack.LocatorType
+	Location          buildmodule.LocatorType
 }
 
 type InspectBuildpackOptions struct {
@@ -36,19 +36,19 @@ func (iw ImgWrapper) Label(name string) (string, error) {
 }
 
 func (c *Client) InspectBuildpack(opts InspectBuildpackOptions) (*BuildpackInfo, error) {
-	locatorType, err := buildpack.GetLocatorType(opts.BuildpackName, "", []dist.ModuleInfo{})
+	locatorType, err := buildmodule.GetLocatorType(opts.BuildpackName, "", []dist.ModuleInfo{})
 	if err != nil {
 		return nil, err
 	}
 	var layersMd dist.ModuleLayers
-	var buildpackMd buildpack.Metadata
+	var buildpackMd buildmodule.Metadata
 
 	switch locatorType {
-	case buildpack.RegistryLocator:
+	case buildmodule.RegistryLocator:
 		buildpackMd, layersMd, err = metadataFromRegistry(c, opts.BuildpackName, opts.Registry)
-	case buildpack.PackageLocator:
+	case buildmodule.PackageLocator:
 		buildpackMd, layersMd, err = metadataFromImage(c, opts.BuildpackName, opts.Daemon)
-	case buildpack.URILocator:
+	case buildmodule.URILocator:
 		buildpackMd, layersMd, err = metadataFromArchive(c.downloader, opts.BuildpackName)
 	default:
 		return nil, fmt.Errorf("unable to handle locator %q: for buildpack %q", locatorType, opts.BuildpackName)
@@ -66,62 +66,62 @@ func (c *Client) InspectBuildpack(opts InspectBuildpackOptions) (*BuildpackInfo,
 	}, nil
 }
 
-func metadataFromRegistry(client *Client, name, registry string) (buildpackMd buildpack.Metadata, layersMd dist.ModuleLayers, err error) {
+func metadataFromRegistry(client *Client, name, registry string) (buildpackMd buildmodule.Metadata, layersMd dist.ModuleLayers, err error) {
 	registryCache, err := getRegistry(client.logger, registry)
 	if err != nil {
-		return buildpack.Metadata{}, dist.ModuleLayers{}, fmt.Errorf("invalid registry %s: %q", registry, err)
+		return buildmodule.Metadata{}, dist.ModuleLayers{}, fmt.Errorf("invalid registry %s: %q", registry, err)
 	}
 
 	registryBp, err := registryCache.LocateBuildpack(name)
 	if err != nil {
-		return buildpack.Metadata{}, dist.ModuleLayers{}, fmt.Errorf("unable to find %s in registry: %q", style.Symbol(name), err)
+		return buildmodule.Metadata{}, dist.ModuleLayers{}, fmt.Errorf("unable to find %s in registry: %q", style.Symbol(name), err)
 	}
 	buildpackMd, layersMd, err = metadataFromImage(client, registryBp.Address, false)
 	if err != nil {
-		return buildpack.Metadata{}, dist.ModuleLayers{}, fmt.Errorf("error pulling registry specified image: %s", err)
+		return buildmodule.Metadata{}, dist.ModuleLayers{}, fmt.Errorf("error pulling registry specified image: %s", err)
 	}
 	return buildpackMd, layersMd, nil
 }
 
-func metadataFromArchive(downloader BlobDownloader, path string) (buildpackMd buildpack.Metadata, layersMd dist.ModuleLayers, err error) {
+func metadataFromArchive(downloader BlobDownloader, path string) (buildpackMd buildmodule.Metadata, layersMd dist.ModuleLayers, err error) {
 	imgBlob, err := downloader.Download(context.Background(), path)
 	if err != nil {
-		return buildpack.Metadata{}, dist.ModuleLayers{}, fmt.Errorf("unable to download archive: %q", err)
+		return buildmodule.Metadata{}, dist.ModuleLayers{}, fmt.Errorf("unable to download archive: %q", err)
 	}
 
-	config, err := buildpack.ConfigFromOCILayoutBlob(imgBlob)
+	config, err := buildmodule.ConfigFromOCILayoutBlob(imgBlob)
 	if err != nil {
-		return buildpack.Metadata{}, dist.ModuleLayers{}, fmt.Errorf("unable to fetch config from buildpack blob: %q", err)
+		return buildmodule.Metadata{}, dist.ModuleLayers{}, fmt.Errorf("unable to fetch config from buildpack blob: %q", err)
 	}
 	wrapper := ImgWrapper{config}
 
 	if _, err := dist.GetLabel(wrapper, dist.BuildpackLayersLabel, &layersMd); err != nil {
-		return buildpack.Metadata{}, dist.ModuleLayers{}, err
+		return buildmodule.Metadata{}, dist.ModuleLayers{}, err
 	}
 
-	if _, err := dist.GetLabel(wrapper, buildpack.MetadataLabel, &buildpackMd); err != nil {
-		return buildpack.Metadata{}, dist.ModuleLayers{}, err
+	if _, err := dist.GetLabel(wrapper, buildmodule.MetadataLabel, &buildpackMd); err != nil {
+		return buildmodule.Metadata{}, dist.ModuleLayers{}, err
 	}
 	return buildpackMd, layersMd, nil
 }
 
-func metadataFromImage(client *Client, name string, daemon bool) (buildpackMd buildpack.Metadata, layersMd dist.ModuleLayers, err error) {
-	imageName := buildpack.ParsePackageLocator(name)
+func metadataFromImage(client *Client, name string, daemon bool) (buildpackMd buildmodule.Metadata, layersMd dist.ModuleLayers, err error) {
+	imageName := buildmodule.ParsePackageLocator(name)
 	img, err := client.imageFetcher.Fetch(context.Background(), imageName, image.FetchOptions{Daemon: daemon, PullPolicy: image.PullNever})
 	if err != nil {
-		return buildpack.Metadata{}, dist.ModuleLayers{}, err
+		return buildmodule.Metadata{}, dist.ModuleLayers{}, err
 	}
 	if _, err := dist.GetLabel(img, dist.BuildpackLayersLabel, &layersMd); err != nil {
-		return buildpack.Metadata{}, dist.ModuleLayers{}, fmt.Errorf("unable to get image label %s: %q", dist.BuildpackLayersLabel, err)
+		return buildmodule.Metadata{}, dist.ModuleLayers{}, fmt.Errorf("unable to get image label %s: %q", dist.BuildpackLayersLabel, err)
 	}
 
-	if _, err := dist.GetLabel(img, buildpack.MetadataLabel, &buildpackMd); err != nil {
-		return buildpack.Metadata{}, dist.ModuleLayers{}, fmt.Errorf("unable to get image label %s: %q", buildpack.MetadataLabel, err)
+	if _, err := dist.GetLabel(img, buildmodule.MetadataLabel, &buildpackMd); err != nil {
+		return buildmodule.Metadata{}, dist.ModuleLayers{}, fmt.Errorf("unable to get image label %s: %q", buildmodule.MetadataLabel, err)
 	}
 	return buildpackMd, layersMd, nil
 }
 
-func extractOrder(buildpackMd buildpack.Metadata) dist.Order {
+func extractOrder(buildpackMd buildmodule.Metadata) dist.Order {
 	return dist.Order{
 		{
 			Group: []dist.ModuleRef{

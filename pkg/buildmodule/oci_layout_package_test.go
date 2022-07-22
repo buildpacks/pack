@@ -1,4 +1,4 @@
-package buildpack_test
+package buildmodule_test
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 	"github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 	"github.com/buildpacks/pack/pkg/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -27,7 +27,7 @@ func TestOCILayoutPackage(t *testing.T) {
 func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 	when("#BuildpacksFromOCILayoutBlob", func() {
 		it("extracts buildpacks", func() {
-			mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
+			mainBP, depBPs, err := buildmodule.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, mainBP.Descriptor().ModuleInfo().ID, "io.buildpacks.samples.hello-universe")
@@ -36,10 +36,10 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("provides readable blobs", func() {
-			mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
+			mainBP, depBPs, err := buildmodule.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
 			h.AssertNil(t, err)
 
-			for _, bp := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
+			for _, bp := range append([]buildmodule.BuildModule{mainBP}, depBPs...) {
 				reader, err := bp.Open()
 				h.AssertNil(t, err)
 
@@ -60,7 +60,7 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 	when("#IsOCILayoutBlob", func() {
 		when("is an OCI layout blob", func() {
 			it("returns true", func() {
-				isOCILayoutBlob, err := buildpack.IsOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
+				isOCILayoutBlob, err := buildmodule.IsOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
 				h.AssertNil(t, err)
 				h.AssertEq(t, isOCILayoutBlob, true)
 			})
@@ -79,7 +79,7 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 				}, 0755)
 				h.AssertNil(t, err)
 
-				isOCILayoutBlob, err := buildpack.IsOCILayoutBlob(buildpackBlob)
+				isOCILayoutBlob, err := buildmodule.IsOCILayoutBlob(buildpackBlob)
 				h.AssertNil(t, err)
 				h.AssertEq(t, isOCILayoutBlob, false)
 			})

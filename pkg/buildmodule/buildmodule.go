@@ -1,4 +1,4 @@
-package buildpack
+package buildmodule
 
 import (
 	"archive/tar"
@@ -17,7 +17,7 @@ import (
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
-//go:generate mockgen -package testmocks -destination ../testmocks/mock_build_module.go github.com/buildpacks/pack/pkg/buildpack BuildModule
+//go:generate mockgen -package testmocks -destination ../testmocks/mock_build_module.go github.com/buildpacks/pack/pkg/buildmodule BuildModule
 
 type BuildModule interface {
 	// Open returns a reader to a tar with contents structured as per the distribution spec

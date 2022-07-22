@@ -13,7 +13,7 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -231,7 +231,7 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 		return errors.Wrapf(err, "getting OS from %s", style.Symbol(bldr.Image().Name()))
 	}
 
-	mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, config.URI, buildpack.DownloadOptions{
+	mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, config.URI, buildmodule.DownloadOptions{
 		Daemon:          !opts.Publish,
 		ImageName:       config.ImageName,
 		ImageOS:         imageOS,
@@ -262,7 +262,7 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 		}
 	}
 
-	for _, module := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
+	for _, module := range append([]buildmodule.BuildModule{mainBP}, depBPs...) {
 		switch kind {
 		case "buildpack":
 			bldr.AddBuildpack(module)
@@ -275,7 +275,7 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 	return nil
 }
 
-func validateModule(kind string, module buildpack.BuildModule, source, expectedID, expectedVersion string) error {
+func validateModule(kind string, module buildmodule.BuildModule, source, expectedID, expectedVersion string) error {
 	info := module.Descriptor().ModuleInfo()
 	if expectedID != "" && info.ID != expectedID {
 		return fmt.Errorf(

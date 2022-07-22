@@ -9,11 +9,11 @@ import (
 
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 )
 
 type fakeBuildpackBlob struct {
-	descriptor buildpack.Descriptor
+	descriptor buildmodule.Descriptor
 	chmod      int64
 }
 
@@ -25,7 +25,7 @@ type fakeBuildpackBlob struct {
 //  	build-contents
 // 	\_ bin/detect
 //  	detect-contents
-func NewFakeBuildpackBlob(descriptor buildpack.Descriptor, chmod int64) (blob.Blob, error) {
+func NewFakeBuildpackBlob(descriptor buildmodule.Descriptor, chmod int64) (blob.Blob, error) {
 	return &fakeBuildpackBlob{
 		descriptor: descriptor,
 		chmod:      chmod,

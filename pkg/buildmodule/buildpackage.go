@@ -1,4 +1,4 @@
-package buildpack
+package buildmodule
 
 import (
 	"github.com/buildpacks/pack/pkg/dist"

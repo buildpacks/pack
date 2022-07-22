@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 	"github.com/buildpacks/pack/pkg/client"
 )
 
@@ -48,7 +48,7 @@ var _ client.BuildpackDownloader = (*bpDownloader)(nil)
 
 type bpDownloader struct{}
 
-func (f *bpDownloader) Download(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error) {
+func (f *bpDownloader) Download(ctx context.Context, buildpackURI string, opts buildmodule.DownloadOptions) (buildmodule.BuildModule, []buildmodule.BuildModule, error) {
 	fmt.Println("custom buildpack downloader called")
 	return nil, nil, errors.New("not implemented")
 }

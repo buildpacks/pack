@@ -16,7 +16,7 @@ import (
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
@@ -58,7 +58,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		complexInfo = &client.BuildpackInfo{
-			BuildpackMetadata: buildpack.Metadata{
+			BuildpackMetadata: buildmodule.Metadata{
 				ModuleInfo: dist.ModuleInfo{
 					ID:       "some/top-buildpack",
 					Version:  "0.0.1",
@@ -213,7 +213,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		simpleInfo = &client.BuildpackInfo{
-			BuildpackMetadata: buildpack.Metadata{
+			BuildpackMetadata: buildmodule.Metadata{
 				ModuleInfo: dist.ModuleInfo{
 					ID:       "some/single-buildpack",
 					Version:  "0.0.1",
@@ -272,8 +272,8 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		when("inspecting an image", func() {
 			when("both remote and local image are present", func() {
 				it.Before(func() {
-					complexInfo.Location = buildpack.PackageLocator
-					simpleInfo.Location = buildpack.PackageLocator
+					complexInfo.Location = buildmodule.PackageLocator
+					simpleInfo.Location = buildmodule.PackageLocator
 
 					mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 						BuildpackName: "test/buildpack",
@@ -307,8 +307,8 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 			when("only a local image is present", func() {
 				it.Before(func() {
-					complexInfo.Location = buildpack.PackageLocator
-					simpleInfo.Location = buildpack.PackageLocator
+					complexInfo.Location = buildmodule.PackageLocator
+					simpleInfo.Location = buildmodule.PackageLocator
 
 					mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 						BuildpackName: "only-local-test/buildpack",
@@ -337,8 +337,8 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 			when("only a remote image is present", func() {
 				it.Before(func() {
-					complexInfo.Location = buildpack.PackageLocator
-					simpleInfo.Location = buildpack.PackageLocator
+					complexInfo.Location = buildmodule.PackageLocator
+					simpleInfo.Location = buildmodule.PackageLocator
 
 					mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 						BuildpackName: "only-remote-test/buildpack",
@@ -367,8 +367,8 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 			when("local docker daemon is not running", func() {
 				it.Before(func() {
-					complexInfo.Location = buildpack.PackageLocator
-					simpleInfo.Location = buildpack.PackageLocator
+					complexInfo.Location = buildmodule.PackageLocator
+					simpleInfo.Location = buildmodule.PackageLocator
 
 					mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 						BuildpackName: "only-remote-test/buildpack",
@@ -399,7 +399,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("inspecting a buildpack uri", func() {
 			it.Before(func() {
-				simpleInfo.Location = buildpack.URILocator
+				simpleInfo.Location = buildmodule.URILocator
 			})
 			when("uri is a local path", func() {
 				it.Before(func() {
@@ -423,7 +423,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 			when("uri is a http or https location", func() {
 				it.Before(func() {
-					simpleInfo.Location = buildpack.URILocator
+					simpleInfo.Location = buildmodule.URILocator
 				})
 				when("uri is a local path", func() {
 					it.Before(func() {
@@ -451,7 +451,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("inspecting a buildpack on the registry", func() {
 			it.Before(func() {
-				simpleInfo.Location = buildpack.RegistryLocator
+				simpleInfo.Location = buildmodule.RegistryLocator
 			})
 			when("using the default registry", func() {
 				it.Before(func() {
@@ -498,7 +498,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("a depth flag is passed", func() {
 			it.Before(func() {
-				complexInfo.Location = buildpack.URILocator
+				complexInfo.Location = buildmodule.URILocator
 
 				mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 					BuildpackName: "/other/path/to/test/buildpack",
@@ -517,7 +517,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 	when("verbose flag is passed", func() {
 		it.Before(func() {
-			simpleInfo.Location = buildpack.URILocator
+			simpleInfo.Location = buildmodule.URILocator
 			mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 				BuildpackName: "/another/path/to/test/buildpack",
 				Daemon:        true,

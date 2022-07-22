@@ -31,7 +31,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/internal/termui"
 	"github.com/buildpacks/pack/pkg/archive"
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -494,7 +494,7 @@ func (c *Client) validateRunImage(context context.Context, name string, pullPoli
 	return img, nil
 }
 
-func (c *Client) validateMixins(additionalBuildpacks []buildpack.BuildModule, bldr *builder.Builder, runImageName string, runMixins []string) error {
+func (c *Client) validateMixins(additionalBuildpacks []buildmodule.BuildModule, bldr *builder.Builder, runImageName string, runMixins []string) error {
 	if err := stack.ValidateMixins(bldr.Image().Name(), bldr.Mixins(), runImageName, runMixins); err != nil {
 		return err
 	}
@@ -544,8 +544,8 @@ func assembleAvailableMixins(buildMixins, runMixins []string) []string {
 
 // allBuildpacks aggregates all buildpacks declared on the image with additional buildpacks passed in. They are sorted
 // by ID then Version.
-func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.BuildModule) ([]buildpack.Descriptor, error) {
-	var all []buildpack.Descriptor
+func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildmodule.BuildModule) ([]buildmodule.Descriptor, error) {
+	var all []buildmodule.Descriptor
 	var bpLayers dist.ModuleLayers
 	if _, err := dist.GetLabel(builderImage, dist.BuildpackLayersLabel, &bpLayers); err != nil {
 		return nil, err
@@ -684,7 +684,7 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 // 	----------
 // 	- group:
 //		- A
-func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedBPs []buildpack.BuildModule, order dist.Order, err error) {
+func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedBPs []buildmodule.BuildModule, order dist.Order, err error) {
 	pullPolicy := opts.PullPolicy
 	publish := opts.Publish
 	registry := opts.Registry
@@ -719,13 +719,13 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 
 	order = dist.Order{{Group: []dist.ModuleRef{}}}
 	for _, bp := range declaredBPs {
-		locatorType, err := buildpack.GetLocatorType(bp, relativeBaseDir, builderBPs)
+		locatorType, err := buildmodule.GetLocatorType(bp, relativeBaseDir, builderBPs)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		switch locatorType {
-		case buildpack.FromBuilderLocator:
+		case buildmodule.FromBuilderLocator:
 			switch {
 			case len(order) == 0 || len(order[0].Group) == 0:
 				order = builderOrder
@@ -742,8 +742,8 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 
 				order = newOrder
 			}
-		case buildpack.IDLocator:
-			id, version := buildpack.ParseIDLocator(bp)
+		case buildmodule.IDLocator:
+			id, version := buildmodule.ParseIDLocator(bp)
 			order = appendBuildpackToOrder(order, dist.ModuleInfo{
 				ID:      id,
 				Version: version,
@@ -753,7 +753,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "getting OS from %s", style.Symbol(builderImage.Name()))
 			}
-			mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, bp, buildpack.DownloadOptions{
+			mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, bp, buildmodule.DownloadOptions{
 				RegistryName:    registry,
 				ImageOS:         imageOS,
 				RelativeBaseDir: relativeBaseDir,
@@ -784,7 +784,7 @@ func appendBuildpackToOrder(order dist.Order, bpInfo dist.ModuleInfo) (newOrder 
 	return newOrder
 }
 
-func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []buildpack.BuildModule) (*builder.Builder, error) {
+func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []buildmodule.BuildModule) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
 	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {

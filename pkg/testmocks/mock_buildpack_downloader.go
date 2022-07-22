@@ -10,7 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
-	buildpack "github.com/buildpacks/pack/pkg/buildpack"
+	buildmodule "github.com/buildpacks/pack/pkg/buildmodule"
 )
 
 // MockBuildpackDownloader is a mock of BuildpackDownloader interface.
@@ -37,11 +37,11 @@ func (m *MockBuildpackDownloader) EXPECT() *MockBuildpackDownloaderMockRecorder 
 }
 
 // Download mocks base method.
-func (m *MockBuildpackDownloader) Download(arg0 context.Context, arg1 string, arg2 buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error) {
+func (m *MockBuildpackDownloader) Download(arg0 context.Context, arg1 string, arg2 buildmodule.DownloadOptions) (buildmodule.BuildModule, []buildmodule.BuildModule, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Download", arg0, arg1, arg2)
-	ret0, _ := ret[0].(buildpack.BuildModule)
-	ret1, _ := ret[1].([]buildpack.BuildModule)
+	ret0, _ := ret[0].(buildmodule.BuildModule)
+	ret1, _ := ret[1].([]buildmodule.BuildModule)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }

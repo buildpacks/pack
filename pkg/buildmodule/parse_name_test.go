@@ -1,4 +1,4 @@
-package buildpack_test
+package buildmodule_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -65,7 +65,7 @@ func testParseName(t *testing.T, when spec.G, it spec.S) {
 			params := params
 			when(params.desc+" "+params.locator, func() {
 				it("should parse as id="+params.expectedID+" and version="+params.expectedVersion, func() {
-					id, version := buildpack.ParseIDLocator(params.locator)
+					id, version := buildmodule.ParseIDLocator(params.locator)
 					assert.Equal(id, params.expectedID)
 					assert.Equal(version, params.expectedVersion)
 				})
@@ -110,7 +110,7 @@ func testParseName(t *testing.T, when spec.G, it spec.S) {
 			params := params
 			when(params.desc+" "+params.locator, func() {
 				it("should parse as "+params.expectedImageName, func() {
-					imageName := buildpack.ParsePackageLocator(params.locator)
+					imageName := buildmodule.ParsePackageLocator(params.locator)
 					assert.Equal(imageName, params.expectedImageName)
 				})
 			})
@@ -159,12 +159,12 @@ func testParseName(t *testing.T, when spec.G, it spec.S) {
 			when(params.desc, func() {
 				if params.expectedErr != "" {
 					it("errors", func() {
-						_, _, _, err := buildpack.ParseRegistryID(params.locator)
+						_, _, _, err := buildmodule.ParseRegistryID(params.locator)
 						assert.ErrorWithMessage(err, params.expectedErr)
 					})
 				} else {
 					it("parses", func() {
-						ns, name, version, err := buildpack.ParseRegistryID(params.locator)
+						ns, name, version, err := buildmodule.ParseRegistryID(params.locator)
 						assert.Nil(err)
 						assert.Equal(ns, params.expectedNS)
 						assert.Equal(name, params.expectedName)

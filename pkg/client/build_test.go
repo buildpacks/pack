@@ -39,7 +39,7 @@ import (
 	rg "github.com/buildpacks/pack/internal/registry"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -125,7 +125,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 
 		blobDownloader := blob.NewDownloader(logger, dlCacheDir)
-		buildpackDownloader := buildpack.NewDownloader(logger, fakeImageFetcher, blobDownloader, &registryResolver{logger: logger})
+		buildpackDownloader := buildmodule.NewDownloader(logger, fakeImageFetcher, blobDownloader, &registryResolver{logger: logger})
 		subject = &Client{
 			logger:              logger,
 			imageFetcher:        fakeImageFetcher,
@@ -1042,7 +1042,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 					}
 
-					md := buildpack.Metadata{
+					md := buildmodule.Metadata{
 						ModuleInfo: dist.ModuleInfo{
 							ID:      "meta.buildpack.id",
 							Version: "meta.buildpack.version",
@@ -1498,7 +1498,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 						}
 
-						md := buildpack.Metadata{
+						md := buildmodule.Metadata{
 							ModuleInfo: dist.ModuleInfo{
 								ID:      "example/foo",
 								Version: "1.0.0",

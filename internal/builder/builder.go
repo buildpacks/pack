@@ -23,7 +23,7 @@ import (
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -64,8 +64,8 @@ type Builder struct {
 	layerWriterFactory   archive.TarWriterFactory
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
-	additionalBuildpacks []buildpack.BuildModule
-	additionalExtensions []buildpack.BuildModule
+	additionalBuildpacks []buildmodule.BuildModule
+	additionalExtensions []buildmodule.BuildModule
 	metadata             Metadata
 	mixins               []string
 	env                  map[string]string
@@ -246,13 +246,13 @@ func (b *Builder) GID() int {
 // Setters
 
 // AddBuildpack adds a buildpack to the builder
-func (b *Builder) AddBuildpack(bp buildpack.BuildModule) {
+func (b *Builder) AddBuildpack(bp buildmodule.BuildModule) {
 	b.additionalBuildpacks = append(b.additionalBuildpacks, bp)
 	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().ModuleInfo())
 }
 
 // AddExtension adds an extension to the builder
-func (b *Builder) AddExtension(bp buildpack.BuildModule) {
+func (b *Builder) AddExtension(bp buildmodule.BuildModule) {
 	b.additionalExtensions = append(b.additionalExtensions, bp)
 	b.metadata.Extensions = append(b.metadata.Extensions, bp.Descriptor().ModuleInfo())
 }
@@ -431,11 +431,11 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 // Helpers
 
-func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.ModuleLayers) error {
+func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildmodule.BuildModule, layers dist.ModuleLayers) error {
 	type toAdd struct {
 		tarPath string
 		diffID  string
-		module  buildpack.BuildModule
+		module  buildmodule.BuildModule
 	}
 
 	collectionToAdd := map[string]toAdd{}
@@ -447,7 +447,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 		}
 
 		// create tar file
-		layerTar, err := buildpack.ToLayerTar(modTmpDir, module)
+		layerTar, err := buildmodule.ToLayerTar(modTmpDir, module)
 		if err != nil {
 			return err
 		}
@@ -571,7 +571,7 @@ func hasElementWithVersion(moduleList []dist.ModuleInfo, version string) bool {
 	return false
 }
 
-func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, allBuildpacks []dist.ModuleInfo, bpsToValidate []buildpack.BuildModule) error {
+func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, allBuildpacks []dist.ModuleInfo, bpsToValidate []buildmodule.BuildModule) error {
 	bpLookup := map[string]interface{}{}
 
 	for _, bp := range allBuildpacks {
@@ -605,7 +605,7 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 	return nil
 }
 
-func validateExtensions(lifecycleDescriptor LifecycleDescriptor, allExtensions []dist.ModuleInfo, extsToValidate []buildpack.BuildModule) error {
+func validateExtensions(lifecycleDescriptor LifecycleDescriptor, allExtensions []dist.ModuleInfo, extsToValidate []buildmodule.BuildModule) error {
 	extLookup := map[string]interface{}{}
 
 	for _, ext := range allExtensions {
@@ -622,7 +622,7 @@ func validateExtensions(lifecycleDescriptor LifecycleDescriptor, allExtensions [
 	return nil
 }
 
-func validateLifecycleCompat(descriptor buildpack.Descriptor, lifecycleDescriptor LifecycleDescriptor) error {
+func validateLifecycleCompat(descriptor buildmodule.Descriptor, lifecycleDescriptor LifecycleDescriptor) error {
 	// TODO: Warn when Buildpack API is deprecated - https://github.com/buildpacks/pack/issues/788
 	compatible := false
 	for _, version := range append(lifecycleDescriptor.APIs.Buildpack.Supported, lifecycleDescriptor.APIs.Buildpack.Deprecated...) {

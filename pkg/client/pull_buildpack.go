@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 )
@@ -24,21 +24,21 @@ type PullBuildpackOptions struct {
 
 // PullBuildpack pulls given buildpack to be stored locally
 func (c *Client) PullBuildpack(ctx context.Context, opts PullBuildpackOptions) error {
-	locatorType, err := buildpack.GetLocatorType(opts.URI, "", []dist.ModuleInfo{})
+	locatorType, err := buildmodule.GetLocatorType(opts.URI, "", []dist.ModuleInfo{})
 	if err != nil {
 		return err
 	}
 
 	switch locatorType {
-	case buildpack.PackageLocator:
-		imageName := buildpack.ParsePackageLocator(opts.URI)
+	case buildmodule.PackageLocator:
+		imageName := buildmodule.ParsePackageLocator(opts.URI)
 		c.logger.Debugf("Pulling buildpack from image: %s", imageName)
 
 		_, err = c.imageFetcher.Fetch(ctx, imageName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways})
 		if err != nil {
 			return errors.Wrapf(err, "fetching image %s", style.Symbol(opts.URI))
 		}
-	case buildpack.RegistryLocator:
+	case buildmodule.RegistryLocator:
 		c.logger.Debugf("Pulling buildpack from registry: %s", style.Symbol(opts.URI))
 		registryCache, err := getRegistry(c.logger, opts.RegistryName)
 
@@ -55,7 +55,7 @@ func (c *Client) PullBuildpack(ctx context.Context, opts PullBuildpackOptions) e
 		if err != nil {
 			return errors.Wrapf(err, "fetching image %s", style.Symbol(opts.URI))
 		}
-	case buildpack.InvalidLocator:
+	case buildmodule.InvalidLocator:
 		return fmt.Errorf("invalid buildpack URI %s", style.Symbol(opts.URI))
 	default:
 		return fmt.Errorf("unsupported buildpack URI type: %s", style.Symbol(locatorType.String()))

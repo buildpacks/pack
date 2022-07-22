@@ -1,4 +1,4 @@
-package buildpack_test
+package buildmodule_test
 
 import (
 	"errors"
@@ -14,7 +14,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/pkg/archive"
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 	"github.com/buildpacks/pack/pkg/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -26,7 +26,7 @@ func TestBuildpack(t *testing.T) {
 }
 
 func testBuildpack(t *testing.T, when spec.G, it spec.S) {
-	var writeBlobToFile = func(bp buildpack.BuildModule) string {
+	var writeBlobToFile = func(bp buildmodule.BuildModule) string {
 		t.Helper()
 
 		bpReader, err := bp.Open()
@@ -50,7 +50,7 @@ func testBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 	when("#BuildpackFromRootBlob", func() {
 		it("parses the descriptor file", func() {
-			bp, err := buildpack.FromBuildpackRootBlob(
+			bp, err := buildmodule.FromBuildpackRootBlob(
 				&readerBlob{
 					openFn: func() io.ReadCloser {
 						tarBuilder := archive.TarBuilder{}
@@ -80,7 +80,7 @@ id = "some.stack.id"
 		})
 
 		it("translates blob to distribution format", func() {
-			bp, err := buildpack.FromBuildpackRootBlob(
+			bp, err := buildmodule.FromBuildpackRootBlob(
 				&readerBlob{
 					openFn: func() io.ReadCloser {
 						tarBuilder := archive.TarBuilder{}
@@ -162,7 +162,7 @@ id = "some.stack.id"
 				},
 			}
 
-			bp, err := buildpack.FromBuildpackRootBlob(
+			bp, err := buildmodule.FromBuildpackRootBlob(
 				&errorBlob{
 					realBlob: realBlob,
 				},
@@ -191,7 +191,7 @@ id = "some.stack.id"
 
 			when("no exec bits set", func() {
 				it("sets to 0755 if directory", func() {
-					bp, err := buildpack.FromBuildpackRootBlob(
+					bp, err := buildmodule.FromBuildpackRootBlob(
 						&readerBlob{
 							openFn: func() io.ReadCloser {
 								tarBuilder := archive.TarBuilder{}
@@ -216,7 +216,7 @@ id = "some.stack.id"
 
 			when("no exec bits set", func() {
 				it("sets to 0755 if 'bin/detect' or 'bin/build'", func() {
-					bp, err := buildpack.FromBuildpackRootBlob(
+					bp, err := buildmodule.FromBuildpackRootBlob(
 						&readerBlob{
 							openFn: func() io.ReadCloser {
 								tarBuilder := archive.TarBuilder{}
@@ -247,7 +247,7 @@ id = "some.stack.id"
 
 			when("not directory, 'bin/detect', or 'bin/build'", func() {
 				it("sets to 0755 if ANY exec bit is set", func() {
-					bp, err := buildpack.FromBuildpackRootBlob(
+					bp, err := buildmodule.FromBuildpackRootBlob(
 						&readerBlob{
 							openFn: func() io.ReadCloser {
 								tarBuilder := archive.TarBuilder{}
@@ -272,7 +272,7 @@ id = "some.stack.id"
 
 			when("not directory, 'bin/detect', or 'bin/build'", func() {
 				it("sets to 0644 if NO exec bits set", func() {
-					bp, err := buildpack.FromBuildpackRootBlob(
+					bp, err := buildmodule.FromBuildpackRootBlob(
 						&readerBlob{
 							openFn: func() io.ReadCloser {
 								tarBuilder := archive.TarBuilder{}
@@ -298,7 +298,7 @@ id = "some.stack.id"
 
 		when("there is no descriptor file", func() {
 			it("returns error", func() {
-				_, err := buildpack.FromBuildpackRootBlob(
+				_, err := buildmodule.FromBuildpackRootBlob(
 					&readerBlob{
 						openFn: func() io.ReadCloser {
 							tarBuilder := archive.TarBuilder{}
@@ -313,7 +313,7 @@ id = "some.stack.id"
 
 		when("there is no api field", func() {
 			it("assumes an api version", func() {
-				bp, err := buildpack.FromBuildpackRootBlob(
+				bp, err := buildmodule.FromBuildpackRootBlob(
 					&readerBlob{
 						openFn: func() io.ReadCloser {
 							tarBuilder := archive.TarBuilder{}
@@ -336,7 +336,7 @@ id = "some.stack.id"`))
 
 		when("there is no id", func() {
 			it("returns error", func() {
-				_, err := buildpack.FromBuildpackRootBlob(
+				_, err := buildmodule.FromBuildpackRootBlob(
 					&readerBlob{
 						openFn: func() io.ReadCloser {
 							tarBuilder := archive.TarBuilder{}
@@ -358,7 +358,7 @@ id = "some.stack.id"`))
 
 		when("there is no version", func() {
 			it("returns error", func() {
-				_, err := buildpack.FromBuildpackRootBlob(
+				_, err := buildmodule.FromBuildpackRootBlob(
 					&readerBlob{
 						openFn: func() io.ReadCloser {
 							tarBuilder := archive.TarBuilder{}
@@ -380,7 +380,7 @@ id = "some.stack.id"`))
 
 		when("both stacks and order are present", func() {
 			it("returns error", func() {
-				_, err := buildpack.FromBuildpackRootBlob(
+				_, err := buildmodule.FromBuildpackRootBlob(
 					&readerBlob{
 						openFn: func() io.ReadCloser {
 							tarBuilder := archive.TarBuilder{}
@@ -408,7 +408,7 @@ id = "some.stack.id"
 
 		when("missing stacks and order", func() {
 			it("returns error", func() {
-				_, err := buildpack.FromBuildpackRootBlob(
+				_, err := buildmodule.FromBuildpackRootBlob(
 					&readerBlob{
 						openFn: func() io.ReadCloser {
 							tarBuilder := archive.TarBuilder{}
@@ -462,7 +462,7 @@ version = "1.2.3"
 
 type errorBlob struct {
 	notFirst bool
-	realBlob buildpack.Blob
+	realBlob buildmodule.Blob
 }
 
 func (e *errorBlob) Open() (io.ReadCloser, error) {

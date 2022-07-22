@@ -9,7 +9,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/pack/pkg/archive"
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
@@ -53,7 +53,7 @@ func WithBpOpenError(err error) FakeBuildpackOption {
 //  	build-contents
 // 	\_ /cnb/buildpacks/{ID}/{version}/bin/detect
 //  	detect-contents
-func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64, options ...FakeBuildpackOption) (buildpack.BuildModule, error) {
+func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64, options ...FakeBuildpackOption) (buildmodule.BuildModule, error) {
 	return &fakeBuildpack{
 		descriptor: descriptor,
 		chmod:      chmod,
@@ -61,7 +61,7 @@ func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64, options 
 	}, nil
 }
 
-func (b *fakeBuildpack) Descriptor() buildpack.Descriptor {
+func (b *fakeBuildpack) Descriptor() buildmodule.Descriptor {
 	return &b.descriptor
 }
 

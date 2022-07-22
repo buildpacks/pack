@@ -9,7 +9,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/pack/pkg/archive"
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
@@ -53,7 +53,7 @@ func WithExtOpenError(err error) FakeExtensionOption {
 //  	generate-contents
 // 	\_ /cnb/extensions/{ID}/{version}/bin/detect
 //  	detect-contents
-func NewFakeExtension(descriptor dist.ExtensionDescriptor, chmod int64, options ...FakeExtensionOption) (buildpack.BuildModule, error) {
+func NewFakeExtension(descriptor dist.ExtensionDescriptor, chmod int64, options ...FakeExtensionOption) (buildmodule.BuildModule, error) {
 	return &fakeExtension{
 		descriptor: descriptor,
 		chmod:      chmod,
@@ -61,7 +61,7 @@ func NewFakeExtension(descriptor dist.ExtensionDescriptor, chmod int64, options 
 	}, nil
 }
 
-func (b *fakeExtension) Descriptor() buildpack.Descriptor {
+func (b *fakeExtension) Descriptor() buildmodule.Descriptor {
 	return &b.descriptor
 }
 

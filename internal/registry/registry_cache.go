@@ -19,7 +19,7 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/buildmodule"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -82,7 +82,7 @@ func (r *Cache) LocateBuildpack(bp string) (Buildpack, error) {
 		return Buildpack{}, errors.Wrap(err, "refreshing cache")
 	}
 
-	ns, name, version, err := buildpack.ParseRegistryID(bp)
+	ns, name, version, err := buildmodule.ParseRegistryID(bp)
 	if err != nil {
 		return Buildpack{}, errors.Wrap(err, "parsing buildpacks registry id")
 	}
