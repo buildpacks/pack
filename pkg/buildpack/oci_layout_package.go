@@ -106,7 +106,7 @@ func newOCILayoutPackage(blob Blob) (*ociLayoutPackage, error) {
 		return nil, errors.Errorf("label %s not found", style.Symbol(dist.BuildpackLayersLabel))
 	}
 
-	bpLayers := dist.BuildpackLayers{}
+	bpLayers := dist.ModuleLayers{}
 	if err := json.Unmarshal([]byte(layersLabel), &bpLayers); err != nil {
 		return nil, errors.Wrap(err, "unmarshaling layers label")
 	}

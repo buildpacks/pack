@@ -338,7 +338,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		return errors.Wrap(err, "validating extensions")
 	}
 
-	bpLayers := dist.BuildpackLayers{}
+	bpLayers := dist.ModuleLayers{}
 	if _, err := dist.GetLabel(b.image, dist.BuildpackLayersLabel, &bpLayers); err != nil {
 		return errors.Wrapf(err, "getting label %s", dist.BuildpackLayersLabel)
 	}
@@ -350,7 +350,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		return err
 	}
 
-	extLayers := dist.BuildpackLayers{}
+	extLayers := dist.ModuleLayers{}
 	if _, err := dist.GetLabel(b.image, dist.ExtensionLayersLabel, &extLayers); err != nil {
 		return errors.Wrapf(err, "getting label %s", dist.ExtensionLayersLabel)
 	}
@@ -431,7 +431,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 // Helpers
 
-func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.BuildpackLayers) error {
+func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.ModuleLayers) error {
 	type toAdd struct {
 		tarPath string
 		diffID  string
@@ -466,6 +466,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 		// check against builder layers
 		if existingInfo, ok := layers[info.ID][info.Version]; ok {
 			if existingInfo.LayerDiffID == diffID.String() {
+				// TODO: fix use of deprecated strings.Title
 				logger.Debugf("%s %s already exists on builder with same contents, skipping...", strings.Title(kind), style.Symbol(info.FullName()))
 				continue
 			} else {
@@ -531,7 +532,7 @@ func processOrder(modulesOnBuilder []dist.ModuleInfo, order dist.Order, kind str
 	return resolved, nil
 }
 
-func resolveRef(moduleList []dist.ModuleInfo, ref dist.BuildpackRef, kind string) (dist.BuildpackRef, error) {
+func resolveRef(moduleList []dist.ModuleInfo, ref dist.ModuleRef, kind string) (dist.ModuleRef, error) {
 	var matching []dist.ModuleInfo
 	for _, bp := range moduleList {
 		if ref.ID == bp.ID {
@@ -540,13 +541,13 @@ func resolveRef(moduleList []dist.ModuleInfo, ref dist.BuildpackRef, kind string
 	}
 
 	if len(matching) == 0 {
-		return dist.BuildpackRef{},
+		return dist.ModuleRef{},
 			fmt.Errorf("no versions of %s %s were found on the builder", kind, style.Symbol(ref.ID))
 	}
 
 	if ref.Version == "" {
 		if len(uniqueVersions(matching)) > 1 {
-			return dist.BuildpackRef{},
+			return dist.ModuleRef{},
 				fmt.Errorf("unable to resolve version: multiple versions of %s - must specify an explicit version", style.Symbol(ref.ID))
 		}
 
@@ -554,7 +555,7 @@ func resolveRef(moduleList []dist.ModuleInfo, ref dist.BuildpackRef, kind string
 	}
 
 	if !hasElementWithVersion(matching, ref.Version) {
-		return dist.BuildpackRef{},
+		return dist.ModuleRef{},
 			fmt.Errorf("%s %s with version %s was not found on the builder", kind, style.Symbol(ref.ID), style.Symbol(ref.Version))
 	}
 

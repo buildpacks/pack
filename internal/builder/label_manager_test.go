@@ -325,7 +325,7 @@ func testLabelManager(t *testing.T, when spec.G, it spec.S) {
 
 			expectedOrder := dist.Order{
 				{
-					Group: []dist.BuildpackRef{
+					Group: []dist.ModuleRef{
 						{
 							ModuleInfo: dist.ModuleInfo{
 								ID: "buildpack-1-id",
@@ -398,7 +398,7 @@ func testLabelManager(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("BuildpackLayers", func() {
+	when("ModuleLayers", func() {
 		var rawLayers = `
 {
   "buildpack-1-id": {
@@ -421,13 +421,13 @@ func testLabelManager(t *testing.T, when spec.G, it spec.S) {
 			layers, err := labelManager.BuildpackLayers()
 			assert.Nil(err)
 
-			expectedLayers := dist.BuildpackLayers{
+			expectedLayers := dist.ModuleLayers{
 				"buildpack-1-id": {
-					"buildpack-1-version-1": dist.BuildpackLayerInfo{
+					"buildpack-1-version-1": dist.ModuleLayerInfo{
 						API:         api.MustParse("0.1"),
 						LayerDiffID: "sha256:buildpack-1-version-1-diff-id",
 					},
-					"buildpack-1-version-2": dist.BuildpackLayerInfo{
+					"buildpack-1-version-2": dist.ModuleLayerInfo{
 						API:         api.MustParse("0.2"),
 						LayerDiffID: "sha256:buildpack-1-version-2-diff-id",
 					},
@@ -455,7 +455,7 @@ func testLabelManager(t *testing.T, when spec.G, it spec.S) {
 				layers, err := labelManager.BuildpackLayers()
 				assert.Nil(err)
 
-				assert.Equal(layers, dist.BuildpackLayers{})
+				assert.Equal(layers, dist.ModuleLayers{})
 			})
 		})
 

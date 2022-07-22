@@ -953,7 +953,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 						Stacks: nil,
 						Order: dist.Order{{
-							Group: []dist.BuildpackRef{{
+							Group: []dist.ModuleRef{{
 								ModuleInfo: dist.ModuleInfo{
 									ID:      "buildpack.1.id",
 									Version: "buildpack.1.version",
@@ -993,7 +993,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 						Stacks: nil,
 						Order: dist.Order{{
-							Group: []dist.BuildpackRef{{
+							Group: []dist.ModuleRef{{
 								ModuleInfo: dist.ModuleInfo{
 									ID:      "child.buildpack.id",
 									Version: "child.buildpack.version",
@@ -1015,12 +1015,12 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 					})
 
-					bpLayers := dist.BuildpackLayers{
+					bpLayers := dist.ModuleLayers{
 						"meta.buildpack.id": {
 							"meta.buildpack.version": {
 								API: api.MustParse("0.3"),
 								Order: dist.Order{{
-									Group: []dist.BuildpackRef{{
+									Group: []dist.ModuleRef{{
 										ModuleInfo: dist.ModuleInfo{
 											ID:      "child.buildpack.id",
 											Version: "child.buildpack.version",
@@ -1077,7 +1077,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					bldr, err := builder.FromImage(defaultBuilderImage)
 					h.AssertNil(t, err)
 					h.AssertEq(t, bldr.Order(), dist.Order{
-						{Group: []dist.BuildpackRef{
+						{Group: []dist.ModuleRef{
 							{ModuleInfo: dist.ModuleInfo{ID: "meta.buildpack.id", Version: "meta.buildpack.version"}},
 						}},
 						// Child buildpacks should not be added to order
@@ -1177,7 +1177,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					dirBuildpackInfo := dist.ModuleInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"}
 					tgzBuildpackInfo := dist.ModuleInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}
 					h.AssertEq(t, bldr.Order(), dist.Order{
-						{Group: []dist.BuildpackRef{
+						{Group: []dist.ModuleRef{
 							{ModuleInfo: buildpack1Info},
 							{ModuleInfo: buildpack2Info},
 							{ModuleInfo: dirBuildpackInfo},
@@ -1223,7 +1223,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						bldr, err := builder.FromImage(defaultBuilderImage)
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
-							{Group: []dist.BuildpackRef{
+							{Group: []dist.ModuleRef{
 								{ModuleInfo: dist.ModuleInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}},
 								{ModuleInfo: dist.ModuleInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}},
 								{ModuleInfo: dist.ModuleInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
@@ -1255,7 +1255,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						bldr, err := builder.FromImage(defaultBuilderImage)
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
-							{Group: []dist.BuildpackRef{
+							{Group: []dist.ModuleRef{
 								{ModuleInfo: dist.ModuleInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
 							}},
 						})
@@ -1326,7 +1326,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						bldr, err := builder.FromImage(defaultBuilderImage)
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
-							{Group: []dist.BuildpackRef{
+							{Group: []dist.ModuleRef{
 								{ModuleInfo: dist.ModuleInfo{ID: "my/inline", Version: "0.0.0"}},
 							}},
 						})
@@ -1362,7 +1362,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						bldr, err := builder.FromImage(defaultBuilderImage)
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
-							{Group: []dist.BuildpackRef{
+							{Group: []dist.ModuleRef{
 								{ModuleInfo: dist.ModuleInfo{ID: "my/inline", Version: "1.0.0-my-version"}},
 							}},
 						})
@@ -1486,7 +1486,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 						})
 
-						bpLayers := dist.BuildpackLayers{
+						bpLayers := dist.ModuleLayers{
 							"example/foo": {
 								"1.0.0": {
 									API: api.MustParse("0.3"),
@@ -1538,7 +1538,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						bldr, err := builder.FromImage(defaultBuilderImage)
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
-							{Group: []dist.BuildpackRef{
+							{Group: []dist.ModuleRef{
 								{ModuleInfo: dist.ModuleInfo{ID: "example/foo", Version: "1.0.0"}},
 							}},
 						})
@@ -2572,7 +2572,7 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 				},
 			},
 		},
-		dist.BuildpackLayers{
+		dist.ModuleLayers{
 			"buildpack.1.id": {
 				"buildpack.1.version": {
 					API: api.MustParse("0.3"),
@@ -2597,14 +2597,14 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 			},
 		},
 		dist.Order{{
-			Group: []dist.BuildpackRef{{
+			Group: []dist.ModuleRef{{
 				ModuleInfo: dist.ModuleInfo{
 					ID:      "buildpack.1.id",
 					Version: "buildpack.1.version",
 				},
 			}},
 		}, {
-			Group: []dist.BuildpackRef{{
+			Group: []dist.ModuleRef{{
 				ModuleInfo: dist.ModuleInfo{
 					ID:      "buildpack.2.id",
 					Version: "buildpack.2.version",

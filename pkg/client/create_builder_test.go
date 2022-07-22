@@ -156,12 +156,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 					Order: []dist.OrderEntry{{
-						Group: []dist.BuildpackRef{
+						Group: []dist.ModuleRef{
 							{ModuleInfo: dist.ModuleInfo{ID: "bp.one", Version: "1.2.3"}, Optional: false},
 						}},
 					},
 					OrderExtensions: []dist.OrderEntry{{
-						Group: []dist.BuildpackRef{
+						Group: []dist.ModuleRef{
 							{ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3"}, Optional: true}, // TODO: extensions are always optional
 						}},
 					},
@@ -595,7 +595,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, bldr.Buildpacks(), []dist.ModuleInfo{bpInfo})
 				bpInfo.Homepage = ""
 				h.AssertEq(t, bldr.Order(), dist.Order{{
-					Group: []dist.BuildpackRef{{
+					Group: []dist.ModuleRef{{
 						ModuleInfo: bpInfo,
 						Optional:   false,
 					}},
@@ -616,7 +616,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, bldr.Extensions(), []dist.ModuleInfo{extInfo})
 				extInfo.Homepage = ""
 				h.AssertEq(t, bldr.OrderExtensions(), dist.Order{{
-					Group: []dist.BuildpackRef{{
+					Group: []dist.ModuleRef{{
 						ModuleInfo: extInfo,
 						Optional:   true,
 					}},
@@ -738,7 +738,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, bldr.Buildpacks(), []dist.ModuleInfo{bpInfo})
 				bpInfo.Homepage = ""
 				h.AssertEq(t, bldr.Order(), dist.Order{{
-					Group: []dist.BuildpackRef{{
+					Group: []dist.ModuleRef{{
 						ModuleInfo: bpInfo,
 						Optional:   false,
 					}},

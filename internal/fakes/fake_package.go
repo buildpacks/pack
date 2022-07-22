@@ -14,7 +14,7 @@ import (
 
 type Package interface {
 	Name() string
-	BuildpackLayers() dist.BuildpackLayers
+	BuildpackLayers() dist.ModuleLayers
 	GetLayer(diffID string) (io.ReadCloser, error)
 }
 
@@ -23,7 +23,7 @@ var _ Package = (*fakePackage)(nil)
 type fakePackage struct {
 	name       string
 	bpTarFiles map[string]string
-	bpLayers   dist.BuildpackLayers
+	bpLayers   dist.ModuleLayers
 }
 
 func NewPackage(tmpDir string, name string, buildpacks []buildpack.BuildModule) (Package, error) {
@@ -46,7 +46,7 @@ func NewPackage(tmpDir string, name string, buildpacks []buildpack.BuildModule) 
 		return tarFile, hash.String(), nil
 	}
 
-	bpLayers := dist.BuildpackLayers{}
+	bpLayers := dist.ModuleLayers{}
 	bpTarFiles := map[string]string{}
 	for _, bp := range buildpacks {
 		tarFile, diffID, err := processBuildpack(bp)
@@ -68,7 +68,7 @@ func (f *fakePackage) Name() string {
 	return f.name
 }
 
-func (f *fakePackage) BuildpackLayers() dist.BuildpackLayers {
+func (f *fakePackage) BuildpackLayers() dist.ModuleLayers {
 	return f.bpLayers
 }
 

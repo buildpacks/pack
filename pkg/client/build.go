@@ -546,7 +546,7 @@ func assembleAvailableMixins(buildMixins, runMixins []string) []string {
 // by ID then Version.
 func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.BuildModule) ([]buildpack.Descriptor, error) {
 	var all []buildpack.Descriptor
-	var bpLayers dist.BuildpackLayers
+	var bpLayers dist.ModuleLayers
 	if _, err := dist.GetLabel(builderImage, dist.BuildpackLayersLabel, &bpLayers); err != nil {
 		return nil, err
 	}
@@ -717,7 +717,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 		}
 	}
 
-	order = dist.Order{{Group: []dist.BuildpackRef{}}}
+	order = dist.Order{{Group: []dist.ModuleRef{}}}
 	for _, bp := range declaredBPs {
 		locatorType, err := buildpack.GetLocatorType(bp, relativeBaseDir, builderBPs)
 		if err != nil {
@@ -774,7 +774,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 func appendBuildpackToOrder(order dist.Order, bpInfo dist.ModuleInfo) (newOrder dist.Order) {
 	for _, orderEntry := range order {
 		newEntry := orderEntry
-		newEntry.Group = append(newEntry.Group, dist.BuildpackRef{
+		newEntry.Group = append(newEntry.Group, dist.ModuleRef{
 			ModuleInfo: bpInfo,
 			Optional:   false,
 		})

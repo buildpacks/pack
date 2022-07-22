@@ -25,7 +25,7 @@ func ExtractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 		)
 	}
 
-	pkgLayers := dist.BuildpackLayers{}
+	pkgLayers := dist.ModuleLayers{}
 	ok, err := dist.GetLabel(pkg, dist.BuildpackLayersLabel, &pkgLayers)
 	if err != nil {
 		return nil, nil, err
@@ -79,7 +79,7 @@ func ExtractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 }
 
 func ExtractExtensions(pkg Package) (mainBP BuildModule, err error) {
-	pkgLayers := dist.BuildpackLayers{}
+	pkgLayers := dist.ModuleLayers{}
 	ok, err := dist.GetLabel(pkg, dist.BuildpackLayersLabel, &pkgLayers)
 	if err != nil {
 		return nil, err

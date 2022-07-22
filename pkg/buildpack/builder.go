@@ -91,7 +91,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 		return err
 	}
 
-	bpLayers := dist.BuildpackLayers{}
+	bpLayers := dist.ModuleLayers{}
 	for _, bp := range append(b.dependencies, b.buildpack) {
 		bpLayerTar, err := ToLayerTar(tmpDir, bp)
 		if err != nil {

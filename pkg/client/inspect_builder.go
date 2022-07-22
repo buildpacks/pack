@@ -37,7 +37,7 @@ type BuilderInfo struct {
 	// Listing of all buildpack layers in a builder.
 	// All elements in the Buildpacks variable are represented in this
 	// object.
-	BuildpackLayers dist.BuildpackLayers
+	BuildpackLayers dist.ModuleLayers
 
 	// Lifecycle provides the following API versioning information for a builder:
 	// - Lifecycle Version used in this builder,

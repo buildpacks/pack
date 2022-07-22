@@ -142,7 +142,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 										Version: "bp.1.version",
 									},
 									Order: dist.Order{{
-										Group: []dist.BuildpackRef{
+										Group: []dist.ModuleRef{
 											{ModuleInfo: dist.ModuleInfo{ID: "bp.present.id", Version: "bp.present.version"}},
 											{ModuleInfo: dist.ModuleInfo{ID: "bp.missing.id", Version: "bp.missing.version"}},
 										},
@@ -176,7 +176,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 										Version: "bp.1.version",
 									},
 									Order: dist.Order{{
-										Group: []dist.BuildpackRef{
+										Group: []dist.ModuleRef{
 											{ModuleInfo: dist.ModuleInfo{ID: "bp.present.id", Version: "bp.present.version"}},
 										},
 									}},
@@ -189,7 +189,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 									API:  api.MustParse("0.2"),
 									Info: dist.ModuleInfo{ID: "bp.present.id", Version: "bp.present.version"},
 									Order: dist.Order{{
-										Group: []dist.BuildpackRef{
+										Group: []dist.ModuleRef{
 											{ModuleInfo: dist.ModuleInfo{ID: "bp.missing.id", Version: "bp.missing.version"}},
 										},
 									}},
@@ -211,7 +211,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 										Version: "bp.1.version",
 									},
 									Order: dist.Order{{
-										Group: []dist.BuildpackRef{
+										Group: []dist.ModuleRef{
 											{ModuleInfo: dist.ModuleInfo{ID: "bp.present.id", Version: "bp.present.version"}},
 										},
 									}},
@@ -224,7 +224,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 									API:  api.MustParse("0.2"),
 									Info: dist.ModuleInfo{ID: "bp.present.id", Version: "bp.present.version"},
 									Order: dist.Order{{
-										Group: []dist.BuildpackRef{
+										Group: []dist.ModuleRef{
 											{ModuleInfo: dist.ModuleInfo{ID: "bp.missing.id"}},
 										},
 									}},
@@ -249,7 +249,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 									},
 									Stacks: nil,
 									Order: dist.Order{{
-										Group: []dist.BuildpackRef{
+										Group: []dist.ModuleRef{
 											{ModuleInfo: dist.ModuleInfo{ID: "bp.nested.id", Version: "bp.nested.version"}},
 										},
 									}},
@@ -288,7 +288,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 										Version: "bp.1.version",
 									},
 									Order: dist.Order{{
-										Group: []dist.BuildpackRef{{
+										Group: []dist.ModuleRef{{
 											ModuleInfo: dist.ModuleInfo{ID: "bp.2.id", Version: "bp.2.version"},
 											Optional:   false,
 										}, {
@@ -345,7 +345,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 										Version: "bp.1.version",
 									},
 									Order: dist.Order{{
-										Group: []dist.BuildpackRef{{
+										Group: []dist.ModuleRef{{
 											ModuleInfo: dist.ModuleInfo{ID: "bp.2.id", Version: "bp.2.version"},
 											Optional:   false,
 										}, {
@@ -408,7 +408,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 										Version: "bp.1.version",
 									},
 									Order: dist.Order{{
-										Group: []dist.BuildpackRef{{
+										Group: []dist.ModuleRef{{
 											ModuleInfo: dist.ModuleInfo{ID: "bp.2.id", Version: "bp.2.version"},
 											Optional:   false,
 										}, {
@@ -471,7 +471,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 									},
 									Stacks: nil,
 									Order: dist.Order{{
-										Group: []dist.BuildpackRef{
+										Group: []dist.ModuleRef{
 											{ModuleInfo: dist.ModuleInfo{ID: "bp.nested.id", Version: "bp.nested.version"}},
 										},
 									}},
@@ -488,7 +488,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 										Version: "bp.nested.version",
 									},
 									Order: dist.Order{{
-										Group: []dist.BuildpackRef{
+										Group: []dist.ModuleRef{
 											{ModuleInfo: dist.ModuleInfo{
 												ID:      "bp.nested.nested.id",
 												Version: "bp.nested.nested.version",
@@ -600,7 +600,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			packageImage, err := builder.SaveAsImage("some/package", false, "linux")
 			h.AssertNil(t, err)
 
-			var bpLayers dist.BuildpackLayers
+			var bpLayers dist.ModuleLayers
 			_, err = dist.GetLabel(packageImage, "io.buildpacks.buildpack.layers", &bpLayers)
 			h.AssertNil(t, err)
 

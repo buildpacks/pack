@@ -37,17 +37,17 @@ type Platform struct {
 type Order []OrderEntry
 
 type OrderEntry struct {
-	Group []BuildpackRef `toml:"group" json:"group"`
+	Group []ModuleRef `toml:"group" json:"group"`
 }
 
-type BuildpackRef struct { // TODO: rename
+type ModuleRef struct {
 	ModuleInfo `yaml:"buildpackinfo,inline"`
 	Optional   bool `toml:"optional,omitempty" json:"optional,omitempty" yaml:"optional,omitempty"`
 }
 
-type BuildpackLayers map[string]map[string]BuildpackLayerInfo // TODO: rename or duplicate
+type ModuleLayers map[string]map[string]ModuleLayerInfo
 
-type BuildpackLayerInfo struct {
+type ModuleLayerInfo struct {
 	API         *api.Version `json:"api"`
 	Stacks      []Stack      `json:"stacks,omitempty"`
 	Order       Order        `json:"order,omitempty"`
@@ -56,10 +56,10 @@ type BuildpackLayerInfo struct {
 	Name        string       `json:"name,omitempty"`
 }
 
-func (b BuildpackLayers) Get(id, version string) (BuildpackLayerInfo, bool) {
+func (b ModuleLayers) Get(id, version string) (ModuleLayerInfo, bool) {
 	buildpackLayerEntries, ok := b[id]
 	if !ok {
-		return BuildpackLayerInfo{}, false
+		return ModuleLayerInfo{}, false
 	}
 	if len(buildpackLayerEntries) == 1 && version == "" {
 		for key := range buildpackLayerEntries {

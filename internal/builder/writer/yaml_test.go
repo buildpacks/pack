@@ -172,7 +172,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 				RunImageMirrors: []string{"first/default", "second/default"},
 				Buildpacks:      buildpacks,
 				Order:           order,
-				BuildpackLayers: dist.BuildpackLayers{},
+				BuildpackLayers: dist.ModuleLayers{},
 				Lifecycle: builder.LifecycleDescriptor{
 					Info: builder.LifecycleInfo{
 						Version: &builder.Version{
@@ -204,7 +204,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 				RunImageMirrors: []string{"first/local-default", "second/local-default"},
 				Buildpacks:      buildpacks,
 				Order:           order,
-				BuildpackLayers: dist.BuildpackLayers{},
+				BuildpackLayers: dist.ModuleLayers{},
 				Lifecycle: builder.LifecycleDescriptor{
 					Info: builder.LifecycleInfo{
 						Version: &builder.Version{

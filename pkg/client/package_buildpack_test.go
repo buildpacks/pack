@@ -142,7 +142,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					API:  api.MustParse("0.2"),
 					Info: dist.ModuleInfo{ID: "bp.1", Version: "1.2.3"},
 					Order: dist.Order{{
-						Group: []dist.BuildpackRef{{
+						Group: []dist.ModuleRef{{
 							ModuleInfo: dist.ModuleInfo{ID: "bp.nested", Version: "2.3.4"},
 							Optional:   false,
 						}},
@@ -301,7 +301,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 								API:  api.MustParse("0.2"),
 								Info: dist.ModuleInfo{ID: "bp.1", Version: "1.2.3"},
 								Order: dist.Order{{
-									Group: []dist.BuildpackRef{{
+									Group: []dist.ModuleRef{{
 										ModuleInfo: dist.ModuleInfo{ID: "bp.nested", Version: "2.3.4"},
 										Optional:   false,
 									}},
@@ -328,7 +328,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 								API:  api.MustParse("0.2"),
 								Info: dist.ModuleInfo{ID: "bp.1", Version: "1.2.3"},
 								Order: dist.Order{{
-									Group: []dist.BuildpackRef{{
+									Group: []dist.ModuleRef{{
 										ModuleInfo: dist.ModuleInfo{ID: "bp.nested", Version: "2.3.4"},
 										Optional:   false,
 									}},
@@ -355,7 +355,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 								API:  api.MustParse("0.2"),
 								Info: dist.ModuleInfo{ID: "bp.1", Version: "1.2.3"},
 								Order: dist.Order{{
-									Group: []dist.BuildpackRef{{
+									Group: []dist.ModuleRef{{
 										ModuleInfo: dist.ModuleInfo{ID: "bp.nested", Version: "2.3.4"},
 										Optional:   false,
 									}},
@@ -477,7 +477,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					API:  api.MustParse("0.2"),
 					Info: dist.ModuleInfo{ID: "bp.1", Version: "1.2.3"},
 					Order: dist.Order{{
-						Group: []dist.BuildpackRef{{
+						Group: []dist.ModuleRef{{
 							ModuleInfo: dist.ModuleInfo{ID: "bp.nested", Version: "2.3.4"},
 							Optional:   false,
 						}},
@@ -604,7 +604,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						Stacks: []dist.Stack{{ID: "some.stack.id"}},
 					}
 
-					packageDescriptor.Order = append(packageDescriptor.Order, dist.OrderEntry{Group: []dist.BuildpackRef{{
+					packageDescriptor.Order = append(packageDescriptor.Order, dist.OrderEntry{Group: []dist.ModuleRef{{
 						ModuleInfo: dist.ModuleInfo{ID: secondChildDescriptor.Info.ID, Version: secondChildDescriptor.Info.Version},
 						Optional:   false,
 					}}})
@@ -705,7 +705,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						API:  api.MustParse("0.2"),
 						Info: dist.ModuleInfo{ID: "bp.1", Version: "1.2.3"},
 						Order: dist.Order{{
-							Group: []dist.BuildpackRef{{
+							Group: []dist.ModuleRef{{
 								ModuleInfo: dist.ModuleInfo{ID: "example/foo", Version: "1.1.0"},
 								Optional:   false,
 							}},

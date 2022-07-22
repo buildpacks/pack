@@ -37,12 +37,12 @@ func LayerDiffID(layerTarPath string) (v1.Hash, error) {
 	return hash, nil
 }
 
-func AddToLayersMD(layerMD BuildpackLayers, descriptor Descriptor, diffID string) {
+func AddToLayersMD(layerMD ModuleLayers, descriptor Descriptor, diffID string) {
 	info := descriptor.ModuleInfo()
 	if _, ok := layerMD[info.ID]; !ok {
-		layerMD[info.ID] = map[string]BuildpackLayerInfo{}
+		layerMD[info.ID] = map[string]ModuleLayerInfo{}
 	}
-	layerMD[info.ID][info.Version] = BuildpackLayerInfo{
+	layerMD[info.ID][info.Version] = ModuleLayerInfo{
 		API:         descriptor.ModuleAPI(),
 		Stacks:      descriptor.ModuleStacks(),
 		Order:       descriptor.ModuleOrder(),

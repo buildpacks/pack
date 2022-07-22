@@ -227,7 +227,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 			},
 			Order: dist.Order{
 				{
-					Group: []dist.BuildpackRef{
+					Group: []dist.ModuleRef{
 						{
 							ModuleInfo: dist.ModuleInfo{
 								ID:       "some/top-buildpack",
@@ -240,7 +240,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			},
-			BuildpackLayers: dist.BuildpackLayers{
+			BuildpackLayers: dist.ModuleLayers{
 				"some/first-inner-buildpack": {
 					"1.0.0": {
 						API: apiVersion,
@@ -250,7 +250,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 						},
 						Order: dist.Order{
 							{
-								Group: []dist.BuildpackRef{
+								Group: []dist.ModuleRef{
 									{
 										ModuleInfo: dist.ModuleInfo{
 											ID:      "some/first-inner-buildpack",
@@ -268,7 +268,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 							{
-								Group: []dist.BuildpackRef{
+								Group: []dist.ModuleRef{
 									{
 										ModuleInfo: dist.ModuleInfo{
 											ID:      "some/second-inner-buildpack",
@@ -308,7 +308,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 						API: apiVersion,
 						Order: dist.Order{
 							{
-								Group: []dist.BuildpackRef{
+								Group: []dist.ModuleRef{
 									{
 										ModuleInfo: dist.ModuleInfo{
 											ID:      "some/first-inner-buildpack",
@@ -326,7 +326,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 							{
-								Group: []dist.BuildpackRef{
+								Group: []dist.ModuleRef{
 									{
 										ModuleInfo: dist.ModuleInfo{
 											ID:      "some/first-inner-buildpack",

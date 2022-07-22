@@ -86,15 +86,15 @@ var (
 		},
 	}
 	testOrder = dist.Order{
-		dist.OrderEntry{Group: []dist.BuildpackRef{
+		dist.OrderEntry{Group: []dist.ModuleRef{
 			{ModuleInfo: testBuildpack, Optional: false},
 		}},
-		dist.OrderEntry{Group: []dist.BuildpackRef{
+		dist.OrderEntry{Group: []dist.ModuleRef{
 			{ModuleInfo: testNestedBuildpack, Optional: false},
 			{ModuleInfo: testTopNestedBuildpack, Optional: true},
 		}},
 	}
-	testLayers = dist.BuildpackLayers{
+	testLayers = dist.ModuleLayers{
 		"test.top.nested": {
 			"test.top.nested.version": {
 				API:         api.MustParse("0.2"),
@@ -125,17 +125,17 @@ var (
 	}
 	expectedDetectionTestOrder = pubbldr.DetectionOrder{
 		{
-			BuildpackRef: dist.BuildpackRef{
+			ModuleRef: dist.ModuleRef{
 				ModuleInfo: testBuildpack,
 			},
 		},
 		{
-			BuildpackRef: dist.BuildpackRef{
+			ModuleRef: dist.ModuleRef{
 				ModuleInfo: testTopNestedBuildpack,
 			},
 			GroupDetectionOrder: pubbldr.DetectionOrder{
 				{
-					BuildpackRef: dist.BuildpackRef{
+					ModuleRef: dist.ModuleRef{
 						ModuleInfo: testNestedBuildpack,
 					},
 				},
@@ -333,7 +333,7 @@ func testInspect(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("label manager returns an error for `BuildpackLayers`", func() {
+		when("label manager returns an error for `ModuleLayers`", func() {
 			it("returns the wrapped error", func() {
 				expectedBaseError := errors.New("label not found")
 

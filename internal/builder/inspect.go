@@ -19,7 +19,7 @@ type Info struct {
 	RunImageMirrors []string
 	Buildpacks      []dist.ModuleInfo
 	Order           pubbldr.DetectionOrder
-	BuildpackLayers dist.BuildpackLayers
+	BuildpackLayers dist.ModuleLayers
 	Lifecycle       LifecycleDescriptor
 	CreatedBy       CreatorMetadata
 }
@@ -41,11 +41,11 @@ type LabelInspector interface {
 	StackID() (string, error)
 	Mixins() ([]string, error)
 	Order() (dist.Order, error)
-	BuildpackLayers() (dist.BuildpackLayers, error)
+	BuildpackLayers() (dist.ModuleLayers, error)
 }
 
 type DetectionCalculator interface {
-	Order(topOrder dist.Order, layers dist.BuildpackLayers, depth int) (pubbldr.DetectionOrder, error)
+	Order(topOrder dist.Order, layers dist.ModuleLayers, depth int) (pubbldr.DetectionOrder, error)
 }
 
 type Inspector struct {

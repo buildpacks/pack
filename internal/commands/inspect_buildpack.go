@@ -189,7 +189,7 @@ func buildpacksOutput(bps []dist.ModuleInfo) (string, error) {
 }
 
 // Unable to easily convert format makes this feel like a poor solution...
-func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDepth int) (string, error) {
+func detectionOrderOutput(order dist.Order, layers dist.ModuleLayers, maxDepth int) (string, error) {
 	buf := strings.Builder{}
 	tabWriter := new(tabwriter.Writer).Init(&buf, writerMinWidth, writerTabWidth, defaultTabWidth, writerPadChar, writerFlags)
 	buildpackSet := map[client.BuildpackInfoKey]bool{}
@@ -204,7 +204,7 @@ func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDept
 }
 
 // Recursively generate output for every buildpack in an order.
-func orderOutputRecurrence(w io.Writer, prefix string, order dist.Order, layers dist.BuildpackLayers, buildpackSet map[client.BuildpackInfoKey]bool, curDepth, maxDepth int) error {
+func orderOutputRecurrence(w io.Writer, prefix string, order dist.Order, layers dist.ModuleLayers, buildpackSet map[client.BuildpackInfoKey]bool, curDepth, maxDepth int) error {
 	// exit if maxDepth is exceeded
 	if validMaxDepth(maxDepth) && maxDepth <= curDepth {
 		return nil
@@ -276,7 +276,7 @@ func displayGroup(w io.Writer, prefix string, groupCount int, last bool) error {
 	return err
 }
 
-func displayBuildpack(w io.Writer, prefix string, entry dist.BuildpackRef, visited bool, last bool) error {
+func displayBuildpack(w io.Writer, prefix string, entry dist.ModuleRef, visited bool, last bool) error {
 	var optional string
 	if entry.Optional {
 		optional = "(optional)"

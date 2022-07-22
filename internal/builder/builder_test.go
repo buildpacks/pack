@@ -149,7 +149,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				Version: "order-buildpack-version",
 			},
 			Order: []dist.OrderEntry{{
-				Group: []dist.BuildpackRef{
+				Group: []dist.ModuleRef{
 					{
 						ModuleInfo: bp1v1.Descriptor().ModuleInfo(),
 						Optional:   true,
@@ -458,7 +458,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					it("should resolve unset version (to legacy label and order.toml)", func() {
 						subject.SetOrder(dist.Order{{
-							Group: []dist.BuildpackRef{
+							Group: []dist.ModuleRef{
 								{ModuleInfo: dist.ModuleInfo{ID: bp1v1.Descriptor().ModuleInfo().ID}}},
 						}})
 
@@ -478,7 +478,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					when("order points to missing buildpack id", func() {
 						it("should error", func() {
 							subject.SetOrder(dist.Order{{
-								Group: []dist.BuildpackRef{
+								Group: []dist.ModuleRef{
 									{ModuleInfo: dist.ModuleInfo{ID: "missing-buildpack-id"}}},
 							}})
 
@@ -491,7 +491,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					when("order points to missing buildpack version", func() {
 						it("should error", func() {
 							subject.SetOrder(dist.Order{{
-								Group: []dist.BuildpackRef{
+								Group: []dist.ModuleRef{
 									{ModuleInfo: dist.ModuleInfo{ID: "buildpack-1-id", Version: "missing-buildpack-version"}}},
 							}})
 
@@ -511,13 +511,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					when("order omits version", func() {
 						it("should de-duplicate identical buildpacks", func() {
 							subject.SetOrder(dist.Order{
-								{Group: []dist.BuildpackRef{{
+								{Group: []dist.ModuleRef{{
 									ModuleInfo: dist.ModuleInfo{
 										ID:       bp1v1.Descriptor().ModuleInfo().ID,
 										Homepage: bp1v1.Descriptor().ModuleInfo().Homepage,
 									}}},
 								},
-								{Group: []dist.BuildpackRef{{
+								{Group: []dist.ModuleRef{{
 									ModuleInfo: dist.ModuleInfo{
 										ID:       bp1v1.Descriptor().ModuleInfo().ID,
 										Homepage: bp1v1.Descriptor().ModuleInfo().Homepage,
@@ -540,7 +540,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					when("order explicitly sets version", func() {
 						it("should keep order version", func() {
 							subject.SetOrder(dist.Order{{
-								Group: []dist.BuildpackRef{
+								Group: []dist.ModuleRef{
 									{ModuleInfo: bp1v1.Descriptor().ModuleInfo()}},
 							}})
 
@@ -561,7 +561,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					when("order version is empty", func() {
 						it("return error", func() {
 							subject.SetOrder(dist.Order{{
-								Group: []dist.BuildpackRef{
+								Group: []dist.ModuleRef{
 									{ModuleInfo: dist.ModuleInfo{ID: "buildpack-1-id"}}},
 							}})
 
@@ -792,8 +792,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					it("skips adding buildpack that already exists", func() {
 						logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 						diffID := "4dc0072c61fc2bd7118bbc93a432eae0012082de094455cf0a9fed20e3c44789"
-						bpLayer := dist.BuildpackLayers{
-							"buildpack-1-id": map[string]dist.BuildpackLayerInfo{
+						bpLayer := dist.ModuleLayers{
+							"buildpack-1-id": map[string]dist.ModuleLayerInfo{
 								"buildpack-1-version-1": {
 									API:         api.MustParse("0.2"),
 									Stacks:      nil,
@@ -980,7 +980,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				label, err := baseImage.Label("io.buildpacks.buildpack.layers")
 				h.AssertNil(t, err)
 
-				var layers dist.BuildpackLayers
+				var layers dist.ModuleLayers
 				h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
 				h.AssertEq(t, len(layers), 3)
 				h.AssertEq(t, len(layers["buildpack-1-id"]), 2)
@@ -1050,7 +1050,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					label, err := baseImage.Label("io.buildpacks.buildpack.layers")
 					h.AssertNil(t, err)
 
-					var layers dist.BuildpackLayers
+					var layers dist.ModuleLayers
 					h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
 					h.AssertEq(t, len(layers), 2)
 					h.AssertEq(t, len(layers["buildpack-1-id"]), 2)
@@ -1078,7 +1078,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					label, err := baseImage.Label("io.buildpacks.buildpack.layers")
 					h.AssertNil(t, err)
 
-					var layers dist.BuildpackLayers
+					var layers dist.ModuleLayers
 					h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
 
 					h.AssertContains(t,
@@ -1095,7 +1095,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					label, err := baseImage.Label("io.buildpacks.buildpack.layers")
 					h.AssertNil(t, err)
 
-					var layers dist.BuildpackLayers
+					var layers dist.ModuleLayers
 					h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
 
 					h.AssertNotContains(t,
@@ -1191,7 +1191,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				label, err := baseImage.Label("io.buildpacks.extension.layers")
 				h.AssertNil(t, err)
 
-				var layers dist.BuildpackLayers
+				var layers dist.ModuleLayers
 				h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
 				h.AssertEq(t, len(layers), 2)
 				h.AssertEq(t, len(layers["extension-1-id"]), 2)
@@ -1241,7 +1241,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					label, err := baseImage.Label("io.buildpacks.extension.layers")
 					h.AssertNil(t, err)
 
-					var layers dist.BuildpackLayers
+					var layers dist.ModuleLayers
 					h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
 					h.AssertEq(t, len(layers), 2)
 					h.AssertEq(t, len(layers["extension-1-id"]), 2)
@@ -1265,7 +1265,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					label, err := baseImage.Label("io.buildpacks.extension.layers")
 					h.AssertNil(t, err)
 
-					var layers dist.BuildpackLayers
+					var layers dist.ModuleLayers
 					h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
 
 					h.AssertContains(t,
@@ -1282,7 +1282,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					label, err := baseImage.Label("io.buildpacks.extension.layers")
 					h.AssertNil(t, err)
 
-					var layers dist.BuildpackLayers
+					var layers dist.ModuleLayers
 					h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
 
 					h.AssertNotContains(t,
@@ -1337,7 +1337,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					subject.AddBuildpack(bp1v1)
 					subject.AddBuildpack(bp2v1)
 					subject.SetOrder(dist.Order{
-						{Group: []dist.BuildpackRef{
+						{Group: []dist.ModuleRef{
 							{
 								ModuleInfo: dist.ModuleInfo{
 									ID: bp1v1.Descriptor().ModuleInfo().ID,
@@ -1398,7 +1398,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					subject.AddExtension(ext1v1)
 					subject.AddExtension(ext2v1)
 					subject.SetOrderExtensions(dist.Order{
-						{Group: []dist.BuildpackRef{
+						{Group: []dist.ModuleRef{
 							{
 								ModuleInfo: dist.ModuleInfo{
 									ID: ext1v1.Descriptor().ModuleInfo().ID,
