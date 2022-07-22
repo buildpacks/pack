@@ -73,6 +73,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			return buildpack
 		}
+
 		var shouldCallBuildpackDownloaderWith = func(uri string, buildpackDownloadOptions buildmodule.DownloadOptions) {
 			buildpack := createBuildpack(dist.BuildpackDescriptor{
 				WithAPI:    api.MustParse("0.3"),
@@ -274,6 +275,26 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				err := subject.CreateBuilder(context.TODO(), opts)
 
 				h.AssertError(t, err, "buildpack from URI 'https://example.fake/bp-one.tgz' has version '1.2.3' which does not match version '0.0.0' from builder config")
+			})
+
+			it("should fail when extension ID does not match downloaded extension", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Extensions[0].ID = "does.not.match"
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+
+				h.AssertError(t, err, "extension from URI 'https://example.fake/ext-one.tgz' has ID 'ext.one' which does not match ID 'does.not.match' from builder config")
+			})
+
+			it("should fail when extension version does not match downloaded extension", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Extensions[0].Version = "0.0.0"
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+
+				h.AssertError(t, err, "extension from URI 'https://example.fake/ext-one.tgz' has version '1.2.3' which does not match version '0.0.0' from builder config")
 			})
 		})
 
@@ -654,24 +675,31 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Platform.Supported.AsStrings(), []string{"0.3", "0.4"})
 			})
 
-			it("should warn when deprecated Buildpack API version used", func() {
+			it("should warn when deprecated Buildpack API version is used", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
 				bldr := successfullyCreateBuilder()
 
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{"0.2", "0.3"})
 				h.AssertContains(t, out.String(), fmt.Sprintf("Buildpack %s is using deprecated Buildpacks API version %s", style.Symbol("bp.one@1.2.3"), style.Symbol("0.3")))
+				h.AssertContains(t, out.String(), fmt.Sprintf("Extension %s is using deprecated Buildpacks API version %s", style.Symbol("ext.one@1.2.3"), style.Symbol("0.3")))
 			})
 
 			it("shouldn't warn when Buildpack API version used isn't deprecated", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
 				opts.Config.Buildpacks[0].URI = "https://example.fake/bp-one-with-api-4.tgz"
+				opts.Config.Extensions[0].URI = "https://example.fake/ext-one-with-api-9.tgz"
 
 				buildpackBlob := blob.NewBlob(filepath.Join("testdata", "buildpack-api-0.4"))
 				buildpack, err := buildmodule.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
 				h.AssertNil(t, err)
 				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz", gomock.Any()).Return(buildpack, nil, nil)
+
+				extensionBlob := blob.NewBlob(filepath.Join("testdata", "extension-api-0.9"))
+				extension, err := buildmodule.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory())
+				h.AssertNil(t, err)
+				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/ext-one-with-api-9.tgz", gomock.Any()).Return(extension, nil, nil)
 
 				bldr := successfullyCreateBuilder()
 
@@ -691,6 +719,22 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			buildpack, err := buildmodule.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
 			h.AssertNil(t, err)
 			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), directoryPath, gomock.Any()).Return(buildpack, nil, nil)
+
+			err = subject.CreateBuilder(context.TODO(), opts)
+			h.AssertNil(t, err)
+		})
+
+		it("supports directory extensions", func() {
+			prepareFetcherWithBuildImage()
+			prepareFetcherWithRunImages()
+			opts.RelativeBaseDir = ""
+			directoryPath := "testdata/extension"
+			opts.Config.Extensions[0].URI = directoryPath
+
+			extensionBlob := blob.NewBlob(directoryPath)
+			extension, err := buildmodule.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory())
+			h.AssertNil(t, err)
+			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), directoryPath, gomock.Any()).Return(extension, nil, nil)
 
 			err = subject.CreateBuilder(context.TODO(), opts)
 			h.AssertNil(t, err)

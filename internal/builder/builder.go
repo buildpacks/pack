@@ -517,7 +517,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 	return nil
 }
 
-func processOrder(modulesOnBuilder []dist.ModuleInfo, order dist.Order, kind string) (dist.Order, error) {
+func processOrder(modulesOnBuilder []dist.ModuleInfo, order dist.Order, kind string) (dist.Order, error) { // TODO: check if this is tested for extensions
 	resolved := dist.Order{}
 	for idx, g := range order {
 		resolved = append(resolved, dist.OrderEntry{})
