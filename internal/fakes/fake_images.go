@@ -36,10 +36,10 @@ func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid st
 			}
 
 			buildpackDescriptor := dist.BuildpackDescriptor{
-				API:    bpLayerInfo.API,
-				Info:   bpInfo,
-				Stacks: bpLayerInfo.Stacks,
-				Order:  bpLayerInfo.Order,
+				WithAPI:    bpLayerInfo.API,
+				WithInfo:   bpInfo,
+				WithStacks: bpLayerInfo.Stacks,
+				WithOrder:  bpLayerInfo.Order,
 			}
 
 			buildpackTar := CreateBuildpackTar(t, tmpDir, buildpackDescriptor)

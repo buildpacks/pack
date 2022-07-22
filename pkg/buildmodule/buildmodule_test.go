@@ -72,11 +72,11 @@ id = "some.stack.id"
 			)
 			h.AssertNil(t, err)
 
-			h.AssertEq(t, bp.Descriptor().ModuleAPI().String(), "0.3")
-			h.AssertEq(t, bp.Descriptor().ModuleInfo().ID, "bp.one")
-			h.AssertEq(t, bp.Descriptor().ModuleInfo().Version, "1.2.3")
-			h.AssertEq(t, bp.Descriptor().ModuleInfo().Homepage, "http://geocities.com/cool-bp")
-			h.AssertEq(t, bp.Descriptor().ModuleStacks()[0].ID, "some.stack.id")
+			h.AssertEq(t, bp.Descriptor().API().String(), "0.3")
+			h.AssertEq(t, bp.Descriptor().Info().ID, "bp.one")
+			h.AssertEq(t, bp.Descriptor().Info().Version, "1.2.3")
+			h.AssertEq(t, bp.Descriptor().Info().Homepage, "http://geocities.com/cool-bp")
+			h.AssertEq(t, bp.Descriptor().Stacks()[0].ID, "some.stack.id")
 		})
 
 		it("translates blob to distribution format", func() {
@@ -330,7 +330,7 @@ id = "some.stack.id"`))
 					archive.DefaultTarWriterFactory(),
 				)
 				h.AssertNil(t, err)
-				h.AssertEq(t, bp.Descriptor().ModuleAPI().String(), "0.1")
+				h.AssertEq(t, bp.Descriptor().API().String(), "0.1")
 			})
 		})
 

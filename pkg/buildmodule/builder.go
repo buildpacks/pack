@@ -85,7 +85,7 @@ func (b *PackageBuilder) AddDependency(buildpack BuildModule) {
 
 func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error {
 	if err := dist.SetLabel(image, MetadataLabel, &Metadata{
-		ModuleInfo: b.buildpack.Descriptor().ModuleInfo(),
+		ModuleInfo: b.buildpack.Descriptor().Info(),
 		Stacks:     b.resolvedStacks(),
 	}); err != nil {
 		return err
@@ -102,12 +102,12 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 		if err != nil {
 			return errors.Wrapf(err,
 				"getting content hashes for buildpack %s",
-				style.Symbol(bp.Descriptor().ModuleInfo().FullName()),
+				style.Symbol(bp.Descriptor().Info().FullName()),
 			)
 		}
 
 		if err := image.AddLayerWithDiffID(bpLayerTar, diffID.String()); err != nil {
-			return errors.Wrapf(err, "adding layer tar for buildpack %s", style.Symbol(bp.Descriptor().ModuleInfo().FullName()))
+			return errors.Wrapf(err, "adding layer tar for buildpack %s", style.Symbol(bp.Descriptor().Info().FullName()))
 		}
 
 		dist.AddToLayersMD(bpLayers, bp.Descriptor(), diffID.String())
@@ -137,14 +137,14 @@ func (b *PackageBuilder) validate() error {
 }
 
 func (b *PackageBuilder) resolvedStacks() []dist.Stack {
-	stacks := b.buildpack.Descriptor().ModuleStacks()
+	stacks := b.buildpack.Descriptor().Stacks()
 	for _, bp := range b.dependencies {
 		bpd := bp.Descriptor()
 
 		if len(stacks) == 0 {
-			stacks = bpd.ModuleStacks()
-		} else if len(bpd.ModuleStacks()) > 0 { // skip over "meta-buildpacks"
-			stacks = stack.MergeCompatible(stacks, bpd.ModuleStacks())
+			stacks = bpd.Stacks()
+		} else if len(bpd.Stacks()) > 0 { // skip over "meta-buildpacks"
+			stacks = stack.MergeCompatible(stacks, bpd.Stacks())
 		}
 	}
 
@@ -262,31 +262,31 @@ func validateBuildpacks(mainBP BuildModule, depBPs []BuildModule) error {
 	depsWithRefs := map[string][]dist.ModuleInfo{}
 
 	for _, bp := range depBPs {
-		depsWithRefs[bp.Descriptor().ModuleInfo().FullName()] = nil
+		depsWithRefs[bp.Descriptor().Info().FullName()] = nil
 	}
 
 	for _, bp := range append([]BuildModule{mainBP}, depBPs...) { // List of everything
 		bpd := bp.Descriptor()
-		for _, orderEntry := range bpd.ModuleOrder() {
+		for _, orderEntry := range bpd.Order() {
 			for _, groupEntry := range orderEntry.Group {
 				bpFullName, err := groupEntry.ModuleInfo.FullNameWithVersion()
 				if err != nil {
 					return errors.Wrapf(
 						err,
 						"buildpack %s must specify a version when referencing buildpack %s",
-						style.Symbol(bpd.ModuleInfo().FullName()),
+						style.Symbol(bpd.Info().FullName()),
 						style.Symbol(bpFullName),
 					)
 				}
 				if _, ok := depsWithRefs[bpFullName]; !ok {
 					return errors.Errorf(
 						"buildpack %s references buildpack %s which is not present",
-						style.Symbol(bpd.ModuleInfo().FullName()),
+						style.Symbol(bpd.Info().FullName()),
 						style.Symbol(bpFullName),
 					)
 				}
 
-				depsWithRefs[bpFullName] = append(depsWithRefs[bpFullName], bpd.ModuleInfo())
+				depsWithRefs[bpFullName] = append(depsWithRefs[bpFullName], bpd.Info())
 			}
 		}
 	}
@@ -296,7 +296,7 @@ func validateBuildpacks(mainBP BuildModule, depBPs []BuildModule) error {
 			return errors.Errorf(
 				"buildpack %s is not used by buildpack %s",
 				style.Symbol(bp),
-				style.Symbol(mainBP.Descriptor().ModuleInfo().FullName()),
+				style.Symbol(mainBP.Descriptor().Info().FullName()),
 			)
 		}
 	}

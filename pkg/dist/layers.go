@@ -11,10 +11,10 @@ import (
 )
 
 type Descriptor interface {
-	ModuleAPI() *api.Version
-	ModuleInfo() ModuleInfo
-	ModuleOrder() Order
-	ModuleStacks() []Stack
+	API() *api.Version
+	Info() ModuleInfo
+	Order() Order
+	Stacks() []Stack
 }
 
 func LayerDiffID(layerTarPath string) (v1.Hash, error) {
@@ -38,14 +38,14 @@ func LayerDiffID(layerTarPath string) (v1.Hash, error) {
 }
 
 func AddToLayersMD(layerMD ModuleLayers, descriptor Descriptor, diffID string) {
-	info := descriptor.ModuleInfo()
+	info := descriptor.Info()
 	if _, ok := layerMD[info.ID]; !ok {
 		layerMD[info.ID] = map[string]ModuleLayerInfo{}
 	}
 	layerMD[info.ID][info.Version] = ModuleLayerInfo{
-		API:         descriptor.ModuleAPI(),
-		Stacks:      descriptor.ModuleStacks(),
-		Order:       descriptor.ModuleOrder(),
+		API:         descriptor.API(),
+		Stacks:      descriptor.Stacks(),
+		Order:       descriptor.Order(),
 		LayerDiffID: diffID,
 		Homepage:    info.Homepage,
 		Name:        info.Name,

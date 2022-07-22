@@ -30,8 +30,8 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 			mainBP, depBPs, err := buildmodule.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
 			h.AssertNil(t, err)
 
-			h.AssertEq(t, mainBP.Descriptor().ModuleInfo().ID, "io.buildpacks.samples.hello-universe")
-			h.AssertEq(t, mainBP.Descriptor().ModuleInfo().Version, "0.0.1")
+			h.AssertEq(t, mainBP.Descriptor().Info().ID, "io.buildpacks.samples.hello-universe")
+			h.AssertEq(t, mainBP.Descriptor().Info().Version, "0.0.1")
 			h.AssertEq(t, len(depBPs), 2)
 		})
 
@@ -46,13 +46,13 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 				_, contents, err := archive.ReadTarEntry(
 					reader,
 					fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml",
-						bp.Descriptor().ModuleInfo().ID,
-						bp.Descriptor().ModuleInfo().Version,
+						bp.Descriptor().Info().ID,
+						bp.Descriptor().Info().Version,
 					),
 				)
 				h.AssertNil(t, err)
-				h.AssertContains(t, string(contents), bp.Descriptor().ModuleInfo().ID)
-				h.AssertContains(t, string(contents), bp.Descriptor().ModuleInfo().Version)
+				h.AssertContains(t, string(contents), bp.Descriptor().Info().ID)
+				h.AssertContains(t, string(contents), bp.Descriptor().Info().Version)
 			}
 		})
 	})
@@ -69,13 +69,13 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 		when("is NOT an OCI layout blob", func() {
 			it("returns false", func() {
 				buildpackBlob, err := fakes.NewFakeBuildpackBlob(&dist.BuildpackDescriptor{
-					API: api.MustParse("0.3"),
-					Info: dist.ModuleInfo{
+					WithAPI: api.MustParse("0.3"),
+					WithInfo: dist.ModuleInfo{
 						ID:      "bp.id",
 						Version: "bp.version",
 					},
-					Stacks: []dist.Stack{{}},
-					Order:  nil,
+					WithStacks: []dist.Stack{{}},
+					WithOrder:  nil,
 				}, 0755)
 				h.AssertNil(t, err)
 

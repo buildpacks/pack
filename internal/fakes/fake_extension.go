@@ -83,7 +83,7 @@ func (b *fakeExtension) Open() (io.ReadCloser, error) {
 	tarBuilder := archive.TarBuilder{}
 	ts := archive.NormalizedDateTime
 	tarBuilder.AddDir(fmt.Sprintf("/cnb/extensions/%s", b.descriptor.EscapedID()), b.chmod, ts)
-	extDir := fmt.Sprintf("/cnb/extensions/%s/%s", b.descriptor.EscapedID(), b.descriptor.Info.Version)
+	extDir := fmt.Sprintf("/cnb/extensions/%s/%s", b.descriptor.EscapedID(), b.descriptor.Info().Version)
 	tarBuilder.AddDir(extDir, b.chmod, ts)
 	tarBuilder.AddFile(extDir+"/extension.toml", b.chmod, ts, buf.Bytes())
 

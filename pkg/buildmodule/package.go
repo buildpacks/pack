@@ -41,15 +41,15 @@ func ExtractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 	for bpID, v := range pkgLayers {
 		for bpVersion, bpInfo := range v {
 			desc := dist.BuildpackDescriptor{
-				API: bpInfo.API,
-				Info: dist.ModuleInfo{
+				WithAPI: bpInfo.API,
+				WithInfo: dist.ModuleInfo{
 					ID:       bpID,
 					Version:  bpVersion,
 					Homepage: bpInfo.Homepage,
 					Name:     bpInfo.Name,
 				},
-				Stacks: bpInfo.Stacks,
-				Order:  bpInfo.Order,
+				WithStacks: bpInfo.Stacks,
+				WithOrder:  bpInfo.Order,
 			}
 
 			diffID := bpInfo.LayerDiffID // Allow use in closure
@@ -59,7 +59,7 @@ func ExtractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 					if err != nil {
 						return nil, errors.Wrapf(err,
 							"extracting buildpack %s layer (diffID %s)",
-							style.Symbol(desc.Info.FullName()),
+							style.Symbol(desc.Info().FullName()),
 							style.Symbol(diffID),
 						)
 					}
@@ -67,7 +67,7 @@ func ExtractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 				},
 			}
 
-			if desc.Info.Match(md.ModuleInfo) { // This is the order buildpack of the package
+			if desc.Info().Match(md.ModuleInfo) { // This is the order buildpack of the package
 				mainBP = FromBlob(&desc, b)
 			} else {
 				depBPs = append(depBPs, FromBlob(&desc, b))
@@ -95,8 +95,8 @@ func ExtractExtensions(pkg Package) (mainBP BuildModule, err error) {
 	for extID, v := range pkgLayers {
 		for extVersion, extInfo := range v {
 			desc := dist.ExtensionDescriptor{
-				API: extInfo.API,
-				Info: dist.ModuleInfo{
+				WithAPI: extInfo.API,
+				WithInfo: dist.ModuleInfo{
 					ID:       extID,
 					Version:  extVersion,
 					Homepage: extInfo.Homepage,
@@ -111,7 +111,7 @@ func ExtractExtensions(pkg Package) (mainBP BuildModule, err error) {
 					if err != nil {
 						return nil, errors.Wrapf(err,
 							"extracting extension %s layer (diffID %s)",
-							style.Symbol(desc.Info.FullName()),
+							style.Symbol(desc.Info().FullName()),
 							style.Symbol(diffID),
 						)
 					}

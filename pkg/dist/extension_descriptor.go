@@ -7,8 +7,8 @@ import (
 )
 
 type ExtensionDescriptor struct {
-	API  *api.Version `toml:"api"`
-	Info ModuleInfo   `toml:"extension"`
+	WithAPI  *api.Version `toml:"api"`
+	WithInfo ModuleInfo   `toml:"extension"`
 }
 
 func (e *ExtensionDescriptor) EnsureStackSupport(_ string, _ []string, _ bool) error {
@@ -16,25 +16,25 @@ func (e *ExtensionDescriptor) EnsureStackSupport(_ string, _ []string, _ bool) e
 }
 
 func (e *ExtensionDescriptor) EscapedID() string {
-	return strings.ReplaceAll(e.Info.ID, "/", "_")
+	return strings.ReplaceAll(e.Info().ID, "/", "_")
 }
 
 func (e *ExtensionDescriptor) Kind() string {
 	return "extension"
 }
 
-func (e *ExtensionDescriptor) ModuleAPI() *api.Version {
-	return e.API
+func (e *ExtensionDescriptor) API() *api.Version {
+	return e.WithAPI
 }
 
-func (e *ExtensionDescriptor) ModuleInfo() ModuleInfo {
-	return e.Info
+func (e *ExtensionDescriptor) Info() ModuleInfo {
+	return e.WithInfo
 }
 
-func (e *ExtensionDescriptor) ModuleOrder() Order {
+func (e *ExtensionDescriptor) Order() Order {
 	return nil
 }
 
-func (e *ExtensionDescriptor) ModuleStacks() []Stack {
+func (e *ExtensionDescriptor) Stacks() []Stack {
 	return nil
 }

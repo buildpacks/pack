@@ -684,13 +684,13 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			it("builder order is overwritten", func() {
 				additionalBP := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-					API: api.MustParse("0.3"),
-					Info: dist.ModuleInfo{
+					WithAPI: api.MustParse("0.3"),
+					WithInfo: dist.ModuleInfo{
 						ID:      "buildpack.add.1.id",
 						Version: "buildpack.add.1.version",
 					},
-					Stacks: []dist.Stack{{ID: defaultBuilderStackID}},
-					Order:  nil,
+					WithStacks: []dist.Stack{{ID: defaultBuilderStackID}},
+					WithOrder:  nil,
 				})
 
 				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
@@ -752,23 +752,23 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			when("from=builder is set first", func() {
 				it("builder order is prepended", func() {
 					additionalBP1 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-						API: api.MustParse("0.3"),
-						Info: dist.ModuleInfo{
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
 							ID:      "buildpack.add.1.id",
 							Version: "buildpack.add.1.version",
 						},
-						Stacks: []dist.Stack{{ID: defaultBuilderStackID}},
-						Order:  nil,
+						WithStacks: []dist.Stack{{ID: defaultBuilderStackID}},
+						WithOrder:  nil,
 					})
 
 					additionalBP2 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-						API: api.MustParse("0.3"),
-						Info: dist.ModuleInfo{
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
 							ID:      "buildpack.add.2.id",
 							Version: "buildpack.add.2.version",
 						},
-						Stacks: []dist.Stack{{ID: defaultBuilderStackID}},
-						Order:  nil,
+						WithStacks: []dist.Stack{{ID: defaultBuilderStackID}},
+						WithOrder:  nil,
 					})
 
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
@@ -816,23 +816,23 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			when("from=builder is set in middle", func() {
 				it("builder order is appended", func() {
 					additionalBP1 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-						API: api.MustParse("0.3"),
-						Info: dist.ModuleInfo{
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
 							ID:      "buildpack.add.1.id",
 							Version: "buildpack.add.1.version",
 						},
-						Stacks: []dist.Stack{{ID: defaultBuilderStackID}},
-						Order:  nil,
+						WithStacks: []dist.Stack{{ID: defaultBuilderStackID}},
+						WithOrder:  nil,
 					})
 
 					additionalBP2 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-						API: api.MustParse("0.3"),
-						Info: dist.ModuleInfo{
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
 							ID:      "buildpack.add.2.id",
 							Version: "buildpack.add.2.version",
 						},
-						Stacks: []dist.Stack{{ID: defaultBuilderStackID}},
-						Order:  nil,
+						WithStacks: []dist.Stack{{ID: defaultBuilderStackID}},
+						WithOrder:  nil,
 					})
 
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
@@ -881,23 +881,23 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			when("from=builder is set last", func() {
 				it("builder order is appended", func() {
 					additionalBP1 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-						API: api.MustParse("0.3"),
-						Info: dist.ModuleInfo{
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
 							ID:      "buildpack.add.1.id",
 							Version: "buildpack.add.1.version",
 						},
-						Stacks: []dist.Stack{{ID: defaultBuilderStackID}},
-						Order:  nil,
+						WithStacks: []dist.Stack{{ID: defaultBuilderStackID}},
+						WithOrder:  nil,
 					})
 
 					additionalBP2 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-						API: api.MustParse("0.3"),
-						Info: dist.ModuleInfo{
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
 							ID:      "buildpack.add.2.id",
 							Version: "buildpack.add.2.version",
 						},
-						Stacks: []dist.Stack{{ID: defaultBuilderStackID}},
-						Order:  nil,
+						WithStacks: []dist.Stack{{ID: defaultBuilderStackID}},
+						WithOrder:  nil,
 					})
 
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
@@ -946,13 +946,13 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			when("meta-buildpack is used", func() {
 				it("resolves buildpack from builder", func() {
 					buildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-						API: api.MustParse("0.3"),
-						Info: dist.ModuleInfo{
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
 							ID:      "metabuildpack.id",
 							Version: "metabuildpack.version",
 						},
-						Stacks: nil,
-						Order: dist.Order{{
+						WithStacks: nil,
+						WithOrder: dist.Order{{
 							Group: []dist.ModuleRef{{
 								ModuleInfo: dist.ModuleInfo{
 									ID:      "buildpack.1.id",
@@ -985,14 +985,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 				it.Before(func() {
 					metaBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-						API: api.MustParse("0.3"),
-						Info: dist.ModuleInfo{
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
 							ID:       "meta.buildpack.id",
 							Version:  "meta.buildpack.version",
 							Homepage: "http://meta.buildpack",
 						},
-						Stacks: nil,
-						Order: dist.Order{{
+						WithStacks: nil,
+						WithOrder: dist.Order{{
 							Group: []dist.ModuleRef{{
 								ModuleInfo: dist.ModuleInfo{
 									ID:      "child.buildpack.id",
@@ -1004,13 +1004,13 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					childBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-						API: api.MustParse("0.3"),
-						Info: dist.ModuleInfo{
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
 							ID:       "child.buildpack.id",
 							Version:  "child.buildpack.version",
 							Homepage: "http://child.buildpack",
 						},
-						Stacks: []dist.Stack{
+						WithStacks: []dist.Stack{
 							{ID: defaultBuilderStackID},
 						},
 					})
@@ -1476,12 +1476,12 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 
 						childBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-							API: api.MustParse("0.3"),
-							Info: dist.ModuleInfo{
+							WithAPI: api.MustParse("0.3"),
+							WithInfo: dist.ModuleInfo{
 								ID:      "example/foo",
 								Version: "1.0.0",
 							},
-							Stacks: []dist.Stack{
+							WithStacks: []dist.Stack{
 								{ID: defaultBuilderStackID},
 							},
 						})
