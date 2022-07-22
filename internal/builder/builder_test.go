@@ -1324,7 +1324,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, metadata.Extensions[0].ID, "prev.id")
 					h.AssertEq(t, subject.LifecycleDescriptor().Info.Version.String(), "6.6.6")
 
-					// adds new buildpack
+					// adds new extension
 					h.AssertEq(t, metadata.Extensions[1].ID, "extension-1-id")
 					h.AssertEq(t, metadata.Extensions[1].Version, "extension-1-version-1")
 				})

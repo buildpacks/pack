@@ -483,7 +483,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 			logger.Debugf(ModuleOnBuilderMessage, kind, style.Symbol(info.FullName()), style.Symbol(existingInfo.LayerDiffID), style.Symbol(diffID.String()))
 		}
 
-		// check against other buildpacks to be added
+		// check against other modules to be added
 		if otherAdditionalMod, ok := collectionToAdd[info.FullName()]; ok {
 			if otherAdditionalMod.diffID == diffID.String() {
 				logger.Debugf("%s %s with same contents is already being added, skipping...", strings.Title(kind), style.Symbol(info.FullName()))
