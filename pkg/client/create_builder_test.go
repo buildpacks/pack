@@ -135,7 +135,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				BuilderName:     "some/builder",
 				Config: pubbldr.Config{
 					Description: "Some description",
-					Buildpacks: []pubbldr.BuildpackConfig{
+					Buildpacks: []pubbldr.ModuleConfig{
 						{
 							ModuleInfo: dist.ModuleInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"},
 							ImageOrURI: dist.ImageOrURI{
@@ -145,7 +145,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					},
-					Extensions: []pubbldr.BuildpackConfig{
+					Extensions: []pubbldr.ModuleConfig{
 						{
 							ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3", Homepage: "http://one.extension"},
 							ImageOrURI: dist.ImageOrURI{
@@ -720,7 +720,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				buildpack, _, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(cnbFile))
 				h.AssertNil(t, err)
 				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), cnbFile, gomock.Any()).Return(buildpack, nil, nil).AnyTimes()
-				opts.Config.Buildpacks = []pubbldr.BuildpackConfig{{
+				opts.Config.Buildpacks = []pubbldr.ModuleConfig{{
 					ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: cnbFile}},
 				}}
 			})
@@ -758,7 +758,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						opts.Registry = "some-registry"
 						opts.Config.Buildpacks = append(
 							opts.Config.Buildpacks,
-							pubbldr.BuildpackConfig{
+							pubbldr.ModuleConfig{
 								ImageOrURI: dist.ImageOrURI{
 									BuildpackURI: dist.BuildpackURI{
 										URI: "urn:cnb:registry:example/foo@1.1.0",

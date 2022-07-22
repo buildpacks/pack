@@ -15,25 +15,25 @@ import (
 
 // Config is a builder configuration file
 type Config struct {
-	Description     string              `toml:"description"`
-	Buildpacks      BuildpackCollection `toml:"buildpacks"`
-	Extensions      BuildpackCollection `toml:"extensions"`
-	Order           dist.Order          `toml:"order"`
-	OrderExtensions dist.Order          `toml:"order-extensions"`
-	Stack           StackConfig         `toml:"stack"`
-	Lifecycle       LifecycleConfig     `toml:"lifecycle"`
+	Description     string           `toml:"description"`
+	Buildpacks      ModuleCollection `toml:"buildpacks"`
+	Extensions      ModuleCollection `toml:"extensions"`
+	Order           dist.Order       `toml:"order"`
+	OrderExtensions dist.Order       `toml:"order-extensions"`
+	Stack           StackConfig      `toml:"stack"`
+	Lifecycle       LifecycleConfig  `toml:"lifecycle"`
 }
 
-// BuildpackCollection is a list of BuildpackConfigs
-type BuildpackCollection []BuildpackConfig
+// ModuleCollection is a list of ModuleConfigs
+type ModuleCollection []ModuleConfig
 
-// BuildpackConfig details the configuration of a Buildpack
-type BuildpackConfig struct {
+// ModuleConfig details the configuration of a Buildpack or Extension
+type ModuleConfig struct {
 	dist.ModuleInfo
 	dist.ImageOrURI
 }
 
-func (c *BuildpackConfig) DisplayString() string {
+func (c *ModuleConfig) DisplayString() string {
 	if c.ModuleInfo.FullName() != "" {
 		return c.ModuleInfo.FullName()
 	}

@@ -223,7 +223,7 @@ func (c *Client) addExtensionsToBuilder(ctx context.Context, opts CreateBuilderO
 	return nil
 }
 
-func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.BuildpackConfig, opts CreateBuilderOptions, bldr *builder.Builder) error {
+func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.ModuleConfig, opts CreateBuilderOptions, bldr *builder.Builder) error {
 	c.logger.Debugf("Looking up %s %s", kind, style.Symbol(config.DisplayString()))
 
 	imageOS, err := bldr.Image().OS()
