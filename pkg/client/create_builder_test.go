@@ -401,8 +401,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("windows containers", func() {
 				when("experimental enabled", func() {
 					it("succeeds", func() {
-						opts.Config.Extensions = nil      // TODO: downloading extensions doesn't work yet
-						opts.Config.OrderExtensions = nil // TODO: downloading extensions doesn't work yet
+						opts.Config.Extensions = nil      // TODO: downloading extensions doesn't work yet; to be implemented in https://github.com/buildpacks/pack/issues/1489
+						opts.Config.OrderExtensions = nil // TODO: downloading extensions doesn't work yet; to be implemented in https://github.com/buildpacks/pack/issues/1489
 						packClientWithExperimental, err := client.NewClient(
 							client.WithLogger(logger),
 							client.WithDownloader(mockDownloader),
@@ -488,8 +488,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("windows", func() {
 				it("should download from predetermined uri", func() {
-					opts.Config.Extensions = nil      // TODO: downloading extensions doesn't work yet
-					opts.Config.OrderExtensions = nil // TODO: downloading extensions doesn't work yet
+					opts.Config.Extensions = nil      // TODO: downloading extensions doesn't work yet; to be implemented in https://github.com/buildpacks/pack/issues/1489
+					opts.Config.OrderExtensions = nil // TODO: downloading extensions doesn't work yet; to be implemented in https://github.com/buildpacks/pack/issues/1489
 					packClientWithExperimental, err := client.NewClient(
 						client.WithLogger(logger),
 						client.WithDownloader(mockDownloader),
@@ -542,8 +542,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("windows", func() {
 				it("should download default lifecycle", func() {
-					opts.Config.Extensions = nil      // TODO: downloading extensions doesn't work yet
-					opts.Config.OrderExtensions = nil // TODO: downloading extensions doesn't work yet
+					opts.Config.Extensions = nil      // TODO: downloading extensions doesn't work yet; to be implemented in https://github.com/buildpacks/pack/issues/1489
+					opts.Config.OrderExtensions = nil // TODO: downloading extensions doesn't work yet; to be implemented in https://github.com/buildpacks/pack/issues/1489
 					packClientWithExperimental, err := client.NewClient(
 						client.WithLogger(logger),
 						client.WithDownloader(mockDownloader),
