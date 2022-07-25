@@ -141,7 +141,8 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 	return mainBP, depBPs, nil
 }
 
-// decomposeBlob decomposes a buildpack blob into the main builder (order buildpack) and its dependent buildpacks.
+// decomposeBlob decomposes a buildpack or extension blob into the main module (order buildpack or extension) and
+// (for buildpack blobs) its dependent buildpacks.
 func decomposeBlob(blob blob.Blob, kind string, imageOS string) (mainModule BuildModule, depModules []BuildModule, err error) {
 	isOCILayout, err := IsOCILayoutBlob(blob)
 	if err != nil {

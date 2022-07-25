@@ -1,9 +1,10 @@
 package dist_test
 
 import (
+	"testing"
+
 	"github.com/buildpacks/pack/pkg/dist"
 	h "github.com/buildpacks/pack/testhelpers"
-	"testing"
 
 	"github.com/heroku/color"
 
