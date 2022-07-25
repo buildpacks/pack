@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
@@ -12,6 +11,7 @@ import (
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/paths"
+	"github.com/buildpacks/pack/internal/strings"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/buildmodule"
 	"github.com/buildpacks/pack/pkg/image"

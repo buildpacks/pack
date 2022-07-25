@@ -21,6 +21,7 @@ import (
 	"github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/stack"
+	istrings "github.com/buildpacks/pack/internal/strings"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/buildmodule"
@@ -276,6 +277,13 @@ func (b *Builder) SetOrder(order dist.Order) {
 
 // SetOrderExtensions sets the order of the builder
 func (b *Builder) SetOrderExtensions(order dist.Order) {
+	for i, entry := range order {
+		for j, ref := range entry.Group {
+			ref.Optional = false // ensure `optional = true` isn't redundantly printed for extensions (as they are always optional)
+			entry.Group[j] = ref
+		}
+		order[i] = entry
+	}
 	b.orderExtensions = order
 	b.replaceOrder = true
 }
@@ -466,8 +474,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 		// check against builder layers
 		if existingInfo, ok := layers[info.ID][info.Version]; ok {
 			if existingInfo.LayerDiffID == diffID.String() {
-				// TODO: fix use of deprecated strings.Title
-				logger.Debugf("%s %s already exists on builder with same contents, skipping...", strings.Title(kind), style.Symbol(info.FullName()))
+				logger.Debugf("%s %s already exists on builder with same contents, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
 				continue
 			} else {
 				whiteoutsTar, err := b.whiteoutLayer(tmpDir, i, info)
@@ -486,7 +493,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 		// check against other modules to be added
 		if otherAdditionalMod, ok := collectionToAdd[info.FullName()]; ok {
 			if otherAdditionalMod.diffID == diffID.String() {
-				logger.Debugf("%s %s with same contents is already being added, skipping...", strings.Title(kind), style.Symbol(info.FullName()))
+				logger.Debugf("%s %s with same contents is already being added, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
 				continue
 			}
 
@@ -517,7 +524,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 	return nil
 }
 
-func processOrder(modulesOnBuilder []dist.ModuleInfo, order dist.Order, kind string) (dist.Order, error) { // TODO: check if this is tested for extensions
+func processOrder(modulesOnBuilder []dist.ModuleInfo, order dist.Order, kind string) (dist.Order, error) {
 	resolved := dist.Order{}
 	for idx, g := range order {
 		resolved = append(resolved, dist.OrderEntry{})
@@ -833,7 +840,6 @@ func (b *Builder) orderLayer(order dist.Order, orderExt dist.Order, dest string)
 
 func orderFileContents(order dist.Order, orderExt dist.Order) (string, error) {
 	buf := &bytes.Buffer{}
-
 	tomlData := orderTOML{Order: order, OrderExt: orderExt}
 	if err := toml.NewEncoder(buf).Encode(tomlData); err != nil {
 		return "", errors.Wrapf(err, "failed to marshal order.toml")

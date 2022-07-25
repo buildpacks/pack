@@ -27,5 +27,12 @@ func TestValueOrDefault(t *testing.T) {
 				assert.Equal(output, "-")
 			})
 		})
+
+		when("#Title", func() {
+			it("returns the provided string with title casing", func() {
+				output := strings.Title("to title case")
+				assert.Equal(output, "To Title Case")
+			})
+		})
 	})
 }

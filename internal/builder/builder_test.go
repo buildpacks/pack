@@ -1407,7 +1407,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 							{
 								ModuleInfo: ext2v1.Descriptor().Info(),
-								//Optional:   true, // TODO: extensions are always optional; ensure this is ignored
+								Optional:   true, // extensions are always optional; this shouldn't be redundantly printed
 							},
 						}},
 					})
