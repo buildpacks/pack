@@ -86,6 +86,7 @@ func testDist(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
 		when("Add", func() {
 			when("a new buildpack is added", func() {
 				it("succeeds", func() {
@@ -96,6 +97,37 @@ func testDist(t *testing.T, when spec.G, it spec.S) {
 					layerInfo, ok := layers.Get(descriptor.Info().ID, descriptor.Info().Version)
 					h.AssertEq(t, ok, true)
 					h.AssertEq(t, layerInfo.Name, descriptor.Info().Name)
+				})
+			})
+		})
+	})
+
+	when("ImageOrURI", func() {
+		when("DisplayString", func() {
+			when("uri", func() {
+				when("blank", func() {
+					it("returns image", func() {
+						toTest := dist.ImageOrURI{
+							ImageRef: dist.ImageRef{
+								ImageName: "some-image-name",
+							},
+						}
+						h.AssertEq(t, toTest.DisplayString(), "some-image-name")
+					})
+				})
+
+				when("not blank", func() {
+					it("returns uri", func() {
+						toTest := dist.ImageOrURI{
+							BuildpackURI: dist.BuildpackURI{
+								URI: "some-uri",
+							},
+							ImageRef: dist.ImageRef{
+								ImageName: "some-image-name",
+							},
+						}
+						h.AssertEq(t, toTest.DisplayString(), "some-uri")
+					})
 				})
 			})
 		})

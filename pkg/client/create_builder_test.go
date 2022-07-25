@@ -163,7 +163,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					},
 					OrderExtensions: []dist.OrderEntry{{
 						Group: []dist.ModuleRef{
-							{ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3"}, Optional: true}, // TODO: extensions are always optional
+							{ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3"}, Optional: true},
 						}},
 					},
 					Stack: pubbldr.StackConfig{
@@ -639,7 +639,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, bldr.OrderExtensions(), dist.Order{{
 					Group: []dist.ModuleRef{{
 						ModuleInfo: extInfo,
-						Optional:   true,
+						Optional:   false, // extensions are always optional
 					}},
 				}})
 			})

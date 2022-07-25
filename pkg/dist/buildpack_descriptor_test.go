@@ -3,6 +3,7 @@ package dist_test
 import (
 	"testing"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -18,6 +19,15 @@ func TestBuildpackDescriptor(t *testing.T) {
 }
 
 func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
+	when("#EscapedID", func() {
+		it("returns escaped ID", func() {
+			bpDesc := dist.BuildpackDescriptor{
+				WithInfo: dist.ModuleInfo{ID: "some/id"},
+			}
+			h.AssertEq(t, bpDesc.EscapedID(), "some_id")
+		})
+	})
+
 	when("#EnsureStackSupport", func() {
 		when("not validating against run image mixins", func() {
 			it("ignores run-only mixins", func() {
@@ -136,6 +146,64 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			h.AssertNil(t, bp.EnsureStackSupport("some.stack.id", []string{"mixinA"}, true))
+		})
+	})
+
+	when("#Kind", func() {
+		it("returns 'buildpack'", func() {
+			bpDesc := dist.BuildpackDescriptor{}
+			h.AssertEq(t, bpDesc.Kind(), "buildpack")
+		})
+	})
+
+	when("#API", func() {
+		it("returns the api", func() {
+			bpDesc := dist.BuildpackDescriptor{
+				WithAPI: api.MustParse("0.99"),
+			}
+			h.AssertEq(t, bpDesc.API().String(), "0.99")
+		})
+	})
+
+	when("#Info", func() {
+		it("returns the module info", func() {
+			info := dist.ModuleInfo{
+				ID:      "some-id",
+				Name:    "some-name",
+				Version: "some-version",
+			}
+			bpDesc := dist.BuildpackDescriptor{
+				WithInfo: info,
+			}
+			h.AssertEq(t, bpDesc.Info(), info)
+		})
+	})
+
+	when("#Order", func() {
+		it("returns the order", func() {
+			order := dist.Order{
+				dist.OrderEntry{Group: []dist.ModuleRef{
+					{ModuleInfo: dist.ModuleInfo{
+						ID: "some-id", Name: "some-name", Version: "some-version",
+					}},
+				}},
+			}
+			bpDesc := dist.BuildpackDescriptor{
+				WithOrder: order,
+			}
+			h.AssertEq(t, bpDesc.Order(), order)
+		})
+	})
+
+	when("#Stacks", func() {
+		it("returns the stacks", func() {
+			stacks := []dist.Stack{
+				{ID: "some-id", Mixins: []string{"some-mixin"}},
+			}
+			bpDesc := dist.BuildpackDescriptor{
+				WithStacks: stacks,
+			}
+			h.AssertEq(t, bpDesc.Stacks(), stacks)
 		})
 	})
 }
