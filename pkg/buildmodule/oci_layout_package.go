@@ -50,12 +50,7 @@ func BuildpacksFromOCILayoutBlob(blob Blob) (mainBP BuildModule, dependencies []
 
 // ExtensionsFromOCILayoutBlob constructs extensions from a blob in OCI layout format.
 func ExtensionsFromOCILayoutBlob(blob Blob) (mainExt BuildModule, err error) {
-	layoutPackage, err := newOCILayoutPackage(blob)
-	if err != nil {
-		return nil, err
-	}
-
-	return extractExtensions(layoutPackage)
+	return nil, nil // TODO: add extractExtensions when `pack extension package` is supported in https://github.com/buildpacks/pack/issues/1489
 }
 
 func ConfigFromOCILayoutBlob(blob Blob) (config v1.ImageConfig, err error) {

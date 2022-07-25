@@ -57,7 +57,7 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when.Pend("#ExtensionsFromOCILayoutBlob", func() { // TODO: add fixture when `pack extension package` is supported
+	when.Pend("#ExtensionsFromOCILayoutBlob", func() { // TODO: add fixture when `pack extension package` is supported in https://github.com/buildpacks/pack/issues/1489
 		it("extracts buildpacks", func() {
 			ext, err := buildmodule.ExtensionsFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-extensions.cnb")))
 			h.AssertNil(t, err)
