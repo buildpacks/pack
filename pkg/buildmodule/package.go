@@ -79,7 +79,7 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 }
 
 // TODO: add and test when `pack extension package` is supported in https://github.com/buildpacks/pack/issues/1489
-//func extractExtensions(pkg Package) (mainBP BuildModule, err error) {
+// func extractExtensions(pkg Package) (mainBP BuildModule, err error) {
 //	pkgLayers := dist.ModuleLayers{}
 //	ok, err := dist.GetLabel(pkg, dist.BuildpackLayersLabel, &pkgLayers)
 //	if err != nil {
@@ -125,7 +125,7 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 //	}
 //
 //	return mainBP, nil
-//}
+// }
 
 type openerBlob struct {
 	opener func() (io.ReadCloser, error)
