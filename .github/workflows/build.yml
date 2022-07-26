@@ -20,23 +20,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: [macos, linux, windows-lcow, windows-wcow]
+        config: [windows-wcow]
         include:
-          - config: macos
-            os: macos
-            runner: macos-latest
-            no_docker: "true"
-            pack_bin: pack
-          - config: linux
-            os: linux
-            runner: ubuntu-latest
-            no_docker: "false"
-            pack_bin: pack
-          - config: windows-lcow
-            os: windows
-            runner: [self-hosted, windows, lcow]
-            no_docker: "false"
-            pack_bin: pack.exe
           - config: windows-wcow
             os: windows
             runner: [windows-2019]

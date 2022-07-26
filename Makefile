@@ -94,7 +94,7 @@ lint: install-golangci-lint
 	@echo "> Linting code..."
 	@golangci-lint run -c golangci.yaml
 
-test: unit acceptance
+test: unit
 
 # append coverage arguments
 ifeq ($(TEST_COVERAGE), 1)
@@ -105,7 +105,7 @@ unit: GOTESTFLAGS:=$(GOTESTFLAGS) --tags=example
 endif
 unit: out
 	@echo "> Running unit/integration tests..."
-	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(UNIT_TIMEOUT) ./...
+	$(GOCMD) test $(GOTESTFLAGS) -v -timeout=$(UNIT_TIMEOUT) ./internal/sshdialer
 
 acceptance: out
 	@echo "> Running acceptance tests..."
