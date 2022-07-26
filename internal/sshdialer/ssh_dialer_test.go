@@ -402,6 +402,9 @@ func testCreateDialer(connConfig *SSHServer, tt testParams) func(t *testing.T, w
 			dialContext, err := sshdialer.NewDialContext(u, tt.args.credentialConfig)
 
 			if tt.CreateError == "" {
+				if err != nil {
+					t.Logf("create error: %v\n", err)
+				}
 				th.AssertEq(t, err, nil)
 			} else {
 				// I wish I could use errors.Is(),
@@ -421,8 +424,14 @@ func testCreateDialer(connConfig *SSHServer, tt testParams) func(t *testing.T, w
 			defer httpClient.CloseIdleConnections()
 			resp, err := httpClient.Get("http://docker/")
 			if tt.DialError == "" {
+				if err != nil {
+					t.Logf("dial error: %v\n", err)
+				}
 				th.AssertEq(t, err, nil)
 			} else {
+				if err != nil {
+					t.Logf("dial error: %v\n", err)
+				}
 				// I wish I could use errors.Is(),
 				// however foreign code is not wrapping errors thoroughly
 				if err != nil {
