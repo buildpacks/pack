@@ -944,11 +944,11 @@ func withFixedUpSSHCLI(t *testing.T) func() {
 	sshAbsPath = strings.Trim(sshAbsPath, "\r\n")
 
 	sshScript := `#!/bin/sh
-SSH_BIN -o PasswordAuthentication=no -o ConnectTimeout=3 -o UserKnownHostsFile="$HOME/.ssh/known_hosts" $@
+"SSH_BIN" -o PasswordAuthentication=no -o ConnectTimeout=3 -o UserKnownHostsFile="$HOME/.ssh/known_hosts" $@
 `
 	if runtime.GOOS == "windows" {
 		sshScript = `@echo off
-"SSH_BIN" -o PasswordAuthentication=no -o ConnectTimeout=3 -o UserKnownHostsFile=%USERPROFILE%\.ssh\known_hosts %*
+"SSH_BIN" -o PasswordAuthentication=no -o ConnectTimeout=3 -o UserKnownHostsFile="%USERPROFILE%\.ssh\known_hosts" %*
 `
 	}
 	sshScript = strings.ReplaceAll(sshScript, "SSH_BIN", sshAbsPath)
