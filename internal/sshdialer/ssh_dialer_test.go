@@ -948,7 +948,7 @@ SSH_BIN -o PasswordAuthentication=no -o ConnectTimeout=3 -o UserKnownHostsFile="
 `
 	if runtime.GOOS == "windows" {
 		sshScript = `@echo off
-SSH_BIN -o PasswordAuthentication=no -o ConnectTimeout=3 -o UserKnownHostsFile=%USERPROFILE%\.ssh\known_hosts %*
+"SSH_BIN" -o PasswordAuthentication=no -o ConnectTimeout=3 -o UserKnownHostsFile=%USERPROFILE%\.ssh\known_hosts %*
 `
 	}
 	sshScript = strings.ReplaceAll(sshScript, "SSH_BIN", sshAbsPath)
