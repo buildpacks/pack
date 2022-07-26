@@ -475,6 +475,9 @@ func cp(src, dest string) error {
 	if err != nil {
 		return fmt.Errorf("the cp() function failed to stat source file: %w", err)
 	}
+	
+	fmt.Fprintf(os.Stderr, "mode: %+v\n", srcFs.Mode())
+	fmt.Fprintf(os.Stderr, "sys: %+v\n", srcFs.Sys())
 
 	data, err := ioutil.ReadFile(src)
 	if err != nil {
