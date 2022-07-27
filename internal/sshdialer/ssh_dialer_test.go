@@ -953,6 +953,8 @@ func withFixedUpSSHCLI(t *testing.T) func() {
 	}
 	sshScript = strings.ReplaceAll(sshScript, "SSH_BIN", sshAbsPath)
 
+	t.Log(sshScript)
+
 	home, err := os.UserHomeDir()
 	th.AssertNil(t, err)
 
