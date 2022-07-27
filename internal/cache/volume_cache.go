@@ -17,12 +17,18 @@ type VolumeCache struct {
 	volume string
 }
 
-func NewVolumeCache(imageRef name.Reference, suffix string, dockerClient client.CommonAPIClient) *VolumeCache {
-	sum := sha256.Sum256([]byte(imageRef.Name()))
+func NewVolumeCache(imageRef name.Reference, cacheType CacheInfo, suffix string, dockerClient client.CommonAPIClient) *VolumeCache {
+	var volumeName string
+	if cacheType.Source == "" {
+		sum := sha256.Sum256([]byte(imageRef.Name()))
+		vol := paths.FilterReservedNames(fmt.Sprintf("%s-%x", sanitizedRef(imageRef), sum[:6]))
+		volumeName = fmt.Sprintf("pack-cache-%s.%s", vol, suffix)
+	} else {
+		volumeName = paths.FilterReservedNames(cacheType.Source)
+	}
 
-	vol := paths.FilterReservedNames(fmt.Sprintf("%s-%x", sanitizedRef(imageRef), sum[:6]))
 	return &VolumeCache{
-		volume: fmt.Sprintf("pack-cache-%s.%s", vol, suffix),
+		volume: volumeName,
 		docker: dockerClient,
 	}
 }
