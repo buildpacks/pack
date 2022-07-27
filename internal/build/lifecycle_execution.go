@@ -124,10 +124,10 @@ func (l *LifecycleExecution) PrevImageName() string {
 func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseFactoryCreator) error {
 	phaseFactory := phaseFactoryCreator(l)
 	var buildCache Cache
-	if l.opts.CacheImage != "" || (l.opts.Cache.CacheType == cache.Build && l.opts.Cache.Format == cache.CacheImage) {
+	if l.opts.CacheImage != "" || (l.opts.Cache.Build.Format == cache.CacheImage) {
 		cacheImageName := l.opts.CacheImage
 		if cacheImageName == "" {
-			cacheImageName = l.opts.Cache.Source
+			cacheImageName = l.opts.Cache.Build.Source
 		}
 		cacheImage, err := name.ParseReference(cacheImageName, name.WeakValidation)
 		if err != nil {
@@ -135,7 +135,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		}
 		buildCache = cache.NewImageCache(cacheImage, l.docker)
 	} else {
-		buildCache = cache.NewVolumeCache(l.opts.Image, "build", l.docker)
+		buildCache = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Build, "build", l.docker)
 	}
 
 	l.logger.Debugf("Using build cache volume %s", style.Symbol(buildCache.Name()))
@@ -146,7 +146,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		l.logger.Debugf("Build cache %s cleared", style.Symbol(buildCache.Name()))
 	}
 
-	launchCache := cache.NewVolumeCache(l.opts.Image, "launch", l.docker)
+	launchCache := cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Launch, "launch", l.docker)
 
 	if !l.opts.UseCreator {
 		if l.platformAPI.LessThan("0.7") {
