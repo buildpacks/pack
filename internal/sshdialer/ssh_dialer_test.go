@@ -44,7 +44,7 @@ type testParams struct {
 
 func TestCreateDialer(t *testing.T) {
 	u, _ := user.Current()
-	t.Logf("user: %+v", u.Name)
+	t.Logf("user: %+v", u)
 
 	for _, privateKey := range []string{"id_ed25519", "id_rsa", "id_dsa"} {
 		path := filepath.Join("testdata", privateKey)
