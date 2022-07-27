@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -42,6 +43,9 @@ type testParams struct {
 }
 
 func TestCreateDialer(t *testing.T) {
+	u, err := user.Current()
+	t.Log(*u)
+
 	for _, privateKey := range []string{"id_ed25519", "id_rsa", "id_dsa"} {
 		path := filepath.Join("testdata", privateKey)
 		fixupPrivateKeyMod(path)
