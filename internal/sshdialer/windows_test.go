@@ -5,9 +5,8 @@ package sshdialer_test
 
 import (
 	"errors"
-	"fmt"
 	"net"
-	"os"
+	"os/user"
 	"strings"
 
 	"github.com/hectane/go-acl"
@@ -15,8 +14,20 @@ import (
 )
 
 func fixupPrivateKeyMod(path string) {
-	err := acl.Chmod(path, 0400)
-	fmt.Fprintf(os.Stderr, "fixup err: %v", err)
+	usr, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+	mode := uint32(0400)
+	err = acl.Apply(path,
+		true,
+		false,
+		acl.GrantName(((mode&0700)<<23)|((mode&0200)<<9), usr.Name))
+
+	// See https://github.com/hectane/go-acl/issues/1
+	if err != nil && err.Error() != "The operation completed successfully." {
+		panic(err)
+	}
 }
 
 func listen(addr string) (net.Listener, error) {
