@@ -5,13 +5,18 @@ package sshdialer_test
 
 import (
 	"errors"
+	"fmt"
+	"github.com/hectane/go-acl"
 	"net"
+	"os"
 	"strings"
 
 	"gopkg.in/natefinch/npipe.v2"
 )
 
 func fixupPrivateKeyMod(path string) {
+	err := acl.Chmod(path, 0400)
+	fmt.Fprintf(os.Stderr, "fixup err: %v", err)
 }
 
 func listen(addr string) (net.Listener, error) {
