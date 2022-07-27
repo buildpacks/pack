@@ -6,11 +6,11 @@ package sshdialer_test
 import (
 	"errors"
 	"fmt"
-	"github.com/hectane/go-acl"
 	"net"
 	"os"
 	"strings"
 
+	"github.com/hectane/go-acl"
 	"gopkg.in/natefinch/npipe.v2"
 )
 
