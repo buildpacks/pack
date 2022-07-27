@@ -940,8 +940,8 @@ func withFixedUpSSHCLI(t *testing.T) func() {
 	out, err := exec.Command(which, "ssh").CombinedOutput()
 	th.AssertNil(t, err)
 
-	sshAbsPath := string(out)
-	sshAbsPath = strings.Trim(sshAbsPath, "\r\n")
+	paths := strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n")
+	sshAbsPath := paths[0]
 
 	sshScript := `#!/bin/sh
 "SSH_BIN" -o PasswordAuthentication=no -o ConnectTimeout=3 -o UserKnownHostsFile="$HOME/.ssh/known_hosts" $@
