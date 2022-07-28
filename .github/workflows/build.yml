@@ -72,7 +72,9 @@ jobs:
           }
         shell: powershell
       - name: Set up go
-        uses: actions/setup-go@v3
+        # Temporary fix for Windows related issue: https://github.com/actions/setup-go/issues/241
+        # Can be reverted after the following is merged: https://github.com/actions/setup-go/pull/250
+        uses: jromero/setup-go@feature/windows-download-filename
         with:
           go-version: '1.17'
       - name: Set up go env for Unix
