@@ -154,7 +154,7 @@ jobs:
           PACK_BUILD: ${{ github.run_number }}
         shell: powershell
       - uses: actions/upload-artifact@v3
-        if: matrix.config != 'windows-wcow'
+        if: matrix.config != 'windows-lcow'
         with:
           name: pack-${{ matrix.os }}
           path: out/${{ env.PACK_BIN }}
