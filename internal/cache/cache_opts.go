@@ -8,32 +8,20 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Cache int
 type Format int
+type CacheInfo struct {
+	Format Format
+	Source string
+}
 type CacheOpts struct {
-	CacheType Cache
-	Format    Format
-	Source    string
+	Build  CacheInfo
+	Launch CacheInfo
 }
 
-const (
-	Build Cache = iota
-	Launch
-)
 const (
 	CacheVolume Format = iota
 	CacheImage
 )
-
-func (c Cache) String() string {
-	switch c {
-	case Build:
-		return "build"
-	case Launch:
-		return "launch"
-	}
-	return ""
-}
 
 func (f Format) String() string {
 	switch f {
@@ -53,36 +41,46 @@ func (c *CacheOpts) Set(value string) error {
 		return err
 	}
 
+	cache := &c.Build
 	for _, field := range fields {
 		parts := strings.SplitN(field, "=", 2)
-
 		if len(parts) != 2 {
 			return errors.Errorf("invalid field '%s' must be a key=value pair", field)
 		}
-
-		if len(parts) == 2 {
-			key := strings.ToLower(parts[0])
-			value := strings.ToLower(parts[1])
-			switch key {
-			case "type":
-				switch value {
-				case "build":
-					c.CacheType = Build
-				case "launch":
-					c.CacheType = Launch
-				default:
-					return errors.Errorf("invalid cache type '%s'", value)
-				}
-			case "format":
-				switch value {
-				case "image":
-					c.Format = CacheImage
-				default:
-					return errors.Errorf("invalid cache format '%s'", value)
-				}
-			case "name":
-				c.Source = value
+		key := strings.ToLower(parts[0])
+		value := strings.ToLower(parts[1])
+		if key == "type" {
+			switch value {
+			case "build":
+				cache = &c.Build
+			case "launch":
+				cache = &c.Launch
+			default:
+				return errors.Errorf("invalid cache type '%s'", value)
 			}
+			break
+		}
+	}
+
+	for _, field := range fields {
+		parts := strings.SplitN(field, "=", 2)
+		if len(parts) != 2 {
+			return errors.Errorf("invalid field '%s' must be a key=value pair", field)
+		}
+		key := strings.ToLower(parts[0])
+		value := strings.ToLower(parts[1])
+		switch key {
+		case "format":
+			switch value {
+			case "image":
+				cache.Format = CacheImage
+			case "volume":
+				cache.Format = CacheVolume
+			default:
+				return errors.Errorf("invalid cache format '%s'", value)
+			}
+		case "name":
+			cache.Source = value
 		}
 	}
 
@@ -95,15 +93,8 @@ func (c *CacheOpts) Set(value string) error {
 
 func (c *CacheOpts) String() string {
 	var cacheFlag string
-	if c.CacheType.String() != "" {
-		cacheFlag += fmt.Sprintf("type=%s;", c.CacheType)
-	}
-	if c.Format.String() != "" {
-		cacheFlag += fmt.Sprintf("format=%s;", c.Format)
-	}
-	if c.Source != "" {
-		cacheFlag += fmt.Sprintf("name=%s", c.Source)
-	}
+	cacheFlag = fmt.Sprintf("type=build;format=%s;name=%s;", c.Build.Format.String(), c.Build.Source)
+	cacheFlag += fmt.Sprintf("type=launch;format=%s;name=%s;", c.Launch.Format.String(), c.Launch.Source)
 	return cacheFlag
 }
 
@@ -112,7 +103,7 @@ func (c *CacheOpts) Type() string {
 }
 
 func populateMissing(c *CacheOpts) error {
-	if c.Source == "" {
+	if (c.Build.Source == "" && c.Build.Format == CacheImage) || (c.Launch.Source == "" && c.Launch.Format == CacheImage) {
 		return errors.Errorf("cache 'name' is required")
 	}
 	return nil
