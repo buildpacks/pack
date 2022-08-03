@@ -39,7 +39,7 @@ jobs:
             pack_bin: pack.exe
           - config: windows-wcow
             os: windows
-            runner: [self-hosted, windows, wcow]
+            runner: [windows-2019]
             no_docker: "false"
             pack_bin: pack.exe
     runs-on: ${{ matrix.runner }}
@@ -89,6 +89,36 @@ jobs:
         shell: powershell
       - name: Verify
         run: make verify
+      - name: Register runner IP
+        if: matrix.config == 'windows-wcow'
+        shell: powershell
+        run: |
+          # Get IP from default gateway interface
+          $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
+
+          # Allow container-to-host registry traffic (from public interface, to the same interface)
+          New-NetfirewallRule -DisplayName test-registry -LocalAddress $IPAddress -RemoteAddress $IPAddress
+
+          # create or update daemon config to allow host as insecure-registry
+          $config=@{}
+          if (Test-Path C:\ProgramData\docker\config\daemon.json) {
+            $config=(Get-Content C:\ProgramData\docker\config\daemon.json | ConvertFrom-json)
+          }
+          $config."insecure-registries" = @("$IPAddress/32")
+          ConvertTo-json $config | Out-File -Encoding ASCII C:\ProgramData\docker\config\daemon.json
+
+          Restart-Service docker
+
+          # dump docker info for auditing
+          docker version
+          docker info
+
+          # Modify etc\hosts to include runner IP
+          $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
+          "# Modified by CNB: https://github.com/buildpacks/ci/tree/main/gh-runners/windows
+          ${IPAddress} host.docker.internal
+          ${IPAddress} gateway.docker.internal
+          " | Out-File -Filepath C:\Windows\System32\drivers\etc\hosts -Encoding utf8
       - name: Test
         env:
           TEST_COVERAGE: 1
@@ -124,7 +154,7 @@ jobs:
           PACK_BUILD: ${{ github.run_number }}
         shell: powershell
       - uses: actions/upload-artifact@v3
-        if: matrix.config != 'windows-wcow'
+        if: matrix.config != 'windows-lcow'
         with:
           name: pack-${{ matrix.os }}
           path: out/${{ env.PACK_BIN }}
