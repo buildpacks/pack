@@ -365,9 +365,10 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						TrustBuilder: false,
 						UseCreator:   false,
 						Cache: cache.CacheOpts{
-							CacheType: cache.Build,
-							Format:    cache.CacheImage,
-							Source:    "%%%",
+							Build: cache.CacheInfo{
+								Format: cache.CacheImage,
+								Source: "%%%",
+							},
 						},
 						Termui: fakeTermui,
 					}
