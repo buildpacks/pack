@@ -347,6 +347,44 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("cache flag with 'format=image' is passed", func() {
+			when("--publish is not used", func() {
+				it("errors", func() {
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--cache", "type=build;format=image;name=myorg/myimage:cache"})
+					err := command.Execute()
+					h.AssertError(t, err, "image cache format requires the 'publish' flag")
+				})
+			})
+			when("--publish is used", func() {
+				it("succeeds", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithCacheFlags("type=build;format=image;name=myorg/myimage:cache;type=launch;format=volume;name=;")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--cache", "type=build;format=image;name=myorg/myimage:cache", "--publish"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+			when("used together with --cache-image", func() {
+				it("errors", func() {
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--cache-image", "some-cache-image", "--cache", "type=build;format=image;name=myorg/myimage:cache"})
+					err := command.Execute()
+					h.AssertError(t, err, "'cache' flag with 'image' format cannot be used with 'cache-image' flag")
+				})
+			})
+			when("'type=launch;format=image' is used", func() {
+				it("warns", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithCacheFlags("type=build;format=volume;name=;type=launch;format=image;name=myorg/myimage:cache;")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--cache", "type=launch;format=image;name=myorg/myimage:cache", "--publish"})
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Warning: cache definition: 'launch' cache in format 'image' is not supported.")
+				})
+			})
+		})
+
 		when("a valid lifecycle-image is provided", func() {
 			when("only the image repo is provided", func() {
 				it("uses the provided lifecycle-image and parses it correctly", func() {
@@ -856,6 +894,15 @@ func EqBuildOptionsWithCacheImage(cacheImage string) gomock.Matcher {
 		description: fmt.Sprintf("CacheImage=%s", cacheImage),
 		equals: func(o client.BuildOptions) bool {
 			return o.CacheImage == cacheImage
+		},
+	}
+}
+
+func EqBuildOptionsWithCacheFlags(cacheFlags string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("CacheFlags=%s", cacheFlags),
+		equals: func(o client.BuildOptions) bool {
+			return o.Cache.String() == cacheFlags
 		},
 	}
 }

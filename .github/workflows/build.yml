@@ -39,7 +39,7 @@ jobs:
             pack_bin: pack.exe
           - config: windows-wcow
             os: windows
-            runner: [self-hosted, windows, wcow]
+            runner: [windows-2019]
             no_docker: "false"
             pack_bin: pack.exe
     runs-on: ${{ matrix.runner }}
@@ -89,6 +89,36 @@ jobs:
         shell: powershell
       - name: Verify
         run: make verify
+      - name: Register runner IP
+        if: matrix.config == 'windows-wcow'
+        shell: powershell
+        run: |
+          # Get IP from default gateway interface
+          $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
+
+          # Allow container-to-host registry traffic (from public interface, to the same interface)
+          New-NetfirewallRule -DisplayName test-registry -LocalAddress $IPAddress -RemoteAddress $IPAddress
+
+          # create or update daemon config to allow host as insecure-registry
+          $config=@{}
+          if (Test-Path C:\ProgramData\docker\config\daemon.json) {
+            $config=(Get-Content C:\ProgramData\docker\config\daemon.json | ConvertFrom-json)
+          }
+          $config."insecure-registries" = @("$IPAddress/32")
+          ConvertTo-json $config | Out-File -Encoding ASCII C:\ProgramData\docker\config\daemon.json
+
+          Restart-Service docker
+
+          # dump docker info for auditing
+          docker version
+          docker info
+
+          # Modify etc\hosts to include runner IP
+          $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
+          "# Modified by CNB: https://github.com/buildpacks/ci/tree/main/gh-runners/windows
+          ${IPAddress} host.docker.internal
+          ${IPAddress} gateway.docker.internal
+          " | Out-File -Filepath C:\Windows\System32\drivers\etc\hosts -Encoding utf8
       - name: Test
         env:
           TEST_COVERAGE: 1
@@ -102,7 +132,7 @@ jobs:
           verbose: true
       - name: Prepare Codecov
         if: matrix.os == 'windows'
-        uses: crazy-max/ghaction-chocolatey@v1
+        uses: crazy-max/ghaction-chocolatey@v2
         with:
           args: install codecov -y
       - name: run Codecov
@@ -124,7 +154,7 @@ jobs:
           PACK_BUILD: ${{ github.run_number }}
         shell: powershell
       - uses: actions/upload-artifact@v3
-        if: matrix.config != 'windows-wcow'
+        if: matrix.config != 'windows-lcow'
         with:
           name: pack-${{ matrix.os }}
           path: out/${{ env.PACK_BIN }}
@@ -248,23 +278,41 @@ jobs:
           prerelease: true
           files: pack-v${{ env.PACK_VERSION }}-*
           body: |
-            # pack v${{ env.PACK_VERSION }}
-            > This is a **beta** pre-release of the Cloud Native Buildpack local CLI. This platform implementation should be relatively stable and reliable, but breaking changes in the underlying [specification](https://github.com/buildpack/spec) may be implemented without notice. Note that pack is intended for local image builds, and thus requires a Docker daemon. The [lifecycle](https://github.com/buildpack/lifecycle) should be used directly when building on cloud platforms.
+            > This is a **beta** pre-release of the Cloud Native Buildpack local CLI. This platform implementation should be relatively stable and reliable, but breaking changes in the underlying [specification](https://github.com/buildpack/spec) may be implemented without notice.
 
             ## Prerequisites
 
-            - The [Docker daemon](https://www.docker.com/get-started) must be installed on your workstation or accessible over the network.
+            - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/getting-started/) must be available to execute builds.
 
             ## Install
 
             #### Linux
 
-            ##### Command
+            ##### AMD64
 
             ```bash
             (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
             ```
 
+            ##### ARM64
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux-arm64.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
+
+            #### MacOS
+
+            ##### Intel
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-macos.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
+
+            ##### Apple Silicon
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-macos-arm64.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
             #### Manually
 
             1. Download the `.tgz` or `.zip` file for your platform
@@ -300,12 +348,11 @@ jobs:
           draft: true
           files: pack-v${{ env.PACK_VERSION }}-*
           body: |
-            # pack v${{ env.PACK_VERSION }}
-            > This is a **beta** release of the Cloud Native Buildpack local CLI. This platform implementation should be relatively stable and reliable, but breaking changes in the underlying [specification](https://github.com/buildpack/spec) may be implemented without notice. Note that pack is intended for local image builds, and thus requires a Docker daemon. The [lifecycle](https://github.com/buildpack/lifecycle) should be used directly when building on cloud platforms.
+            > This is a **beta** release of the Cloud Native Buildpack local CLI. This platform implementation should be relatively stable and reliable, but breaking changes in the underlying [specification](https://github.com/buildpack/spec) may be implemented without notice.
 
             ## Prerequisites
 
-            - The [Docker daemon](https://www.docker.com/get-started) must be installed on your workstation or accessible over the network.
+            - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/getting-started/) must be available to execute builds.
 
             ## Install
 

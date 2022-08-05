@@ -201,6 +201,41 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								h.AssertError(t, err, "buildpack 'bp.present.id@bp.present.version' references buildpack 'bp.missing.id@bp.missing.version' which is not present")
 							})
 						})
+
+						when("there is a referenced buildpack from dependency buildpack that does not have proper version defined", func() {
+							it("should error", func() {
+								mainBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.1.id",
+										Version: "bp.1.version",
+									},
+									Order: dist.Order{{
+										Group: []dist.BuildpackRef{
+											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"}},
+										},
+									}},
+								}, 0644)
+								h.AssertNil(t, err)
+								builder := buildpack.NewBuilder(mockImageFactory(expectedImageOS))
+								builder.SetBuildpack(mainBP)
+
+								presentBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API:  api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"},
+									Order: dist.Order{{
+										Group: []dist.BuildpackRef{
+											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.missing.id"}},
+										},
+									}},
+								}, 0644)
+								h.AssertNil(t, err)
+								builder.AddDependency(presentBP)
+
+								err = testFn(builder)
+								h.AssertError(t, err, "buildpack 'bp.present.id@bp.present.version' must specify a version when referencing buildpack 'bp.missing.id'")
+							})
+						})
 					})
 
 					when("validate stacks", func() {

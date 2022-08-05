@@ -66,7 +66,7 @@ Alternately, to run all tests:
 make test
 ```
 
-To run our full acceptance suite (including cross-compatibility for n-1 `pack` and `lifecycl`):
+To run our full acceptance suite (including cross-compatibility for n-1 `pack` and `lifecycle`):
 ```shell
 make acceptance-all
 ```
