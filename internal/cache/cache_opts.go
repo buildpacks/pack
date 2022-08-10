@@ -3,6 +3,7 @@ package cache
 import (
 	"encoding/csv"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -21,6 +22,7 @@ type CacheOpts struct {
 const (
 	CacheVolume Format = iota
 	CacheImage
+	CacheBind
 )
 
 func (f Format) String() string {
@@ -29,6 +31,8 @@ func (f Format) String() string {
 		return "image"
 	case CacheVolume:
 		return "volume"
+	case CacheBind:
+		return "bind"
 	}
 	return ""
 }
@@ -76,6 +80,8 @@ func (c *CacheOpts) Set(value string) error {
 				cache.Format = CacheImage
 			case "volume":
 				cache.Format = CacheVolume
+			case "bind":
+				cache.Format = CacheBind
 			default:
 				return errors.Errorf("invalid cache format '%s'", value)
 			}
@@ -84,7 +90,7 @@ func (c *CacheOpts) Set(value string) error {
 		}
 	}
 
-	err = populateMissing(c)
+	err = sanitize(c)
 	if err != nil {
 		return err
 	}
@@ -102,9 +108,30 @@ func (c *CacheOpts) Type() string {
 	return "cache"
 }
 
-func populateMissing(c *CacheOpts) error {
-	if (c.Build.Source == "" && c.Build.Format == CacheImage) || (c.Launch.Source == "" && c.Launch.Format == CacheImage) {
+func sanitize(c *CacheOpts) error {
+	if (c.Build.Source == "" && c.Build.Format == CacheImage) ||
+		(c.Build.Source == "" && c.Build.Format == CacheBind) ||
+		(c.Launch.Source == "" && c.Launch.Format == CacheImage) ||
+		(c.Launch.Source == "" && c.Launch.Format == CacheBind) {
 		return errors.Errorf("cache 'name' is required")
+	}
+
+	if c.Build.Format == CacheBind || c.Launch.Format == CacheBind {
+		var (
+			resolvedPath string
+			err          error
+		)
+		if c.Build.Format == CacheBind {
+			if resolvedPath, err = filepath.Abs(c.Build.Source); err != nil {
+				return errors.Wrap(err, "resolve absolute path")
+			}
+			c.Build.Source = filepath.Join(resolvedPath, "build-cache")
+		} else {
+			if resolvedPath, err = filepath.Abs(c.Launch.Source); err != nil {
+				return errors.Wrap(err, "resolve absolute path")
+			}
+			c.Launch.Source = filepath.Join(resolvedPath, "launch-cache")
+		}
 	}
 	return nil
 }
