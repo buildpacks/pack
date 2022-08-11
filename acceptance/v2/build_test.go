@@ -5,93 +5,38 @@ package acceptance_new
 
 import (
 	"fmt"
-	"math/rand"
 	"path/filepath"
 	"regexp"
 	"testing"
-	"time"
 
 	"github.com/buildpacks/pack/acceptance/assertions"
-	"github.com/buildpacks/pack/acceptance/buildpacks"
-	"github.com/buildpacks/pack/acceptance/config"
-	"github.com/buildpacks/pack/acceptance/invoke"
-	"github.com/buildpacks/pack/acceptance/managers"
+	"github.com/buildpacks/pack/acceptance/harness"
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/docker/docker/client"
 )
 
 func TestBuild(t *testing.T) {
-	h.RequireDocker(t)
-	rand.Seed(time.Now().UTC().UnixNano())
+
+	testHarness := harness.ContainingBuilder(t, filepath.Join("..", "testdata"))
+
+	registry := testHarness.Registry()
+	imageManager := testHarness.ImageManager()
+	runImageName := testHarness.RunImageName()
+	runImageMirror := testHarness.RunImageMirror()
 
 	assert := h.NewAssertionManager(t)
+	assertImage := assertions.NewImageAssertionManager(t, imageManager, &registry)
 
-	// docker cli
-	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
-	assert.Nil(err)
+	for _, combo := range testHarness.Combinations() {
+		t.Logf("Running combo: %s", combo.String())
 
-	imageManager := managers.NewImageManager(t, dockerCli)
-
-	// run temp registry
-	registryConfig := h.RunRegistry(t)
-	defer registryConfig.RmRegistry(t)
-
-	// image assert
-	assertImage := assertions.NewImageAssertionManager(t, imageManager, registryConfig)
-
-	// gather config
-	inputConfigManager, err := config.NewInputConfigurationManager()
-	assert.Nil(err)
-
-	assetsConfig := config.NewAssetManager(t, assert, inputConfigManager, filepath.Join("..", "testdata"))
-
-	// create stack
-	runImageName := "pack-test/run"
-	buildImageName := "pack-test/build"
-
-	runImageMirror := registryConfig.RepoName(runImageName)
-	err = createStack(t, dockerCli, registryConfig, imageManager, runImageName, buildImageName, runImageMirror)
-	assert.Nil(err)
-
-	stackBaseImages := map[string][]string{
-		"linux":   {"ubuntu:bionic"},
-		"windows": {"mcr.microsoft.com/windows/nanoserver:1809", "golang:1.17-nanoserver-1809"},
-	}
-	baseStackNames := stackBaseImages[imageManager.HostOS()]
-	defer imageManager.CleanupImages(baseStackNames...)
-	defer imageManager.CleanupImages(runImageName, buildImageName, runImageMirror)
-
-	for _, combo := range inputConfigManager.Combinations() {
-		combo := combo
-
-		t.Logf("Running combo: %s", combo)
-
-		lifecycle := assetsConfig.NewLifecycleAsset(combo.Lifecycle)
-
-		pack := invoke.NewPackInvoker(t, assert, assetsConfig.NewPackAsset(combo.Pack), registryConfig.DockerConfigDir)
-		pack.EnableExperimental()
-		pack.JustRunSuccessfully("config", "lifecycle-image", lifecycle.Image())
-
-		createBuilderPack := invoke.NewPackInvoker(t, assert, assetsConfig.NewPackAsset(combo.PackCreateBuilder), registryConfig.DockerConfigDir)
-		createBuilderPack.EnableExperimental()
-
-		buildpackManager := buildpacks.NewBuildpackManager(
-			t,
-			assert,
-			buildpacks.WithBuildpackAPIVersion(lifecycle.EarliestBuildpackAPIVersion()),
-			buildpacks.WithBaseDir(filepath.Join("..", "testdata", "mock_buildpacks")),
-		)
-
-		repo := "some-org/" + h.RandString(10)
-		repoName := registryConfig.RepoName(repo)
-
-		// create builder
-		builderName, err := createBuilder(t, assert, registryConfig, imageManager, dockerCli, createBuilderPack, lifecycle, buildpackManager, runImageMirror)
-		assert.Nil(err)
-		defer imageManager.CleanupImages(builderName)
+		builderName := combo.BuilderName()
+		pack := combo.Pack()
 
 		t.Run("creates a runnable, rebuildable image on daemon from app dir", func(t *testing.T) {
 			appPath := filepath.Join("..", "testdata", "mock_app")
+
+			repo := "some-org/" + h.RandString(10)
+			repoName := registry.RepoName(repo)
 
 			output := pack.RunSuccessfully(
 				"build", repoName,
@@ -121,7 +66,7 @@ func TestBuild(t *testing.T) {
 			assertImage.NotExistsInRegistry(repo)
 
 			t.Log("add a local mirror")
-			localRunImageMirror := registryConfig.RepoName("pack-test/run-mirror")
+			localRunImageMirror := registry.RepoName("pack-test/run-mirror")
 			imageManager.TagImage(runImageName, localRunImageMirror)
 			defer imageManager.CleanupImages(localRunImageMirror)
 			pack.JustRunSuccessfully("config", "run-image-mirrors", "add", runImageName, "-m", localRunImageMirror)
@@ -181,7 +126,6 @@ func TestBuild(t *testing.T) {
 				helloArgs = []string{"/c", "echo hello world"}
 				helloArgsPrefix = " "
 				imageWorkdir = "c:\\workspace"
-
 			} else {
 				webCommand = "./run"
 				helloCommand = "echo"
@@ -232,15 +176,11 @@ func TestBuild(t *testing.T) {
 		})
 	}
 
-	// suiteManager.CleanUp()
-	// imageManager.CleanupImages(repoName)
+	testHarness.CleanUp()
+}
 
-	// ref, err := name.ParseReference(repoName, name.WeakValidation)
-	// assert.Nil(err)
-	// cacheImage := cache.NewImageCache(ref, dockerCli)
-	// buildCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "build", dockerCli)
-	// launchCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "launch", dockerCli)
-	// cacheImage.Clear(context.TODO())
-	// buildCacheVolume.Clear(context.TODO())
-	// launchCacheVolume.Clear(context.TODO())
+type compareFormat struct {
+	extension   string
+	compareFunc func(string, string)
+	outputArg   string
 }
