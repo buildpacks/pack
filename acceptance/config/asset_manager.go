@@ -25,12 +25,11 @@ const (
 )
 
 var (
-	currentPackFixturesDir           = filepath.Join("testdata", "pack_fixtures")
-	previousPackFixturesOverridesDir = filepath.Join("testdata", "pack_previous_fixtures_overrides")
-	lifecycleTgzExp                  = regexp.MustCompile(`lifecycle-v\d+.\d+.\d+\+linux.x86-64.tgz`)
+	lifecycleTgzExp = regexp.MustCompile(`lifecycle-v\d+.\d+.\d+\+linux.x86-64.tgz`)
 )
 
 type AssetManager struct {
+	testObject                  *testing.T
 	packPath                    string
 	packFixturesPath            string
 	previousPackPath            string
@@ -43,10 +42,9 @@ type AssetManager struct {
 	previousLifecycleDescriptor builder.LifecycleDescriptor
 	previousLifecycleImage      string
 	defaultLifecycleDescriptor  builder.LifecycleDescriptor
-	testObject                  *testing.T
 }
 
-func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig InputConfigurationManager) AssetManager {
+func NewAssetManager(t *testing.T, assert h.AssertionManager, inputConfig InputConfigurationManager, testDataDir string) AssetManager {
 	t.Helper()
 
 	var (
@@ -63,7 +61,7 @@ func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig 
 	)
 
 	githubAssetFetcher, err := NewGithubAssetFetcher(t, inputConfig.githubToken)
-	h.AssertNil(t, err)
+	assert.Nil(err)
 
 	assetBuilder := assetManagerBuilder{
 		testObject:         t,
@@ -78,9 +76,10 @@ func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig 
 
 	if inputConfig.combinations.requiresPreviousPack() {
 		convergedPreviousPackPath = assetBuilder.ensurePreviousPack()
-		convergedPreviousPackFixturesPath := assetBuilder.ensurePreviousPackFixtures()
-
-		convergedPreviousPackFixturesPaths = []string{previousPackFixturesOverridesDir, convergedPreviousPackFixturesPath}
+		convergedPreviousPackFixturesPaths = []string{
+			filepath.Join(testDataDir, "pack_previous_fixtures_overrides"),
+			assetBuilder.ensurePreviousPackFixtures(),
+		}
 	}
 
 	if inputConfig.combinations.requiresCurrentLifecycle() {
@@ -97,7 +96,7 @@ func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig 
 
 	return AssetManager{
 		packPath:                    convergedCurrentPackPath,
-		packFixturesPath:            currentPackFixturesDir,
+		packFixturesPath:            filepath.Join(testDataDir, "pack_fixtures"),
 		previousPackPath:            convergedPreviousPackPath,
 		previousPackFixturesPaths:   convergedPreviousPackFixturesPaths,
 		lifecyclePath:               convergedCurrentLifecyclePath,
@@ -359,12 +358,19 @@ func (b assetManagerBuilder) buildPack(compileVersion string) string {
 		"-o", packPath,
 		"./cmd/pack",
 	)
-	if filepath.Base(cwd) == "acceptance" {
-		cmd.Dir = filepath.Dir(cwd)
+
+	cmd.Dir = cwd
+	if filepath.Base(cmd.Dir) == "v2" {
+		cmd.Dir = filepath.Dir(cmd.Dir)
+	}
+
+	if filepath.Base(cmd.Dir) == "acceptance" {
+		cmd.Dir = filepath.Dir(cmd.Dir)
 	}
 
 	b.testObject.Logf("building pack: [CWD=%s] %s", cmd.Dir, cmd.Args)
-	_, err = cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
+	b.testObject.Logf("output:\n%s", string(output))
 	b.assert.Nil(err)
 
 	return packPath

@@ -8,21 +8,27 @@ import (
 	"testing"
 
 	"github.com/buildpacks/pack/internal/builder"
-
 	"github.com/buildpacks/pack/testhelpers"
 )
 
 type BuildpackManager struct {
 	testObject *testing.T
 	assert     testhelpers.AssertionManager
-	sourceDir  string
+	baseDir    string
+	apiVersion string
 }
 
 type BuildpackManagerModifier func(b *BuildpackManager)
 
+func WithBaseDir(baseDir string) func(b *BuildpackManager) {
+	return func(b *BuildpackManager) {
+		b.baseDir = baseDir
+	}
+}
+
 func WithBuildpackAPIVersion(apiVersion string) func(b *BuildpackManager) {
 	return func(b *BuildpackManager) {
-		b.sourceDir = filepath.Join("testdata", "mock_buildpacks", apiVersion)
+		b.apiVersion = apiVersion
 	}
 }
 
@@ -30,7 +36,8 @@ func NewBuildpackManager(t *testing.T, assert testhelpers.AssertionManager, modi
 	m := BuildpackManager{
 		testObject: t,
 		assert:     assert,
-		sourceDir:  filepath.Join("testdata", "mock_buildpacks", builder.DefaultBuildpackAPIVersion),
+		baseDir:    filepath.Join("testdata", "mock_buildpacks"),
+		apiVersion: builder.DefaultBuildpackAPIVersion,
 	}
 
 	for _, mod := range modifiers {
@@ -48,7 +55,7 @@ func (b BuildpackManager) PrepareBuildpacks(destination string, buildpacks ...Te
 	b.testObject.Helper()
 
 	for _, buildpack := range buildpacks {
-		err := buildpack.Prepare(b.sourceDir, destination)
+		err := buildpack.Prepare(filepath.Join(b.baseDir, b.apiVersion), destination)
 		b.assert.Nil(err)
 	}
 }

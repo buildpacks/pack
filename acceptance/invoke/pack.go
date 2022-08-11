@@ -5,6 +5,8 @@ package invoke
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -22,6 +24,7 @@ import (
 )
 
 type PackInvoker struct {
+	identifier      string
 	testObject      *testing.T
 	assert          h.AssertionManager
 	path            string
@@ -50,7 +53,15 @@ func NewPackInvoker(
 		testObject.Fatalf("couldn't create home folder for pack: %s", err)
 	}
 
+	hash := sha256.New()
+	hash.Write([]byte(packAssets.Path()))
+	for _, v := range packAssets.FixturePaths() {
+		hash.Write([]byte(v))
+	}
+	identifier := hex.EncodeToString(hash.Sum(nil))
+
 	return &PackInvoker{
+		identifier:      identifier,
 		testObject:      testObject,
 		assert:          assert,
 		path:            packAssets.Path(),
@@ -92,6 +103,10 @@ func (i *PackInvoker) cmd(name string, args ...string) *exec.Cmd {
 	}
 
 	return cmd
+}
+
+func (i *PackInvoker) Identifier() string {
+	return i.identifier
 }
 
 func (i *PackInvoker) baseCmd(parts ...string) *exec.Cmd {
