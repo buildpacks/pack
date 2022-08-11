@@ -10,12 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/client"
+
 	"github.com/buildpacks/pack/acceptance/buildpacks"
 	"github.com/buildpacks/pack/acceptance/config"
 	"github.com/buildpacks/pack/acceptance/invoke"
 	"github.com/buildpacks/pack/acceptance/managers"
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/docker/docker/client"
 )
 
 type BuilderCombo struct {
@@ -68,6 +69,7 @@ func ContainingBuilder(t *testing.T, testDataDir string) BuilderTestHarness {
 	// run temp registry
 	registry := h.RunRegistry(t)
 	cleanups = append(cleanups, func() {
+		t.Log("stoping and deleting registry...")
 		registry.RmRegistry(t)
 	})
 
@@ -91,6 +93,7 @@ func ContainingBuilder(t *testing.T, testDataDir string) BuilderTestHarness {
 	}
 	baseStackNames := stackBaseImages[imageManager.HostOS()]
 	cleanups = append(cleanups, func() {
+		t.Log("cleaning up stack images...")
 		imageManager.CleanupImages(baseStackNames...)
 		imageManager.CleanupImages(runImageName, buildImageName, runImageMirror)
 	})
@@ -136,6 +139,7 @@ func ContainingBuilder(t *testing.T, testDataDir string) BuilderTestHarness {
 		)
 		assert.Nil(err)
 		cleanups = append(cleanups, func() {
+			t.Log("cleaning up builder image...")
 			imageManager.CleanupImages(builderName)
 		})
 
@@ -160,6 +164,27 @@ func ContainingBuilder(t *testing.T, testDataDir string) BuilderTestHarness {
 
 func (b *BuilderTestHarness) Combinations() []BuilderCombo {
 	return b.combos
+}
+
+func (b *BuilderTestHarness) RunA(name string, test func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo)) {
+	for _, combo := range b.combos {
+		combo := combo
+		b.t.Run(name, func(t *testing.T) {
+			test(t, b, combo)
+		})
+	}
+}
+
+func (b *BuilderTestHarness) RunT(name string, test func(t *testing.T, combo BuilderCombo)) {
+	b.RunA(name, func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo) {
+		test(t, combo)
+	})
+}
+
+func (b *BuilderTestHarness) Run(name string, test func(combo BuilderCombo)) {
+	b.RunA(name, func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo) {
+		test(combo)
+	})
 }
 
 func (b *BuilderTestHarness) Registry() h.TestRegistryConfig {

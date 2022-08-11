@@ -15,24 +15,23 @@ import (
 )
 
 func TestBuild(t *testing.T) {
-
 	testHarness := harness.ContainingBuilder(t, filepath.Join("..", "testdata"))
+	defer testHarness.CleanUp()
 
-	registry := testHarness.Registry()
-	imageManager := testHarness.ImageManager()
-	runImageName := testHarness.RunImageName()
-	runImageMirror := testHarness.RunImageMirror()
+	testHarness.Run(
+		"creates a runnable, rebuildable, inspectable image",
+		func(combo harness.BuilderCombo) {
+			registry := testHarness.Registry()
+			imageManager := testHarness.ImageManager()
+			runImageName := testHarness.RunImageName()
+			runImageMirror := testHarness.RunImageMirror()
 
-	assert := h.NewAssertionManager(t)
-	assertImage := assertions.NewImageAssertionManager(t, imageManager, &registry)
+			assert := h.NewAssertionManager(t)
+			assertImage := assertions.NewImageAssertionManager(t, imageManager, &registry)
 
-	for _, combo := range testHarness.Combinations() {
-		t.Logf("Running combo: %s", combo.String())
+			builderName := combo.BuilderName()
+			pack := combo.Pack()
 
-		builderName := combo.BuilderName()
-		pack := combo.Pack()
-
-		t.Run("creates a runnable, rebuildable image on daemon from app dir", func(t *testing.T) {
 			appPath := filepath.Join("..", "testdata", "mock_app")
 
 			repo := "some-org/" + h.RandString(10)
@@ -70,6 +69,7 @@ func TestBuild(t *testing.T) {
 			imageManager.TagImage(runImageName, localRunImageMirror)
 			defer imageManager.CleanupImages(localRunImageMirror)
 			pack.JustRunSuccessfully("config", "run-image-mirrors", "add", runImageName, "-m", localRunImageMirror)
+			defer pack.JustRunSuccessfully("config", "run-image-mirrors", "remove", runImageName)
 
 			t.Log("rebuild")
 			output = pack.RunSuccessfully(
@@ -174,9 +174,62 @@ func TestBuild(t *testing.T) {
 				format.compareFunc(output, expectedOutput)
 			}
 		})
-	}
 
-	testHarness.CleanUp()
+	testHarness.Run(
+		"an untrusted builder executes 5 phases (daemon)",
+		func(combo harness.BuilderCombo) {
+			builderName := combo.BuilderName()
+			pack := combo.Pack()
+			lifecycle := combo.Lifecycle()
+
+			registry := testHarness.Registry()
+			repoName := registry.RepoName("sample/" + h.RandString(3))
+
+			output := pack.RunSuccessfully(
+				"build", repoName,
+				"-p", filepath.Join("..", "testdata", "mock_app"),
+				"-B", builderName,
+			)
+
+			assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+
+			assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
+			assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+			assertOutput.IncludesSeparatePhases()
+		},
+	)
+
+	testHarness.Run(
+		"an untrusted builder executes 5 phases (registry)",
+		func(combo harness.BuilderCombo) {
+			builderName := combo.BuilderName()
+			pack := combo.Pack()
+			lifecycle := combo.Lifecycle()
+
+			imageManager := testHarness.ImageManager()
+			registry := testHarness.Registry()
+			repoName := registry.RepoName("sample/" + h.RandString(3))
+
+			buildArgs := []string{
+				repoName,
+				"-p", filepath.Join("..", "testdata", "mock_app"),
+				"-B", builderName,
+				"--publish",
+			}
+
+			if imageManager.HostOS() != "windows" {
+				buildArgs = append(buildArgs, "--network", "host")
+			}
+
+			output := pack.RunSuccessfully("build", buildArgs...)
+
+			assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+
+			assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
+			assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+			assertOutput.IncludesSeparatePhases()
+		},
+	)
 }
 
 type compareFormat struct {
