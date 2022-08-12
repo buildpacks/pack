@@ -47,6 +47,9 @@ uri = "https://example.com/buildpack"
 [[io.buildpacks.build.env]]
 name = "JAVA_OPTS"
 value = "-Xmx300m"
+[[io.buildpacks.env.build]]
+name = "JAVA_OPTS"
+value = "this-should-get-overridden-because-its-deprecated"
 `
 			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
 			if err != nil {
