@@ -117,6 +117,39 @@ value = "this-should-get-overridden-because-its-deprecated"
 					expected, projectDescriptor.Metadata["pipeline"])
 			}
 		})
+		it("should be backwards compatible with older v0.2 project.toml file", func() {
+			projectToml := `
+[_]
+name = "gallant 0.2"
+schema-version="0.2"
+[[io.buildpacks.env.build]]
+name = "JAVA_OPTS"
+value = "-Xmx300m"
+`
+			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var expected string
+
+			expected = "JAVA_OPTS"
+			if projectDescriptor.Build.Env[0].Name != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Build.Env[0].Name)
+			}
+
+			expected = "-Xmx300m"
+			if projectDescriptor.Build.Env[0].Value != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Build.Env[0].Value)
+			}
+		})
 		it("should parse a valid v0.1 project.toml file", func() {
 			projectToml := `
 [project]
