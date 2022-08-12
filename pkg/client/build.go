@@ -24,6 +24,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/cache"
 	internalConfig "github.com/buildpacks/pack/internal/config"
 	pname "github.com/buildpacks/pack/internal/name"
 	"github.com/buildpacks/pack/internal/stack"
@@ -36,6 +37,7 @@ import (
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 	projectTypes "github.com/buildpacks/pack/pkg/project/types"
+	v02 "github.com/buildpacks/pack/pkg/project/v02"
 )
 
 const (
@@ -105,6 +107,9 @@ type BuildOptions struct {
 	// User provided environment variables to the buildpacks.
 	// Buildpacks may both read and overwrite these values.
 	Env map[string]string
+
+	// Used to configure various cache available options
+	Cache cache.CacheOpts
 
 	// Option only valid if Publish is true
 	// Create an additional image that contains cache=true layers and push it to the registry.
@@ -325,6 +330,8 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				Version:  map[string]interface{}{"declared": version},
 				Metadata: map[string]interface{}{"url": sourceURL},
 			}
+		} else {
+			projectMetadata.Source = v02.GitMetadata(opts.AppPath)
 		}
 	}
 
@@ -345,6 +352,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		TrustBuilder:       opts.TrustBuilder(opts.Builder),
 		UseCreator:         false,
 		DockerHost:         opts.DockerHost,
+		Cache:              opts.Cache,
 		CacheImage:         opts.CacheImage,
 		HTTPProxy:          proxyConfig.HTTPProxy,
 		HTTPSProxy:         proxyConfig.HTTPSProxy,

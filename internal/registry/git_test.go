@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"gopkg.in/src-d/go-git.v4"
 
 	"github.com/buildpacks/pack/internal/registry"
 	"github.com/buildpacks/pack/pkg/logging"

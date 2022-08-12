@@ -920,16 +920,8 @@ func (b badAgent) Signers() ([]ssh.Signer, error) {
 func withFixedUpSSHCLI(t *testing.T) func() {
 	t.Helper()
 
-	which := "which"
-	if runtime.GOOS == "windows" {
-		which = "where"
-	}
-
-	out, err := exec.Command(which, "ssh").CombinedOutput()
+	sshAbsPath, err := exec.LookPath("ssh")
 	th.AssertNil(t, err)
-
-	sshAbsPath := string(out)
-	sshAbsPath = strings.Trim(sshAbsPath, "\r\n")
 
 	sshScript := `#!/bin/sh
 SSH_BIN -o PasswordAuthentication=no -o ConnectTimeout=3 -o UserKnownHostsFile="$HOME/.ssh/known_hosts" $@
