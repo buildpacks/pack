@@ -20,7 +20,7 @@ type Build struct {
 	Env []types.EnvVar `toml:"env"`
 }
 
-// deprecated: use `[[io.buildpacks.build.env]]` instead. see https://github.com/buildpacks/pack/pull/1479
+// Deprecated: use `[[io.buildpacks.build.env]]` instead. see https://github.com/buildpacks/pack/pull/1479
 type Env struct {
 	Build []types.EnvVar `toml:"build"`
 }
