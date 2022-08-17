@@ -66,6 +66,7 @@ func testListTrustedBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertContainsAllInOrder(t,
 				outBuf,
 				"gcr.io/buildpacks/builder:v1",
+				"heroku/builder:22",
 				"heroku/buildpacks:20",
 				"paketobuildpacks/builder:base",
 				"paketobuildpacks/builder:full",
