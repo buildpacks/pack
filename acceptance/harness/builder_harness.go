@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/rand"
 	"path/filepath"
+	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
@@ -52,13 +54,19 @@ type BuilderTestHarness struct {
 	cleanups       []func()
 }
 
-func ContainingBuilder(t *testing.T, testDataDir string) BuilderTestHarness {
+func ContainingBuilder(t *testing.T, projectBaseDir string) BuilderTestHarness {
+	t.Helper()
 	h.RequireDocker(t)
 	rand.Seed(time.Now().UTC().UnixNano())
 
+	var err error
 	cleanups := []func(){}
-
 	assert := h.NewAssertionManager(t)
+
+	projectBaseDir, err = filepath.Abs(projectBaseDir)
+	assert.Nil(err)
+
+	testDataDir := filepath.Join(projectBaseDir, "acceptance", "testdata")
 
 	// docker cli
 	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
@@ -77,14 +85,14 @@ func ContainingBuilder(t *testing.T, testDataDir string) BuilderTestHarness {
 	inputConfigManager, err := config.NewInputConfigurationManager()
 	assert.Nil(err)
 
-	assetsConfig := config.NewAssetManager(t, assert, inputConfigManager, testDataDir)
+	assetsConfig := config.NewAssetManager(t, assert, inputConfigManager, projectBaseDir)
 
 	// create stack
 	runImageName := "pack-test/run"
 	buildImageName := "pack-test/build"
 
 	runImageMirror := registry.RepoName(runImageName)
-	err = createStack(t, dockerCli, registry, imageManager, runImageName, buildImageName, runImageMirror)
+	err = createStack(t, dockerCli, registry, imageManager, runImageName, buildImageName, runImageMirror, testDataDir)
 	assert.Nil(err)
 
 	stackBaseImages := map[string][]string{
@@ -107,6 +115,7 @@ func ContainingBuilder(t *testing.T, testDataDir string) BuilderTestHarness {
 			assetsConfig.NewPackAsset(combo.Pack),
 			registry.DockerConfigDir,
 		)
+
 		pack.JustRunSuccessfully("config", "lifecycle-image", lifecycle.Image())
 		pack.EnableExperimental()
 
@@ -143,6 +152,8 @@ func ContainingBuilder(t *testing.T, testDataDir string) BuilderTestHarness {
 			imageManager.CleanupImages(builderName)
 		})
 
+		pack.JustRunSuccessfully("config", "default-builder", builderName)
+
 		combos = append(combos, BuilderCombo{
 			builderName: builderName,
 			lifecycle:   lifecycle,
@@ -166,25 +177,32 @@ func (b *BuilderTestHarness) Combinations() []BuilderCombo {
 	return b.combos
 }
 
-func (b *BuilderTestHarness) RunA(name string, test func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo)) {
+func (b *BuilderTestHarness) Run(test func(combo BuilderCombo)) {
+	func_name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
+	b.run(func_name, func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo) {
+		test(combo)
+	})
+}
+
+func (b *BuilderTestHarness) RunT(test func(t *testing.T, combo BuilderCombo)) {
+	func_name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
+	b.run(func_name, func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo) {
+		test(t, combo)
+	})
+}
+
+func (b *BuilderTestHarness) RunA(test func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo)) {
+	func_name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
+	b.run(func_name, test)
+}
+
+func (b *BuilderTestHarness) run(name string, test func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo)) {
 	for _, combo := range b.combos {
 		combo := combo
 		b.t.Run(name, func(t *testing.T) {
 			test(t, b, combo)
 		})
 	}
-}
-
-func (b *BuilderTestHarness) RunT(name string, test func(t *testing.T, combo BuilderCombo)) {
-	b.RunA(name, func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo) {
-		test(t, combo)
-	})
-}
-
-func (b *BuilderTestHarness) Run(name string, test func(combo BuilderCombo)) {
-	b.RunA(name, func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo) {
-		test(combo)
-	})
 }
 
 func (b *BuilderTestHarness) Registry() h.TestRegistryConfig {

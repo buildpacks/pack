@@ -6,7 +6,6 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -44,7 +43,7 @@ type AssetManager struct {
 	defaultLifecycleDescriptor  builder.LifecycleDescriptor
 }
 
-func NewAssetManager(t *testing.T, assert h.AssertionManager, inputConfig InputConfigurationManager, testDataDir string) AssetManager {
+func NewAssetManager(t *testing.T, assert h.AssertionManager, inputConfig InputConfigurationManager, projectBaseDir string) AssetManager {
 	t.Helper()
 
 	var (
@@ -65,6 +64,7 @@ func NewAssetManager(t *testing.T, assert h.AssertionManager, inputConfig InputC
 
 	assetBuilder := assetManagerBuilder{
 		testObject:         t,
+		projectBaseDir:     projectBaseDir,
 		assert:             assert,
 		inputConfig:        inputConfig,
 		githubAssetFetcher: githubAssetFetcher,
@@ -77,7 +77,7 @@ func NewAssetManager(t *testing.T, assert h.AssertionManager, inputConfig InputC
 	if inputConfig.combinations.requiresPreviousPack() {
 		convergedPreviousPackPath = assetBuilder.ensurePreviousPack()
 		convergedPreviousPackFixturesPaths = []string{
-			filepath.Join(testDataDir, "pack_previous_fixtures_overrides"),
+			filepath.Join(projectBaseDir, "acceptance", "testdata", "pack_previous_fixtures_overrides"),
 			assetBuilder.ensurePreviousPackFixtures(),
 		}
 	}
@@ -95,8 +95,9 @@ func NewAssetManager(t *testing.T, assert h.AssertionManager, inputConfig InputC
 	}
 
 	return AssetManager{
+		testObject:                  t,
 		packPath:                    convergedCurrentPackPath,
-		packFixturesPath:            filepath.Join(testDataDir, "pack_fixtures"),
+		packFixturesPath:            filepath.Join(projectBaseDir, "acceptance", "testdata", "pack_fixtures"),
 		previousPackPath:            convergedPreviousPackPath,
 		previousPackFixturesPaths:   convergedPreviousPackFixturesPaths,
 		lifecyclePath:               convergedCurrentLifecyclePath,
@@ -106,7 +107,6 @@ func NewAssetManager(t *testing.T, assert h.AssertionManager, inputConfig InputC
 		previousLifecycleImage:      convergedPreviousLifecycleImage,
 		previousLifecycleDescriptor: convergedPreviousLifecycleDescriptor,
 		defaultLifecycleDescriptor:  convergedDefaultLifecycleDescriptor,
-		testObject:                  t,
 	}
 }
 
@@ -177,6 +177,7 @@ func (a AssetManager) LifecycleImage(kind ComboValue) string {
 
 type assetManagerBuilder struct {
 	testObject         *testing.T
+	projectBaseDir     string
 	assert             h.AssertionManager
 	inputConfig        InputConfigurationManager
 	githubAssetFetcher *GithubAssetFetcher
@@ -350,23 +351,13 @@ func (b assetManagerBuilder) buildPack(compileVersion string) string {
 
 	packPath := filepath.Join(packTmpDir, acceptanceOS.PackBinaryName)
 
-	cwd, err := os.Getwd()
-	b.assert.Nil(err)
-
 	cmd := exec.Command("go", "build",
 		"-ldflags", fmt.Sprintf("-X 'github.com/buildpacks/pack/cmd.Version=%s'", compileVersion),
 		"-o", packPath,
 		"./cmd/pack",
 	)
 
-	cmd.Dir = cwd
-	if filepath.Base(cmd.Dir) == "v2" {
-		cmd.Dir = filepath.Dir(cmd.Dir)
-	}
-
-	if filepath.Base(cmd.Dir) == "acceptance" {
-		cmd.Dir = filepath.Dir(cmd.Dir)
-	}
+	cmd.Dir = b.projectBaseDir
 
 	b.testObject.Logf("building pack: [CWD=%s] %s", cmd.Dir, cmd.Args)
 	output, err := cmd.CombinedOutput()

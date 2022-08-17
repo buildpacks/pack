@@ -787,22 +787,6 @@ func testAcceptance(
 				})
 
 				when("default builder is set", func() {
-					it.Before(func() {
-						pack.RunSuccessfully("config", "default-builder", builderName)
-						pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)
-					})
-
-					when("--no-color", func() {
-						it("doesn't have color", func() {
-							appPath := filepath.Join("testdata", "mock_app")
-
-							// --no-color is set as a default option in our tests, and doesn't need to be explicitly provided
-							output := pack.RunSuccessfully("build", repoName, "-p", appPath)
-							assertOutput := assertions.NewOutputAssertionManager(t, output)
-							assertOutput.ReportsSuccessfulImageBuild(repoName)
-							assertOutput.WithoutColors()
-						})
-					})
 
 					when("--quiet", func() {
 						it("only logs app name and sha", func() {
@@ -815,12 +799,6 @@ func testAcceptance(
 							assertOutput := assertions.NewOutputAssertionManager(t, output)
 							assertOutput.ReportSuccessfulQuietBuild(repoName)
 						})
-					})
-
-					it("supports building app from a zip file", func() {
-						appPath := filepath.Join("testdata", "mock_app.zip")
-						output := pack.RunSuccessfully("build", repoName, "-p", appPath)
-						assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 					})
 
 					when("--network", func() {
@@ -1206,72 +1184,6 @@ func testAcceptance(
 								assert.Contains(output, "other-stack-version")
 								assert.Contains(output, "does not support stack 'pack.test.stack'")
 							})
-						})
-					})
-
-					when("--env-file", func() {
-						var envPath string
-
-						it.Before(func() {
-							envfile, err := ioutil.TempFile("", "envfile")
-							assert.Nil(err)
-							defer envfile.Close()
-
-							err = os.Setenv("ENV2_CONTENTS", "Env2 Layer Contents From Environment")
-							assert.Nil(err)
-							envfile.WriteString(`
-            DETECT_ENV_BUILDPACK=true
-			ENV1_CONTENTS=Env1 Layer Contents From File
-			ENV2_CONTENTS
-			`)
-							envPath = envfile.Name()
-						})
-
-						it.After(func() {
-							assert.Succeeds(os.Unsetenv("ENV2_CONTENTS"))
-							assert.Succeeds(os.RemoveAll(envPath))
-						})
-
-						it("provides the env vars to the build and detect steps", func() {
-							output := pack.RunSuccessfully(
-								"build", repoName,
-								"-p", filepath.Join("testdata", "mock_app"),
-								"--env-file", envPath,
-							)
-
-							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
-							assertImage.RunsWithOutput(
-								repoName,
-								"Env2 Layer Contents From Environment",
-								"Env1 Layer Contents From File",
-							)
-						})
-					})
-
-					when("--env", func() {
-						it.Before(func() {
-							assert.Succeeds(os.Setenv("ENV2_CONTENTS", "Env2 Layer Contents From Environment"))
-						})
-
-						it.After(func() {
-							assert.Succeeds(os.Unsetenv("ENV2_CONTENTS"))
-						})
-
-						it("provides the env vars to the build and detect steps", func() {
-							output := pack.RunSuccessfully(
-								"build", repoName,
-								"-p", filepath.Join("testdata", "mock_app"),
-								"--env", "DETECT_ENV_BUILDPACK=true",
-								"--env", `ENV1_CONTENTS="Env1 Layer Contents From Command Line"`,
-								"--env", "ENV2_CONTENTS",
-							)
-
-							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
-							assertImage.RunsWithOutput(
-								repoName,
-								"Env2 Layer Contents From Environment",
-								"Env1 Layer Contents From Command Line",
-							)
 						})
 					})
 

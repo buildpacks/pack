@@ -142,11 +142,11 @@ func generatePackageTomlWithOS(
 	return packageTomlFile.Name()
 }
 
-func createStack(t *testing.T, dockerCli client.CommonAPIClient, registryConfig *h.TestRegistryConfig, imageManager managers.ImageManager, runImageName, buildImageName, runImageMirror string) error {
+func createStack(t *testing.T, dockerCli client.CommonAPIClient, registryConfig *h.TestRegistryConfig, imageManager managers.ImageManager, runImageName, buildImageName, runImageMirror, testDataDir string) error {
 	t.Helper()
 	t.Log("creating stack images...")
 
-	stackBaseDir := filepath.Join("..", "testdata", "mock_stack", imageManager.HostOS())
+	stackBaseDir := filepath.Join(testDataDir, "mock_stack", imageManager.HostOS())
 
 	_, err := os.Stat(stackBaseDir)
 	if err != nil {

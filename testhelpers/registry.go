@@ -77,8 +77,8 @@ func CreateRegistryFixture(t *testing.T, tmpDir, fixturePath string) string {
 }
 
 func RunRegistry(t *testing.T) *TestRegistryConfig {
-	t.Log("run registry")
 	t.Helper()
+	t.Log("run registry")
 
 	runRegistryName := "test-registry-" + RandString(10)
 	username := RandString(10)
