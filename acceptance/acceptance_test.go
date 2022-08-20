@@ -72,7 +72,7 @@ func TestAcceptance(t *testing.T) {
 	inputConfigManager, err := config.NewInputConfigurationManager()
 	assert.Nil(err)
 
-	assetsConfig := config.NewAssetManager(t, assert, inputConfigManager, filepath.Join("testdata"))
+	assetsConfig := config.NewAssetManager(t, assert, inputConfigManager, "..")
 
 	suiteManager = &SuiteManager{out: t.Logf}
 	suite := spec.New("acceptance suite", spec.Report(report.Terminal{}))
@@ -779,6 +779,15 @@ func testAcceptance(
 				})
 
 				when("default builder is set", func() {
+
+					it.Before(func() {
+						pack.RunSuccessfully("config", "default-builder", builderName)
+						pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)
+					})
+
+					it.After(func() {
+						pack.RunSuccessfully("config", "default-builder", "--unset")
+					})
 
 					when("--quiet", func() {
 						it("only logs app name and sha", func() {
