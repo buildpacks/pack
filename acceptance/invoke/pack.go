@@ -226,11 +226,19 @@ func (i *PackInvoker) Supports(command string) bool {
 		search = command
 	}
 
-	re := regexp.MustCompile(fmt.Sprint(`\b%s\b`, search))
 	output, err := i.baseCmd(cmdParts...).CombinedOutput()
 	i.assert.Nil(err)
 
-	return re.MatchString(string(output)) && !strings.Contains(string(output), "Unknown help topic")
+	pattern := fmt.Sprintf(`\b%s\b`, search)
+	if search[0:1] == "-" {
+		// flags cannot match word boundary (`\b`) at the begining
+		// due to them starting with a dash (`-`)
+		pattern = fmt.Sprintf(`%s\b`, search)
+	}
+
+	re := regexp.MustCompile(pattern)
+	help := string(output)
+	return re.MatchString(help) && !strings.Contains(help, "Unknown help topic")
 }
 
 type Feature int
