@@ -75,9 +75,13 @@ func (m PackFixtureManager) TemplateVersionedFixture(
 	return m.fillTemplate(outputTemplate, templateData)
 }
 
-func (m PackFixtureManager) TemplateFixtureToFile(name string, destination *os.File, data map[string]interface{}) {
-	_, err := io.WriteString(destination, m.TemplateFixture(name, data))
+func (m PackFixtureManager) TemplateFixtureToFile(tmpDir string, fixture string, data map[string]interface{}) string {
+	packageTomlFile, err := ioutil.TempFile(tmpDir, fixture+"-*")
+	defer packageTomlFile.Close()
+
+	_, err = io.WriteString(packageTomlFile, m.TemplateFixture(fixture, data))
 	m.assert.Nil(err)
+	return packageTomlFile.Name()
 }
 
 func (m PackFixtureManager) fillTemplate(templateContents []byte, data map[string]interface{}) string {

@@ -141,7 +141,7 @@ func ContainingBuilder(t *testing.T, projectBaseDir string) BuilderTestHarness {
 			registry,
 			imageManager,
 			dockerCli,
-			createBuilderPack,
+			*createBuilderPack,
 			lifecycle,
 			buildpackManager,
 			runImageMirror,

@@ -18,7 +18,7 @@ import (
 
 type PackageFile struct {
 	testObject           *testing.T
-	pack                 *invoke.PackInvoker
+	pack                 invoke.PackInvoker
 	destination          string
 	sourceConfigLocation string
 	buildpacks           []TestBuildpack
@@ -32,7 +32,7 @@ func (p *PackageFile) SetPublish() {}
 
 func NewPackageFile(
 	t *testing.T,
-	pack *invoke.PackInvoker,
+	pack invoke.PackInvoker,
 	destination, configLocation string,
 	modifiers ...PackageModifier,
 ) PackageFile {

@@ -28,7 +28,7 @@ func createBuilder(
 	registryConfig *h.TestRegistryConfig,
 	imageManager managers.ImageManager,
 	dockerCli client.CommonAPIClient,
-	pack *invoke.PackInvoker,
+	pack invoke.PackInvoker,
 	lifecycle config.LifecycleAsset,
 	buildpackManager buildpacks.BuildpackManager,
 	runImageMirror string,
@@ -52,7 +52,15 @@ func createBuilder(
 		buildpacks.ReadEnv,
 	}
 
-	packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package.toml", imageManager.HostOS())
+	packageTomlPath := pack.FixtureManager().TemplateFixtureToFile(
+		tmpDir,
+		"package.toml",
+		map[string]interface{}{
+			"OS": imageManager.HostOS(),
+		},
+	)
+	defer os.RemoveAll(packageTomlPath)
+
 	packageImageName := registryConfig.RepoName("simple-layers-package-image-buildpack-" + h.RandString(8))
 
 	packageImageBuildpack := buildpacks.NewPackageImage(
@@ -88,17 +96,11 @@ func createBuilder(
 	// RENDER builder.toml
 	configFileName := "builder.toml"
 
-	builderConfigFile, err := ioutil.TempFile(tmpDir, "builder.toml")
-	assert.Nil(err)
-
-	pack.FixtureManager().TemplateFixtureToFile(
+	builderConfig := pack.FixtureManager().TemplateFixtureToFile(
+		tmpDir,
 		configFileName,
-		builderConfigFile,
 		templateMapping,
 	)
-
-	err = builderConfigFile.Close()
-	assert.Nil(err)
 
 	// NAME BUILDER
 	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
@@ -106,7 +108,7 @@ func createBuilder(
 	// CREATE BUILDER
 	output := pack.RunSuccessfully(
 		"builder", "create", bldr,
-		"-c", builderConfigFile.Name(),
+		"-c", builderConfig,
 		"--no-color",
 	)
 
@@ -114,32 +116,6 @@ func createBuilder(
 	assert.Succeeds(h.PushImage(dockerCli, bldr, registryConfig))
 
 	return bldr, nil
-}
-
-func generatePackageTomlWithOS(
-	t *testing.T,
-	assert h.AssertionManager,
-	pack *invoke.PackInvoker,
-	tmpDir string,
-	fixtureName string,
-	platform_os string,
-) string {
-	t.Helper()
-
-	packageTomlFile, err := ioutil.TempFile(tmpDir, "package-*.toml")
-	assert.Nil(err)
-
-	pack.FixtureManager().TemplateFixtureToFile(
-		fixtureName,
-		packageTomlFile,
-		map[string]interface{}{
-			"OS": platform_os,
-		},
-	)
-
-	assert.Nil(packageTomlFile.Close())
-
-	return packageTomlFile.Name()
 }
 
 func createStack(t *testing.T, dockerCli client.CommonAPIClient, registryConfig *h.TestRegistryConfig, imageManager managers.ImageManager, runImageName, buildImageName, runImageMirror, testDataDir string) error {

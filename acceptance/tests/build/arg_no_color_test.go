@@ -12,7 +12,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func test_no_color(t *testing.T, th *harness.BuilderTestHarness, combo harness.BuilderCombo) {
+func test_arg_no_color(t *testing.T, th *harness.BuilderTestHarness, combo harness.BuilderCombo) {
 	pack := combo.Pack()
 
 	appPath := filepath.Join("..", "..", "testdata", "mock_app")
