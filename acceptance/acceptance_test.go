@@ -685,7 +685,13 @@ func testAcceptance(
 					)...,
 				)
 				value, err := suiteManager.RunTaskOnceString(key, func() (string, error) {
-					return createBuilder(t, assert, imageManager, dockerCli, createBuilderPack, lifecycle, buildpackManager, runImageMirror)
+					return createBuilder(t, assert, imageManager, dockerCli, createBuilderPack, lifecycle, buildpackManager, config.Stack{
+						RunImage: config.RunImage{
+							Name:       runImage,
+							MirrorName: runImageMirror,
+						},
+						BuildImageName: buildImage,
+					})
 				})
 				assert.Nil(err)
 				suiteManager.RegisterCleanUp("clean-"+key, func() error {
@@ -1123,6 +1129,7 @@ func testAcceptance(
 										"image_name":           repoName,
 										"base_image_ref":       strings.Join([]string{runImageMirror, h.Digest(t, runImageMirror)}, "@"),
 										"base_image_top_layer": h.TopLayerDiffID(t, runImageMirror),
+										"run_image":            runImage,
 										"run_image_mirror":     runImageMirror,
 										"web_command":          webCommand,
 										"hello_command":        helloCommand,
@@ -1807,172 +1814,6 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					assert.TrimmedEq(output, expectedOutput)
 				})
 			})
-
-			when("rebase", func() {
-				var repoName, runBefore, origID string
-				var buildRunImage func(string, string, string)
-
-				it.Before(func() {
-					pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)
-
-					repoName = registryConfig.RepoName("some-org/" + h.RandString(10))
-					runBefore = registryConfig.RepoName("run-before/" + h.RandString(10))
-
-					buildRunImage = func(newRunImage, contents1, contents2 string) {
-						user := func() string {
-							if imageManager.HostOS() == "windows" {
-								return "ContainerAdministrator"
-							}
-
-							return "root"
-						}
-
-						h.CreateImage(t, dockerCli, newRunImage, fmt.Sprintf(`
-													FROM %s
-													USER %s
-													RUN echo %s > /contents1.txt
-													RUN echo %s > /contents2.txt
-													USER pack
-												`, runImage, user(), contents1, contents2))
-					}
-
-					buildRunImage(runBefore, "contents-before-1", "contents-before-2")
-					pack.RunSuccessfully(
-						"build", repoName,
-						"-p", filepath.Join("testdata", "mock_app"),
-						"--builder", builderName,
-						"--run-image", runBefore,
-						"--pull-policy", "never",
-					)
-					origID = h.ImageID(t, repoName)
-					assertImage.RunsWithOutput(
-						repoName,
-						"contents-before-1",
-						"contents-before-2",
-					)
-				})
-
-				it.After(func() {
-					imageManager.CleanupImages(origID, repoName, runBefore)
-					ref, err := name.ParseReference(repoName, name.WeakValidation)
-					assert.Nil(err)
-					buildCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "build", dockerCli)
-					launchCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "launch", dockerCli)
-					assert.Succeeds(buildCacheVolume.Clear(context.TODO()))
-					assert.Succeeds(launchCacheVolume.Clear(context.TODO()))
-				})
-
-				when("daemon", func() {
-					when("--run-image", func() {
-						var runAfter string
-
-						it.Before(func() {
-							runAfter = registryConfig.RepoName("run-after/" + h.RandString(10))
-							buildRunImage(runAfter, "contents-after-1", "contents-after-2")
-						})
-
-						it.After(func() {
-							imageManager.CleanupImages(runAfter)
-						})
-
-						it("uses provided run image", func() {
-							output := pack.RunSuccessfully(
-								"rebase", repoName,
-								"--run-image", runAfter,
-								"--pull-policy", "never",
-							)
-
-							assert.Contains(output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
-							assertImage.RunsWithOutput(
-								repoName,
-								"contents-after-1",
-								"contents-after-2",
-							)
-						})
-					})
-
-					when("local config has a mirror", func() {
-						var localRunImageMirror string
-
-						it.Before(func() {
-							localRunImageMirror = registryConfig.RepoName("run-after/" + h.RandString(10))
-							buildRunImage(localRunImageMirror, "local-mirror-after-1", "local-mirror-after-2")
-							pack.JustRunSuccessfully("config", "run-image-mirrors", "add", runImage, "-m", localRunImageMirror)
-						})
-
-						it.After(func() {
-							imageManager.CleanupImages(localRunImageMirror)
-						})
-
-						it("prefers the local mirror", func() {
-							output := pack.RunSuccessfully("rebase", repoName, "--pull-policy", "never")
-
-							assertOutput := assertions.NewOutputAssertionManager(t, output)
-							assertOutput.ReportsSelectingRunImageMirrorFromLocalConfig(localRunImageMirror)
-							assertOutput.ReportsSuccessfulRebase(repoName)
-							assertImage.RunsWithOutput(
-								repoName,
-								"local-mirror-after-1",
-								"local-mirror-after-2",
-							)
-						})
-					})
-
-					when("image metadata has a mirror", func() {
-						it.Before(func() {
-							// clean up existing mirror first to avoid leaking images
-							imageManager.CleanupImages(runImageMirror)
-
-							buildRunImage(runImageMirror, "mirror-after-1", "mirror-after-2")
-						})
-
-						it("selects the best mirror", func() {
-							output := pack.RunSuccessfully("rebase", repoName, "--pull-policy", "never")
-
-							assertOutput := assertions.NewOutputAssertionManager(t, output)
-							assertOutput.ReportsSelectingRunImageMirror(runImageMirror)
-							assertOutput.ReportsSuccessfulRebase(repoName)
-							assertImage.RunsWithOutput(
-								repoName,
-								"mirror-after-1",
-								"mirror-after-2",
-							)
-						})
-					})
-				})
-
-				when("--publish", func() {
-					it.Before(func() {
-						assert.Succeeds(h.PushImage(dockerCli, repoName, registryConfig))
-					})
-
-					when("--run-image", func() {
-						var runAfter string
-
-						it.Before(func() {
-							runAfter = registryConfig.RepoName("run-after/" + h.RandString(10))
-							buildRunImage(runAfter, "contents-after-1", "contents-after-2")
-							assert.Succeeds(h.PushImage(dockerCli, runAfter, registryConfig))
-						})
-
-						it.After(func() {
-							imageManager.CleanupImages(runAfter)
-						})
-
-						it("uses provided run image", func() {
-							output := pack.RunSuccessfully("rebase", repoName, "--publish", "--run-image", runAfter)
-
-							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulRebase(repoName)
-							assertImage.CanBePulledFromRegistry(repoName)
-							assertImage.RunsWithOutput(
-								repoName,
-								"contents-after-1",
-								"contents-after-2",
-							)
-						})
-					})
-				})
-			})
 		})
 	})
 }
@@ -2122,7 +1963,7 @@ func createBuilder(
 	pack *invoke.PackInvoker,
 	lifecycle config.LifecycleAsset,
 	buildpackManager buildpacks.BuildpackManager,
-	runImageMirror string,
+	stack config.Stack,
 ) (string, error) {
 	t.Log("creating builder image...")
 
@@ -2132,7 +1973,9 @@ func createBuilder(
 	defer os.RemoveAll(tmpDir)
 
 	templateMapping := map[string]interface{}{
-		"run_image_mirror": runImageMirror,
+		"build_image":      stack.BuildImageName,
+		"run_image":        stack.RunImage.Name,
+		"run_image_mirror": stack.RunImage.MirrorName,
 	}
 
 	// ARCHIVE BUILDPACKS
