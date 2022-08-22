@@ -9,7 +9,7 @@ local_info:
   run_images:
     - name: "{{.run_image_local_mirror}}"
       user_configured: true
-    - name: pack-test/run
+    - name: "{{.run_image}}"
     - name: "{{.run_image_mirror}}"
   buildpacks:
     - id: simple/layers

@@ -42,6 +42,10 @@ func (im ImageManager) CleanupImages(imageNames ...string) {
 	}
 }
 
+func (im ImageManager) CreateImage(name string, dockerfile string) {
+	h.CreateImage(im.testObject, im.dockerCli, name, dockerfile)
+}
+
 func (im ImageManager) InspectLocal(image string) (dockertypes.ImageInspect, error) {
 	im.testObject.Helper()
 	inspect, _, err := im.dockerCli.ImageInspectWithRaw(context.Background(), image)

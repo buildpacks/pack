@@ -31,7 +31,7 @@ func createBuilder(
 	pack invoke.PackInvoker,
 	lifecycle config.LifecycleAsset,
 	buildpackManager buildpacks.BuildpackManager,
-	runImageMirror string,
+	stack config.Stack,
 ) (string, error) {
 	t.Log("creating builder image...")
 
@@ -41,7 +41,9 @@ func createBuilder(
 	defer os.RemoveAll(tmpDir)
 
 	templateMapping := map[string]interface{}{
-		"run_image_mirror": runImageMirror,
+		"build_image":      stack.BuildImageName,
+		"run_image":        stack.RunImage.Name,
+		"run_image_mirror": stack.RunImage.MirrorName,
 	}
 
 	// ARCHIVE BUILDPACKS
@@ -118,7 +120,7 @@ func createBuilder(
 	return bldr, nil
 }
 
-func createStack(t *testing.T, dockerCli client.CommonAPIClient, registryConfig *h.TestRegistryConfig, imageManager managers.ImageManager, runImageName, buildImageName, runImageMirror, testDataDir string) error {
+func createStack(t *testing.T, dockerCli client.CommonAPIClient, registry *h.TestRegistryConfig, imageManager managers.ImageManager, runImageName, buildImageName, testDataDir string) (config.Stack, error) {
 	t.Helper()
 	t.Log("creating stack images...")
 
@@ -126,22 +128,29 @@ func createStack(t *testing.T, dockerCli client.CommonAPIClient, registryConfig 
 
 	_, err := os.Stat(stackBaseDir)
 	if err != nil {
-		return err
+		return config.Stack{}, err
 	}
 
 	if err := createStackImage(dockerCli, runImageName, filepath.Join(stackBaseDir, "run")); err != nil {
-		return err
+		return config.Stack{}, err
 	}
 	if err := createStackImage(dockerCli, buildImageName, filepath.Join(stackBaseDir, "build")); err != nil {
-		return err
+		return config.Stack{}, err
 	}
 
+	runImageMirror := registry.RepoName(runImageName)
 	imageManager.TagImage(runImageName, runImageMirror)
-	if err := h.PushImage(dockerCli, runImageMirror, registryConfig); err != nil {
-		return err
+	if err := h.PushImage(dockerCli, runImageMirror, registry); err != nil {
+		return config.Stack{}, err
 	}
 
-	return nil
+	return config.Stack{
+		RunImage: config.RunImage{
+			Name:       runImageName,
+			MirrorName: runImageMirror,
+		},
+		BuildImageName: buildImageName,
+	}, nil
 }
 
 func createStackImage(dockerCli client.CommonAPIClient, repoName string, dir string) error {

@@ -30,8 +30,16 @@
 
 [stack]
   id = "pack.test.stack"
+{{- if .build_image}}
+  build-image = "{{.build_image}}"
+{{- else -}}
   build-image = "pack-test/build"
+{{- end}}
+{{- if .run_image}}
+  run-image = "{{.run_image}}"
+{{- else -}}
   run-image = "pack-test/run"
+{{- end}}
   run-image-mirrors = ["{{.run_image_mirror}}"]
 
 [lifecycle]

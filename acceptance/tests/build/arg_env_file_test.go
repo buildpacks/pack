@@ -1,3 +1,6 @@
+//go:build acceptance
+// +build acceptance
+
 package build_test
 
 import (

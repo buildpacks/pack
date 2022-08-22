@@ -8,7 +8,7 @@ stack = "pack.test.stack"
   reference = "{{.base_image_ref}}"
 
   [[remote_info.run_images]]
-  name = "pack-test/run"
+  name = "{{.run_image}}"
 
   [[remote_info.run_images]]
   name = "{{.run_image_mirror}}"

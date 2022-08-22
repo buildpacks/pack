@@ -47,9 +47,7 @@ type BuilderTestHarness struct {
 	t              *testing.T
 	registryConfig h.TestRegistryConfig
 	imageManager   managers.ImageManager
-	runImageName   string
-	runImageMirror string
-	buildImageName string
+	stack          config.Stack
 	combos         []BuilderCombo
 	cleanups       []func()
 }
@@ -88,11 +86,15 @@ func ContainingBuilder(t *testing.T, projectBaseDir string) BuilderTestHarness {
 	assetsConfig := config.NewAssetManager(t, assert, inputConfigManager, projectBaseDir)
 
 	// create stack
-	runImageName := "pack-test/run"
-	buildImageName := "pack-test/build"
-
-	runImageMirror := registry.RepoName(runImageName)
-	err = createStack(t, dockerCli, registry, imageManager, runImageName, buildImageName, runImageMirror, testDataDir)
+	stack, err := createStack(
+		t,
+		dockerCli,
+		registry,
+		imageManager,
+		"pack-test/run:"+h.RandString(6),
+		"pack-test/build:"+h.RandString(6),
+		testDataDir,
+	)
 	assert.Nil(err)
 
 	stackBaseImages := map[string][]string{
@@ -103,7 +105,7 @@ func ContainingBuilder(t *testing.T, projectBaseDir string) BuilderTestHarness {
 	cleanups = append(cleanups, func() {
 		t.Log("cleaning up stack images...")
 		imageManager.CleanupImages(baseStackNames...)
-		imageManager.CleanupImages(runImageName, buildImageName, runImageMirror)
+		imageManager.CleanupImages(stack.RunImage.Name, stack.BuildImageName, stack.RunImage.MirrorName)
 	})
 
 	combos := []BuilderCombo{}
@@ -144,7 +146,7 @@ func ContainingBuilder(t *testing.T, projectBaseDir string) BuilderTestHarness {
 			*createBuilderPack,
 			lifecycle,
 			buildpackManager,
-			runImageMirror,
+			stack,
 		)
 		assert.Nil(err)
 		cleanups = append(cleanups, func() {
@@ -165,9 +167,7 @@ func ContainingBuilder(t *testing.T, projectBaseDir string) BuilderTestHarness {
 		t:              t,
 		registryConfig: *registry,
 		imageManager:   imageManager,
-		runImageName:   runImageName,
-		runImageMirror: runImageMirror,
-		buildImageName: buildImageName,
+		stack:          stack,
 		combos:         combos,
 		cleanups:       cleanups,
 	}
@@ -177,32 +177,32 @@ func (b *BuilderTestHarness) Combinations() []BuilderCombo {
 	return b.combos
 }
 
-func (b *BuilderTestHarness) Run(test func(combo BuilderCombo)) {
-	func_name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
-	b.run(func_name, func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo) {
-		test(combo)
-	})
-}
-
-func (b *BuilderTestHarness) RunT(test func(t *testing.T, combo BuilderCombo)) {
-	func_name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
-	b.run(func_name, func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo) {
-		test(t, combo)
-	})
-}
-
-func (b *BuilderTestHarness) RunA(test func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo)) {
-	func_name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
-	b.run(func_name, test)
-}
-
-func (b *BuilderTestHarness) run(name string, test func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo)) {
+func (b *BuilderTestHarness) Run(name string, test func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo)) {
 	for _, combo := range b.combos {
 		combo := combo
 		b.t.Run(name, func(t *testing.T) {
 			test(t, b, combo)
 		})
 	}
+}
+
+func (b *BuilderTestHarness) RunC(test func(combo BuilderCombo)) {
+	func_name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
+	b.Run(func_name, func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo) {
+		test(combo)
+	})
+}
+
+func (b *BuilderTestHarness) RunTC(test func(t *testing.T, combo BuilderCombo)) {
+	func_name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
+	b.Run(func_name, func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo) {
+		test(t, combo)
+	})
+}
+
+func (b *BuilderTestHarness) RunA(test func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo)) {
+	func_name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
+	b.Run(func_name, test)
 }
 
 func (b *BuilderTestHarness) Registry() h.TestRegistryConfig {
@@ -213,12 +213,8 @@ func (b *BuilderTestHarness) ImageManager() managers.ImageManager {
 	return b.imageManager
 }
 
-func (b *BuilderTestHarness) RunImageName() string {
-	return b.runImageName
-}
-
-func (b *BuilderTestHarness) RunImageMirror() string {
-	return b.runImageMirror
+func (b *BuilderTestHarness) Stack() config.Stack {
+	return b.stack
 }
 
 func (b *BuilderTestHarness) CleanUp() {

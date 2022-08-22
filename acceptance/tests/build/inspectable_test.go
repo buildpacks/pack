@@ -17,8 +17,8 @@ func test_app_image_is_inspectable(t *testing.T, th *harness.BuilderTestHarness,
 
 	registry := th.Registry()
 	imageManager := th.ImageManager()
-	runImageName := th.RunImageName()
-	runImageMirror := th.RunImageMirror()
+	runImageName := th.Stack().RunImage.Name
+	runImageMirror := th.Stack().RunImage.MirrorName
 
 	pack := combo.Pack()
 
@@ -91,6 +91,7 @@ func test_app_image_is_inspectable(t *testing.T, th *harness.BuilderTestHarness,
 				"base_image_id":          h.ImageID(t, runImageMirror),
 				"base_image_top_layer":   h.TopLayerDiffID(t, runImageMirror),
 				"run_image_local_mirror": localRunImageMirror,
+				"run_image":              runImageName,
 				"run_image_mirror":       runImageMirror,
 				"web_command":            webCommand,
 				"hello_command":          helloCommand,

@@ -17,8 +17,8 @@ import (
 func test_app_image_is_runnable_and_rebuildable(t *testing.T, th *harness.BuilderTestHarness, combo harness.BuilderCombo) {
 	registry := th.Registry()
 	imageManager := th.ImageManager()
-	runImageName := th.RunImageName()
-	runImageMirror := th.RunImageMirror()
+	runImageName := th.Stack().RunImage.Name
+	runImageMirror := th.Stack().RunImage.MirrorName
 
 	assert := h.NewAssertionManager(t)
 	assertImage := assertions.NewImageAssertionManager(t, imageManager, &registry)

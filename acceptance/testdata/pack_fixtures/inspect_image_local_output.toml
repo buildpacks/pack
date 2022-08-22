@@ -12,7 +12,7 @@ stack = "pack.test.stack"
   user_configured = true
 
   [[local_info.run_images]]
-  name = "pack-test/run"
+  name = "{{.run_image}}"
 
   [[local_info.run_images]]
   name = "{{.run_image_mirror}}"
