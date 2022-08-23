@@ -22,9 +22,14 @@ import (
 )
 
 type BuilderCombo struct {
+	comboConfig config.RunCombo
 	builderName string
 	pack        invoke.PackInvoker
 	lifecycle   config.LifecycleAsset
+}
+
+func (b *BuilderCombo) Config() config.RunCombo {
+	return b.comboConfig
 }
 
 func (b *BuilderCombo) BuilderName() string {
@@ -37,10 +42,6 @@ func (b *BuilderCombo) Pack() invoke.PackInvoker {
 
 func (b *BuilderCombo) Lifecycle() config.LifecycleAsset {
 	return b.lifecycle
-}
-
-func (b *BuilderCombo) String() string {
-	return fmt.Sprintf("builder=%s, lifecycle=%v, pack=%v", b.builderName, b.lifecycle, b.pack)
 }
 
 type BuilderTestHarness struct {
@@ -110,6 +111,7 @@ func ContainingBuilder(t *testing.T, projectBaseDir string) BuilderTestHarness {
 
 	combos := []BuilderCombo{}
 	for _, combo := range inputConfigManager.Combinations() {
+		t.Logf("creating assets for combo: %v", combo)
 		lifecycle := assetsConfig.NewLifecycleAsset(combo.Lifecycle)
 		pack := invoke.NewPackInvoker(
 			t,
@@ -157,6 +159,7 @@ func ContainingBuilder(t *testing.T, projectBaseDir string) BuilderTestHarness {
 		pack.JustRunSuccessfully("config", "default-builder", builderName)
 
 		combos = append(combos, BuilderCombo{
+			comboConfig: *combo,
 			builderName: builderName,
 			lifecycle:   lifecycle,
 			pack:        *pack,
@@ -180,29 +183,26 @@ func (b *BuilderTestHarness) Combinations() []BuilderCombo {
 func (b *BuilderTestHarness) Run(name string, test func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo)) {
 	for _, combo := range b.combos {
 		combo := combo
-		b.t.Run(name, func(t *testing.T) {
+		b.t.Run(runComboToPath(&combo.comboConfig)+name, func(t *testing.T) {
 			test(t, b, combo)
 		})
 	}
 }
 
 func (b *BuilderTestHarness) RunC(test func(combo BuilderCombo)) {
-	func_name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
-	b.Run(func_name, func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo) {
+	b.Run(funcName(test), func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo) {
 		test(combo)
 	})
 }
 
 func (b *BuilderTestHarness) RunTC(test func(t *testing.T, combo BuilderCombo)) {
-	func_name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
-	b.Run(func_name, func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo) {
+	b.Run(funcName(test), func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo) {
 		test(t, combo)
 	})
 }
 
 func (b *BuilderTestHarness) RunA(test func(t *testing.T, th *BuilderTestHarness, combo BuilderCombo)) {
-	func_name := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
-	b.Run(func_name, test)
+	b.Run(funcName(test), test)
 }
 
 func (b *BuilderTestHarness) Registry() h.TestRegistryConfig {
@@ -221,4 +221,25 @@ func (b *BuilderTestHarness) CleanUp() {
 	for _, fn := range b.cleanups {
 		fn()
 	}
+}
+
+// funcName gathers the name of the given function and
+// formats it to be used as part of the test path
+func funcName(fn interface{}) string {
+	funcName := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
+	funcName = filepath.Base(funcName)
+	return funcName
+}
+
+// runComboToPath creates a `go test` path string to use for identifying
+// combination tests in test output
+//
+// ie: "builder:previous/lifecyle:previous/pack:current/"
+func runComboToPath(combo *config.RunCombo) string {
+	return fmt.Sprintf(
+		"builder:%s/lifecyle:%s/pack:%s/",
+		combo.PackCreateBuilder,
+		combo.Lifecycle,
+		combo.Pack,
+	)
 }
