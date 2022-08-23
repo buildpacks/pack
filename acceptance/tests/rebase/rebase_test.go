@@ -40,7 +40,12 @@ func test_run_image_flag(t *testing.T, th *harness.BuilderTestHarness, combo har
 
 	th.ImageManager().CreateImage(
 		originalRunImage,
-		runImageDockerfile(runImageName, "root", "contents-original-1", "contents-original-2"),
+		runImageDockerfile(
+			runImageName,
+			hostRootUser(imageManager.HostOS()),
+			"contents-original-1",
+			"contents-original-2",
+		),
 	)
 
 	pack.RunSuccessfully(
@@ -64,7 +69,14 @@ func test_run_image_flag(t *testing.T, th *harness.BuilderTestHarness, combo har
 	})
 
 	updatedRunImage := registry.RepoName("acceptance/run-image:updated" + h.RandString(10))
-	imageManager.CreateImage(updatedRunImage, runImageDockerfile(runImageName, "root", "contents-updated-1", "contents-updated-2"))
+	imageManager.CreateImage(
+		updatedRunImage,
+		runImageDockerfile(
+			runImageName,
+			hostRootUser(imageManager.HostOS()),
+			"contents-updated-1",
+			"contents-updated-2",
+		))
 	t.Cleanup(func() {
 		imageManager.CleanupImages(updatedRunImage)
 	})
@@ -94,7 +106,14 @@ func test_local_config_mirror(t *testing.T, th *harness.BuilderTestHarness, comb
 	assertImage := assertions.NewImageAssertionManager(t, imageManager, &registry)
 
 	localRunImageMirror := "run-after/" + h.RandString(10)
-	th.ImageManager().CreateImage(localRunImageMirror, runImageDockerfile(runImageName, "root", "local-mirror-after-1", "local-mirror-after-2"))
+	imageManager.CreateImage(
+		localRunImageMirror,
+		runImageDockerfile(
+			runImageName,
+			hostRootUser(imageManager.HostOS()),
+			"local-mirror-after-1",
+			"local-mirror-after-2",
+		))
 
 	output := pack.RunSuccessfully("config", "run-image-mirrors", "add", runImageName, "-m", localRunImageMirror)
 	t.Log(output)
@@ -135,8 +154,13 @@ func test_stack_config_mirror(t *testing.T, th *harness.BuilderTestHarness, comb
 
 	assertImage := assertions.NewImageAssertionManager(t, imageManager, &registry)
 
-	// override image
-	th.ImageManager().CreateImage(runImageMirror, runImageDockerfile(runImageName, "root", "mirror-after-1", "mirror-after-2"))
+	// FIXME: we should not be overriding suite level test asset
+	th.ImageManager().CreateImage(runImageMirror,
+		runImageDockerfile(runImageName,
+			hostRootUser(imageManager.HostOS()),
+			"mirror-after-1",
+			"mirror-after-2",
+		))
 
 	t.Cleanup(func() {
 		imageManager.CleanupImages(runImageMirror)
@@ -169,4 +193,12 @@ USER %s
 RUN echo %s > /contents1.txt
 RUN echo %s > /contents2.txt
 USER pack`, baseRunImage, user, contents1, contents2)
+}
+
+func hostRootUser(hostOS string) string {
+	if hostOS == "windows" {
+		return "ContainerAdministrator"
+	}
+
+	return "root"
 }
