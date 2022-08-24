@@ -68,7 +68,7 @@ make test
 
 To run our full acceptance suite (including cross-compatibility for n-1 `pack` and `lifecycle`):
 ```shell
-make acceptance-all
+make compatibility
 ```
 
 ### Tidy

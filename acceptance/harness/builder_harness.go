@@ -18,6 +18,7 @@ import (
 	"github.com/buildpacks/pack/acceptance/config"
 	"github.com/buildpacks/pack/acceptance/invoke"
 	"github.com/buildpacks/pack/acceptance/managers"
+	"github.com/buildpacks/pack/internal/style"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -152,7 +153,7 @@ func ContainingBuilder(t *testing.T, projectBaseDir string) BuilderTestHarness {
 		)
 		assert.Nil(err)
 		cleanups = append(cleanups, func() {
-			t.Log("cleaning up builder image...")
+			t.Logf("cleaning up builder: %s", style.Symbol(builderName))
 			imageManager.CleanupImages(builderName)
 		})
 

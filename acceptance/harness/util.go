@@ -40,12 +40,6 @@ func createBuilder(
 	assert.Nil(err)
 	defer os.RemoveAll(tmpDir)
 
-	templateMapping := map[string]interface{}{
-		"build_image":      stack.BuildImageName,
-		"run_image":        stack.RunImage.Name,
-		"run_image_mirror": stack.RunImage.MirrorName,
-	}
-
 	// ARCHIVE BUILDPACKS
 	builderBuildpacks := []buildpacks.TestBuildpack{
 		buildpacks.Noop,
@@ -77,8 +71,13 @@ func createBuilder(
 
 	builderBuildpacks = append(builderBuildpacks, packageImageBuildpack)
 
-	templateMapping["package_image_name"] = packageImageName
-	templateMapping["package_id"] = "simple/layers"
+	templateMapping := map[string]interface{}{
+		"build_image":        stack.BuildImageName,
+		"run_image":          stack.RunImage.Name,
+		"run_image_mirror":   stack.RunImage.MirrorName,
+		"package_image_name": packageImageName,
+		"package_id":         "simple/layers",
+	}
 
 	buildpackManager.PrepareBuildpacks(tmpDir, builderBuildpacks...)
 
@@ -96,11 +95,11 @@ func createBuilder(
 	}
 
 	// RENDER builder.toml
-	configFileName := "builder.toml"
-
-	builderConfig := pack.FixtureManager().TemplateFixtureToFile(
+	builderConfig := pack.FixtureManager().TemplateVersionedFixtureToFile(
 		tmpDir,
-		configFileName,
+		filepath.Join("%s", "builder.toml"),
+		pack.SanitizedVersion(),
+		"builder.toml",
 		templateMapping,
 	)
 

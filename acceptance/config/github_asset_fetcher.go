@@ -28,7 +28,6 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/logging"
 )
 
 const (
@@ -377,7 +376,7 @@ func (f *GithubAssetFetcher) writeCacheManifest(owner, repo string, op func(cach
 func (f *GithubAssetFetcher) downloadAndSave(assetURI, destPath string) error {
 	f.testObject.Helper()
 
-	downloader := blob.NewDownloader(logging.NewSimpleLogger(&testWriter{t: f.testObject}), f.cacheDir)
+	downloader := blob.NewDownloader(&testLogger{t: f.testObject}, f.cacheDir)
 
 	assetBlob, err := downloader.Download(f.ctx, assetURI)
 	if err != nil {
@@ -406,7 +405,7 @@ func (f *GithubAssetFetcher) downloadAndSave(assetURI, destPath string) error {
 func (f *GithubAssetFetcher) downloadAndExtractTgz(assetURI, destDir string) error {
 	f.testObject.Helper()
 
-	downloader := blob.NewDownloader(logging.NewSimpleLogger(&testWriter{t: f.testObject}), f.cacheDir)
+	downloader := blob.NewDownloader(&testLogger{t: f.testObject}, f.cacheDir)
 
 	assetBlob, err := downloader.Download(f.ctx, assetURI)
 	if err != nil {
@@ -527,4 +526,21 @@ type testWriter struct {
 func (w *testWriter) Write(p []byte) (n int, err error) {
 	w.t.Log(string(p))
 	return len(p), nil
+}
+
+// testLogger implements the logger interface for testing purposes.
+type testLogger struct {
+	t *testing.T
+}
+
+func (l *testLogger) Debugf(format string, args ...interface{}) {
+	l.t.Logf(format, args...)
+}
+
+func (l *testLogger) Infof(format string, args ...interface{}) {
+	l.t.Logf(format, args...)
+}
+
+func (l *testLogger) Writer() io.Writer {
+	return &testWriter{t: l.t}
 }
