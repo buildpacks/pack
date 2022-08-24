@@ -22,6 +22,11 @@ func test_arg_env_file(t *testing.T, th *harness.BuilderTestHarness, combo harne
 
 	pack := combo.Pack()
 
+	// mark builder as trusted
+	// TODO: Windows fails with "Access is denied" when builder is not trusted
+	pack.JustRunSuccessfully("config", "trusted-builders", "add", combo.BuilderName())
+	defer pack.JustRunSuccessfully("config", "trusted-builders", "remove", combo.BuilderName())
+
 	envfile, err := ioutil.TempFile("", "envfile")
 	assert.Nil(err)
 	defer envfile.Close()
