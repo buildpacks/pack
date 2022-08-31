@@ -1,0 +1,73 @@
+Pack Build uses Cloud Native Buildpacks to create a runnable app image from source code.
+
+Pack Build requires an image name, which will be generated from the source code. Build defaults to the current directory, but you can use '--path' to specify another source code directory. Build requires a 'builder', which can either be provided directly to build using '--builder', or can be set using the 'set-default-builder' command. For more on how to use 'pack build', see: https://buildpacks.io/docs/app-developer-guide/build-an-app/.
+
+Usage:
+	pack build <image-name> [flags]
+
+Examples:
+pack build test_img --path apps/test-app --builder cnbs/sample-builder:bionic
+
+Flags:
+	-B, --builder string              Builder image (default "paketobuildpacks/builder:tiny")
+	-b, --buildpack strings           Buildpack to use. One of:
+										a buildpack by id and version in the form of '<buildpack>@<version>',
+										path to a buildpack directory (not supported on Windows),
+										path/URL to a buildpack .tar or .tgz file, or
+										a packaged buildpack image name in the form of '<hostname>/<repo>[:<tag>]'
+									Repeat for each buildpack in order, or supply once by comma-separated list
+	-r, --buildpack-registry string   Buildpack Registry by name
+		--cache-image string          Cache build layers in remote registry. Requires --publish
+		--clear-cache                 Clear image's associated cache before building
+		--creation-time string        Desired create time in the output image config. Accepted values are Unix timestamps (e.g., '1641013200'), or 'now'. Platform API version must be at least 0.9 to use this feature.
+	-D, --default-process string      Set the default process type. (default "web")
+	-d, --descriptor string           Path to the project descriptor file
+		--docker-host string          Address to docker daemon that will be exposed to the build container.
+									If not set (or set to empty string) the standard socket location will be used.
+									Special value 'inherit' may be used in which case DOCKER_HOST environment variable will be used.
+									This option may set DOCKER_HOST environment variable for the build container if needed.
+									
+	-e, --env stringArray             Build-time environment variable, in the form 'VAR=VALUE' or 'VAR'.
+									When using latter value-less form, value will be taken from current
+										environment at the time this command is executed.
+									This flag may be specified multiple times and will override
+										individual values defined by --env-file.
+									Repeat for each env in order (comma-separated lists not accepted)
+									NOTE: These are NOT available at image runtime.
+		--env-file stringArray        Build-time environment variables file
+									One variable per line, of the form 'VAR=VALUE' or 'VAR'
+									When using latter value-less form, value will be taken from current
+										environment at the time this command is executed
+									NOTE: These are NOT available at image runtime."
+		--gid int                     Override GID of user's group in the stack's build and run images. The provided value must be a positive number
+	-h, --help                        Help for 'build'
+		--interactive                 Launch a terminal UI to depict the build process
+		--lifecycle-image string      Custom lifecycle image to use for analysis, restore, and export when builder is untrusted.
+		--network string              Connect detect and build containers to network
+	-p, --path string                 Path to app dir or zip-formatted file (defaults to current working directory)
+		--previous-image string       Set previous image to a particular tag reference, digest reference, or (when performing a daemon build) image ID
+		--publish                     Publish to registry
+		--pull-policy string          Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")
+		--run-image string            Run image (defaults to default stack's run image)
+		--sbom-output-dir string      Path to export SBoM contents.
+									Omitting the flag will yield no SBoM content.
+	-t, --tag strings                 Additional tags to push the output image to.
+									Tags should be in the format 'image:tag' or 'repository/image:tag'.
+									Repeat for each tag in order, or supply once by comma-separated list
+		--trust-builder               Trust the provided builder
+									All lifecycle phases will be run in a single container (if supported by the lifecycle).
+		--volume stringArray          Mount host volume into the build container, in the form '<host path>:<target path>[:<options>]'.
+									- 'host path': Name of the volume or absolute directory path to mount.
+									- 'target path': The path where the file or directory is available in the container.
+									- 'options' (default "ro"): An optional comma separated list of mount options.
+										- "ro", volume contents are read-only.
+										- "rw", volume contents are readable and writeable.
+										- "volume-opt=<key>=<value>", can be specified more than once, takes a key-value pair consisting of the option name and its value.
+									Repeat for each volume in order (comma-separated lists not accepted)
+		--workspace string            Location at which to mount the app dir in the build image
+
+Global Flags:
+		--no-color     Disable color output
+	-q, --quiet        Show less output
+		--timestamps   Enable timestamps in output
+	-v, --verbose      Show more output

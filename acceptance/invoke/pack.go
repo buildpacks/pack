@@ -229,16 +229,41 @@ func (i *PackInvoker) Supports(command string) bool {
 	output, err := i.baseCmd(cmdParts...).CombinedOutput()
 	i.assert.Nil(err)
 
-	pattern := fmt.Sprintf(`\b%s\b`, search)
-	if search[0:1] == "-" {
-		// flags cannot match word boundary (`\b`) at the begining
-		// due to them starting with a dash (`-`)
-		pattern = fmt.Sprintf(`%s\b`, search)
+	helpOutput := string(output)
+	if strings.Contains(helpOutput, "Unknown help topic") {
+		return false
 	}
 
-	re := regexp.MustCompile(pattern)
-	help := string(output)
-	return re.MatchString(help) && !strings.Contains(help, "Unknown help topic")
+	if search[0:1] == "-" {
+		return hasFlag(helpOutput, search)
+	}
+
+	return hasCommand(helpOutput, search)
+}
+
+func hasCommand(helpOutput string, command string) bool {
+
+	commandsSection := ""
+	if parts := strings.Split(helpOutput, "Available Commands:"); len(parts) > 1 {
+		commandsSection = parts[1]
+	}
+
+	if parts := strings.Split(commandsSection, "Flags:"); len(parts) > 1 {
+		commandsSection = parts[0]
+	}
+
+	if commandsSection == "" {
+		return false
+	}
+
+	expression := regexp.MustCompile(fmt.Sprintf(`\t\b%s\b`, command))
+	return expression.MatchString(commandsSection)
+}
+
+func hasFlag(helpOutput string, flag string) bool {
+	pattern := fmt.Sprintf(`\s%s\s`, flag)
+	expression := regexp.MustCompile(pattern)
+	return expression.MatchString(helpOutput)
 }
 
 type Feature int
