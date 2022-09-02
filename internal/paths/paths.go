@@ -3,6 +3,7 @@ package paths
 import (
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -132,4 +133,9 @@ func WindowsPathSID(uid, gid int) string {
 		return "S-1-5-32-544" // BUILTIN\Administrators
 	}
 	return "S-1-5-32-545" // BUILTIN\Users
+}
+
+// CanonicalTarPath return a cleaned path (see path.Clean) with leading slashes removed
+func CanonicalTarPath(p string) string {
+	return strings.TrimPrefix(path.Clean(p), "/")
 }

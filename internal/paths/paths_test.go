@@ -259,4 +259,41 @@ func testPaths(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("#CanonicalTarPath", func() {
+		for _, params := range []struct {
+			desc     string
+			path     string
+			expected string
+		}{
+			{
+				desc:     "noop",
+				path:     "my/clean/path",
+				expected: "my/clean/path",
+			},
+			{
+				desc:     "leading slash",
+				path:     "/my/path",
+				expected: "my/path",
+			},
+			{
+				desc:     "dot",
+				path:     "my/./path",
+				expected: "my/path",
+			},
+			{
+				desc:     "dotdot",
+				path:     "my/../my/path",
+				expected: "my/path",
+			},
+		} {
+			params := params
+
+			when(params.desc+":"+params.path, func() {
+				it(fmt.Sprintf("returns %v", params.expected), func() {
+					h.AssertEq(t, paths.CanonicalTarPath(params.path), params.expected)
+				})
+			})
+		}
+	})
 }
