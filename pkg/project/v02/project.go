@@ -12,9 +12,15 @@ type Buildpacks struct {
 	Exclude []string          `toml:"exclude"`
 	Group   []types.Buildpack `toml:"group"`
 	Env     Env               `toml:"env"`
+	Build   Build             `toml:"build"`
 	Builder string            `toml:"builder"`
 }
 
+type Build struct {
+	Env []types.EnvVar `toml:"env"`
+}
+
+// Deprecated: use `[[io.buildpacks.build.env]]` instead. see https://github.com/buildpacks/pack/pull/1479
 type Env struct {
 	Build []types.EnvVar `toml:"build"`
 }
@@ -42,6 +48,12 @@ func NewDescriptor(projectTomlContents string) (types.Descriptor, error) {
 		return types.Descriptor{}, err
 	}
 
+	// backward compatibility for incorrect key
+	env := versionedDescriptor.IO.Buildpacks.Build.Env
+	if env == nil {
+		env = versionedDescriptor.IO.Buildpacks.Env.Build
+	}
+
 	return types.Descriptor{
 		Project: types.Project{
 			Name:     versionedDescriptor.Project.Name,
@@ -51,7 +63,7 @@ func NewDescriptor(projectTomlContents string) (types.Descriptor, error) {
 			Include:    versionedDescriptor.IO.Buildpacks.Include,
 			Exclude:    versionedDescriptor.IO.Buildpacks.Exclude,
 			Buildpacks: versionedDescriptor.IO.Buildpacks.Group,
-			Env:        versionedDescriptor.IO.Buildpacks.Env.Build,
+			Env:        env,
 			Builder:    versionedDescriptor.IO.Buildpacks.Builder,
 		},
 		Metadata:      versionedDescriptor.Project.Metadata,

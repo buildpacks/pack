@@ -10,17 +10,17 @@ require (
 	github.com/docker/docker v20.10.17+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.0
-	github.com/gdamore/tcell/v2 v2.5.2
+	github.com/gdamore/tcell/v2 v2.5.3
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/golang/mock v1.6.0
-	github.com/google/go-cmp v0.5.8
+	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.11.0
 	github.com/google/go-github/v30 v30.1.0
 	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
 	github.com/heroku/color v0.0.6
 	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
-	github.com/onsi/gomega v1.20.0
+	github.com/onsi/gomega v1.20.2
 	github.com/opencontainers/image-spec v1.0.3-0.20220114050600-8b9d41f48198
 	github.com/pelletier/go-toml v1.9.5
 	github.com/pkg/errors v0.9.1
@@ -107,9 +107,9 @@ require (
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	golang.org/x/net v0.0.0-20220708220712-1185a9018129 // indirect
+	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect

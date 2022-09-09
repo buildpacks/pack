@@ -7,12 +7,13 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"time"
 
 	"github.com/docker/docker/pkg/ioutils"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/paths"
 )
 
 var NormalizedDateTime time.Time
@@ -139,6 +140,7 @@ func IsEntryNotExist(err error) bool {
 
 // ReadTarEntry reads and returns a tar file
 func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
+	canonicalEntryPath := paths.CanonicalTarPath(entryPath)
 	tr := tar.NewReader(rc)
 	for {
 		header, err := tr.Next()
@@ -149,7 +151,7 @@ func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 			return nil, nil, errors.Wrap(err, "failed to get next tar entry")
 		}
 
-		if path.Clean(header.Name) == entryPath {
+		if paths.CanonicalTarPath(header.Name) == canonicalEntryPath {
 			buf, err := ioutil.ReadAll(tr)
 			if err != nil {
 				return nil, nil, errors.Wrapf(err, "failed to read contents of '%s'", entryPath)
