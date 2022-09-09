@@ -12,6 +12,7 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
 	blob2 "github.com/buildpacks/pack/pkg/blob"
@@ -125,7 +126,7 @@ func (o *ociLayoutPackage) GetLayer(diffID string) (io.ReadCloser, error) {
 	}
 
 	layerDescriptor := o.manifest.Layers[index]
-	layerPath := pathFromDescriptor(layerDescriptor)
+	layerPath := paths.CanonicalTarPath(pathFromDescriptor(layerDescriptor))
 
 	blobReader, err := o.blob.Open()
 	if err != nil {
@@ -142,7 +143,7 @@ func (o *ociLayoutPackage) GetLayer(diffID string) (io.ReadCloser, error) {
 			return nil, errors.Wrap(err, "failed to get next tar entry")
 		}
 
-		if path.Clean(header.Name) == path.Clean(layerPath) {
+		if paths.CanonicalTarPath(header.Name) == layerPath {
 			finalReader := blobReader
 
 			if strings.HasSuffix(layerDescriptor.MediaType, ".gzip") {
