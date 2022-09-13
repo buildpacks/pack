@@ -8,7 +8,7 @@ require (
 	github.com/buildpacks/imgutil v0.0.0-20220527150729-7a271a852e31
 	github.com/buildpacks/lifecycle v0.14.1
 	github.com/docker/cli v20.10.17+incompatible
-	github.com/docker/docker v20.10.17+incompatible
+	github.com/docker/docker v20.10.18+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gdamore/tcell/v2 v2.5.3
