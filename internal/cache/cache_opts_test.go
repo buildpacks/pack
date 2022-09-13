@@ -34,12 +34,12 @@ func testCacheOpts(t *testing.T, when spec.G, it spec.S) {
 				{
 					name:   "Build cache as Image",
 					input:  "type=build;format=image;name=io.test.io/myorg/my-cache:build",
-					output: "type=build;format=image;name=io.test.io/myorg/my-cache:build;type=launch;format=volume;name=;",
+					output: "type=build;format=image;name=io.test.io/myorg/my-cache:build;type=launch;format=volume;",
 				},
 				{
 					name:   "Launch cache as Image",
 					input:  "type=launch;format=image;name=io.test.io/myorg/my-cache:build",
-					output: "type=build;format=volume;name=;type=launch;format=image;name=io.test.io/myorg/my-cache:build;",
+					output: "type=build;format=volume;type=launch;format=image;name=io.test.io/myorg/my-cache:build;",
 				},
 			}
 
@@ -57,12 +57,12 @@ func testCacheOpts(t *testing.T, when spec.G, it spec.S) {
 				{
 					name:   "Build cache as Image missing: type",
 					input:  "format=image;name=io.test.io/myorg/my-cache:build",
-					output: "type=build;format=image;name=io.test.io/myorg/my-cache:build;type=launch;format=volume;name=;",
+					output: "type=build;format=image;name=io.test.io/myorg/my-cache:build;type=launch;format=volume;",
 				},
 				{
 					name:   "Build cache as Image missing: format",
 					input:  "type=build;name=io.test.io/myorg/my-cache:build",
-					output: "type=build;format=volume;name=io.test.io/myorg/my-cache:build;type=launch;format=volume;name=;",
+					output: "type=build;format=volume;name=io.test.io/myorg/my-cache:build;type=launch;format=volume;",
 				},
 				{
 					name:       "Build cache as Image missing: name",
@@ -73,12 +73,12 @@ func testCacheOpts(t *testing.T, when spec.G, it spec.S) {
 				{
 					name:   "Build cache as Image missing: type, format",
 					input:  "name=io.test.io/myorg/my-cache:build",
-					output: "type=build;format=volume;name=io.test.io/myorg/my-cache:build;type=launch;format=volume;name=;",
+					output: "type=build;format=volume;name=io.test.io/myorg/my-cache:build;type=launch;format=volume;",
 				},
 				{
 					name:   "Build cache as Image missing: format, name",
 					input:  "type=build",
-					output: "type=build;format=volume;name=;type=launch;format=volume;name=;",
+					output: "type=build;format=volume;type=launch;format=volume;",
 				},
 				{
 					name:       "Build cache as Image missing: type, name",
@@ -152,12 +152,12 @@ func testCacheOpts(t *testing.T, when spec.G, it spec.S) {
 				{
 					name:   "Build cache as Volume",
 					input:  "type=build;format=volume;name=test-build-volume-cache",
-					output: "type=build;format=volume;name=test-build-volume-cache;type=launch;format=volume;name=;",
+					output: "type=build;format=volume;name=test-build-volume-cache;type=launch;format=volume;",
 				},
 				{
 					name:   "Launch cache as Volume",
 					input:  "type=launch;format=volume;name=test-launch-volume-cache",
-					output: "type=build;format=volume;name=;type=launch;format=volume;name=test-launch-volume-cache;",
+					output: "type=build;format=volume;type=launch;format=volume;name=test-launch-volume-cache;",
 				},
 			}
 
@@ -175,22 +175,22 @@ func testCacheOpts(t *testing.T, when spec.G, it spec.S) {
 				{
 					name:   "Launch cache as Volume missing: format",
 					input:  "type=launch;name=test-launch-volume",
-					output: "type=build;format=volume;name=;type=launch;format=volume;name=test-launch-volume;",
+					output: "type=build;format=volume;type=launch;format=volume;name=test-launch-volume;",
 				},
 				{
 					name:   "Launch cache as Volume missing: name",
 					input:  "type=launch;format=volume",
-					output: "type=build;format=volume;name=;type=launch;format=volume;name=;",
+					output: "type=build;format=volume;type=launch;format=volume;",
 				},
 				{
 					name:   "Launch cache as Volume missing: format, name",
 					input:  "type=launch",
-					output: "type=build;format=volume;name=;type=launch;format=volume;name=;",
+					output: "type=build;format=volume;type=launch;format=volume;",
 				},
 				{
 					name:   "Launch cache as Volume missing: type, name",
 					input:  "format=volume",
-					output: "type=build;format=volume;name=;type=launch;format=volume;name=;",
+					output: "type=build;format=volume;type=launch;format=volume;",
 				},
 			}
 
@@ -222,36 +222,36 @@ func testCacheOpts(t *testing.T, when spec.G, it spec.S) {
 				testcases = []CacheOptTestCase{
 					{
 						name:   "Build cache as bind",
-						input:  fmt.Sprintf("type=build;format=bind;name=%s/test-bind-build-cache", homeDir),
-						output: fmt.Sprintf("type=build;format=bind;name=%s/test-bind-build-cache/build-cache;type=launch;format=volume;name=;", homeDir),
+						input:  fmt.Sprintf("type=build;format=bind;source=%s/test-bind-build-cache", homeDir),
+						output: fmt.Sprintf("type=build;format=bind;source=%s/test-bind-build-cache/build-cache;type=launch;format=volume;", homeDir),
 					},
 					{
 						name:   "Build cache as bind with relative path",
-						input:  "type=build;format=bind;name=./test-bind-build-cache-relative",
-						output: fmt.Sprintf("type=build;format=bind;name=%s/test-bind-build-cache-relative/build-cache;type=launch;format=volume;name=;", cwd),
+						input:  "type=build;format=bind;source=./test-bind-build-cache-relative",
+						output: fmt.Sprintf("type=build;format=bind;source=%s/test-bind-build-cache-relative/build-cache;type=launch;format=volume;", cwd),
 					},
 					{
 						name:   "Launch cache as bind",
-						input:  fmt.Sprintf("type=launch;format=bind;name=%s/test-bind-volume-cache", homeDir),
-						output: fmt.Sprintf("type=build;format=volume;name=;type=launch;format=bind;name=%s/test-bind-volume-cache/launch-cache;", homeDir),
+						input:  fmt.Sprintf("type=launch;format=bind;source=%s/test-bind-volume-cache", homeDir),
+						output: fmt.Sprintf("type=build;format=volume;type=launch;format=bind;source=%s/test-bind-volume-cache/launch-cache;", homeDir),
 					},
 				}
 			} else {
 				testcases = []CacheOptTestCase{
 					{
 						name:   "Build cache as bind",
-						input:  fmt.Sprintf("type=build;format=bind;name=%s\\test-bind-build-cache", homeDir),
-						output: fmt.Sprintf("type=build;format=bind;name=%s\\test-bind-build-cache\\build-cache;type=launch;format=volume;name=;", homeDir),
+						input:  fmt.Sprintf("type=build;format=bind;source=%s\\test-bind-build-cache", homeDir),
+						output: fmt.Sprintf("type=build;format=bind;source=%s\\test-bind-build-cache\\build-cache;type=launch;format=volume;", homeDir),
 					},
 					{
 						name:   "Build cache as bind with relative path",
-						input:  "type=build;format=bind;name=.\\test-bind-build-cache-relative",
-						output: fmt.Sprintf("type=build;format=bind;name=%s\\test-bind-build-cache-relative\\build-cache;type=launch;format=volume;name=;", cwd),
+						input:  "type=build;format=bind;source=.\\test-bind-build-cache-relative",
+						output: fmt.Sprintf("type=build;format=bind;source=%s\\test-bind-build-cache-relative\\build-cache;type=launch;format=volume;", cwd),
 					},
 					{
 						name:   "Launch cache as bind",
-						input:  fmt.Sprintf("type=launch;format=bind;name=%s\\test-bind-volume-cache", homeDir),
-						output: fmt.Sprintf("type=build;format=volume;name=;type=launch;format=bind;name=%s\\test-bind-volume-cache\\launch-cache;", homeDir),
+						input:  fmt.Sprintf("type=launch;format=bind;source=%s\\test-bind-volume-cache", homeDir),
+						output: fmt.Sprintf("type=build;format=volume;type=launch;format=bind;source=%s\\test-bind-volume-cache\\launch-cache;", homeDir),
 					},
 				}
 			}
@@ -268,15 +268,15 @@ func testCacheOpts(t *testing.T, when spec.G, it spec.S) {
 		it("with missing options", func() {
 			successTestCases := []CacheOptTestCase{
 				{
-					name:       "Launch cache as bind missing: name",
+					name:       "Launch cache as bind missing: source",
 					input:      "type=launch;format=bind",
-					output:     "cache 'name' is required",
+					output:     "cache 'source' is required",
 					shouldFail: true,
 				},
 				{
-					name:       "Launch cache as Volume missing: type, name",
+					name:       "Launch cache as Volume missing: type, source",
 					input:      "format=bind",
-					output:     "cache 'name' is required",
+					output:     "cache 'source' is required",
 					shouldFail: true,
 				},
 			}

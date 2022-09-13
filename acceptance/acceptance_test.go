@@ -1804,7 +1804,7 @@ func testAcceptance(
 							cacheBindName := fmt.Sprintf("%s-bind", repoName)
 							bindCacheDir, err := ioutil.TempDir("", cacheBindName)
 							assert.Nil(err)
-							cacheFlags = fmt.Sprintf("type=build;format=bind;name=%s", bindCacheDir)
+							cacheFlags = fmt.Sprintf("type=build;format=bind;source=%s", bindCacheDir)
 						})
 
 						it("creates image and cache image on the registry", func() {

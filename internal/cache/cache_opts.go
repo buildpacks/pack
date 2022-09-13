@@ -14,6 +14,7 @@ type CacheInfo struct {
 	Format Format
 	Source string
 }
+
 type CacheOpts struct {
 	Build  CacheInfo
 	Launch CacheInfo
@@ -33,6 +34,18 @@ func (f Format) String() string {
 		return "volume"
 	case CacheBind:
 		return "bind"
+	}
+	return ""
+}
+
+func (c *CacheInfo) SourceName() string {
+	switch c.Format {
+	case CacheImage:
+		fallthrough
+	case CacheVolume:
+		return "name"
+	case CacheBind:
+		return "source"
 	}
 	return ""
 }
@@ -87,6 +100,8 @@ func (c *CacheOpts) Set(value string) error {
 			}
 		case "name":
 			cache.Source = value
+		case "source":
+			cache.Source = value
 		}
 	}
 
@@ -99,8 +114,16 @@ func (c *CacheOpts) Set(value string) error {
 
 func (c *CacheOpts) String() string {
 	var cacheFlag string
-	cacheFlag = fmt.Sprintf("type=build;format=%s;name=%s;", c.Build.Format.String(), c.Build.Source)
-	cacheFlag += fmt.Sprintf("type=launch;format=%s;name=%s;", c.Launch.Format.String(), c.Launch.Source)
+	cacheFlag = fmt.Sprintf("type=build;format=%s;", c.Build.Format.String())
+	if c.Build.Source != "" {
+		cacheFlag += fmt.Sprintf("%s=%s;", c.Build.SourceName(), c.Build.Source)
+	}
+
+	cacheFlag += fmt.Sprintf("type=launch;format=%s;", c.Launch.Format.String())
+	if c.Launch.Source != "" {
+		cacheFlag += fmt.Sprintf("%s=%s;", c.Launch.SourceName(), c.Launch.Source)
+	}
+
 	return cacheFlag
 }
 
@@ -109,11 +132,11 @@ func (c *CacheOpts) Type() string {
 }
 
 func sanitize(c *CacheOpts) error {
-	if (c.Build.Source == "" && c.Build.Format == CacheImage) ||
-		(c.Build.Source == "" && c.Build.Format == CacheBind) ||
-		(c.Launch.Source == "" && c.Launch.Format == CacheImage) ||
-		(c.Launch.Source == "" && c.Launch.Format == CacheBind) {
-		return errors.Errorf("cache 'name' is required")
+	for _, v := range []CacheInfo{c.Build, c.Launch} {
+		// volume cache name can be auto-generated
+		if v.Format != CacheVolume && v.Source == "" {
+			return errors.Errorf("cache '%s' is required", v.SourceName())
+		}
 	}
 
 	if c.Build.Format == CacheBind || c.Launch.Format == CacheBind {
