@@ -1281,6 +1281,33 @@ func testAcceptance(
 						})
 					})
 
+					when("--cache with options for build cache as bind", func() {
+						var bindCacheDir, cacheFlags string
+						it.Before(func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.Cache), "")
+							cacheBindName := fmt.Sprintf("%s-bind", repoName)
+							bindCacheDir, err := ioutil.TempDir("", cacheBindName)
+							assert.Nil(err)
+							cacheFlags = fmt.Sprintf("type=build;format=bind;source=%s", bindCacheDir)
+						})
+
+						it("creates image and cache image on the registry", func() {
+							buildArgs := []string{
+								repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--cache",
+								cacheFlags,
+							}
+
+							output := pack.RunSuccessfully("build", buildArgs...)
+							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+
+							t.Log("checking that bind mount has cache contents")
+							assert.FileExists(fmt.Sprintf("%s/committed", bindCacheDir))
+							defer os.RemoveAll(bindCacheDir)
+						})
+					})
+
 					when("ctrl+c", func() {
 						it("stops the execution", func() {
 							var buf = new(bytes.Buffer)

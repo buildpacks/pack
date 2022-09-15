@@ -203,7 +203,13 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVarP(&buildFlags.AppPath, "path", "p", "", "Path to app dir or zip-formatted file (defaults to current working directory)")
 	cmd.Flags().StringSliceVarP(&buildFlags.Buildpacks, "buildpack", "b", nil, "Buildpack to use. One of:\n  a buildpack by id and version in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows),\n  path/URL to a buildpack .tar or .tgz file, or\n  a packaged buildpack image name in the form of '<hostname>/<repo>[:<tag>]'"+stringSliceHelp("buildpack"))
 	cmd.Flags().StringVarP(&buildFlags.Builder, "builder", "B", cfg.DefaultBuilder, "Builder image")
-	cmd.Flags().Var(&buildFlags.Cache, "cache", "Cache options used to define cache techniques for build process.\n- Cache as image: type=<build/launch>;format=image;name=<registry image name>")
+	cmd.Flags().Var(&buildFlags.Cache, "cache",
+		`Cache options used to define cache techniques for build process.
+- Cache as bind: type=<build/launch>;format=bind;source=<path to directory>;
+- Cache as image: type=<build/launch>;format=image;name=<registry image name>;
+- Cache as volume: type=<build/launch>;format=volume;[name=<volume name>;]
+    - If no name is provided, a random name will be generated.
+`)
 	cmd.Flags().StringVar(&buildFlags.CacheImage, "cache-image", "", `Cache build layers in remote registry. Requires --publish`)
 	cmd.Flags().BoolVar(&buildFlags.ClearCache, "clear-cache", false, "Clear image's associated cache before building")
 	cmd.Flags().StringVar(&buildFlags.DateTime, "creation-time", "", "Desired create time in the output image config. Accepted values are Unix timestamps (e.g., '1641013200'), or 'now'. Platform API version must be at least 0.9 to use this feature.")

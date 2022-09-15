@@ -4,12 +4,12 @@ import (
 	"net"
 	"strings"
 
-	"gopkg.in/natefinch/npipe.v2"
+	"github.com/Microsoft/go-winio"
 )
 
 func dialSSHAgent(addr string) (net.Conn, error) {
 	if strings.Contains(addr, "\\pipe\\") {
-		return npipe.Dial(addr)
+		return winio.DialPipe(addr, nil)
 	}
 	return net.Dial("unix", addr)
 }

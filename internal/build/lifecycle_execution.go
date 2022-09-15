@@ -135,10 +135,16 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		}
 		buildCache = cache.NewImageCache(cacheImage, l.docker)
 	} else {
-		buildCache = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Build, "build", l.docker)
+		switch l.opts.Cache.Build.Format {
+		case cache.CacheVolume:
+			buildCache = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Build, "build", l.docker)
+			l.logger.Debugf("Using build cache volume %s", style.Symbol(buildCache.Name()))
+		case cache.CacheBind:
+			buildCache = cache.NewBindCache(l.opts.Cache.Build, l.docker)
+			l.logger.Debugf("Using build cache dir %s", style.Symbol(buildCache.Name()))
+		}
 	}
 
-	l.logger.Debugf("Using build cache volume %s", style.Symbol(buildCache.Name()))
 	if l.opts.ClearCache {
 		if err := buildCache.Clear(ctx); err != nil {
 			return errors.Wrap(err, "clearing build cache")
@@ -251,7 +257,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 	case cache.Image:
 		flags = append(flags, "-cache-image", buildCache.Name())
 		cacheOpts = WithBinds(volumes...)
-	case cache.Volume:
+	case cache.Volume, cache.Bind:
 		cacheOpts = WithBinds(append(volumes, fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))...)
 	}
 
