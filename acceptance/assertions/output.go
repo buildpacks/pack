@@ -182,6 +182,7 @@ func (o OutputAssertionManager) IncludesPrefixedGoogleBuilder() {
 }
 
 var herokuBuilders = []string{
+	"heroku/builder:22",
 	"heroku/buildpacks:20",
 }
 

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -89,7 +90,20 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), containerDir, 123, 456, osType, false, nil)
+			// chmod in case umask sets the wrong bits during a `git clone`.
+			dir := filepath.Join("testdata", "fake-app")
+			err = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if d.IsDir() {
+					return nil
+				}
+
+				return os.Chmod(path, 0644)
+			})
+			h.AssertNil(t, err)
+			copyDirOp := build.CopyDir(dir, containerDir, 123, 456, osType, false, nil)
 
 			var outBuf, errBuf bytes.Buffer
 			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)

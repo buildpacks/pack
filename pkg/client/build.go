@@ -37,6 +37,7 @@ import (
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 	projectTypes "github.com/buildpacks/pack/pkg/project/types"
+	v02 "github.com/buildpacks/pack/pkg/project/v02"
 )
 
 const (
@@ -329,6 +330,8 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				Version:  map[string]interface{}{"declared": version},
 				Metadata: map[string]interface{}{"url": sourceURL},
 			}
+		} else {
+			projectMetadata.Source = v02.GitMetadata(opts.AppPath)
 		}
 	}
 

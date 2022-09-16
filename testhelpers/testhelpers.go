@@ -27,10 +27,10 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/go-git/go-git/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
-	"gopkg.in/src-d/go-git.v4"
 
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
