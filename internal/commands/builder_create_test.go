@@ -23,6 +23,16 @@ const validConfig = `
 [[buildpacks]]
   id = "some.buildpack"
 
+[[order]]
+	[[order.group]]
+		id = "some.buildpack"
+
+`
+
+const validConfigWithExtensions = `
+[[buildpacks]]
+  id = "some.buildpack"
+
 [[extensions]]
   id = "some.extension"
 
@@ -166,6 +176,20 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 					"some/builder",
 				})
 				h.AssertError(t, command.Execute(), "Please provide a builder config path")
+			})
+		})
+
+		when("builder config has extensions but experimental isn't set in the config", func() {
+			it.Before(func() {
+				h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(validConfigWithExtensions), 0666))
+			})
+
+			it("errors", func() {
+				command.SetArgs([]string{
+					"some/builder",
+					"--config", builderConfigPath,
+				})
+				h.AssertError(t, command.Execute(), "builder config contains image extensions; support for image extensions is currently experimental")
 			})
 		})
 	})

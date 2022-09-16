@@ -56,6 +56,12 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				logger.Warnf("builder configuration: %s", w)
 			}
 
+			if hasExtensions(builderConfig) {
+				if !cfg.Experimental {
+					return errors.New("builder config contains image extensions; support for image extensions is currently experimental")
+				}
+			}
+
 			relativeBaseDir, err := filepath.Abs(filepath.Dir(flags.BuilderTomlPath))
 			if err != nil {
 				return errors.Wrap(err, "getting absolute path for config")
