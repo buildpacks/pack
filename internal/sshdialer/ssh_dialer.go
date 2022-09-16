@@ -59,12 +59,15 @@ func NewDialContext(url *urlPkg.URL, config Config) (func(ctx context.Context, n
 		}
 	}()
 
-	dialContext, err := tryGetStdioDialContext(url, sshClient, config.Identity)
-	if err != nil {
-		return nil, err
-	}
-	if dialContext != nil {
-		return dialContext, nil
+	var dialContext func(ctx context.Context, network, addr string) (net.Conn, error)
+	if url.Path == "" {
+		dialContext, err = tryGetStdioDialContext(url, sshClient, config.Identity)
+		if err != nil {
+			return nil, err
+		}
+		if dialContext != nil {
+			return dialContext, nil
+		}
 	}
 
 	var addr string
