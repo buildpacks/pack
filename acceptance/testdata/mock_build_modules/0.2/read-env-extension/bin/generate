@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+echo "---> Generate: Read Env Extension"

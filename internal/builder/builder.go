@@ -449,7 +449,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 	collectionToAdd := map[string]toAdd{}
 	for i, module := range additionalModules {
 		// create directory
-		modTmpDir := filepath.Join(tmpDir, strconv.Itoa(i))
+		modTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s", kind, strconv.Itoa(i)))
 		if err := os.MkdirAll(modTmpDir, os.ModePerm); err != nil {
 			return errors.Wrapf(err, "creating %s temp dir", kind)
 		}
