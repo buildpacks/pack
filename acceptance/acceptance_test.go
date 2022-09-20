@@ -746,14 +746,14 @@ func testAcceptance(
 					assertOutput.ReportsSuccesfulRunImageMirrorsAdd("pack-test/run", "some-registry.com/pack-test/run1")
 				})
 				when("builder has duplicate buildpacks", func() {
-					it.Focus("buildpack layers have no duplication", func() {
+					it("buildpack layers have no duplication", func() {
 						assertImage.DoesNotHaveDuplicateLayers(builderName)
 					})
 				})
 			})
 
 			when("builder.toml is invalid", func() {
-				it("displays an error", func() {
+				it.Focus("displays an error", func() {
 					builderConfigPath := createBuilderPack.FixtureManager().FixtureLocation("invalid_builder.toml")
 
 					output, err := createBuilderPack.Run(
