@@ -499,17 +499,12 @@ func Digest(t *testing.T, repoName string) string {
 
 func TopLayerDiffID(t *testing.T, repoName string) string {
 	t.Helper()
-	return NthLayerDiffID(t, repoName, 0)
-}
-
-func NthLayerDiffID(t *testing.T, repoName string, n int) string {
-	t.Helper()
 	inspect, _, err := dockerCli(t).ImageInspectWithRaw(context.Background(), repoName)
 	AssertNil(t, err)
-	if len(inspect.RootFS.Layers) < n+1 {
+	if len(inspect.RootFS.Layers) < 1 {
 		t.Fatalf("image '%s' has no layers", repoName)
 	}
-	return inspect.RootFS.Layers[n]
+	return inspect.RootFS.Layers[len(inspect.RootFS.Layers)-1]
 }
 
 func Run(t *testing.T, cmd *exec.Cmd) string {
