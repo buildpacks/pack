@@ -282,7 +282,8 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpDir)
+	//defer os.RemoveAll(tmpDir)
+	fmt.Println("XXX temp dir:", tmpDir)
 
 	dirsTar, err := b.defaultDirsLayer(tmpDir)
 	if err != nil {
