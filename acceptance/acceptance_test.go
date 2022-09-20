@@ -704,6 +704,7 @@ func testAcceptance(
 
 				builderName = value
 				assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.layers", `{"noop.buildpack":{"noop.buildpack.later-version":{"api":"0.2","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"sha256:ee2739e498d992e171ddb42c092a4b97f2954186caa3701c50de91af8bed1b3b","homepage":"http://geocities.com/cool-bp","name":"NOOP Buildpack"},"noop.buildpack.version":{"api":"0.2","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"sha256:9db1307b50ab44fdc2b78fc912fcfc61ddee62f9560c3a0d4fb7bd55dfa8f568","name":"NOOP Buildpack"}},"read/env":{"read-env-version":{"api":"0.2","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"sha256:dd1e0efcbf3f08b014ef6eff9cfe7a9eac1cf20bd9b6a71a946f0a74575aa56f","name":"Read Env Buildpack"}},"simple/layers":{"simple-layers-version":{"api":"0.2","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"sha256:a9a7b0857edb69ea8e3dde78b68796631886f7996d271792757e62fb1be7213e","name":"Simple Layers Buildpack"}}}`)
+				t.Logf("builder %s has expected label", builderName)
 			})
 
 			when("complex builder", func() {
