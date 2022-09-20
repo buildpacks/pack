@@ -207,8 +207,9 @@ func calcFileMode(header *tar.Header) int64 {
 	case header.Typeflag == tar.TypeDir:
 		return 0755
 	case nameOneOf(header.Name,
-		path.Join("bin", "detect"),
 		path.Join("bin", "build"),
+		path.Join("bin", "detect"),
+		path.Join("bin", "generate"),
 	):
 		return 0755
 	case anyExecBit(header.Mode):
