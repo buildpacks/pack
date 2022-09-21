@@ -788,7 +788,7 @@ func testAcceptance(
 						bpSimpleLayersDiffID := "sha256:285ff6683c99e5ae19805f6a62168fb40dca64d813c53b782604c9652d745c70"
 						bpReadEnvDiffID := "sha256:dd1e0efcbf3f08b014ef6eff9cfe7a9eac1cf20bd9b6a71a946f0a74575aa56f"
 						if imageManager.HostOS() == "windows" { // Windows containers on Windows
-							extSimpleLayersDiffID = "sha256:cca4e3f12d2c6789fe7dd2e35c8d6a3bef3ec912bc14997eb9307f73f8ba8dbb"
+							extSimpleLayersDiffID = "sha256:97f578edae653ceb81f95c1c20df5b84a9f577229ac98a42dbf673fd34475b99"
 							extReadEnvDiffID = "sha256:118b0b249624e05dc64f52e9e3e90a6d4e137ac5b3cd039c86365faf1119267c"
 							bpSimpleLayersDiffID = "sha256:ccd1234cc5685e8a412b70c5f9a8e7b584b8e4f2a20c987ec242c9055de3e45e"
 							bpReadEnvDiffID = "sha256:8b22a7742ffdfbdd978787c6937456b68afb27c3585a3903048be7434d251e3f"
