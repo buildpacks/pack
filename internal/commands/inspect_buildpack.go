@@ -13,7 +13,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/config"
 	strs "github.com/buildpacks/pack/internal/strings"
-	"github.com/buildpacks/pack/pkg/buildmodule"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -107,7 +107,7 @@ func inspectAllBuildpacks(client PackClient, flags BuildpackInspectFlags, option
 			return "", err
 		}
 
-		if nextResult.Location != buildmodule.PackageLocator {
+		if nextResult.Location != buildpack.PackageLocator {
 			return buf.String(), nil
 		}
 	}
@@ -131,7 +131,7 @@ func inspectBuildpackOutput(info *client.BuildpackInfo, prefix string, flags Bui
 
 	err = tpl.Execute(buf, &struct {
 		Location   string
-		Metadata   buildmodule.Metadata
+		Metadata   buildpack.Metadata
 		ListMixins bool
 		Buildpacks string
 		Order      string
@@ -149,16 +149,16 @@ func inspectBuildpackOutput(info *client.BuildpackInfo, prefix string, flags Bui
 	return buf.Bytes(), nil
 }
 
-func determinePrefix(name string, locator buildmodule.LocatorType, daemon bool) string {
+func determinePrefix(name string, locator buildpack.LocatorType, daemon bool) string {
 	switch locator {
-	case buildmodule.RegistryLocator:
+	case buildpack.RegistryLocator:
 		return "REGISTRY IMAGE"
-	case buildmodule.PackageLocator:
+	case buildpack.PackageLocator:
 		if daemon {
 			return "LOCAL IMAGE"
 		}
 		return "REMOTE IMAGE"
-	case buildmodule.URILocator:
+	case buildpack.URILocator:
 		if strings.HasPrefix(name, "http") {
 			return "REMOTE ARCHIVE"
 		}

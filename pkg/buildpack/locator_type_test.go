@@ -1,4 +1,4 @@
-package buildmodule_test
+package buildpack_test
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/pkg/buildmodule"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -24,7 +24,7 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 	type testCase struct {
 		locator      string
 		builderBPs   []dist.ModuleInfo
-		expectedType buildmodule.LocatorType
+		expectedType buildpack.LocatorType
 		expectedErr  string
 	}
 
@@ -35,12 +35,12 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 	for _, tc := range []testCase{
 		{
 			locator:      "from=builder",
-			expectedType: buildmodule.FromBuilderLocator,
+			expectedType: buildpack.FromBuilderLocator,
 		},
 		{
 			locator:      "from=builder:some-bp",
 			builderBPs:   []dist.ModuleInfo{{ID: "some-bp", Version: "some-version"}},
-			expectedType: buildmodule.IDLocator,
+			expectedType: buildpack.IDLocator,
 		},
 		{
 			locator:     "from=builder:some-bp",
@@ -54,7 +54,7 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 		{
 			locator:      "urn:cnb:builder:some-bp",
 			builderBPs:   []dist.ModuleInfo{{ID: "some-bp", Version: "some-version"}},
-			expectedType: buildmodule.IDLocator,
+			expectedType: buildpack.IDLocator,
 		},
 		{
 			locator:     "urn:cnb:builder:some-bp",
@@ -68,100 +68,100 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 		{
 			locator:      "some-bp",
 			builderBPs:   []dist.ModuleInfo{{ID: "some-bp", Version: "any-version"}},
-			expectedType: buildmodule.IDLocator,
+			expectedType: buildpack.IDLocator,
 		},
 		{
 			locator:      localPath("buildpack"),
 			builderBPs:   []dist.ModuleInfo{{ID: "bp.one", Version: "1.2.3"}},
-			expectedType: buildmodule.URILocator,
+			expectedType: buildpack.URILocator,
 		},
 		{
 			locator:      "https://example.com/buildpack.tgz",
-			expectedType: buildmodule.URILocator,
+			expectedType: buildpack.URILocator,
 		},
 		{
 			locator:      "localhost:1234/example/package-cnb",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "cnbs/some-bp:latest",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "docker://cnbs/some-bp",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "docker://cnbs/some-bp@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "docker://cnbs/some-bp:some-tag",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "docker://cnbs/some-bp:some-tag@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "docker://registry.com/cnbs/some-bp",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "docker://registry.com/cnbs/some-bp@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "docker://registry.com/cnbs/some-bp:some-tag",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "docker://registry.com/cnbs/some-bp:some-tag@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "cnbs/some-bp@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "cnbs/some-bp:some-tag@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "registry.com/cnbs/some-bp",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "registry.com/cnbs/some-bp@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "registry.com/cnbs/some-bp:some-tag",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "registry.com/cnbs/some-bp:some-tag@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 		{
 			locator:      "urn:cnb:registry:example/foo@1.0.0",
-			expectedType: buildmodule.RegistryLocator,
+			expectedType: buildpack.RegistryLocator,
 		},
 		{
 			locator:      "example/foo@1.0.0",
-			expectedType: buildmodule.RegistryLocator,
+			expectedType: buildpack.RegistryLocator,
 		},
 		{
 			locator:      "example/registry-cnb",
-			expectedType: buildmodule.RegistryLocator,
+			expectedType: buildpack.RegistryLocator,
 		},
 		{
 			locator:      "cnbs/sample-package@hello-universe",
-			expectedType: buildmodule.InvalidLocator,
+			expectedType: buildpack.InvalidLocator,
 		},
 		{
 			locator:      "dev.local/http-go-fn:latest",
-			expectedType: buildmodule.PackageLocator,
+			expectedType: buildpack.PackageLocator,
 		},
 	} {
 		tc := tc
@@ -177,7 +177,7 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 
 		when(desc, func() {
 			it(fmt.Sprintf("should return %s", tc.expectedType), func() {
-				actualType, actualErr := buildmodule.GetLocatorType(tc.locator, "", tc.builderBPs)
+				actualType, actualErr := buildpack.GetLocatorType(tc.locator, "", tc.builderBPs)
 
 				if tc.expectedErr == "" {
 					h.AssertNil(t, actualErr)

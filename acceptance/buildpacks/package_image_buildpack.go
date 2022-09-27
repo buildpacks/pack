@@ -1,58 +1,62 @@
 //go:build acceptance
 // +build acceptance
 
-package build_modules
+package buildpacks
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/buildpacks/pack/acceptance/invoke"
+	"github.com/buildpacks/pack/acceptance/assertions"
+
 	h "github.com/buildpacks/pack/testhelpers"
+
+	"github.com/buildpacks/pack/acceptance/invoke"
 )
 
-type PackageFile struct {
+type PackageImage struct {
 	testObject           *testing.T
 	pack                 *invoke.PackInvoker
-	destination          string
+	name                 string
 	sourceConfigLocation string
 	buildpacks           []TestBuildModule
+	publish              bool
 }
 
-func (p *PackageFile) SetBuildpacks(buildpacks []TestBuildModule) {
+func (p *PackageImage) SetBuildpacks(buildpacks []TestBuildModule) {
 	p.buildpacks = buildpacks
 }
 
-func (p *PackageFile) SetPublish() {}
+func (p *PackageImage) SetPublish() {
+	p.publish = true
+}
 
-func NewPackageFile(
+func NewPackageImage(
 	t *testing.T,
 	pack *invoke.PackInvoker,
-	destination, configLocation string,
+	name, configLocation string,
 	modifiers ...PackageModifier,
-) PackageFile {
-
-	p := PackageFile{
+) PackageImage {
+	p := PackageImage{
 		testObject:           t,
 		pack:                 pack,
-		destination:          destination,
+		name:                 name,
 		sourceConfigLocation: configLocation,
+		publish:              false,
 	}
+
 	for _, mod := range modifiers {
 		mod(&p)
 	}
-
 	return p
 }
 
-func (p PackageFile) Prepare(sourceDir, _ string) error {
+func (p PackageImage) Prepare(sourceDir, _ string) error {
 	p.testObject.Helper()
-	p.testObject.Log("creating package file from:", sourceDir)
+	p.testObject.Log("creating package image from:", sourceDir)
 
 	tmpDir, err := ioutil.TempDir("", "package-buildpacks")
 	if err != nil {
@@ -71,15 +75,22 @@ func (p PackageFile) Prepare(sourceDir, _ string) error {
 	h.CopyFile(p.testObject, p.sourceConfigLocation, configLocation)
 
 	packArgs := []string{
-		p.destination,
+		p.name,
 		"--no-color",
 		"-c", configLocation,
-		"--format", "file",
 	}
 
+	if p.publish {
+		packArgs = append(packArgs, "--publish")
+	}
+
+	p.testObject.Log("packaging image: ", p.name)
 	output := p.pack.RunSuccessfully("buildpack", append([]string{"package"}, packArgs...)...)
-	if !strings.Contains(output, fmt.Sprintf("Successfully created package '%s'", p.destination)) {
-		return errors.New("failed to create package")
+	assertOutput := assertions.NewOutputAssertionManager(p.testObject, output)
+	if p.publish {
+		assertOutput.ReportsPackagePublished(p.name)
+	} else {
+		assertOutput.ReportsPackageCreation(p.name)
 	}
 
 	return nil

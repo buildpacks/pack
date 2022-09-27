@@ -1,7 +1,7 @@
 //go:build acceptance
 // +build acceptance
 
-package build_modules
+package buildpacks
 
 import (
 	"path/filepath"
@@ -22,7 +22,7 @@ type BuildModuleManagerModifier func(b *BuildModuleManager)
 
 func WithBuildpackAPIVersion(apiVersion string) func(b *BuildModuleManager) {
 	return func(b *BuildModuleManager) {
-		b.sourceDir = filepath.Join("testdata", "mock_build_modules", apiVersion)
+		b.sourceDir = filepath.Join("testdata", "mock_buildpacks", apiVersion)
 	}
 }
 
@@ -30,7 +30,7 @@ func NewBuildModuleManager(t *testing.T, assert testhelpers.AssertionManager, mo
 	m := BuildModuleManager{
 		testObject: t,
 		assert:     assert,
-		sourceDir:  filepath.Join("testdata", "mock_build_modules", builder.DefaultBuildpackAPIVersion),
+		sourceDir:  filepath.Join("testdata", "mock_buildpacks", builder.DefaultBuildpackAPIVersion),
 	}
 
 	for _, mod := range modifiers {

@@ -1,4 +1,4 @@
-package buildmodule_test
+package buildpack_test
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 	"github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/buildmodule"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -27,7 +27,7 @@ func TestOCILayoutPackage(t *testing.T) {
 func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 	when("#BuildpacksFromOCILayoutBlob", func() {
 		it("extracts buildpacks", func() {
-			mainBP, depBPs, err := buildmodule.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
+			mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, mainBP.Descriptor().Info().ID, "io.buildpacks.samples.hello-universe")
@@ -36,10 +36,10 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("provides readable blobs", func() {
-			mainBP, depBPs, err := buildmodule.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
+			mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
 			h.AssertNil(t, err)
 
-			for _, bp := range append([]buildmodule.BuildModule{mainBP}, depBPs...) {
+			for _, bp := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
 				reader, err := bp.Open()
 				h.AssertNil(t, err)
 
@@ -59,7 +59,7 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 
 	when.Pend("#ExtensionsFromOCILayoutBlob", func() { // TODO: add fixture when `pack extension package` is supported in https://github.com/buildpacks/pack/issues/1489
 		it("extracts buildpacks", func() {
-			ext, err := buildmodule.ExtensionsFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-extensions.cnb")))
+			ext, err := buildpack.ExtensionsFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-extensions.cnb")))
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, ext.Descriptor().Info().ID, "io.buildpacks.samples.hello-extensions")
@@ -67,7 +67,7 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("provides readable blobs", func() {
-			ext, err := buildmodule.ExtensionsFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-extensions.cnb")))
+			ext, err := buildpack.ExtensionsFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-extensions.cnb")))
 			h.AssertNil(t, err)
 
 			reader, err := ext.Open()
@@ -89,7 +89,7 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 	when("#IsOCILayoutBlob", func() {
 		when("is an OCI layout blob", func() {
 			it("returns true", func() {
-				isOCILayoutBlob, err := buildmodule.IsOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
+				isOCILayoutBlob, err := buildpack.IsOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
 				h.AssertNil(t, err)
 				h.AssertEq(t, isOCILayoutBlob, true)
 			})
@@ -108,7 +108,7 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 				}, 0755)
 				h.AssertNil(t, err)
 
-				isOCILayoutBlob, err := buildmodule.IsOCILayoutBlob(buildpackBlob)
+				isOCILayoutBlob, err := buildpack.IsOCILayoutBlob(buildpackBlob)
 				h.AssertNil(t, err)
 				h.AssertEq(t, isOCILayoutBlob, false)
 			})

@@ -23,7 +23,7 @@ import (
 	cfg "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/buildmodule"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
@@ -177,7 +177,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 		client.WithDownloader(mockDownloader)(subject)
 
 		buildpackImage = fakes.NewImage("some/buildpack", "", nil)
-		h.AssertNil(t, buildpackImage.SetLabel(buildmodule.MetadataLabel, buildpackageMetadataTag))
+		h.AssertNil(t, buildpackImage.SetLabel(buildpack.MetadataLabel, buildpackageMetadataTag))
 		h.AssertNil(t, buildpackImage.SetLabel(dist.BuildpackLayersLabel, buildpackLayersTag))
 
 		var err error
@@ -190,7 +190,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 		buildpackPath = filepath.Join(tmpDir, "buildpackTarFile.tar")
 
 		expectedInfo = &client.BuildpackInfo{
-			BuildpackMetadata: buildmodule.Metadata{
+			BuildpackMetadata: buildpack.Metadata{
 				ModuleInfo: dist.ModuleInfo{
 					ID:       "some/top-buildpack",
 					Version:  "0.0.1",
@@ -356,7 +356,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 			var registryFixture string
 			var configPath string
 			it.Before(func() {
-				expectedInfo.Location = buildmodule.RegistryLocator
+				expectedInfo.Location = buildpack.RegistryLocator
 
 				registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
 				packHome := filepath.Join(tmpDir, "packHome")
@@ -397,7 +397,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 		})
 		when("inspecting local buildpack archive", func() {
 			it.Before(func() {
-				expectedInfo.Location = buildmodule.URILocator
+				expectedInfo.Location = buildpack.URILocator
 
 				assert := h.NewAssertionManager(t)
 				writeBuildpackArchive(buildpackPath, tmpDir, assert)
@@ -421,7 +421,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 				useDaemon := useDaemon
 				when(fmt.Sprintf("daemon is %t", useDaemon), func() {
 					it.Before(func() {
-						expectedInfo.Location = buildmodule.PackageLocator
+						expectedInfo.Location = buildpack.PackageLocator
 						if useDaemon {
 							mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/buildpack", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(buildpackImage, nil)
 						} else {
@@ -626,7 +626,7 @@ func writeBuildpackArchive(buildpackPath, tmpDir string, assert h.AssertionManag
 	assert.Nil(err)
 
 	c.Config.Labels = map[string]string{}
-	c.Config.Labels[buildmodule.MetadataLabel] = buildpackageMetadataTag
+	c.Config.Labels[buildpack.MetadataLabel] = buildpackageMetadataTag
 	c.Config.Labels[dist.BuildpackLayersLabel] = buildpackLayersTag
 	img, err = mutate.Config(img, c.Config)
 	assert.Nil(err)

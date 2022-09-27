@@ -31,7 +31,7 @@ import (
 	iconfig "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/buildmodule"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -77,7 +77,7 @@ type ImageFactory interface {
 // BuildpackDownloader is an interface for downloading and extracting buildpacks from various sources
 type BuildpackDownloader interface {
 	// Download parses a buildpack URI and downloads the buildpack and any dependencies buildpacks from the appropriate source
-	Download(ctx context.Context, buildpackURI string, opts buildmodule.DownloadOptions) (buildmodule.BuildModule, []buildmodule.BuildModule, error)
+	Download(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error)
 }
 
 // Client is an orchestration object, it contains all parameters needed to
@@ -226,7 +226,7 @@ func NewClient(opts ...Option) (*Client, error) {
 	}
 
 	if client.buildpackDownloader == nil {
-		client.buildpackDownloader = buildmodule.NewDownloader(
+		client.buildpackDownloader = buildpack.NewDownloader(
 			client.logger,
 			client.imageFetcher,
 			client.downloader,

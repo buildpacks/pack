@@ -1,4 +1,4 @@
-package buildmodule
+package buildpack
 
 import (
 	"context"
@@ -35,7 +35,7 @@ type Downloader interface {
 	Download(ctx context.Context, pathOrURI string) (blob.Blob, error)
 }
 
-//go:generate mockgen -package testmocks -destination ../testmocks/mock_registry_resolver.go github.com/buildpacks/pack/pkg/buildmodule RegistryResolver
+//go:generate mockgen -package testmocks -destination ../testmocks/mock_registry_resolver.go github.com/buildpacks/pack/pkg/buildpack RegistryResolver
 
 type RegistryResolver interface {
 	Resolve(registryName, bpURI string) (string, error)

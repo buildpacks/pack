@@ -1,7 +1,7 @@
 //go:build acceptance
 // +build acceptance
 
-package build_modules
+package buildpacks
 
 import (
 	"fmt"

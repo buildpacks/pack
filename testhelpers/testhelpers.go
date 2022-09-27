@@ -35,7 +35,7 @@ import (
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
-	"github.com/buildpacks/pack/pkg/buildmodule"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
@@ -795,7 +795,7 @@ func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
 	return false
 }
 
-func AssertBuildpacksHaveDescriptors(t *testing.T, modules []buildmodule.BuildModule, descriptors []dist.BuildpackDescriptor) {
+func AssertBuildpacksHaveDescriptors(t *testing.T, modules []buildpack.BuildModule, descriptors []dist.BuildpackDescriptor) {
 	AssertEq(t, len(modules), len(descriptors))
 	for _, mod := range modules {
 		found := false

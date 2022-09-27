@@ -27,7 +27,7 @@ import (
 	"github.com/buildpacks/pack/internal/builder/testmocks"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/pkg/archive"
-	"github.com/buildpacks/pack/pkg/buildmodule"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -45,13 +45,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		subject        *builder.Builder
 		mockController *gomock.Controller
 		mockLifecycle  *testmocks.MockLifecycle
-		bp1v1          buildmodule.BuildModule
-		bp1v2          buildmodule.BuildModule
-		bp2v1          buildmodule.BuildModule
-		ext1v1         buildmodule.BuildModule
-		ext1v2         buildmodule.BuildModule
-		ext2v1         buildmodule.BuildModule
-		bpOrder        buildmodule.BuildModule
+		bp1v1          buildpack.BuildModule
+		bp1v2          buildpack.BuildModule
+		bp2v1          buildpack.BuildModule
+		ext1v1         buildpack.BuildModule
+		ext1v2         buildpack.BuildModule
+		ext2v1         buildpack.BuildModule
+		bpOrder        buildpack.BuildModule
 		outBuf         bytes.Buffer
 		logger         logging.Logger
 	)
@@ -688,8 +688,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("duplicated buildpack, has different contents", func() {
-					var bp1v1Alt buildmodule.BuildModule
-					var bp1v1AltWithNewContent buildmodule.BuildModule
+					var bp1v1Alt buildpack.BuildModule
+					var bp1v1AltWithNewContent buildpack.BuildModule
 					it.Before(func() {
 						var err error
 						bp1v1Alt, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -824,7 +824,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("error adding buildpacks to builder", func() {
 				when("unable to convert buildpack to layer tar", func() {
-					var bp1v1Err buildmodule.BuildModule
+					var bp1v1Err buildpack.BuildModule
 					it.Before(func() {
 						var err error
 						bp1v1Err, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -1650,7 +1650,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp buildmodule.BuildModule) {
+func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp buildpack.BuildModule) {
 	t.Helper()
 
 	dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", bp.Descriptor().Info().ID, bp.Descriptor().Info().Version)
@@ -1674,7 +1674,7 @@ func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp buildmodule.Buil
 	)
 }
 
-func assertImageHasExtLayer(t *testing.T, image *fakes.Image, ext buildmodule.BuildModule) {
+func assertImageHasExtLayer(t *testing.T, image *fakes.Image, ext buildpack.BuildModule) {
 	t.Helper()
 
 	dirPath := fmt.Sprintf("/cnb/extensions/%s/%s", ext.Descriptor().Info().ID, ext.Descriptor().Info().Version)
@@ -1698,7 +1698,7 @@ func assertImageHasExtLayer(t *testing.T, image *fakes.Image, ext buildmodule.Bu
 	)
 }
 
-func assertImageHasOrderBpLayer(t *testing.T, image *fakes.Image, bp buildmodule.BuildModule) {
+func assertImageHasOrderBpLayer(t *testing.T, image *fakes.Image, bp buildpack.BuildModule) {
 	t.Helper()
 
 	dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", bp.Descriptor().Info().ID, bp.Descriptor().Info().Version)

@@ -8,7 +8,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/pkg/buildmodule"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
@@ -103,12 +103,12 @@ func (r *ConfigReader) Read(path string) (Config, error) {
 }
 
 func validateURI(uri, relativeBaseDir string) error {
-	locatorType, err := buildmodule.GetLocatorType(uri, relativeBaseDir, nil)
+	locatorType, err := buildpack.GetLocatorType(uri, relativeBaseDir, nil)
 	if err != nil {
 		return err
 	}
 
-	if locatorType == buildmodule.InvalidLocator {
+	if locatorType == buildpack.InvalidLocator {
 		return errors.Errorf("invalid locator %s", style.Symbol(uri))
 	}
 

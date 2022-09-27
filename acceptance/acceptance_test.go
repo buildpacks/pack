@@ -29,7 +29,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/acceptance/assertions"
-	"github.com/buildpacks/pack/acceptance/build_modules"
+	"github.com/buildpacks/pack/acceptance/buildpacks"
 	"github.com/buildpacks/pack/acceptance/config"
 	"github.com/buildpacks/pack/acceptance/invoke"
 	"github.com/buildpacks/pack/acceptance/managers"
@@ -127,13 +127,13 @@ func testWithoutSpecificBuilderRequirement(
 	var (
 		pack             *invoke.PackInvoker
 		assert           = h.NewAssertionManager(t)
-		buildpackManager build_modules.BuildModuleManager
+		buildpackManager buildpacks.BuildModuleManager
 	)
 
 	it.Before(func() {
 		pack = invoke.NewPackInvoker(t, assert, packConfig, registryConfig.DockerConfigDir)
 		pack.EnableExperimental()
-		buildpackManager = build_modules.NewBuildModuleManager(t, assert)
+		buildpackManager = buildpacks.NewBuildModuleManager(t, assert)
 	})
 
 	it.After(func() {
@@ -171,7 +171,7 @@ func testWithoutSpecificBuilderRequirement(
 		when("package", func() {
 			var (
 				tmpDir                         string
-				buildpackManager               build_modules.BuildModuleManager
+				buildpackManager               buildpacks.BuildModuleManager
 				simplePackageConfigFixtureName = "package.toml"
 			)
 
@@ -180,8 +180,8 @@ func testWithoutSpecificBuilderRequirement(
 				tmpDir, err = ioutil.TempDir("", "buildpack-package-tests")
 				assert.Nil(err)
 
-				buildpackManager = build_modules.NewBuildModuleManager(t, assert)
-				buildpackManager.PrepareBuildModules(tmpDir, build_modules.BpSimpleLayersParent, build_modules.BpSimpleLayers)
+				buildpackManager = buildpacks.NewBuildModuleManager(t, assert)
+				buildpackManager.PrepareBuildModules(tmpDir, buildpacks.BpSimpleLayersParent, buildpacks.BpSimpleLayers)
 			})
 
 			it.After(func() {
@@ -230,19 +230,19 @@ func testWithoutSpecificBuilderRequirement(
 					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
 
-					packageBuildpack := build_modules.NewPackageImage(
+					packageBuildpack := buildpacks.NewPackageImage(
 						t,
 						pack,
 						packageName,
 						aggregatePackageToml,
-						build_modules.WithRequiredBuildpacks(
-							build_modules.BpSimpleLayersParent,
-							build_modules.NewPackageImage(
+						buildpacks.WithRequiredBuildpacks(
+							buildpacks.BpSimpleLayersParent,
+							buildpacks.NewPackageImage(
 								t,
 								pack,
 								nestedPackageName,
 								packageTomlPath,
-								build_modules.WithRequiredBuildpacks(build_modules.BpSimpleLayers),
+								buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayers),
 							),
 						),
 					)
@@ -258,13 +258,13 @@ func testWithoutSpecificBuilderRequirement(
 						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 						nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
-						nestedPackage := build_modules.NewPackageImage(
+						nestedPackage := buildpacks.NewPackageImage(
 							t,
 							pack,
 							nestedPackageName,
 							packageTomlPath,
-							build_modules.WithRequiredBuildpacks(build_modules.BpSimpleLayers),
-							build_modules.WithPublish(),
+							buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayers),
+							buildpacks.WithPublish(),
 						)
 						buildpackManager.PrepareBuildModules(tmpDir, nestedPackage)
 
@@ -289,12 +289,12 @@ func testWithoutSpecificBuilderRequirement(
 					it("should use local image", func() {
 						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 						nestedPackageName := "test/package-" + h.RandString(10)
-						nestedPackage := build_modules.NewPackageImage(
+						nestedPackage := buildpacks.NewPackageImage(
 							t,
 							pack,
 							nestedPackageName,
 							packageTomlPath,
-							build_modules.WithRequiredBuildpacks(build_modules.BpSimpleLayers),
+							buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayers),
 						)
 						buildpackManager.PrepareBuildModules(tmpDir, nestedPackage)
 						defer imageManager.CleanupImages(nestedPackageName)
@@ -313,13 +313,13 @@ func testWithoutSpecificBuilderRequirement(
 					it("should not pull image from registry", func() {
 						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 						nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-						nestedPackage := build_modules.NewPackageImage(
+						nestedPackage := buildpacks.NewPackageImage(
 							t,
 							pack,
 							nestedPackageName,
 							packageTomlPath,
-							build_modules.WithPublish(),
-							build_modules.WithRequiredBuildpacks(build_modules.BpSimpleLayers),
+							buildpacks.WithPublish(),
+							buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayers),
 						)
 						buildpackManager.PrepareBuildModules(tmpDir, nestedPackage)
 						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
@@ -420,14 +420,14 @@ func testWithoutSpecificBuilderRequirement(
 
 					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
 
-					packageFile := build_modules.NewPackageFile(
+					packageFile := buildpacks.NewPackageFile(
 						t,
 						pack,
 						packageFileLocation,
 						packageTomlPath,
-						build_modules.WithRequiredBuildpacks(
-							build_modules.BpFolderSimpleLayersParent,
-							build_modules.BpFolderSimpleLayers,
+						buildpacks.WithRequiredBuildpacks(
+							buildpacks.BpFolderSimpleLayersParent,
+							buildpacks.BpFolderSimpleLayers,
 						),
 					)
 
@@ -452,14 +452,14 @@ func testWithoutSpecificBuilderRequirement(
 						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
 						packageImageName := registryConfig.RepoName("buildpack-" + h.RandString(8))
 
-						packageImage := build_modules.NewPackageImage(
+						packageImage := buildpacks.NewPackageImage(
 							t,
 							pack,
 							packageImageName,
 							packageTomlPath,
-							build_modules.WithRequiredBuildpacks(
-								build_modules.BpFolderSimpleLayersParent,
-								build_modules.BpFolderSimpleLayers,
+							buildpacks.WithRequiredBuildpacks(
+								buildpacks.BpFolderSimpleLayersParent,
+								buildpacks.BpFolderSimpleLayers,
 							),
 						)
 						defer imageManager.CleanupImages(packageImageName)
@@ -626,7 +626,7 @@ func testAcceptance(
 ) {
 	var (
 		pack, createBuilderPack *invoke.PackInvoker
-		buildpackManager        build_modules.BuildModuleManager
+		buildpackManager        buildpacks.BuildModuleManager
 		bpDir                   = buildModulesDir(lifecycle.EarliestBuildpackAPIVersion())
 		assert                  = h.NewAssertionManager(t)
 	)
@@ -638,10 +638,10 @@ func testAcceptance(
 		createBuilderPack = invoke.NewPackInvoker(t, assert, createBuilderPackConfig, registryConfig.DockerConfigDir)
 		createBuilderPack.EnableExperimental()
 
-		buildpackManager = build_modules.NewBuildModuleManager(
+		buildpackManager = buildpacks.NewBuildModuleManager(
 			t,
 			assert,
-			build_modules.WithBuildpackAPIVersion(lifecycle.EarliestBuildpackAPIVersion()),
+			buildpacks.WithBuildpackAPIVersion(lifecycle.EarliestBuildpackAPIVersion()),
 		)
 	})
 
@@ -1106,7 +1106,7 @@ func testAcceptance(
 							tmpDir, err = ioutil.TempDir("", "archive-buildpacks-")
 							assert.Nil(err)
 
-							buildpackManager.PrepareBuildModules(tmpDir, build_modules.BpInternetCapable)
+							buildpackManager.PrepareBuildModules(tmpDir, buildpacks.BpInternetCapable)
 						})
 
 						it.After(func() {
@@ -1119,7 +1119,7 @@ func testAcceptance(
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", build_modules.BpInternetCapable.FullPathIn(tmpDir),
+									"--buildpack", buildpacks.BpInternetCapable.FullPathIn(tmpDir),
 								)
 
 								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
@@ -1132,7 +1132,7 @@ func testAcceptance(
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", build_modules.BpInternetCapable.FullPathIn(tmpDir),
+									"--buildpack", buildpacks.BpInternetCapable.FullPathIn(tmpDir),
 									"--network", "default",
 								)
 
@@ -1146,7 +1146,7 @@ func testAcceptance(
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", build_modules.BpInternetCapable.FullPathIn(tmpDir),
+									"--buildpack", buildpacks.BpInternetCapable.FullPathIn(tmpDir),
 									"--network", "none",
 								)
 
@@ -1176,7 +1176,7 @@ func testAcceptance(
 							tmpDir, err = ioutil.TempDir("", "volume-buildpack-tests-")
 							assert.Nil(err)
 
-							buildpackManager.PrepareBuildModules(tmpDir, build_modules.BpReadVolume, build_modules.BpReadWriteVolume)
+							buildpackManager.PrepareBuildModules(tmpDir, buildpacks.BpReadVolume, buildpacks.BpReadWriteVolume)
 
 							tmpVolumeSrc, err = ioutil.TempDir("", "volume-mount-source")
 							assert.Nil(err)
@@ -1204,7 +1204,7 @@ func testAcceptance(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--volume", fmt.Sprintf("%s:%s", tmpVolumeSrc, volumeDest),
-									"--buildpack", build_modules.BpReadVolume.FullPathIn(tmpDir),
+									"--buildpack", buildpacks.BpReadVolume.FullPathIn(tmpDir),
 									"--env", "TEST_FILE_PATH="+testFilePath,
 								)
 
@@ -1221,7 +1221,7 @@ func testAcceptance(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--volume", fmt.Sprintf("%s:%s", tmpVolumeSrc, volumeDest),
-									"--buildpack", build_modules.BpReadWriteVolume.FullPathIn(tmpDir),
+									"--buildpack", buildpacks.BpReadWriteVolume.FullPathIn(tmpDir),
 									"--env", "DETECT_TEST_FILE_PATH="+testDetectFilePath,
 									"--env", "BUILD_TEST_FILE_PATH="+testBuildFilePath,
 								)
@@ -1241,7 +1241,7 @@ func testAcceptance(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--volume", fmt.Sprintf("%s:%s:rw", tmpVolumeSrc, volumeDest),
-									"--buildpack", build_modules.BpReadWriteVolume.FullPathIn(tmpDir),
+									"--buildpack", buildpacks.BpReadWriteVolume.FullPathIn(tmpDir),
 									"--env", "DETECT_TEST_FILE_PATH="+testDetectFilePath,
 									"--env", "BUILD_TEST_FILE_PATH="+testBuildFilePath,
 								)
@@ -1307,12 +1307,12 @@ func testAcceptance(
 							})
 
 							it("adds the buildpack to the builder and runs it", func() {
-								buildpackManager.PrepareBuildModules(tmpDir, build_modules.BpArchiveNotInBuilder)
+								buildpackManager.PrepareBuildModules(tmpDir, buildpacks.BpArchiveNotInBuilder)
 
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", build_modules.BpArchiveNotInBuilder.FullPathIn(tmpDir),
+									"--buildpack", buildpacks.BpArchiveNotInBuilder.FullPathIn(tmpDir),
 								)
 
 								assertOutput := assertions.NewOutputAssertionManager(t, output)
@@ -1340,12 +1340,12 @@ func testAcceptance(
 							it("adds the buildpacks to the builder and runs it", func() {
 								h.SkipIf(t, runtime.GOOS == "windows", "buildpack directories not supported on windows")
 
-								buildpackManager.PrepareBuildModules(tmpDir, build_modules.BpFolderNotInBuilder)
+								buildpackManager.PrepareBuildModules(tmpDir, buildpacks.BpFolderNotInBuilder)
 
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", build_modules.BpFolderNotInBuilder.FullPathIn(tmpDir),
+									"--buildpack", buildpacks.BpFolderNotInBuilder.FullPathIn(tmpDir),
 								)
 
 								assertOutput := assertions.NewOutputAssertionManager(t, output)
@@ -1372,14 +1372,14 @@ func testAcceptance(
 								packageImageName = registryConfig.RepoName("buildpack-" + h.RandString(8))
 
 								packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
-								packageImage := build_modules.NewPackageImage(
+								packageImage := buildpacks.NewPackageImage(
 									t,
 									pack,
 									packageImageName,
 									packageTomlPath,
-									build_modules.WithRequiredBuildpacks(
-										build_modules.BpFolderSimpleLayersParent,
-										build_modules.BpFolderSimpleLayers,
+									buildpacks.WithRequiredBuildpacks(
+										buildpacks.BpFolderSimpleLayersParent,
+										buildpacks.BpFolderSimpleLayers,
 									),
 								)
 
@@ -1424,14 +1424,14 @@ func testAcceptance(
 								)
 
 								packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
-								packageFile := build_modules.NewPackageFile(
+								packageFile := buildpacks.NewPackageFile(
 									t,
 									pack,
 									packageFileLocation,
 									packageTomlPath,
-									build_modules.WithRequiredBuildpacks(
-										build_modules.BpFolderSimpleLayersParent,
-										build_modules.BpFolderSimpleLayers,
+									buildpacks.WithRequiredBuildpacks(
+										buildpacks.BpFolderSimpleLayersParent,
+										buildpacks.BpFolderSimpleLayers,
 									),
 								)
 
@@ -2624,14 +2624,14 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 }
 
 func buildModulesDir(bpAPIVersion string) string {
-	return filepath.Join("testdata", "mock_build_modules", bpAPIVersion)
+	return filepath.Join("testdata", "mock_buildpacks", bpAPIVersion)
 }
 
 func createComplexBuilder(t *testing.T,
 	assert h.AssertionManager,
 	pack *invoke.PackInvoker,
 	lifecycle config.LifecycleAsset,
-	buildpackManager build_modules.BuildModuleManager,
+	buildpackManager buildpacks.BuildModuleManager,
 	runImageMirror string,
 ) (string, error) {
 
@@ -2645,11 +2645,11 @@ func createComplexBuilder(t *testing.T,
 	defer os.RemoveAll(tmpDir)
 
 	// ARCHIVE BUILDPACKS
-	builderBuildpacks := []build_modules.TestBuildModule{
-		build_modules.BpNoop,
-		build_modules.BpNoop2,
-		build_modules.BpOtherStack,
-		build_modules.BpReadEnv,
+	builderBuildpacks := []buildpacks.TestBuildModule{
+		buildpacks.BpNoop,
+		buildpacks.BpNoop2,
+		buildpacks.BpOtherStack,
+		buildpacks.BpReadEnv,
 	}
 
 	templateMapping := map[string]interface{}{
@@ -2691,38 +2691,38 @@ func createComplexBuilder(t *testing.T,
 	err = nestedLevelTwoConfigFile.Close()
 	assert.Nil(err)
 
-	packageImageBuildpack := build_modules.NewPackageImage(
+	packageImageBuildpack := buildpacks.NewPackageImage(
 		t,
 		pack,
 		packageImageName,
 		nestedLevelOneConfigFile.Name(),
-		build_modules.WithRequiredBuildpacks(
-			build_modules.BpNestedLevelOne,
-			build_modules.NewPackageImage(
+		buildpacks.WithRequiredBuildpacks(
+			buildpacks.BpNestedLevelOne,
+			buildpacks.NewPackageImage(
 				t,
 				pack,
 				nestedLevelTwoBuildpackName,
 				nestedLevelTwoConfigFile.Name(),
-				build_modules.WithRequiredBuildpacks(
-					build_modules.BpNestedLevelTwo,
-					build_modules.NewPackageImage(
+				buildpacks.WithRequiredBuildpacks(
+					buildpacks.BpNestedLevelTwo,
+					buildpacks.NewPackageImage(
 						t,
 						pack,
 						simpleLayersBuildpackName,
 						fixtureManager.FixtureLocation("simple-layers-buildpack_package.toml"),
-						build_modules.WithRequiredBuildpacks(build_modules.BpSimpleLayers),
+						buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayers),
 					),
 				),
 			),
 		),
 	)
 
-	simpleLayersDifferentShaBuildpack := build_modules.NewPackageImage(
+	simpleLayersDifferentShaBuildpack := buildpacks.NewPackageImage(
 		t,
 		pack,
 		simpleLayersBuildpackDifferentShaName,
 		fixtureManager.FixtureLocation("simple-layers-buildpack-different-sha_package.toml"),
-		build_modules.WithRequiredBuildpacks(build_modules.BpSimpleLayersDifferentSha),
+		buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayersDifferentSha),
 	)
 
 	defer imageManager.CleanupImages(packageImageName, nestedLevelTwoBuildpackName, simpleLayersBuildpackName, simpleLayersBuildpackDifferentShaName)
@@ -2780,7 +2780,7 @@ func createBuilder(
 	assert h.AssertionManager,
 	pack *invoke.PackInvoker,
 	lifecycle config.LifecycleAsset,
-	buildpackManager build_modules.BuildModuleManager,
+	buildpackManager buildpacks.BuildModuleManager,
 	runImageMirror string,
 ) (string, error) {
 	t.Log("creating builder image...")
@@ -2795,22 +2795,22 @@ func createBuilder(
 	}
 
 	// ARCHIVE BUILDPACKS
-	builderBuildpacks := []build_modules.TestBuildModule{
-		build_modules.BpNoop,
-		build_modules.BpNoop2,
-		build_modules.BpOtherStack,
-		build_modules.BpReadEnv,
+	builderBuildpacks := []buildpacks.TestBuildModule{
+		buildpacks.BpNoop,
+		buildpacks.BpNoop2,
+		buildpacks.BpOtherStack,
+		buildpacks.BpReadEnv,
 	}
 
 	packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package.toml", imageManager.HostOS())
 	packageImageName := registryConfig.RepoName("simple-layers-package-image-buildpack-" + h.RandString(8))
 
-	packageImageBuildpack := build_modules.NewPackageImage(
+	packageImageBuildpack := buildpacks.NewPackageImage(
 		t,
 		pack,
 		packageImageName,
 		packageTomlPath,
-		build_modules.WithRequiredBuildpacks(build_modules.BpSimpleLayers),
+		buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayers),
 	)
 
 	defer imageManager.CleanupImages(packageImageName)
@@ -2871,7 +2871,7 @@ func createBuilderWithExtensions(
 	assert h.AssertionManager,
 	pack *invoke.PackInvoker,
 	lifecycle config.LifecycleAsset,
-	buildpackManager build_modules.BuildModuleManager,
+	buildpackManager buildpacks.BuildModuleManager,
 	runImageMirror string,
 ) (string, error) {
 	t.Log("creating builder image with extensions...")
@@ -2886,16 +2886,16 @@ func createBuilderWithExtensions(
 	}
 
 	// BUILDPACKS
-	builderBuildpacks := []build_modules.TestBuildModule{
-		build_modules.BpReadEnv,            // archive buildpack
-		build_modules.BpFolderSimpleLayers, // folder buildpack
+	builderBuildpacks := []buildpacks.TestBuildModule{
+		buildpacks.BpReadEnv,            // archive buildpack
+		buildpacks.BpFolderSimpleLayers, // folder buildpack
 	}
 	buildpackManager.PrepareBuildModules(tmpDir, builderBuildpacks...)
 
 	// EXTENSIONS
-	builderExtensions := []build_modules.TestBuildModule{
-		build_modules.ExtReadEnv,            // archive extension
-		build_modules.ExtFolderSimpleLayers, // folder extension
+	builderExtensions := []buildpacks.TestBuildModule{
+		buildpacks.ExtReadEnv,            // archive extension
+		buildpacks.ExtFolderSimpleLayers, // folder extension
 	}
 	buildpackManager.PrepareBuildModules(tmpDir, builderExtensions...)
 

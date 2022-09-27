@@ -26,7 +26,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/buildmodule"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
@@ -68,13 +68,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any()).Return(fakeBuildImage, nil)
 		}
 
-		var createBuildpack = func(descriptor dist.BuildpackDescriptor) buildmodule.BuildModule {
+		var createBuildpack = func(descriptor dist.BuildpackDescriptor) buildpack.BuildModule {
 			buildpack, err := ifakes.NewFakeBuildpack(descriptor, 0644)
 			h.AssertNil(t, err)
 			return buildpack
 		}
 
-		var shouldCallBuildpackDownloaderWith = func(uri string, buildpackDownloadOptions buildmodule.DownloadOptions) {
+		var shouldCallBuildpackDownloaderWith = func(uri string, buildpackDownloadOptions buildpack.DownloadOptions) {
 			buildpack := createBuildpack(dist.BuildpackDescriptor{
 				WithAPI:    api.MustParse("0.3"),
 				WithInfo:   dist.ModuleInfo{ID: "example/foo", Version: "1.1.0"},
@@ -112,10 +112,10 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil).AnyTimes()
 			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle-platform-0-1").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle-platform-0.1")), nil).AnyTimes()
 
-			bp, err := buildmodule.FromBuildpackRootBlob(exampleBuildpackBlob, archive.DefaultTarWriterFactory())
+			bp, err := buildpack.FromBuildpackRootBlob(exampleBuildpackBlob, archive.DefaultTarWriterFactory())
 			h.AssertNil(t, err)
 			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one.tgz", gomock.Any()).Return(bp, nil, nil).AnyTimes()
-			ext, err := buildmodule.FromExtensionRootBlob(exampleExtensionBlob, archive.DefaultTarWriterFactory())
+			ext, err := buildpack.FromExtensionRootBlob(exampleExtensionBlob, archive.DefaultTarWriterFactory())
 			h.AssertNil(t, err)
 			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/ext-one.tgz", gomock.Any()).Return(ext, nil, nil).AnyTimes()
 
@@ -692,12 +692,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				opts.Config.Extensions[0].URI = "https://example.fake/ext-one-with-api-9.tgz"
 
 				buildpackBlob := blob.NewBlob(filepath.Join("testdata", "buildpack-api-0.4"))
-				buildpack, err := buildmodule.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
+				bp, err := buildpack.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
 				h.AssertNil(t, err)
-				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz", gomock.Any()).Return(buildpack, nil, nil)
+				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz", gomock.Any()).Return(bp, nil, nil)
 
 				extensionBlob := blob.NewBlob(filepath.Join("testdata", "extension-api-0.9"))
-				extension, err := buildmodule.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory())
+				extension, err := buildpack.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory())
 				h.AssertNil(t, err)
 				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/ext-one-with-api-9.tgz", gomock.Any()).Return(extension, nil, nil)
 
@@ -716,7 +716,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			opts.Config.Buildpacks[0].URI = directoryPath
 
 			buildpackBlob := blob.NewBlob(directoryPath)
-			buildpack, err := buildmodule.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
+			buildpack, err := buildpack.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
 			h.AssertNil(t, err)
 			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), directoryPath, gomock.Any()).Return(buildpack, nil, nil)
 
@@ -732,7 +732,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			opts.Config.Extensions[0].URI = directoryPath
 
 			extensionBlob := blob.NewBlob(directoryPath)
-			extension, err := buildmodule.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory())
+			extension, err := buildpack.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory())
 			h.AssertNil(t, err)
 			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), directoryPath, gomock.Any()).Return(extension, nil, nil)
 
@@ -761,7 +761,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Format: "file",
 				}))
 
-				buildpack, _, err := buildmodule.BuildpacksFromOCILayoutBlob(blob.NewBlob(cnbFile))
+				buildpack, _, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(cnbFile))
 				h.AssertNil(t, err)
 				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), cnbFile, gomock.Any()).Return(buildpack, nil, nil).AnyTimes()
 				opts.Config.Buildpacks = []pubbldr.ModuleConfig{{
@@ -811,7 +811,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						)
 
-						shouldCallBuildpackDownloaderWith("urn:cnb:registry:example/foo@1.1.0", buildmodule.DownloadOptions{Daemon: true, PullPolicy: image.PullAlways, RegistryName: "some-"})
+						shouldCallBuildpackDownloaderWith("urn:cnb:registry:example/foo@1.1.0", buildpack.DownloadOptions{Daemon: true, PullPolicy: image.PullAlways, RegistryName: "some-"})
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
 					})
 				})

@@ -1,4 +1,4 @@
-package buildmodule
+package buildpack
 
 import (
 	"archive/tar"
