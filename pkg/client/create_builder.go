@@ -130,6 +130,11 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 		return nil, errors.Wrap(err, "invalid build-image")
 	}
 
+	architecture, err := baseImage.Architecture()
+	if err != nil {
+		return nil, errors.Wrap(err, "lookup image Architecture")
+	}
+
 	os, err := baseImage.OS()
 	if err != nil {
 		return nil, errors.Wrap(err, "lookup image OS")
@@ -149,7 +154,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 		)
 	}
 
-	lifecycle, err := c.fetchLifecycle(ctx, opts.Config.Lifecycle, opts.RelativeBaseDir, os)
+	lifecycle, err := c.fetchLifecycle(ctx, opts.Config.Lifecycle, opts.RelativeBaseDir, os, architecture)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetch lifecycle")
 	}
@@ -159,7 +164,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	return bldr, nil
 }
 
-func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleConfig, relativeBaseDir, os string) (builder.Lifecycle, error) {
+func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleConfig, relativeBaseDir, os string, architecture string) (builder.Lifecycle, error) {
 	if config.Version != "" && config.URI != "" {
 		return nil, errors.Errorf(
 			"%s can only declare %s or %s, not both",
@@ -176,14 +181,14 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 			return nil, errors.Wrapf(err, "%s must be a valid semver", style.Symbol("lifecycle.version"))
 		}
 
-		uri = uriFromLifecycleVersion(*v, os)
+		uri = uriFromLifecycleVersion(*v, os, architecture)
 	case config.URI != "":
 		uri, err = paths.FilePathToURI(config.URI, relativeBaseDir)
 		if err != nil {
 			return nil, err
 		}
 	default:
-		uri = uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion), os)
+		uri = uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion), os, architecture)
 	}
 
 	blob, err := c.downloader.Download(ctx, uri)
@@ -263,10 +268,16 @@ func validateBuildpack(bp buildpack.Buildpack, source, expectedID, expectedBPVer
 	return nil
 }
 
-func uriFromLifecycleVersion(version semver.Version, os string) string {
+func uriFromLifecycleVersion(version semver.Version, os string, architecture string) string {
+	arch := "x86-64"
+
 	if os == "windows" {
-		return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+windows.x86-64.tgz", version.String(), version.String())
+		return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+windows.%s.tgz", version.String(), version.String(), arch)
 	}
 
-	return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz", version.String(), version.String())
+	if architecture == "arm64" {
+		arch = architecture
+	}
+
+	return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+linux.%s.tgz", version.String(), version.String(), arch)
 }
