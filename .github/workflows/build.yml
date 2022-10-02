@@ -104,7 +104,7 @@ jobs:
           if (Test-Path C:\ProgramData\docker\config\daemon.json) {
             $config=(Get-Content C:\ProgramData\docker\config\daemon.json | ConvertFrom-json)
           }
-          $config."insecure-registries" = @("$IPAddress/32")
+          $config= $config | Add-Member -NotePropertyName "insecure-registries" -NotePropertyValue @("$IPAddress/32")
           ConvertTo-json $config | Out-File -Encoding ASCII C:\ProgramData\docker\config\daemon.json
 
           Restart-Service docker
