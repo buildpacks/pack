@@ -40,7 +40,7 @@ import (
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_image_fetcher.go github.com/buildpacks/pack/pkg/client ImageFetcher
 
-// ImageFetcher is an interface representing the ability to fetch local and images.
+// ImageFetcher is an interface representing the ability to fetch local and remote images.
 type ImageFetcher interface {
 	// Fetch fetches an image by resolving it both remotely and locally depending on provided parameters.
 	// The pull behavior is dictated by the pullPolicy, which can have the following behavior

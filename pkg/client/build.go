@@ -15,10 +15,12 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/volume/mounts"
 	"github.com/google/go-containerregistry/pkg/name"
+	gremote "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
 
@@ -301,6 +303,23 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "getting builder OS")
 	}
 
+	var builderImageDigest string
+	if len(bldr.OrderExtensions()) > 0 {
+		if !c.experimental {
+			return fmt.Errorf("experimental features must be enabled when builder contains image extensions")
+		}
+		if imgOS == "windows" {
+			return fmt.Errorf("builder contains image extensions which are not supported for Windows builds")
+		}
+		if !(opts.PullPolicy == image.PullAlways) {
+			return fmt.Errorf("pull policy must be 'always' when builder contains image extensions")
+		}
+		builderImageDigest, err = c.getBuilderImageDigest(builderRef.Name())
+		if err != nil {
+			return fmt.Errorf("failed to get builder image digest: %w", err)
+		}
+	}
+
 	processedVolumes, warnings, err := processVolumes(imgOS, opts.ContainerConfig.Volumes)
 	if err != nil {
 		return err
@@ -345,6 +364,8 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Image:              imageRef,
 		Builder:            ephemeralBuilder,
 		LifecycleImage:     ephemeralBuilder.Name(),
+		BuildImage:         builderRef.Name(), // TODO: check if this is redundant with other options
+		BuildImageDigest:   builderImageDigest,
 		RunImage:           runImageName,
 		ProjectMetadata:    projectMetadata,
 		ClearCache:         opts.ClearCache,
@@ -482,6 +503,22 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	}
 
 	return bldr, nil
+}
+
+func (c *Client) getBuilderImageDigest(builderRef string) (string, error) {
+	ref, authr, err := auth.ReferenceForRepoName(c.keychain, builderRef)
+	if err != nil {
+		return "", fmt.Errorf("failed to get reference")
+	}
+	remoteImage, err := gremote.Image(ref, gremote.WithAuth(authr))
+	if err != nil {
+		return "", fmt.Errorf("failed to read image")
+	}
+	buildImageHash, err := remoteImage.Digest()
+	if err != nil {
+		return "", fmt.Errorf("failed to get digest")
+	}
+	return buildImageHash.String(), nil
 }
 
 func (c *Client) validateRunImage(context context.Context, name string, pullPolicy image.PullPolicy, publish bool, expectedStack string) (imgutil.Image, error) {
@@ -693,6 +730,7 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 // 	- group:
 //		- A
 func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedBPs []buildpack.BuildModule, order dist.Order, err error) {
+	// TODO: handle order-extensions
 	pullPolicy := opts.PullPolicy
 	publish := opts.Publish
 	registry := opts.Registry

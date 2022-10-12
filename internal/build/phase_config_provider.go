@@ -140,6 +140,9 @@ func WithArgs(args ...string) PhaseConfigProviderOperation {
 
 // WithFlags differs from WithArgs as flags are always prepended
 func WithFlags(flags ...string) PhaseConfigProviderOperation {
+	if len(flags) == 0 {
+		return NullOp()
+	}
 	return func(provider *PhaseConfigProvider) {
 		provider.ctrConf.Cmd = append(flags, provider.ctrConf.Cmd...)
 	}

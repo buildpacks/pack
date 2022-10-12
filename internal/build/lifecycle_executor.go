@@ -28,6 +28,7 @@ var (
 		api.MustParse("0.7"),
 		api.MustParse("0.8"),
 		api.MustParse("0.9"),
+		api.MustParse("0.10"),
 	}
 )
 
@@ -68,6 +69,8 @@ type LifecycleOptions struct {
 	Image              name.Reference
 	Builder            Builder
 	LifecycleImage     string
+	BuildImage         string
+	BuildImageDigest   string
 	RunImage           string
 	ProjectMetadata    platform.ProjectMetadata
 	ClearCache         bool

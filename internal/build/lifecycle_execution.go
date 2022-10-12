@@ -176,17 +176,25 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 				return err
 			}
 		}
+
 		l.logger.Info(style.Step("RESTORING"))
-		if l.opts.ClearCache {
+		if l.opts.ClearCache && l.PlatformAPI().LessThan("0.7") {
 			l.logger.Info("Skipping 'restore' due to clearing cache")
-		} else if err := l.Restore(ctx, l.opts.Network, buildCache, phaseFactory); err != nil {
+		} else if err := l.Restore(ctx, l.opts.Network, l.opts.BuildImage, buildCache, phaseFactory); err != nil {
 			return err
 		}
 
-		l.logger.Info(style.Step("BUILDING"))
-
-		if err := l.Build(ctx, l.opts.Network, l.opts.Volumes, phaseFactory); err != nil {
-			return err
+		if l.platformAPI.AtLeast("0.10") && l.opts.BuildImage != "" {
+			// TODO: also check for any build.Dockerfiles in <layers>/generated
+			l.logger.Info(style.Step("EXTENDING"))
+			if err := l.Extend(ctx, buildCache, l.opts.Network, l.opts.Volumes, phaseFactory); err != nil {
+				return err
+			}
+		} else {
+			l.logger.Info(style.Step("BUILDING"))
+			if err := l.Build(ctx, l.opts.Network, l.opts.Volumes, phaseFactory); err != nil {
+				return err
+			}
 		}
 
 		l.logger.Info(style.Step("EXPORTING"))
@@ -318,6 +326,7 @@ func (l *LifecycleExecution) Detect(ctx context.Context, networkMode string, vol
 			CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter),
 		),
 		WithFlags(flags...),
+		WithEnv("CNB_EXPERIMENTAL_MODE=warn"), // TODO: make constant and check config is experimental and there are extensions
 	)
 
 	detect := phaseFactory.New(configProvider)
@@ -325,18 +334,32 @@ func (l *LifecycleExecution) Detect(ctx context.Context, networkMode string, vol
 	return detect.Run(ctx)
 }
 
-func (l *LifecycleExecution) Restore(ctx context.Context, networkMode string, buildCache Cache, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) Restore(ctx context.Context, networkMode string, builderImage string, buildCache Cache, phaseFactory PhaseFactory) error {
+	// build up options for flags, cache, and kaniko cache
 	flagsOpt := NullOp()
+	var flags []string
 	cacheOpt := NullOp()
 	switch buildCache.Type() {
 	case cache.Image:
-		flagsOpt = WithFlags("-cache-image", buildCache.Name())
+		flags = append(flags, "-cache-image", buildCache.Name())
 	case cache.Volume:
 		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
 	if l.opts.GID >= overrideGID {
-		flagsOpt = WithFlags("-gid", strconv.Itoa(l.opts.GID))
+		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
+	kanikoCacheOpt := NullOp()
+	if builderImage != "" {
+		if _, ok := buildCache.(*cache.VolumeCache); !ok {
+			return fmt.Errorf("build cache must be volume cache when building with extensions")
+		}
+		flags = append(flags, "-build-image", builderImage)
+		kanikoCacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.kanikoCacheDir()))
+	}
+	if l.opts.ClearCache {
+		flags = append(flags, "-skip-layers")
+	}
+	flagsOpt = WithFlags(flags...)
 
 	configProvider := NewPhaseConfigProvider(
 		"restorer",
@@ -353,6 +376,7 @@ func (l *LifecycleExecution) Restore(ctx context.Context, networkMode string, bu
 		WithNetwork(networkMode),
 		flagsOpt,
 		cacheOpt,
+		kanikoCacheOpt,
 	)
 
 	restore := phaseFactory.New(configProvider)
@@ -510,6 +534,34 @@ func (l *LifecycleExecution) Build(ctx context.Context, networkMode string, volu
 	build := phaseFactory.New(configProvider)
 	defer build.Cleanup()
 	return build.Run(ctx)
+}
+
+func (l *LifecycleExecution) Extend(ctx context.Context, buildCache Cache, networkMode string, volumes []string, phaseFactory PhaseFactory) error {
+	flags := []string{"-app", l.mountPaths.appDir()}
+
+	// set kaniko cache opt
+	if _, ok := buildCache.(*cache.VolumeCache); !ok {
+		return fmt.Errorf("build cache must be volume cache when building with extensions")
+	}
+	kanikoCacheOpt := WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.kanikoCacheDir()))
+
+	configProvider := NewPhaseConfigProvider(
+		"extender",
+		l,
+		WithLogPrefix("extender"),
+		WithArgs(l.withLogLevel()...),
+		WithArgs(fmt.Sprintf("oci:/kaniko/cache/base/%s", l.opts.BuildImageDigest)),
+		WithBinds(volumes...),
+		WithEnv("CNB_EXPERIMENTAL_MODE=warn"), // TODO: make constant and check config is experimental and there are extensions
+		WithFlags(flags...),
+		WithNetwork(networkMode),
+		WithRoot(),
+		kanikoCacheOpt,
+	)
+
+	extend := phaseFactory.New(configProvider)
+	defer extend.Cleanup()
+	return extend.Run(ctx)
 }
 
 func determineDefaultProcessType(platformAPI *api.Version, providedValue string) string {
