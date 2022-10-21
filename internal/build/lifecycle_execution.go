@@ -349,7 +349,7 @@ func (l *LifecycleExecution) Restore(ctx context.Context, networkMode string, bu
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
 	kanikoCacheOpt := NullOp()
-	if builderImage != "" {
+	if builderImage != "" { // TODO: warn in creator workflow
 		if _, ok := buildCache.(*cache.VolumeCache); !ok {
 			return fmt.Errorf("build cache must be volume cache when building with extensions")
 		}
@@ -550,7 +550,6 @@ func (l *LifecycleExecution) Extend(ctx context.Context, buildCache Cache, netwo
 		l,
 		WithLogPrefix("extender"),
 		WithArgs(l.withLogLevel()...),
-		WithArgs(fmt.Sprintf("oci:/kaniko/cache/base/%s", l.opts.BuildImageDigest)),
 		WithBinds(volumes...),
 		WithEnv("CNB_EXPERIMENTAL_MODE=warn"), // TODO: make constant and check config is experimental and there are extensions
 		WithFlags(flags...),
