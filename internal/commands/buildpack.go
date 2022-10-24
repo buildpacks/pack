@@ -22,6 +22,10 @@ func NewBuildpackCommand(logger logging.Logger, cfg config.Config, client PackCl
 	cmd.AddCommand(BuildpackRegister(logger, cfg, client))
 	cmd.AddCommand(BuildpackYank(logger, cfg, client))
 
+	if cfg.Experimental {
+		cmd.AddCommand(BuildpackCreate(logger, client))
+	}
+
 	AddHelpFlag(cmd, "buildpack")
 	return cmd
 }

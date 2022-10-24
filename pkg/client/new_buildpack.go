@@ -50,6 +50,7 @@ type NewBuildpackOptions struct {
 	Targets []dist.Target
 }
 
+// Deprecated: use CreateBuildpack instead
 func (c *Client) NewBuildpack(ctx context.Context, opts NewBuildpackOptions) error {
 	err := createBuildpackTOML(opts.Path, opts.ID, opts.Version, opts.API, opts.Stacks, opts.Targets, c)
 	if err != nil {

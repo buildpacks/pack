@@ -23,6 +23,7 @@ type PackClient interface {
 	Rebase(context.Context, client.RebaseOptions) error
 	CreateBuilder(context.Context, client.CreateBuilderOptions) error
 	NewBuildpack(context.Context, client.NewBuildpackOptions) error
+	CreateBuildpack(context.Context, client.CreateBuildpackOptions) error
 	PackageBuildpack(ctx context.Context, opts client.PackageBuildpackOptions) error
 	PackageExtension(ctx context.Context, opts client.PackageBuildpackOptions) error
 	Build(context.Context, client.BuildOptions) error
