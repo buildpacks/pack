@@ -1143,6 +1143,31 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					)
 					h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 				})
+
+				when("override GID", func() {
+					when("override GID is provided", func() {
+						lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+							options.GID = 2
+						})
+
+						it("configures the phase with the expected arguments", func() {
+							h.AssertIncludeAllExpectedPatterns(t,
+								configProvider.ContainerConfig().Cmd,
+								[]string{"-gid", "2"},
+							)
+						})
+					})
+
+					when("override GID is not provided", func() {
+						lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+							options.GID = -1
+						})
+
+						it("gid is not added to the expected arguments", func() {
+							h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-gid")
+						})
+					})
+				})
 			})
 		})
 
@@ -1230,31 +1255,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						err = lifecycle.Analyze(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
 						h.AssertNotNil(t, err)
 					})
-				})
-			})
-		})
-
-		when("override GID", func() {
-			when("override GID is provided", func() {
-				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
-					options.GID = 2
-				})
-
-				it("configures the phase with the expected arguments", func() {
-					h.AssertIncludeAllExpectedPatterns(t,
-						configProvider.ContainerConfig().Cmd,
-						[]string{"-gid", "2"},
-					)
-				})
-			})
-
-			when("override GID is not provided", func() {
-				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
-					options.GID = -1
-				})
-
-				it("gid is not added to the expected arguments", func() {
-					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-gid")
 				})
 			})
 		})
