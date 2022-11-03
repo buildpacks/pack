@@ -3,7 +3,7 @@ module github.com/buildpacks/pack
 require (
 	github.com/BurntSushi/toml v1.2.0
 	github.com/Masterminds/semver v1.5.0
-	github.com/Microsoft/go-winio v0.5.2
+	github.com/Microsoft/go-winio v0.6.0
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20220913203928-6accc39f0cf9
 	github.com/buildpacks/lifecycle v0.14.2
@@ -111,6 +111,7 @@ require (
 	golang.org/x/sync v0.0.0-20220907140024-f12130a52804 // indirect
 	golang.org/x/sys v0.0.0-20220913153101-76c7481b5158 // indirect
 	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/tools v0.1.12 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
