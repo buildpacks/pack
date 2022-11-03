@@ -55,7 +55,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		providedAdditionalTags = []string{"some-additional-tag1", "some-additional-tag2"}
 		providedVolumes        = []string{"some-mount-source:/some-mount-target"}
 
-		platformAPI = build.SupportedPlatformAPIVersions[0]
+		platformAPI = build.SupportedPlatformAPIVersions[0] // TODO: update the tests to target the latest api by default and make earlier apis special cases
 		providedUID = 2222
 		providedGID = 3333
 
@@ -947,10 +947,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("using a cache image", func() {
-				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
-					options.GID = -1 // npa: why is this needed?
-				})
-
 				fakeBuildCache = newFakeImageCache()
 
 				it("configures the phase with a build cache image", func() {
@@ -959,9 +955,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						configProvider.ContainerConfig().Cmd,
 						[]string{"-cache-image", "some-cache-image"},
 					)
-					h.AssertIncludeAllExpectedPatterns(t,
+					h.AssertSliceNotContains(t,
 						configProvider.ContainerConfig().Cmd,
-						[]string{"-cache-dir", "/cache"},
+						"-cache-dir",
 					)
 				})
 
@@ -1061,19 +1057,15 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			when("using a cache image", func() {
 				fakeBuildCache = newFakeImageCache()
 
-				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
-					options.GID = -1
-				})
-
 				it("configures the phase with a build cache images", func() {
 					h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, ":/cache")
 					h.AssertIncludeAllExpectedPatterns(t,
 						configProvider.ContainerConfig().Cmd,
 						[]string{"-cache-image", "some-cache-image"},
 					)
-					h.AssertIncludeAllExpectedPatterns(t,
+					h.AssertSliceNotContains(t,
 						configProvider.ContainerConfig().Cmd,
-						[]string{"-cache-dir", "/cache"}, // npa: is this a mistake?
+						"-cache-dir",
 					)
 				})
 			})
@@ -1316,9 +1308,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		when("using cache image", func() {
 			fakeBuildCache = newFakeImageCache()
-			lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
-				options.GID = -1
-			})
 
 			it("configures the phase with a cache image", func() {
 				h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, ":/cache")
@@ -1326,6 +1315,11 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					configProvider.ContainerConfig().Cmd,
 					[]string{"-cache-image", "some-cache-image"},
 				)
+				h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-cache-dir")
+			})
+
+			it("configures the phase with registry access", func() {
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
 			})
 		})
 
