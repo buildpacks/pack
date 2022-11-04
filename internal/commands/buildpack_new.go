@@ -34,7 +34,7 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 	cmd := &cobra.Command{
 		Use:     "new <id>",
 		Short:   "Creates basic scaffolding of a buildpack.",
-		Args:    cobra.ExactValidArgs(1),
+		Args:    cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		Example: "pack buildpack new sample/my-buildpack",
 		Long:    "buildpack new generates the basic scaffolding of a buildpack repository. It creates a new directory `name` in the current directory (or at `path`, if passed as a flag), and initializes a buildpack.toml, and two executable bash scripts, `bin/detect` and `bin/build`. ",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
