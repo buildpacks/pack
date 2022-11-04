@@ -13,20 +13,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/pack/internal/cache"
-
-	"github.com/google/go-containerregistry/pkg/name"
-
 	"github.com/apex/log"
+	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
+	"github.com/buildpacks/pack/internal/cache"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -45,19 +45,24 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 	var (
 		dockerConfigDir string
 
-		// default options for a new lifecycle
-		providedPublish        bool
+		// lifecycle options
 		providedClearCache     bool
+		providedPublish        bool
+		providedUseCreator     bool
 		providedDockerHost     string
+		providedNetworkMode    = "some-network-mode"
 		providedRunImage       = "some-run-image"
 		providedTargetImage    = "some-target-image"
-		providedNetworkMode    = "some-network-mode"
 		providedAdditionalTags = []string{"some-additional-tag1", "some-additional-tag2"}
 		providedVolumes        = []string{"some-mount-source:/some-mount-target"}
 
-		platformAPI = build.SupportedPlatformAPIVersions[0] // TODO: update the tests to target the latest api by default and make earlier apis special cases
-		providedUID = 2222
-		providedGID = 3333
+		// builder options
+		providedBuilderImage = "some-registry.com/some-namespace/some-builder-name"
+		withOS               = "linux"
+		platformAPI          = build.SupportedPlatformAPIVersions[0] // TODO: update the tests to target the latest api by default and make earlier apis special cases
+		providedUID          = 2222
+		providedGID          = 3333
+		providedOrderExt     dist.Order
 
 		lifecycle        *build.LifecycleExecution
 		fakeBuildCache   = newFakeVolumeCache()
@@ -68,18 +73,19 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	var configureDefaultTestLifecycle = func(opts *build.LifecycleOptions) {
-		opts.Publish = providedPublish
+		opts.AdditionalTags = providedAdditionalTags
+		opts.BuilderImage = providedBuilderImage
 		opts.ClearCache = providedClearCache
 		opts.DockerHost = providedDockerHost
+		opts.Network = providedNetworkMode
+		opts.Publish = providedPublish
 		opts.RunImage = providedRunImage
+		opts.UseCreator = providedUseCreator
+		opts.Volumes = providedVolumes
 
 		targetImageRef, err := name.ParseReference(providedTargetImage)
 		h.AssertNil(t, err)
 		opts.Image = targetImageRef
-
-		opts.Network = providedNetworkMode
-		opts.AdditionalTags = providedAdditionalTags
-		opts.Volumes = providedVolumes
 	}
 
 	var lifecycleOps = []func(*build.LifecycleOptions){configureDefaultTestLifecycle}
@@ -93,10 +99,15 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 		h.AssertNil(t, os.Setenv("DOCKER_CONFIG", dockerConfigDir))
 
+		image := ifakes.NewImage("some-image", "", nil)
+		h.AssertNil(t, image.SetOS(withOS))
+
 		fakeBuilder, err := fakes.NewFakeBuilder(
 			fakes.WithSupportedPlatformAPIs([]*api.Version{platformAPI}),
 			fakes.WithUID(providedUID),
 			fakes.WithGID(providedGID),
+			fakes.WithOrderExtensions(providedOrderExt),
+			fakes.WithImage(image),
 		)
 		h.AssertNil(t, err)
 		lifecycleOps = append(lifecycleOps, fakes.WithBuilder(fakeBuilder))
@@ -216,6 +227,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					}
 				}
 			})
+
 			when("Run with workspace dir", func() {
 				it("succeeds", func() {
 					opts := build.LifecycleOptions{
@@ -246,6 +258,41 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							h.AssertSliceContains(t, entry.ContainerConfig().Cmd, "/some/image")
 						}
 					}
+				})
+			})
+
+			when("there are extensions", func() {
+				providedUseCreator = true
+				providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+
+				when("platform < 0.10", func() {
+					platformAPI = api.MustParse("0.9")
+
+					it("succeeds", func() {
+						err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+							return fakePhaseFactory
+						})
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 1)
+
+						for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+							if entry.Name() == "creator" {
+								h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
+							}
+						}
+					})
+				})
+
+				when("platform >= 0.10", func() {
+					platformAPI = api.MustParse("0.10")
+
+					it("errors", func() {
+						err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+							return fakePhaseFactory
+						})
+						h.AssertNotNil(t, err)
+					})
 				})
 			})
 		})
@@ -382,6 +429,134 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						}
 					}
 					h.AssertEq(t, appCount, 3)
+				})
+			})
+
+			when("--clear-cache", func() {
+				providedUseCreator = false
+				providedClearCache = true
+
+				when("platform < 0.10", func() {
+					platformAPI = api.MustParse("0.9")
+
+					it("does not run restore", func() {
+						err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+							return fakePhaseFactory
+						})
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 4)
+					})
+				})
+
+				when("platform >= 0.10", func() {
+					platformAPI = api.MustParse("0.10")
+
+					it("runs restore", func() {
+						err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+							return fakePhaseFactory
+						})
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+					})
+				})
+			})
+
+			when("extensions", func() {
+				when("present in the order", func() {
+					providedUseCreator = false
+					providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+
+					when("platform < 0.10", func() {
+						platformAPI = api.MustParse("0.9")
+
+						it("runs the builder", func() {
+							err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+								return fakePhaseFactory
+							})
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+
+							var foundBuilder bool
+							for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+								switch entry.Name() {
+								case "builder":
+									foundBuilder = true
+								case "exporter":
+									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
+								case "analyzer":
+									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
+								}
+							}
+							h.AssertEq(t, foundBuilder, true)
+						})
+					})
+
+					when("platform >= 0.10", func() {
+						platformAPI = api.MustParse("0.10")
+
+						it("runs the extender", func() {
+							err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+								return fakePhaseFactory
+							})
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+
+							var foundExtender bool
+							for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+								switch entry.Name() {
+								case "extender":
+									foundExtender = true
+								case "exporter":
+									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
+								case "analyzer":
+									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
+								}
+							}
+							h.AssertEq(t, foundExtender, true)
+						})
+
+						when("windows", func() {
+							withOS = "windows"
+
+							it("errors", func() {
+								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+									return fakePhaseFactory
+								})
+								h.AssertNotNil(t, err)
+							})
+						})
+					})
+				})
+
+				when("not present in the order", func() {
+					providedUseCreator = false
+					platformAPI = api.MustParse("0.10")
+
+					it("runs the builder", func() {
+						err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+							return fakePhaseFactory
+						})
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+
+						var foundBuilder bool
+						for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+							switch entry.Name() {
+							case "builder":
+								foundBuilder = true
+							case "exporter":
+								h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
+							case "analyzer":
+								h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
+							}
+						}
+						h.AssertEq(t, foundBuilder, true)
+					})
 				})
 			})
 		})
@@ -909,6 +1084,24 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			h.AssertFunctionName(t, configProvider.ContainerOps()[0], "EnsureVolumeAccess")
 			h.AssertFunctionName(t, configProvider.ContainerOps()[1], "CopyDir")
 		})
+
+		when("extensions", func() {
+			platformAPI = api.MustParse("0.10")
+
+			when("present in the order", func() {
+				providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+
+				it("sets CNB_EXPERIMENTAL_MODE=warn in the environment", func() {
+					h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
+				})
+			})
+
+			when("not present in the order", func() {
+				it("sets CNB_EXPERIMENTAL_MODE=warn in the environment", func() {
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
+				})
+			})
+		})
 	})
 
 	when("#Analyze", func() {
@@ -1347,6 +1540,48 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("--clear-cache", func() {
+			providedClearCache = true
+
+			it("provides -skip-layers", func() {
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Cmd, "-skip-layers")
+			})
+		})
+
+		when("extensions", func() {
+			when("present in the order", func() {
+				providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+
+				when("platform < 0.10", func() {
+					platformAPI = api.MustParse("0.9")
+
+					it("does not provide -build-image or /kaniko bind", func() {
+						h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-build-image")
+						h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+					})
+				})
+
+				when("platform >= 0.10", func() {
+					platformAPI = api.MustParse("0.10")
+
+					it("provides -build-image and /kaniko bind", func() {
+						h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-build-image", providedBuilderImage)
+						h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
+						h.AssertSliceContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+					})
+				})
+			})
+
+			when("not present in the order", func() {
+				platformAPI = api.MustParse("0.10")
+
+				it("does not provide -build-image or /kaniko bind", func() {
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-build-image")
+					h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+				})
+			})
+		})
 	})
 
 	when("#Build", func() {
@@ -1379,6 +1614,48 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		it("configures the phase with binds", func() {
 			h.AssertSliceContains(t, configProvider.HostConfig().Binds, providedVolumes...)
+		})
+	})
+
+	when("#Extend", func() {
+		it.Before(func() {
+			err := lifecycle.Extend(context.Background(), fakeBuildCache, fakePhaseFactory)
+			h.AssertNil(t, err)
+
+			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+			h.AssertNotEq(t, lastCallIndex, -1)
+
+			configProvider = fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+			h.AssertEq(t, configProvider.Name(), "extender")
+		})
+
+		it("creates a phase and then runs it", func() {
+			h.AssertEq(t, fakePhase.CleanupCallCount, 1)
+			h.AssertEq(t, fakePhase.RunCallCount, 1)
+		})
+
+		it("configures the phase with the expected arguments", func() {
+			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-log-level", "debug")
+			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-app", "/workspace")
+		})
+
+		it("configures the phase with binds", func() {
+			expectedBinds := providedVolumes
+			expectedBinds = append(expectedBinds, "some-cache:/kaniko")
+
+			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
+		})
+
+		it("sets CNB_EXPERIMENTAL_MODE=warn in the environment", func() {
+			h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
+		})
+
+		it("configures the phase with the expected network mode", func() {
+			h.AssertEq(t, configProvider.HostConfig().NetworkMode, container.NetworkMode(providedNetworkMode))
+		})
+
+		it("configures the phase with root", func() {
+			h.AssertEq(t, configProvider.ContainerConfig().User, "root")
 		})
 	})
 
@@ -1553,9 +1830,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			it("sets the CNB_USER_ID and CNB_GROUP_ID in the environment", func() { // TODO
-				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_USER_ID=2222")
-				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_GROUP_ID=3333")
+			it("sets the CNB_USER_ID and CNB_GROUP_ID in the environment", func() {
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, fmt.Sprintf("CNB_USER_ID=%d", providedUID))
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, fmt.Sprintf("CNB_GROUP_ID=%d", providedGID))
 			})
 
 			it("configures the phase with daemon access", func() {

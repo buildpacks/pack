@@ -15,6 +15,7 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/container"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -28,6 +29,7 @@ var (
 		api.MustParse("0.7"),
 		api.MustParse("0.8"),
 		api.MustParse("0.9"),
+		api.MustParse("0.10"),
 	}
 )
 
@@ -38,6 +40,7 @@ type Builder interface {
 	LifecycleDescriptor() builder.LifecycleDescriptor
 	Stack() builder.StackMetadata
 	Image() imgutil.Image
+	OrderExtensions() dist.Order
 }
 
 type LifecycleExecutor struct {
@@ -67,6 +70,7 @@ type LifecycleOptions struct {
 	AppPath            string
 	Image              name.Reference
 	Builder            Builder
+	BuilderImage       string // differs from Builder.Name() and Builder.Image().Name() in that it includes the registry context
 	LifecycleImage     string
 	RunImage           string
 	ProjectMetadata    platform.ProjectMetadata

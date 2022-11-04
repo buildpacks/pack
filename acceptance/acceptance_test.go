@@ -782,7 +782,9 @@ func testAcceptance(
 						})
 						builderName = value
 					})
-					it("creates builder", func() { // Linux containers (including Linux containers on Windows)
+
+					it("creates builder", func() {
+						// Linux containers (including Linux containers on Windows)
 						extSimpleLayersDiffID := "sha256:9a31b13bfd9c10ca83e727adb3c02f59833a32d241cbd6c5fab6222472d47121"
 						extReadEnvDiffID := "sha256:2705560ec16c78e12a912128a1f37d2e8b683a244352d8ec91d036923dcfc62d"
 						bpSimpleLayersDiffID := "sha256:285ff6683c99e5ae19805f6a62168fb40dca64d813c53b782604c9652d745c70"
@@ -925,7 +927,7 @@ func testAcceptance(
 					})
 				})
 
-				when("default builder is set", func() {
+				when("builder is trusted (and set as default)", func() {
 					it.Before(func() {
 						pack.RunSuccessfully("config", "default-builder", builderName)
 						pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)

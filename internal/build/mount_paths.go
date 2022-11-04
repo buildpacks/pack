@@ -54,6 +54,10 @@ func (m mountPaths) cacheDir() string {
 	return m.join(m.volume, "cache")
 }
 
+func (m mountPaths) kanikoCacheDir() string {
+	return m.join(m.volume, "kaniko")
+}
+
 func (m mountPaths) launchCacheDir() string {
 	return m.join(m.volume, "launch-cache")
 }
