@@ -252,13 +252,13 @@ func (l *LifecycleExecution) Create(ctx context.Context, buildCache, launchCache
 		flags = append(flags, "-process-type", processType)
 	}
 
-	var cacheOpts PhaseConfigProviderOperation
+	var cacheBindOp PhaseConfigProviderOperation
 	switch buildCache.Type() {
 	case cache.Image:
 		flags = append(flags, "-cache-image", buildCache.Name())
-		cacheOpts = WithBinds(l.opts.Volumes...)
+		cacheBindOp = WithBinds(l.opts.Volumes...)
 	case cache.Volume, cache.Bind:
-		cacheOpts = WithBinds(append(l.opts.Volumes, fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))...)
+		cacheBindOp = WithBinds(append(l.opts.Volumes, fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))...)
 	}
 
 	withEnv := NullOp()
@@ -270,7 +270,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, buildCache, launchCache
 		WithFlags(l.withLogLevel(flags...)...),
 		WithArgs(l.opts.Image.String()),
 		WithNetwork(l.opts.Network),
-		cacheOpts,
+		cacheBindOp,
 		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
 		WithContainerOperations(CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter)),
 		If(l.opts.SBOMDestinationDir != "", WithPostContainerRunOperations(
@@ -326,17 +326,26 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 }
 
 func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, phaseFactory PhaseFactory) error {
-	flagsOpt := NullOp()
-	cacheOpt := NullOp()
+	var flags []string
+	cacheBindOp := NullOp()
+	registryOp := NullOp()
 	switch buildCache.Type() {
 	case cache.Image:
-		flagsOpt = WithFlags("-cache-image", buildCache.Name())
+		flags = append(flags, "-cache-image", buildCache.Name())
+		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, l.opts.CacheImage)
+		if err != nil {
+			return err
+		}
+		registryOp = WithRegistryAccess(authConfig)
 	case cache.Volume:
-		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
+		flags = append(flags, "-cache-dir", l.mountPaths.cacheDir())
+		cacheBindOp = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
 	if l.opts.GID >= overrideGID {
-		flagsOpt = WithFlags("-gid", strconv.Itoa(l.opts.GID))
+		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
+
+	flagsOp := WithFlags(flags...)
 
 	configProvider := NewPhaseConfigProvider(
 		"restorer",
@@ -346,13 +355,12 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, phas
 		WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.opts.Builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.opts.Builder.GID())),
 		WithRoot(), // remove after platform API 0.2 is no longer supported
 		WithArgs(
-			l.withLogLevel(
-				"-cache-dir", l.mountPaths.cacheDir(),
-			)...,
+			l.withLogLevel()...,
 		),
 		WithNetwork(l.opts.Network),
-		flagsOpt,
-		cacheOpt,
+		flagsOp,
+		cacheBindOp,
+		registryOp,
 	)
 
 	restore := phaseFactory.New(configProvider)
@@ -361,44 +369,37 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, phas
 }
 
 func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCache Cache, phaseFactory PhaseFactory) error {
-	args := []string{
-		l.opts.Image.String(),
-	}
+	var flags []string
+	args := []string{l.opts.Image.String()}
 	platformAPILessThan07 := l.platformAPI.LessThan("0.7")
-	if platformAPILessThan07 {
-		if l.opts.ClearCache {
+
+	cacheBindOp := NullOp()
+	if l.opts.ClearCache {
+		if platformAPILessThan07 || l.platformAPI.AtLeast("0.9") {
 			args = prependArg("-skip-layers", args)
-		} else {
-			args = append([]string{"-cache-dir", l.mountPaths.cacheDir()}, args...)
+		}
+	} else {
+		switch buildCache.Type() {
+		case cache.Image:
+			flags = append(flags, "-cache-image", buildCache.Name())
+		case cache.Volume:
+			if platformAPILessThan07 {
+				args = append([]string{"-cache-dir", l.mountPaths.cacheDir()}, args...)
+				cacheBindOp = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
+			}
 		}
 	}
 
-	launchCacheOpt := NullOp()
+	launchCacheBindOp := NullOp()
 	if l.platformAPI.AtLeast("0.9") {
-		if l.opts.ClearCache {
-			args = prependArg("-skip-layers", args)
-		}
 		if !l.opts.Publish {
 			args = append([]string{"-launch-cache", l.mountPaths.launchCacheDir()}, args...)
-			launchCacheOpt = WithBinds(fmt.Sprintf("%s:%s", launchCache.Name(), l.mountPaths.launchCacheDir()))
-		}
-	}
-
-	cacheOpt := NullOp()
-	flagsOpt := NullOp()
-	switch buildCache.Type() {
-	case cache.Image:
-		if !l.opts.ClearCache {
-			flagsOpt = WithFlags("-cache-image", buildCache.Name())
-		}
-	case cache.Volume:
-		if platformAPILessThan07 {
-			cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
+			launchCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", launchCache.Name(), l.mountPaths.launchCacheDir()))
 		}
 	}
 
 	if l.opts.GID >= overrideGID {
-		flagsOpt = WithFlags("-gid", strconv.Itoa(l.opts.GID))
+		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
 
 	if l.opts.PreviousImage != "" {
@@ -428,7 +429,8 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 			args = append([]string{"-previous-image", l.opts.PreviousImage}, args...)
 		}
 	}
-	stackOpts := NullOp()
+
+	stackOp := NullOp()
 	if !platformAPILessThan07 {
 		for _, tag := range l.opts.AdditionalTags {
 			args = append([]string{"-tag", tag}, args...)
@@ -437,8 +439,10 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 			args = append([]string{"-run-image", l.opts.RunImage}, args...)
 		}
 		args = append([]string{"-stack", l.mountPaths.stackPath()}, args...)
-		stackOpts = WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os))
+		stackOp = WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os))
 	}
+
+	flagsOp := WithFlags(flags...)
 
 	var analyze RunnerCleaner
 	if l.opts.Publish {
@@ -457,9 +461,9 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 			WithRoot(),
 			WithArgs(l.withLogLevel(args...)...),
 			WithNetwork(l.opts.Network),
-			flagsOpt,
-			cacheOpt,
-			stackOpts,
+			flagsOp,
+			cacheBindOp,
+			stackOp,
 		)
 
 		analyze = phaseFactory.New(configProvider)
@@ -474,13 +478,13 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 				fmt.Sprintf("%s=%d", builder.EnvGID, l.opts.Builder.GID()),
 			),
 			WithDaemonAccess(l.opts.DockerHost),
-			launchCacheOpt,
+			launchCacheBindOp,
 			WithFlags(l.withLogLevel("-daemon")...),
 			WithArgs(args...),
-			flagsOpt,
+			flagsOp,
 			WithNetwork(l.opts.Network),
-			cacheOpt,
-			stackOpts,
+			cacheBindOp,
+			stackOp,
 		)
 
 		analyze = phaseFactory.New(configProvider)
@@ -537,12 +541,12 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
 
-	cacheOpt := NullOp()
+	cacheBindOp := NullOp()
 	switch buildCache.Type() {
 	case cache.Image:
 		flags = append(flags, "-cache-image", buildCache.Name())
 	case cache.Volume:
-		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
+		cacheBindOp = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
 
 	withEnv := NullOp()
@@ -563,7 +567,7 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		WithArgs(append([]string{l.opts.Image.String()}, l.opts.AdditionalTags...)...),
 		WithRoot(),
 		WithNetwork(l.opts.Network),
-		cacheOpt,
+		cacheBindOp,
 		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os)),
 		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
 		If(l.opts.SBOMDestinationDir != "", WithPostContainerRunOperations(
