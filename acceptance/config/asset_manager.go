@@ -6,7 +6,6 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -25,12 +24,11 @@ const (
 )
 
 var (
-	currentPackFixturesDir           = filepath.Join("testdata", "pack_fixtures")
-	previousPackFixturesOverridesDir = filepath.Join("testdata", "pack_previous_fixtures_overrides")
-	lifecycleTgzExp                  = regexp.MustCompile(`lifecycle-v\d+.\d+.\d+\+linux.x86-64.tgz`)
+	lifecycleTgzExp = regexp.MustCompile(`lifecycle-v\d+.\d+.\d+\+linux.x86-64.tgz`)
 )
 
 type AssetManager struct {
+	testObject                  *testing.T
 	packPath                    string
 	packFixturesPath            string
 	previousPackPath            string
@@ -43,10 +41,9 @@ type AssetManager struct {
 	previousLifecycleDescriptor builder.LifecycleDescriptor
 	previousLifecycleImage      string
 	defaultLifecycleDescriptor  builder.LifecycleDescriptor
-	testObject                  *testing.T
 }
 
-func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig InputConfigurationManager) AssetManager {
+func NewAssetManager(t *testing.T, assert h.AssertionManager, inputConfig InputConfigurationManager, projectBaseDir string) AssetManager {
 	t.Helper()
 
 	var (
@@ -63,10 +60,11 @@ func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig 
 	)
 
 	githubAssetFetcher, err := NewGithubAssetFetcher(t, inputConfig.githubToken)
-	h.AssertNil(t, err)
+	assert.Nil(err)
 
 	assetBuilder := assetManagerBuilder{
 		testObject:         t,
+		projectBaseDir:     projectBaseDir,
 		assert:             assert,
 		inputConfig:        inputConfig,
 		githubAssetFetcher: githubAssetFetcher,
@@ -78,9 +76,10 @@ func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig 
 
 	if inputConfig.combinations.requiresPreviousPack() {
 		convergedPreviousPackPath = assetBuilder.ensurePreviousPack()
-		convergedPreviousPackFixturesPath := assetBuilder.ensurePreviousPackFixtures()
-
-		convergedPreviousPackFixturesPaths = []string{previousPackFixturesOverridesDir, convergedPreviousPackFixturesPath}
+		convergedPreviousPackFixturesPaths = []string{
+			filepath.Join(projectBaseDir, "acceptance", "testdata", "pack_previous_fixtures_overrides"),
+			assetBuilder.ensurePreviousPackFixtures(),
+		}
 	}
 
 	if inputConfig.combinations.requiresCurrentLifecycle() {
@@ -96,8 +95,9 @@ func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig 
 	}
 
 	return AssetManager{
+		testObject:                  t,
 		packPath:                    convergedCurrentPackPath,
-		packFixturesPath:            currentPackFixturesDir,
+		packFixturesPath:            filepath.Join(projectBaseDir, "acceptance", "testdata", "pack_fixtures"),
 		previousPackPath:            convergedPreviousPackPath,
 		previousPackFixturesPaths:   convergedPreviousPackFixturesPaths,
 		lifecyclePath:               convergedCurrentLifecyclePath,
@@ -107,7 +107,6 @@ func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig 
 		previousLifecycleImage:      convergedPreviousLifecycleImage,
 		previousLifecycleDescriptor: convergedPreviousLifecycleDescriptor,
 		defaultLifecycleDescriptor:  convergedDefaultLifecycleDescriptor,
-		testObject:                  t,
 	}
 }
 
@@ -178,6 +177,7 @@ func (a AssetManager) LifecycleImage(kind ComboValue) string {
 
 type assetManagerBuilder struct {
 	testObject         *testing.T
+	projectBaseDir     string
 	assert             h.AssertionManager
 	inputConfig        InputConfigurationManager
 	githubAssetFetcher *GithubAssetFetcher
@@ -351,20 +351,17 @@ func (b assetManagerBuilder) buildPack(compileVersion string) string {
 
 	packPath := filepath.Join(packTmpDir, acceptanceOS.PackBinaryName)
 
-	cwd, err := os.Getwd()
-	b.assert.Nil(err)
-
 	cmd := exec.Command("go", "build",
 		"-ldflags", fmt.Sprintf("-X 'github.com/buildpacks/pack/cmd.Version=%s'", compileVersion),
 		"-o", packPath,
 		"./cmd/pack",
 	)
-	if filepath.Base(cwd) == "acceptance" {
-		cmd.Dir = filepath.Dir(cwd)
-	}
+
+	cmd.Dir = b.projectBaseDir
 
 	b.testObject.Logf("building pack: [CWD=%s] %s", cmd.Dir, cmd.Args)
-	_, err = cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
+	b.testObject.Logf("output:\n%s", string(output))
 	b.assert.Nil(err)
 
 	return packPath

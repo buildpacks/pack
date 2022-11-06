@@ -14,7 +14,6 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -73,7 +72,7 @@ func TestAcceptance(t *testing.T) {
 	inputConfigManager, err := config.NewInputConfigurationManager()
 	assert.Nil(err)
 
-	assetsConfig := config.ConvergedAssetManager(t, assert, inputConfigManager)
+	assetsConfig := config.NewAssetManager(t, assert, inputConfigManager, "..")
 
 	suiteManager = &SuiteManager{out: t.Logf}
 	suite := spec.New("acceptance suite", spec.Report(report.Terminal{}))
@@ -189,29 +188,21 @@ func testWithoutSpecificBuilderRequirement(
 			})
 
 			generateAggregatePackageToml := func(buildpackURI, nestedPackageName, os string) string {
-				t.Helper()
-				packageTomlFile, err := ioutil.TempFile(tmpDir, "package_aggregate-*.toml")
-				assert.Nil(err)
-
-				pack.FixtureManager().TemplateFixtureToFile(
+				return pack.FixtureManager().TemplateFixtureToFile(
+					tmpDir,
 					"package_aggregate.toml",
-					packageTomlFile,
 					map[string]interface{}{
 						"BuildpackURI": buildpackURI,
 						"PackageName":  nestedPackageName,
 						"OS":           os,
 					},
 				)
-
-				assert.Nil(packageTomlFile.Close())
-
-				return packageTomlFile.Name()
 			}
 
 			when("no --format is provided", func() {
 				it("creates the package as image", func() {
 					packageName := "test/package-" + h.RandString(10)
-					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+					packageTomlPath := generatePackageTomlWithOS(t, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 
 					output := pack.RunSuccessfully("buildpack", "package", packageName, "-c", packageTomlPath)
 					assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(packageName)
@@ -227,19 +218,19 @@ func testWithoutSpecificBuilderRequirement(
 					nestedPackageName := "test/package-" + h.RandString(10)
 					packageName := "test/package-" + h.RandString(10)
 
-					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+					packageTomlPath := generatePackageTomlWithOS(t, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
 
 					packageBuildpack := buildpacks.NewPackageImage(
 						t,
-						pack,
+						*pack,
 						packageName,
 						aggregatePackageToml,
 						buildpacks.WithRequiredBuildpacks(
 							buildpacks.SimpleLayersParent,
 							buildpacks.NewPackageImage(
 								t,
-								pack,
+								*pack,
 								nestedPackageName,
 								packageTomlPath,
 								buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
@@ -255,12 +246,12 @@ func testWithoutSpecificBuilderRequirement(
 
 				when("--publish", func() {
 					it("publishes image to registry", func() {
-						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+						packageTomlPath := generatePackageTomlWithOS(t, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 						nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
 						nestedPackage := buildpacks.NewPackageImage(
 							t,
-							pack,
+							*pack,
 							nestedPackageName,
 							packageTomlPath,
 							buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
@@ -287,11 +278,11 @@ func testWithoutSpecificBuilderRequirement(
 
 				when("--pull-policy=never", func() {
 					it("should use local image", func() {
-						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+						packageTomlPath := generatePackageTomlWithOS(t, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 						nestedPackageName := "test/package-" + h.RandString(10)
 						nestedPackage := buildpacks.NewPackageImage(
 							t,
-							pack,
+							*pack,
 							nestedPackageName,
 							packageTomlPath,
 							buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
@@ -311,11 +302,11 @@ func testWithoutSpecificBuilderRequirement(
 					})
 
 					it("should not pull image from registry", func() {
-						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+						packageTomlPath := generatePackageTomlWithOS(t, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 						nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 						nestedPackage := buildpacks.NewPackageImage(
 							t,
-							pack,
+							*pack,
 							nestedPackageName,
 							packageTomlPath,
 							buildpacks.WithPublish(),
@@ -341,7 +332,7 @@ func testWithoutSpecificBuilderRequirement(
 			when("--format file", func() {
 				when("the file extension is .cnb", func() {
 					it("creates the package with the same extension", func() {
-						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+						packageTomlPath := generatePackageTomlWithOS(t, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 						destinationFile := filepath.Join(tmpDir, "package.cnb")
 						output := pack.RunSuccessfully(
 							"buildpack", "package", destinationFile,
@@ -354,7 +345,7 @@ func testWithoutSpecificBuilderRequirement(
 				})
 				when("the file extension is empty", func() {
 					it("creates the package with a .cnb extension", func() {
-						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+						packageTomlPath := generatePackageTomlWithOS(t, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 						destinationFile := filepath.Join(tmpDir, "package")
 						expectedFile := filepath.Join(tmpDir, "package.cnb")
 						output := pack.RunSuccessfully(
@@ -368,7 +359,7 @@ func testWithoutSpecificBuilderRequirement(
 				})
 				when("the file extension is not .cnb", func() {
 					it("creates the package with the given extension but shows a warning", func() {
-						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+						packageTomlPath := generatePackageTomlWithOS(t, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 						destinationFile := filepath.Join(tmpDir, "package.tar.gz")
 						output := pack.RunSuccessfully(
 							"buildpack", "package", destinationFile,
@@ -418,11 +409,11 @@ func testWithoutSpecificBuilderRequirement(
 						fmt.Sprintf("buildpack-%s.cnb", h.RandString(8)),
 					)
 
-					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
+					packageTomlPath := generatePackageTomlWithOS(t, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
 
 					packageFile := buildpacks.NewPackageFile(
 						t,
-						pack,
+						*pack,
 						packageFileLocation,
 						packageTomlPath,
 						buildpacks.WithRequiredBuildpacks(
@@ -449,12 +440,12 @@ func testWithoutSpecificBuilderRequirement(
 			when("buildpack image", func() {
 				when("inspect", func() {
 					it("succeeds", func() {
-						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
+						packageTomlPath := generatePackageTomlWithOS(t, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
 						packageImageName := registryConfig.RepoName("buildpack-" + h.RandString(8))
 
 						packageImage := buildpacks.NewPackageImage(
 							t,
-							pack,
+							*pack,
 							packageImageName,
 							packageTomlPath,
 							buildpacks.WithRequiredBuildpacks(
@@ -663,7 +654,7 @@ func testAcceptance(
 			value, err := suiteManager.RunTaskOnceString("create-stack",
 				func() (string, error) {
 					runImageMirror := registryConfig.RepoName(runImage)
-					err := createStack(t, dockerCli, runImageMirror)
+					err := createStack(t, dockerCli, imageManager, runImageMirror)
 					if err != nil {
 						return "", err
 					}
@@ -694,7 +685,13 @@ func testAcceptance(
 					)...,
 				)
 				value, err := suiteManager.RunTaskOnceString(key, func() (string, error) {
-					return createBuilder(t, assert, createBuilderPack, lifecycle, buildpackManager, runImageMirror)
+					return createBuilder(t, assert, imageManager, dockerCli, createBuilderPack, lifecycle, buildpackManager, config.Stack{
+						RunImage: config.RunImage{
+							Name:       runImage,
+							MirrorName: runImageMirror,
+						},
+						BuildImageName: buildImage,
+					})
 				})
 				assert.Nil(err)
 				suiteManager.RegisterCleanUp("clean-"+key, func() error {
@@ -787,242 +784,15 @@ func testAcceptance(
 					launchCacheVolume.Clear(context.TODO())
 				})
 
-				when("builder is untrusted", func() {
-					var untrustedBuilderName string
-					it.Before(func() {
-						var err error
-						untrustedBuilderName, err = createBuilder(
-							t,
-							assert,
-							createBuilderPack,
-							lifecycle,
-							buildpackManager,
-							runImageMirror,
-						)
-						assert.Nil(err)
-
-						suiteManager.RegisterCleanUp("remove-lifecycle-"+lifecycle.Image(), func() error {
-							img := imageManager.GetImageID(lifecycle.Image())
-							imageManager.CleanupImages(img)
-							return nil
-						})
-					})
-
-					it.After(func() {
-						imageManager.CleanupImages(untrustedBuilderName)
-					})
-
-					when("daemon", func() {
-						it("uses the 5 phases", func() {
-							output := pack.RunSuccessfully(
-								"build", repoName,
-								"-p", filepath.Join("testdata", "mock_app"),
-								"-B", untrustedBuilderName,
-							)
-
-							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
-
-							assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-							assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
-							assertOutput.IncludesSeparatePhases()
-						})
-					})
-
-					when("--publish", func() {
-						it("uses the 5 phases", func() {
-							buildArgs := []string{
-								repoName,
-								"-p", filepath.Join("testdata", "mock_app"),
-								"-B", untrustedBuilderName,
-								"--publish",
-							}
-							if imageManager.HostOS() != "windows" {
-								buildArgs = append(buildArgs, "--network", "host")
-							}
-
-							output := pack.RunSuccessfully("build", buildArgs...)
-
-							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
-
-							assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-							assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
-							assertOutput.IncludesSeparatePhases()
-						})
-					})
-
-					when("additional tags", func() {
-						var additionalRepoName string
-
-						it.Before(func() {
-							additionalRepoName = fmt.Sprintf("%s_additional", repoName)
-						})
-						it.After(func() {
-							imageManager.CleanupImages(additionalRepoName)
-						})
-						it("pushes image to additional tags", func() {
-							output := pack.RunSuccessfully(
-								"build", repoName,
-								"-p", filepath.Join("testdata", "mock_app"),
-								"-B", untrustedBuilderName,
-								"--tag", additionalRepoName,
-							)
-
-							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
-							assert.Contains(output, additionalRepoName)
-						})
-					})
-				})
-
 				when("default builder is set", func() {
+
 					it.Before(func() {
 						pack.RunSuccessfully("config", "default-builder", builderName)
 						pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)
 					})
 
-					it("creates a runnable, rebuildable image on daemon from app dir", func() {
-						appPath := filepath.Join("testdata", "mock_app")
-
-						output := pack.RunSuccessfully(
-							"build", repoName,
-							"-p", appPath,
-						)
-
-						assertOutput := assertions.NewOutputAssertionManager(t, output)
-
-						assertOutput.ReportsSuccessfulImageBuild(repoName)
-						assertOutput.ReportsUsingBuildCacheVolume()
-						assertOutput.ReportsSelectingRunImageMirror(runImageMirror)
-
-						t.Log("app is runnable")
-						assertImage.RunsWithOutput(repoName, "Launch Dep Contents", "Cached Dep Contents")
-
-						t.Log("it uses the run image as a base image")
-						assertImage.HasBaseImage(repoName, runImage)
-
-						t.Log("sets the run image metadata")
-						assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"stack":{"runImage":{"image":"%s","mirrors":["%s"]}}}`, runImage, runImageMirror))
-
-						t.Log("sets the source metadata")
-						assertImage.HasLabelWithData(repoName, "io.buildpacks.project.metadata", (`{"source":{"type":"project","version":{"declared":"1.0.2"},"metadata":{"url":"https://github.com/buildpacks/pack"}}}`))
-
-						t.Log("registry is empty")
-						assertImage.NotExistsInRegistry(repo)
-
-						t.Log("add a local mirror")
-						localRunImageMirror := registryConfig.RepoName("pack-test/run-mirror")
-						imageManager.TagImage(runImage, localRunImageMirror)
-						defer imageManager.CleanupImages(localRunImageMirror)
-						pack.JustRunSuccessfully("config", "run-image-mirrors", "add", runImage, "-m", localRunImageMirror)
-
-						t.Log("rebuild")
-						output = pack.RunSuccessfully(
-							"build", repoName,
-							"-p", appPath,
-						)
-						assertOutput = assertions.NewOutputAssertionManager(t, output)
-						assertOutput.ReportsSuccessfulImageBuild(repoName)
-						assertOutput.ReportsSelectingRunImageMirrorFromLocalConfig(localRunImageMirror)
-						cachedLaunchLayer := "simple/layers:cached-launch-layer"
-
-						assertLifecycleOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-						assertLifecycleOutput.ReportsRestoresCachedLayer(cachedLaunchLayer)
-						assertLifecycleOutput.ReportsExporterReusingUnchangedLayer(cachedLaunchLayer)
-						assertLifecycleOutput.ReportsCacheReuse(cachedLaunchLayer)
-
-						t.Log("app is runnable")
-						assertImage.RunsWithOutput(repoName, "Launch Dep Contents", "Cached Dep Contents")
-
-						t.Log("rebuild with --clear-cache")
-						output = pack.RunSuccessfully("build", repoName, "-p", appPath, "--clear-cache")
-
-						assertOutput = assertions.NewOutputAssertionManager(t, output)
-						assertOutput.ReportsSuccessfulImageBuild(repoName)
-						assertLifecycleOutput = assertions.NewLifecycleOutputAssertionManager(t, output)
-						assertLifecycleOutput.ReportsExporterReusingUnchangedLayer(cachedLaunchLayer)
-						assertLifecycleOutput.ReportsCacheCreation(cachedLaunchLayer)
-
-						t.Log("cacher adds layers")
-						assert.Matches(output, regexp.MustCompile(`(?i)Adding cache layer 'simple/layers:cached-launch-layer'`))
-
-						t.Log("inspecting image")
-						inspectCmd := "inspect"
-						if !pack.Supports("inspect") {
-							inspectCmd = "inspect-image"
-						}
-
-						var (
-							webCommand      string
-							helloCommand    string
-							helloArgs       []string
-							helloArgsPrefix string
-							imageWorkdir    string
-						)
-						if imageManager.HostOS() == "windows" {
-							webCommand = ".\\run"
-							helloCommand = "cmd"
-							helloArgs = []string{"/c", "echo hello world"}
-							helloArgsPrefix = " "
-							imageWorkdir = "c:\\workspace"
-
-						} else {
-							webCommand = "./run"
-							helloCommand = "echo"
-							helloArgs = []string{"hello", "world"}
-							helloArgsPrefix = ""
-							imageWorkdir = "/workspace"
-						}
-
-						formats := []compareFormat{
-							{
-								extension:   "json",
-								compareFunc: assert.EqualJSON,
-								outputArg:   "json",
-							},
-							{
-								extension:   "yaml",
-								compareFunc: assert.EqualYAML,
-								outputArg:   "yaml",
-							},
-							{
-								extension:   "toml",
-								compareFunc: assert.EqualTOML,
-								outputArg:   "toml",
-							},
-						}
-						for _, format := range formats {
-							t.Logf("inspecting image %s format", format.outputArg)
-
-							output = pack.RunSuccessfully(inspectCmd, repoName, "--output", format.outputArg)
-							expectedOutput := pack.FixtureManager().TemplateFixture(
-								fmt.Sprintf("inspect_image_local_output.%s", format.extension),
-								map[string]interface{}{
-									"image_name":             repoName,
-									"base_image_id":          h.ImageID(t, runImageMirror),
-									"base_image_top_layer":   h.TopLayerDiffID(t, runImageMirror),
-									"run_image_local_mirror": localRunImageMirror,
-									"run_image_mirror":       runImageMirror,
-									"web_command":            webCommand,
-									"hello_command":          helloCommand,
-									"hello_args":             helloArgs,
-									"hello_args_prefix":      helloArgsPrefix,
-									"image_workdir":          imageWorkdir,
-								},
-							)
-
-							format.compareFunc(output, expectedOutput)
-						}
-					})
-
-					when("--no-color", func() {
-						it("doesn't have color", func() {
-							appPath := filepath.Join("testdata", "mock_app")
-
-							// --no-color is set as a default option in our tests, and doesn't need to be explicitly provided
-							output := pack.RunSuccessfully("build", repoName, "-p", appPath)
-							assertOutput := assertions.NewOutputAssertionManager(t, output)
-							assertOutput.ReportsSuccessfulImageBuild(repoName)
-							assertOutput.WithoutColors()
-						})
+					it.After(func() {
+						pack.RunSuccessfully("config", "default-builder", "--unset")
 					})
 
 					when("--quiet", func() {
@@ -1036,12 +806,6 @@ func testAcceptance(
 							assertOutput := assertions.NewOutputAssertionManager(t, output)
 							assertOutput.ReportSuccessfulQuietBuild(repoName)
 						})
-					})
-
-					it("supports building app from a zip file", func() {
-						appPath := filepath.Join("testdata", "mock_app.zip")
-						output := pack.RunSuccessfully("build", repoName, "-p", appPath)
-						assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 					})
 
 					when("--network", func() {
@@ -1215,287 +979,6 @@ func testAcceptance(
 						})
 					})
 
-					when("--buildpack", func() {
-						when("the argument is an ID", func() {
-							it("adds the buildpacks to the builder if necessary and runs them", func() {
-								output := pack.RunSuccessfully(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", "simple/layers", // can omit version if only one
-									"--buildpack", "noop.buildpack@noop.buildpack.version",
-								)
-
-								assertOutput := assertions.NewOutputAssertionManager(t, output)
-
-								assertTestAppOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
-								assertTestAppOutput.ReportsBuildStep("Simple Layers Buildpack")
-								assertTestAppOutput.ReportsBuildStep("NOOP Buildpack")
-								assertOutput.ReportsSuccessfulImageBuild(repoName)
-
-								t.Log("app is runnable")
-								assertImage.RunsWithOutput(
-									repoName,
-									"Launch Dep Contents",
-									"Cached Dep Contents",
-								)
-							})
-						})
-
-						when("the argument is an archive", func() {
-							var tmpDir string
-
-							it.Before(func() {
-								var err error
-								tmpDir, err = ioutil.TempDir("", "archive-buildpack-tests-")
-								assert.Nil(err)
-							})
-
-							it.After(func() {
-								assert.Succeeds(os.RemoveAll(tmpDir))
-							})
-
-							it("adds the buildpack to the builder and runs it", func() {
-								buildpackManager.PrepareBuildpacks(tmpDir, buildpacks.ArchiveNotInBuilder)
-
-								output := pack.RunSuccessfully(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", buildpacks.ArchiveNotInBuilder.FullPathIn(tmpDir),
-								)
-
-								assertOutput := assertions.NewOutputAssertionManager(t, output)
-								assertOutput.ReportsAddingBuildpack("local/bp", "local-bp-version")
-								assertOutput.ReportsSuccessfulImageBuild(repoName)
-
-								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
-								assertBuildpackOutput.ReportsBuildStep("Local Buildpack")
-							})
-						})
-
-						when("the argument is directory", func() {
-							var tmpDir string
-
-							it.Before(func() {
-								var err error
-								tmpDir, err = ioutil.TempDir("", "folder-buildpack-tests-")
-								assert.Nil(err)
-							})
-
-							it.After(func() {
-								_ = os.RemoveAll(tmpDir)
-							})
-
-							it("adds the buildpacks to the builder and runs it", func() {
-								h.SkipIf(t, runtime.GOOS == "windows", "buildpack directories not supported on windows")
-
-								buildpackManager.PrepareBuildpacks(tmpDir, buildpacks.FolderNotInBuilder)
-
-								output := pack.RunSuccessfully(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", buildpacks.FolderNotInBuilder.FullPathIn(tmpDir),
-								)
-
-								assertOutput := assertions.NewOutputAssertionManager(t, output)
-								assertOutput.ReportsAddingBuildpack("local/bp", "local-bp-version")
-								assertOutput.ReportsSuccessfulImageBuild(repoName)
-
-								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
-								assertBuildpackOutput.ReportsBuildStep("Local Buildpack")
-							})
-						})
-
-						when("the argument is a buildpackage image", func() {
-							var (
-								tmpDir           string
-								packageImageName string
-							)
-
-							it.After(func() {
-								imageManager.CleanupImages(packageImageName)
-								_ = os.RemoveAll(tmpDir)
-							})
-
-							it("adds the buildpacks to the builder and runs them", func() {
-								packageImageName = registryConfig.RepoName("buildpack-" + h.RandString(8))
-
-								packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
-								packageImage := buildpacks.NewPackageImage(
-									t,
-									pack,
-									packageImageName,
-									packageTomlPath,
-									buildpacks.WithRequiredBuildpacks(
-										buildpacks.FolderSimpleLayersParent,
-										buildpacks.FolderSimpleLayers,
-									),
-								)
-
-								buildpackManager.PrepareBuildpacks(tmpDir, packageImage)
-
-								output := pack.RunSuccessfully(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", packageImageName,
-								)
-
-								assertOutput := assertions.NewOutputAssertionManager(t, output)
-								assertOutput.ReportsAddingBuildpack(
-									"simple/layers/parent",
-									"simple-layers-parent-version",
-								)
-								assertOutput.ReportsAddingBuildpack("simple/layers", "simple-layers-version")
-								assertOutput.ReportsSuccessfulImageBuild(repoName)
-
-								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
-								assertBuildpackOutput.ReportsBuildStep("Simple Layers Buildpack")
-							})
-						})
-
-						when("the argument is a buildpackage file", func() {
-							var tmpDir string
-
-							it.Before(func() {
-								var err error
-								tmpDir, err = ioutil.TempDir("", "package-file")
-								assert.Nil(err)
-							})
-
-							it.After(func() {
-								assert.Succeeds(os.RemoveAll(tmpDir))
-							})
-
-							it("adds the buildpacks to the builder and runs them", func() {
-								packageFileLocation := filepath.Join(
-									tmpDir,
-									fmt.Sprintf("buildpack-%s.cnb", h.RandString(8)),
-								)
-
-								packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
-								packageFile := buildpacks.NewPackageFile(
-									t,
-									pack,
-									packageFileLocation,
-									packageTomlPath,
-									buildpacks.WithRequiredBuildpacks(
-										buildpacks.FolderSimpleLayersParent,
-										buildpacks.FolderSimpleLayers,
-									),
-								)
-
-								buildpackManager.PrepareBuildpacks(tmpDir, packageFile)
-
-								output := pack.RunSuccessfully(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", packageFileLocation,
-								)
-
-								assertOutput := assertions.NewOutputAssertionManager(t, output)
-								assertOutput.ReportsAddingBuildpack(
-									"simple/layers/parent",
-									"simple-layers-parent-version",
-								)
-								assertOutput.ReportsAddingBuildpack("simple/layers", "simple-layers-version")
-								assertOutput.ReportsSuccessfulImageBuild(repoName)
-
-								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
-								assertBuildpackOutput.ReportsBuildStep("Simple Layers Buildpack")
-							})
-						})
-
-						when("the buildpack stack doesn't match the builder", func() {
-							var otherStackBuilderTgz string
-
-							it.Before(func() {
-								otherStackBuilderTgz = h.CreateTGZ(t, filepath.Join(bpDir, "other-stack-buildpack"), "./", 0755)
-							})
-
-							it.After(func() {
-								assert.Succeeds(os.Remove(otherStackBuilderTgz))
-							})
-
-							it("errors", func() {
-								output, err := pack.Run(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", otherStackBuilderTgz,
-								)
-
-								assert.NotNil(err)
-								assert.Contains(output, "other/stack/bp")
-								assert.Contains(output, "other-stack-version")
-								assert.Contains(output, "does not support stack 'pack.test.stack'")
-							})
-						})
-					})
-
-					when("--env-file", func() {
-						var envPath string
-
-						it.Before(func() {
-							envfile, err := ioutil.TempFile("", "envfile")
-							assert.Nil(err)
-							defer envfile.Close()
-
-							err = os.Setenv("ENV2_CONTENTS", "Env2 Layer Contents From Environment")
-							assert.Nil(err)
-							envfile.WriteString(`
-            DETECT_ENV_BUILDPACK=true
-			ENV1_CONTENTS=Env1 Layer Contents From File
-			ENV2_CONTENTS
-			`)
-							envPath = envfile.Name()
-						})
-
-						it.After(func() {
-							assert.Succeeds(os.Unsetenv("ENV2_CONTENTS"))
-							assert.Succeeds(os.RemoveAll(envPath))
-						})
-
-						it("provides the env vars to the build and detect steps", func() {
-							output := pack.RunSuccessfully(
-								"build", repoName,
-								"-p", filepath.Join("testdata", "mock_app"),
-								"--env-file", envPath,
-							)
-
-							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
-							assertImage.RunsWithOutput(
-								repoName,
-								"Env2 Layer Contents From Environment",
-								"Env1 Layer Contents From File",
-							)
-						})
-					})
-
-					when("--env", func() {
-						it.Before(func() {
-							assert.Succeeds(os.Setenv("ENV2_CONTENTS", "Env2 Layer Contents From Environment"))
-						})
-
-						it.After(func() {
-							assert.Succeeds(os.Unsetenv("ENV2_CONTENTS"))
-						})
-
-						it("provides the env vars to the build and detect steps", func() {
-							output := pack.RunSuccessfully(
-								"build", repoName,
-								"-p", filepath.Join("testdata", "mock_app"),
-								"--env", "DETECT_ENV_BUILDPACK=true",
-								"--env", `ENV1_CONTENTS="Env1 Layer Contents From Command Line"`,
-								"--env", "ENV2_CONTENTS",
-							)
-
-							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
-							assertImage.RunsWithOutput(
-								repoName,
-								"Env2 Layer Contents From Environment",
-								"Env1 Layer Contents From Command Line",
-							)
-						})
-					})
-
 					when("--run-image", func() {
 						var runImageName string
 
@@ -1646,6 +1129,7 @@ func testAcceptance(
 										"image_name":           repoName,
 										"base_image_ref":       strings.Join([]string{runImageMirror, h.Digest(t, runImageMirror)}, "@"),
 										"base_image_top_layer": h.TopLayerDiffID(t, runImageMirror),
+										"run_image":            runImage,
 										"run_image_mirror":     runImageMirror,
 										"web_command":          webCommand,
 										"hello_command":        helloCommand,
@@ -2039,50 +1523,6 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							})
 						})
 					})
-
-					when("--creation-time", func() {
-						it.Before(func() {
-							h.SkipIf(t, !pack.SupportsFeature(invoke.CreationTime), "")
-							h.SkipIf(t, !lifecycle.SupportsFeature(config.CreationTime), "")
-						})
-
-						when("provided as 'now'", func() {
-							it("image has create time of the current time", func() {
-								expectedTime := time.Now()
-								pack.RunSuccessfully(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--creation-time", "now",
-								)
-								assertImage.HasCreateTime(repoName, expectedTime)
-							})
-						})
-
-						when("provided as unix timestamp", func() {
-							it("image has create time of the time that was provided", func() {
-								pack.RunSuccessfully(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--creation-time", "1566172801",
-								)
-								expectedTime, err := time.Parse("2006-01-02T03:04:05Z", "2019-08-19T00:00:01Z")
-								h.AssertNil(t, err)
-								assertImage.HasCreateTime(repoName, expectedTime)
-							})
-						})
-
-						when("not provided", func() {
-							it("image has create time of Jan 1, 1980", func() {
-								pack.RunSuccessfully(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-								)
-								expectedTime, err := time.Parse("2006-01-02T03:04:05Z", "1980-01-01T00:00:01Z")
-								h.AssertNil(t, err)
-								assertImage.HasCreateTime(repoName, expectedTime)
-							})
-						})
-					})
 				})
 			})
 
@@ -2401,172 +1841,6 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					assert.TrimmedEq(output, expectedOutput)
 				})
 			})
-
-			when("rebase", func() {
-				var repoName, runBefore, origID string
-				var buildRunImage func(string, string, string)
-
-				it.Before(func() {
-					pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)
-
-					repoName = registryConfig.RepoName("some-org/" + h.RandString(10))
-					runBefore = registryConfig.RepoName("run-before/" + h.RandString(10))
-
-					buildRunImage = func(newRunImage, contents1, contents2 string) {
-						user := func() string {
-							if imageManager.HostOS() == "windows" {
-								return "ContainerAdministrator"
-							}
-
-							return "root"
-						}
-
-						h.CreateImage(t, dockerCli, newRunImage, fmt.Sprintf(`
-													FROM %s
-													USER %s
-													RUN echo %s > /contents1.txt
-													RUN echo %s > /contents2.txt
-													USER pack
-												`, runImage, user(), contents1, contents2))
-					}
-
-					buildRunImage(runBefore, "contents-before-1", "contents-before-2")
-					pack.RunSuccessfully(
-						"build", repoName,
-						"-p", filepath.Join("testdata", "mock_app"),
-						"--builder", builderName,
-						"--run-image", runBefore,
-						"--pull-policy", "never",
-					)
-					origID = h.ImageID(t, repoName)
-					assertImage.RunsWithOutput(
-						repoName,
-						"contents-before-1",
-						"contents-before-2",
-					)
-				})
-
-				it.After(func() {
-					imageManager.CleanupImages(origID, repoName, runBefore)
-					ref, err := name.ParseReference(repoName, name.WeakValidation)
-					assert.Nil(err)
-					buildCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "build", dockerCli)
-					launchCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "launch", dockerCli)
-					assert.Succeeds(buildCacheVolume.Clear(context.TODO()))
-					assert.Succeeds(launchCacheVolume.Clear(context.TODO()))
-				})
-
-				when("daemon", func() {
-					when("--run-image", func() {
-						var runAfter string
-
-						it.Before(func() {
-							runAfter = registryConfig.RepoName("run-after/" + h.RandString(10))
-							buildRunImage(runAfter, "contents-after-1", "contents-after-2")
-						})
-
-						it.After(func() {
-							imageManager.CleanupImages(runAfter)
-						})
-
-						it("uses provided run image", func() {
-							output := pack.RunSuccessfully(
-								"rebase", repoName,
-								"--run-image", runAfter,
-								"--pull-policy", "never",
-							)
-
-							assert.Contains(output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
-							assertImage.RunsWithOutput(
-								repoName,
-								"contents-after-1",
-								"contents-after-2",
-							)
-						})
-					})
-
-					when("local config has a mirror", func() {
-						var localRunImageMirror string
-
-						it.Before(func() {
-							localRunImageMirror = registryConfig.RepoName("run-after/" + h.RandString(10))
-							buildRunImage(localRunImageMirror, "local-mirror-after-1", "local-mirror-after-2")
-							pack.JustRunSuccessfully("config", "run-image-mirrors", "add", runImage, "-m", localRunImageMirror)
-						})
-
-						it.After(func() {
-							imageManager.CleanupImages(localRunImageMirror)
-						})
-
-						it("prefers the local mirror", func() {
-							output := pack.RunSuccessfully("rebase", repoName, "--pull-policy", "never")
-
-							assertOutput := assertions.NewOutputAssertionManager(t, output)
-							assertOutput.ReportsSelectingRunImageMirrorFromLocalConfig(localRunImageMirror)
-							assertOutput.ReportsSuccessfulRebase(repoName)
-							assertImage.RunsWithOutput(
-								repoName,
-								"local-mirror-after-1",
-								"local-mirror-after-2",
-							)
-						})
-					})
-
-					when("image metadata has a mirror", func() {
-						it.Before(func() {
-							// clean up existing mirror first to avoid leaking images
-							imageManager.CleanupImages(runImageMirror)
-
-							buildRunImage(runImageMirror, "mirror-after-1", "mirror-after-2")
-						})
-
-						it("selects the best mirror", func() {
-							output := pack.RunSuccessfully("rebase", repoName, "--pull-policy", "never")
-
-							assertOutput := assertions.NewOutputAssertionManager(t, output)
-							assertOutput.ReportsSelectingRunImageMirror(runImageMirror)
-							assertOutput.ReportsSuccessfulRebase(repoName)
-							assertImage.RunsWithOutput(
-								repoName,
-								"mirror-after-1",
-								"mirror-after-2",
-							)
-						})
-					})
-				})
-
-				when("--publish", func() {
-					it.Before(func() {
-						assert.Succeeds(h.PushImage(dockerCli, repoName, registryConfig))
-					})
-
-					when("--run-image", func() {
-						var runAfter string
-
-						it.Before(func() {
-							runAfter = registryConfig.RepoName("run-after/" + h.RandString(10))
-							buildRunImage(runAfter, "contents-after-1", "contents-after-2")
-							assert.Succeeds(h.PushImage(dockerCli, runAfter, registryConfig))
-						})
-
-						it.After(func() {
-							imageManager.CleanupImages(runAfter)
-						})
-
-						it("uses provided run image", func() {
-							output := pack.RunSuccessfully("rebase", repoName, "--publish", "--run-image", runAfter)
-
-							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulRebase(repoName)
-							assertImage.CanBePulledFromRegistry(repoName)
-							assertImage.RunsWithOutput(
-								repoName,
-								"contents-after-1",
-								"contents-after-2",
-							)
-						})
-					})
-				})
-			})
 		})
 	})
 }
@@ -2618,44 +1892,35 @@ func createComplexBuilder(t *testing.T,
 
 	fixtureManager := pack.FixtureManager()
 
-	nestedLevelOneConfigFile, err := ioutil.TempFile(tmpDir, "nested-level-1-package.toml")
-	assert.Nil(err)
-	fixtureManager.TemplateFixtureToFile(
+	nestedLevelOneConfig := fixtureManager.TemplateFixtureToFile(
+		tmpDir,
 		"nested-level-1-buildpack_package.toml",
-		nestedLevelOneConfigFile,
 		templateMapping,
 	)
-	err = nestedLevelOneConfigFile.Close()
-	assert.Nil(err)
 
-	nestedLevelTwoConfigFile, err := ioutil.TempFile(tmpDir, "nested-level-2-package.toml")
-	assert.Nil(err)
-	fixtureManager.TemplateFixtureToFile(
+	nestedLevelTwoConfig := fixtureManager.TemplateFixtureToFile(
+		tmpDir,
 		"nested-level-2-buildpack_package.toml",
-		nestedLevelTwoConfigFile,
 		templateMapping,
 	)
-
-	err = nestedLevelTwoConfigFile.Close()
-	assert.Nil(err)
 
 	packageImageBuildpack := buildpacks.NewPackageImage(
 		t,
-		pack,
+		*pack,
 		packageImageName,
-		nestedLevelOneConfigFile.Name(),
+		nestedLevelOneConfig,
 		buildpacks.WithRequiredBuildpacks(
 			buildpacks.NestedLevelOne,
 			buildpacks.NewPackageImage(
 				t,
-				pack,
+				*pack,
 				nestedLevelTwoBuildpackName,
-				nestedLevelTwoConfigFile.Name(),
+				nestedLevelTwoConfig,
 				buildpacks.WithRequiredBuildpacks(
 					buildpacks.NestedLevelTwo,
 					buildpacks.NewPackageImage(
 						t,
-						pack,
+						*pack,
 						simpleLayersBuildpackName,
 						fixtureManager.FixtureLocation("simple-layers-buildpack_package.toml"),
 						buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
@@ -2667,7 +1932,7 @@ func createComplexBuilder(t *testing.T,
 
 	simpleLayersDifferentShaBuildpack := buildpacks.NewPackageImage(
 		t,
-		pack,
+		*pack,
 		simpleLayersBuildpackDifferentShaName,
 		fixtureManager.FixtureLocation("simple-layers-buildpack-different-sha_package.toml"),
 		buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayersDifferentSha),
@@ -2695,17 +1960,11 @@ func createComplexBuilder(t *testing.T,
 	}
 
 	// RENDER builder.toml
-	builderConfigFile, err := ioutil.TempFile(tmpDir, "nested_builder.toml")
-	if err != nil {
-		return "", err
-	}
-
-	pack.FixtureManager().TemplateFixtureToFile("nested_builder.toml", builderConfigFile, templateMapping)
-
-	err = builderConfigFile.Close()
-	if err != nil {
-		return "", err
-	}
+	builderConfig := pack.FixtureManager().TemplateFixtureToFile(
+		tmpDir,
+		"nested_builder.toml",
+		templateMapping,
+	)
 
 	// NAME BUILDER
 	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
@@ -2713,7 +1972,7 @@ func createComplexBuilder(t *testing.T,
 	// CREATE BUILDER
 	output := pack.RunSuccessfully(
 		"builder", "create", bldr,
-		"-c", builderConfigFile.Name(),
+		"-c", builderConfig,
 		"--no-color",
 	)
 
@@ -2726,10 +1985,12 @@ func createComplexBuilder(t *testing.T,
 func createBuilder(
 	t *testing.T,
 	assert h.AssertionManager,
+	imageManager managers.ImageManager,
+	dockerCli client.CommonAPIClient,
 	pack *invoke.PackInvoker,
 	lifecycle config.LifecycleAsset,
 	buildpackManager buildpacks.BuildpackManager,
-	runImageMirror string,
+	stack config.Stack,
 ) (string, error) {
 	t.Log("creating builder image...")
 
@@ -2739,7 +2000,9 @@ func createBuilder(
 	defer os.RemoveAll(tmpDir)
 
 	templateMapping := map[string]interface{}{
-		"run_image_mirror": runImageMirror,
+		"build_image":      stack.BuildImageName,
+		"run_image":        stack.RunImage.Name,
+		"run_image_mirror": stack.RunImage.MirrorName,
 	}
 
 	// ARCHIVE BUILDPACKS
@@ -2750,12 +2013,12 @@ func createBuilder(
 		buildpacks.ReadEnv,
 	}
 
-	packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package.toml", imageManager.HostOS())
+	packageTomlPath := generatePackageTomlWithOS(t, pack, tmpDir, "package.toml", imageManager.HostOS())
 	packageImageName := registryConfig.RepoName("simple-layers-package-image-buildpack-" + h.RandString(8))
 
 	packageImageBuildpack := buildpacks.NewPackageImage(
 		t,
-		pack,
+		*pack,
 		packageImageName,
 		packageTomlPath,
 		buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
@@ -2784,19 +2047,11 @@ func createBuilder(
 	}
 
 	// RENDER builder.toml
-	configFileName := "builder.toml"
-
-	builderConfigFile, err := ioutil.TempFile(tmpDir, "builder.toml")
-	assert.Nil(err)
-
-	pack.FixtureManager().TemplateFixtureToFile(
-		configFileName,
-		builderConfigFile,
+	builderConfig := pack.FixtureManager().TemplateFixtureToFile(
+		tmpDir,
+		"builder.toml",
 		templateMapping,
 	)
-
-	err = builderConfigFile.Close()
-	assert.Nil(err)
 
 	// NAME BUILDER
 	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
@@ -2804,7 +2059,7 @@ func createBuilder(
 	// CREATE BUILDER
 	output := pack.RunSuccessfully(
 		"builder", "create", bldr,
-		"-c", builderConfigFile.Name(),
+		"-c", builderConfig,
 		"--no-color",
 	)
 
@@ -2816,31 +2071,23 @@ func createBuilder(
 
 func generatePackageTomlWithOS(
 	t *testing.T,
-	assert h.AssertionManager,
 	pack *invoke.PackInvoker,
 	tmpDir string,
 	fixtureName string,
-	platform_os string,
+	platformOS string,
 ) string {
 	t.Helper()
 
-	packageTomlFile, err := ioutil.TempFile(tmpDir, "package-*.toml")
-	assert.Nil(err)
-
-	pack.FixtureManager().TemplateFixtureToFile(
+	return pack.FixtureManager().TemplateFixtureToFile(
+		tmpDir,
 		fixtureName,
-		packageTomlFile,
 		map[string]interface{}{
-			"OS": platform_os,
+			"OS": platformOS,
 		},
 	)
-
-	assert.Nil(packageTomlFile.Close())
-
-	return packageTomlFile.Name()
 }
 
-func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror string) error {
+func createStack(t *testing.T, dockerCli client.CommonAPIClient, imageManager managers.ImageManager, runImageMirror string) error {
 	t.Helper()
 	t.Log("creating stack images...")
 

@@ -7,7 +7,7 @@ remote_info:
     top_layer: "{{.base_image_top_layer}}"
     reference: "{{.base_image_ref}}"
   run_images:
-    - name: pack-test/run
+    - name: "{{.run_image}}"
     - name: "{{.run_image_mirror}}"
   buildpacks:
     - id: simple/layers

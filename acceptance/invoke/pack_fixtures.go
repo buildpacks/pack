@@ -46,6 +46,7 @@ func (m PackFixtureManager) VersionedFixtureOrFallbackLocation(pattern, version,
 
 	for _, dir := range m.locations {
 		fixtureLocation := filepath.Join(dir, versionedName)
+		m.testObject.Logf("looking up possible fixture at: %s", fixtureLocation)
 		_, err := os.Stat(fixtureLocation)
 		if !os.IsNotExist(err) {
 			return fixtureLocation
@@ -75,9 +76,32 @@ func (m PackFixtureManager) TemplateVersionedFixture(
 	return m.fillTemplate(outputTemplate, templateData)
 }
 
-func (m PackFixtureManager) TemplateFixtureToFile(name string, destination *os.File, data map[string]interface{}) {
-	_, err := io.WriteString(destination, m.TemplateFixture(name, data))
+func (m PackFixtureManager) TemplateVersionedFixtureToFile(
+	tmpDir, versionedPattern, version, fallback string,
+	templateData map[string]interface{},
+) string {
+	m.testObject.Helper()
+	fixturePath := m.VersionedFixtureOrFallbackLocation(versionedPattern, version, fallback)
+	m.testObject.Logf("using %s for fixture %s", fixturePath, fallback)
+
+	outputTemplate, err := ioutil.ReadFile(fixturePath)
 	m.assert.Nil(err)
+
+	tmpFile, err := ioutil.TempFile(tmpDir, "*-"+fallback)
+	defer tmpFile.Close()
+
+	_, err = io.WriteString(tmpFile, m.fillTemplate(outputTemplate, templateData))
+	m.assert.Nil(err)
+	return tmpFile.Name()
+}
+
+func (m PackFixtureManager) TemplateFixtureToFile(tmpDir string, fixture string, data map[string]interface{}) string {
+	tmpFile, err := ioutil.TempFile(tmpDir, fixture+"-*")
+	defer tmpFile.Close()
+
+	_, err = io.WriteString(tmpFile, m.TemplateFixture(fixture, data))
+	m.assert.Nil(err)
+	return tmpFile.Name()
 }
 
 func (m PackFixtureManager) fillTemplate(templateContents []byte, data map[string]interface{}) string {

@@ -5,6 +5,8 @@ package invoke
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -22,6 +24,7 @@ import (
 )
 
 type PackInvoker struct {
+	identifier      string
 	testObject      *testing.T
 	assert          h.AssertionManager
 	path            string
@@ -50,7 +53,15 @@ func NewPackInvoker(
 		testObject.Fatalf("couldn't create home folder for pack: %s", err)
 	}
 
+	hash := sha256.New()
+	hash.Write([]byte(packAssets.Path()))
+	for _, v := range packAssets.FixturePaths() {
+		hash.Write([]byte(v))
+	}
+	identifier := hex.EncodeToString(hash.Sum(nil))
+
 	return &PackInvoker{
+		identifier:      identifier,
 		testObject:      testObject,
 		assert:          assert,
 		path:            packAssets.Path(),
@@ -92,6 +103,10 @@ func (i *PackInvoker) cmd(name string, args ...string) *exec.Cmd {
 	}
 
 	return cmd
+}
+
+func (i *PackInvoker) Identifier() string {
+	return i.identifier
 }
 
 func (i *PackInvoker) baseCmd(parts ...string) *exec.Cmd {
@@ -211,11 +226,44 @@ func (i *PackInvoker) Supports(command string) bool {
 		search = command
 	}
 
-	re := regexp.MustCompile(fmt.Sprint(`\b%s\b`, search))
 	output, err := i.baseCmd(cmdParts...).CombinedOutput()
 	i.assert.Nil(err)
 
-	return re.MatchString(string(output)) && !strings.Contains(string(output), "Unknown help topic")
+	helpOutput := string(output)
+	if strings.Contains(helpOutput, "Unknown help topic") {
+		return false
+	}
+
+	if search[0:1] == "-" {
+		return hasFlag(helpOutput, search)
+	}
+
+	return hasCommand(helpOutput, search)
+}
+
+func hasCommand(helpOutput string, command string) bool {
+
+	commandsSection := ""
+	if parts := strings.Split(helpOutput, "Available Commands:"); len(parts) > 1 {
+		commandsSection = parts[1]
+	}
+
+	if parts := strings.Split(commandsSection, "Flags:"); len(parts) > 1 {
+		commandsSection = parts[0]
+	}
+
+	if commandsSection == "" {
+		return false
+	}
+
+	expression := regexp.MustCompile(fmt.Sprintf(`\t\b%s\b`, command))
+	return expression.MatchString(commandsSection)
+}
+
+func hasFlag(helpOutput string, flag string) bool {
+	pattern := fmt.Sprintf(`\s%s\s`, flag)
+	expression := regexp.MustCompile(pattern)
+	return expression.MatchString(helpOutput)
 }
 
 type Feature int

@@ -19,7 +19,7 @@ import (
 
 type PackageImage struct {
 	testObject           *testing.T
-	pack                 *invoke.PackInvoker
+	pack                 invoke.PackInvoker
 	name                 string
 	sourceConfigLocation string
 	buildpacks           []TestBuildpack
@@ -36,7 +36,7 @@ func (p *PackageImage) SetPublish() {
 
 func NewPackageImage(
 	t *testing.T,
-	pack *invoke.PackInvoker,
+	pack invoke.PackInvoker,
 	name, configLocation string,
 	modifiers ...PackageModifier,
 ) PackageImage {

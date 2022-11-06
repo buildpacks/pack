@@ -9,7 +9,7 @@
     },
     "run_images": [
       {
-        "name": "pack-test/run"
+        "name": "{{.run_image}}"
       },
       {
         "name": "{{.run_image_mirror}}"
