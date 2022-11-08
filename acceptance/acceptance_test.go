@@ -745,57 +745,9 @@ func testAcceptance(
 						assertOutput := assertions.NewOutputAssertionManager(t, output)
 						assertOutput.ReportsSuccesfulRunImageMirrorsAdd("pack-test/run", "some-registry.com/pack-test/run1")
 					})
+
 					it("buildpack layers have no duplication", func() {
 						assertImage.DoesNotHaveDuplicateLayers(builderName)
-					})
-
-					when("build", func() {
-						var repo, repoName string
-
-						it.Before(func() {
-							h.SkipIf(t, imageManager.HostOS() == "windows", "")
-
-							repo = "some-org/" + h.RandString(10)
-							repoName = registryConfig.RepoName(repo)
-							pack.JustRunSuccessfully("config", "lifecycle-image", lifecycle.Image())
-						})
-
-						it.After(func() {
-							imageManager.CleanupImages(repoName)
-							ref, err := name.ParseReference(repoName, name.WeakValidation)
-							assert.Nil(err)
-							cacheImage := cache.NewImageCache(ref, dockerCli)
-							buildCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "build", dockerCli)
-							launchCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "launch", dockerCli)
-							cacheImage.Clear(context.TODO())
-							buildCacheVolume.Clear(context.TODO())
-							launchCacheVolume.Clear(context.TODO())
-						})
-
-						when("builder is untrusted", func() {
-							it("uses the 5 phases, and runs the extender", func() {
-								output := pack.RunSuccessfully(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--network", "host", // export target is the daemon, but we need to be able to reach the registry where the builder image is saved
-									"-B", builderName,
-								)
-
-								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
-
-								assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-								assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
-								assertOutput.IncludesSeparatePhasesWithExtension()
-
-								t.Log("inspecting image")
-								inspectCmd := "inspect"
-								if !pack.Supports("inspect") {
-									inspectCmd = "inspect-image"
-								}
-
-								output = pack.RunSuccessfully(inspectCmd, repoName)
-							})
-						})
 					})
 				})
 
@@ -850,6 +802,55 @@ func testAcceptance(
 						// buildpacks
 						assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.layers", `{"read/env":{"read-env-version":{"api":"0.2","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpReadEnvDiffID+`","name":"Read Env Buildpack"}},"simple/layers":{"simple-layers-version":{"api":"0.2","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpSimpleLayersDiffID+`","name":"Simple Layers Buildpack"}}}`)
 						assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.order", `[{"group":[{"id":"read/env","version":"read-env-version","optional":true},{"id":"simple/layers","version":"simple-layers-version","optional":true}]}]`)
+					})
+
+					when("build", func() {
+						var repo, repoName string
+
+						it.Before(func() {
+							h.SkipIf(t, imageManager.HostOS() == "windows", "")
+
+							repo = "some-org/" + h.RandString(10)
+							repoName = registryConfig.RepoName(repo)
+							pack.JustRunSuccessfully("config", "lifecycle-image", lifecycle.Image())
+						})
+
+						it.After(func() {
+							imageManager.CleanupImages(repoName)
+							ref, err := name.ParseReference(repoName, name.WeakValidation)
+							assert.Nil(err)
+							cacheImage := cache.NewImageCache(ref, dockerCli)
+							buildCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "build", dockerCli)
+							launchCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "launch", dockerCli)
+							cacheImage.Clear(context.TODO())
+							buildCacheVolume.Clear(context.TODO())
+							launchCacheVolume.Clear(context.TODO())
+						})
+
+						when("builder is untrusted", func() {
+							it("uses the 5 phases, and runs the extender", func() {
+								output := pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--network", "host", // export target is the daemon, but we need to be able to reach the registry where the builder image is saved
+									"-B", builderName,
+								)
+
+								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+
+								assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
+								assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+								assertOutput.IncludesSeparatePhasesWithExtension()
+
+								t.Log("inspecting image")
+								inspectCmd := "inspect"
+								if !pack.Supports("inspect") {
+									inspectCmd = "inspect-image"
+								}
+
+								output = pack.RunSuccessfully(inspectCmd, repoName)
+							})
+						})
 					})
 				})
 			})
