@@ -51,7 +51,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 								"cool-remote": "beans",
 							},
 						},
-						Buildpack: buildpack.GroupBuildpack{
+						Buildpack: buildpack.GroupElement{
 							ID:      "remote-buildpack",
 							Version: "remote-buildpack-version",
 						},
@@ -68,7 +68,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 								"cool-local": "beans",
 							},
 						},
-						Buildpack: buildpack.GroupBuildpack{
+						Buildpack: buildpack.GroupElement{
 							ID:      "local-buildpack",
 							Version: "local-buildpack-version",
 						},

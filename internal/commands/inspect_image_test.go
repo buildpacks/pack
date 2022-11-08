@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Masterminds/semver"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
@@ -30,21 +31,23 @@ var (
 	}
 
 	expectedLocalImageInfo = &client.ImageInfo{
-		StackID:    "local.image.stack",
-		Buildpacks: nil,
-		Base:       platform.RunImageMetadata{},
-		BOM:        nil,
-		Stack:      platform.StackMetadata{},
-		Processes:  client.ProcessDetails{},
+		StackID:            "local.image.stack",
+		Buildpacks:         nil,
+		Base:               platform.RunImageMetadata{},
+		BOM:                nil,
+		Stack:              platform.StackMetadata{},
+		Processes:          client.ProcessDetails{},
+		PlatformAPIVersion: semver.MustParse("0.9"),
 	}
 
 	expectedRemoteImageInfo = &client.ImageInfo{
-		StackID:    "remote.image.stack",
-		Buildpacks: nil,
-		Base:       platform.RunImageMetadata{},
-		BOM:        nil,
-		Stack:      platform.StackMetadata{},
-		Processes:  client.ProcessDetails{},
+		StackID:            "remote.image.stack",
+		Buildpacks:         nil,
+		Base:               platform.RunImageMetadata{},
+		BOM:                nil,
+		Stack:              platform.StackMetadata{},
+		Processes:          client.ProcessDetails{},
+		PlatformAPIVersion: semver.MustParse("0.9"),
 	}
 )
 

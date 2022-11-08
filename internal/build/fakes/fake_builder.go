@@ -5,10 +5,10 @@ import (
 	"github.com/buildpacks/imgutil"
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/pack/pkg/dist"
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 type FakeBuilder struct {

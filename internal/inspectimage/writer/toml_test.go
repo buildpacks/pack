@@ -158,7 +158,7 @@ working-dir = "/other-test-work-dir"
 
 			remoteInfo = &client.ImageInfo{
 				StackID: "test.stack.id.remote",
-				Buildpacks: []buildpack.GroupBuildpack{
+				Buildpacks: []buildpack.GroupElement{
 					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
@@ -189,12 +189,12 @@ working-dir = "/other-test-work-dir"
 							},
 						},
 					},
-					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+					Buildpack: buildpack.GroupElement{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 				}},
 				Processes: client.ProcessDetails{
 					DefaultProcess: &launch.Process{
 						Type:             "some-remote-type",
-						Command:          "/some/remote command",
+						Command:          launch.RawCommand{Entries: []string{"/some/remote command"}},
 						Args:             []string{"some", "remote", "args"},
 						Direct:           false,
 						WorkingDirectory: "/some-test-work-dir",
@@ -202,18 +202,19 @@ working-dir = "/other-test-work-dir"
 					OtherProcesses: []launch.Process{
 						{
 							Type:             "other-remote-type",
-							Command:          "/other/remote/command",
+							Command:          launch.RawCommand{Entries: []string{"/other/remote/command"}},
 							Args:             []string{"other", "remote", "args"},
 							Direct:           true,
 							WorkingDirectory: "/other-test-work-dir",
 						},
 					},
 				},
+				PlatformAPIVersion: platformAPIVersionLessThan010,
 			}
 
 			localInfo = &client.ImageInfo{
 				StackID: "test.stack.id.local",
-				Buildpacks: []buildpack.GroupBuildpack{
+				Buildpacks: []buildpack.GroupElement{
 					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
@@ -238,12 +239,12 @@ working-dir = "/other-test-work-dir"
 							},
 						},
 					},
-					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+					Buildpack: buildpack.GroupElement{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 				}},
 				Processes: client.ProcessDetails{
 					DefaultProcess: &launch.Process{
 						Type:             "some-local-type",
-						Command:          "/some/local command",
+						Command:          launch.RawCommand{Entries: []string{"/some/local command"}},
 						Args:             []string{"some", "local", "args"},
 						Direct:           false,
 						WorkingDirectory: "/some-test-work-dir",
@@ -251,13 +252,14 @@ working-dir = "/other-test-work-dir"
 					OtherProcesses: []launch.Process{
 						{
 							Type:             "other-local-type",
-							Command:          "/other/local/command",
+							Command:          launch.RawCommand{Entries: []string{"/other/local/command"}},
 							Args:             []string{"other", "local", "args"},
 							Direct:           true,
 							WorkingDirectory: "/other-test-work-dir",
 						},
 					},
 				},
+				PlatformAPIVersion: platformAPIVersionLessThan010,
 			}
 
 			outBuf = bytes.Buffer{}

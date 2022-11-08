@@ -11,6 +11,8 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/golang/mock/gomock"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -25,6 +27,13 @@ func TestInspectImage(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 	spec.Run(t, "InspectImage", testInspectImage, spec.Parallel(), spec.Report(report.Terminal{}))
+}
+
+// PlatformAPI should be ignored because it is not set in the metadata label
+var ignorePlatformAPI = []cmp.Option{
+	cmpopts.IgnoreFields(launch.Process{}, "PlatformAPI"),
+	cmpopts.IgnoreFields(launch.RawCommand{}, "PlatformAPI"),
+	cmpopts.IgnoreFields(ImageInfo{}, "PlatformAPIVersion"),
 }
 
 func testInspectImage(t *testing.T, when spec.G, it spec.S) {
@@ -183,7 +192,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 						ProcessDetails{
 							DefaultProcess: &launch.Process{
 								Type:             "web",
-								Command:          "/start/web-process",
+								Command:          launch.RawCommand{Entries: []string{"/start/web-process"}},
 								Args:             []string{"-p", "1234"},
 								Direct:           false,
 								WorkingDirectory: "/test-workdir",
@@ -191,14 +200,14 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 							OtherProcesses: []launch.Process{
 								{
 									Type:             "other-process",
-									Command:          "/other/process",
+									Command:          launch.RawCommand{Entries: []string{"/other/process"}},
 									Args:             []string{"opt", "1"},
 									Direct:           true,
 									WorkingDirectory: "/test-workdir",
 								},
 							},
 						},
-					)
+						ignorePlatformAPI...)
 				})
 
 				when("Platform API < 0.4", func() {
@@ -215,7 +224,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 								ProcessDetails{
 									DefaultProcess: &launch.Process{
 										Type:             "other-process",
-										Command:          "/other/process",
+										Command:          launch.RawCommand{Entries: []string{"/other/process"}},
 										Args:             []string{"opt", "1"},
 										Direct:           true,
 										WorkingDirectory: "/test-workdir",
@@ -223,14 +232,14 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 									OtherProcesses: []launch.Process{
 										{
 											Type:             "web",
-											Command:          "/start/web-process",
+											Command:          launch.RawCommand{Entries: []string{"/start/web-process"}},
 											Args:             []string{"-p", "1234"},
 											Direct:           false,
 											WorkingDirectory: "/test-workdir",
 										},
 									},
 								},
-							)
+								ignorePlatformAPI...)
 						})
 					})
 
@@ -249,21 +258,21 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 									OtherProcesses: []launch.Process{
 										{
 											Type:             "other-process",
-											Command:          "/other/process",
+											Command:          launch.RawCommand{Entries: []string{"/other/process"}},
 											Args:             []string{"opt", "1"},
 											Direct:           true,
 											WorkingDirectory: "/test-workdir",
 										},
 										{
 											Type:             "web",
-											Command:          "/start/web-process",
+											Command:          launch.RawCommand{Entries: []string{"/start/web-process"}},
 											Args:             []string{"-p", "1234"},
 											Direct:           false,
 											WorkingDirectory: "/test-workdir",
 										},
 									},
 								},
-							)
+								ignorePlatformAPI...)
 						})
 					})
 
@@ -291,14 +300,14 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 								OtherProcesses: []launch.Process{
 									{
 										Type:             "other-process",
-										Command:          "/other/process",
+										Command:          launch.RawCommand{Entries: []string{"/other/process"}},
 										Args:             []string{"opt", "1"},
 										Direct:           true,
 										WorkingDirectory: "/test-workdir",
 									},
 								},
 							},
-						)
+							ignorePlatformAPI...)
 					})
 				})
 
@@ -335,21 +344,21 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 									OtherProcesses: []launch.Process{
 										{
 											Type:             "other-process",
-											Command:          "/other/process",
+											Command:          launch.RawCommand{Entries: []string{"/other/process"}},
 											Args:             []string{"opt", "1"},
 											Direct:           true,
 											WorkingDirectory: "/test-workdir",
 										},
 										{
 											Type:             "web",
-											Command:          "/start/web-process",
+											Command:          launch.RawCommand{Entries: []string{"/start/web-process"}},
 											Args:             []string{"-p", "1234"},
 											Direct:           false,
 											WorkingDirectory: "/test-workdir",
 										},
 									},
 								},
-							)
+								ignorePlatformAPI...)
 						})
 					})
 
@@ -368,7 +377,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 								ProcessDetails{
 									DefaultProcess: &launch.Process{
 										Type:             "web",
-										Command:          "/start/web-process",
+										Command:          launch.RawCommand{Entries: []string{"/start/web-process"}},
 										Args:             []string{"-p", "1234"},
 										Direct:           false,
 										WorkingDirectory: "/test-workdir",
@@ -376,14 +385,14 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 									OtherProcesses: []launch.Process{
 										{
 											Type:             "other-process",
-											Command:          "/other/process",
+											Command:          launch.RawCommand{Entries: []string{"/other/process"}},
 											Args:             []string{"opt", "1"},
 											Direct:           true,
 											WorkingDirectory: "/test-workdir",
 										},
 									},
 								},
-							)
+								ignorePlatformAPI...)
 						})
 					})
 
@@ -402,21 +411,21 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 									OtherProcesses: []launch.Process{
 										{
 											Type:             "other-process",
-											Command:          "/other/process",
+											Command:          launch.RawCommand{Entries: []string{"/other/process"}},
 											Args:             []string{"opt", "1"},
 											Direct:           true,
 											WorkingDirectory: "/test-workdir",
 										},
 										{
 											Type:             "web",
-											Command:          "/start/web-process",
+											Command:          launch.RawCommand{Entries: []string{"/start/web-process"}},
 											Args:             []string{"-p", "1234"},
 											Direct:           false,
 											WorkingDirectory: "/test-workdir",
 										},
 									},
 								},
-							)
+								ignorePlatformAPI...)
 						})
 					})
 
@@ -447,14 +456,14 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 									OtherProcesses: []launch.Process{
 										{
 											Type:             "other-process",
-											Command:          "/other/process",
+											Command:          launch.RawCommand{Entries: []string{"/other/process"}},
 											Args:             []string{"opt", "1"},
 											Direct:           true,
 											WorkingDirectory: "/test-workdir",
 										},
 									},
 								},
-							)
+								ignorePlatformAPI...)
 						})
 					})
 
@@ -472,21 +481,21 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 										OtherProcesses: []launch.Process{
 											{
 												Type:             "other-process",
-												Command:          "/other/process",
+												Command:          launch.RawCommand{Entries: []string{"/other/process"}},
 												Args:             []string{"opt", "1"},
 												Direct:           true,
 												WorkingDirectory: "/test-workdir",
 											},
 											{
 												Type:             "web",
-												Command:          "/start/web-process",
+												Command:          launch.RawCommand{Entries: []string{"/start/web-process"}},
 												Args:             []string{"-p", "1234"},
 												Direct:           false,
 												WorkingDirectory: "/test-workdir",
 											},
 										},
 									},
-								)
+									ignorePlatformAPI...)
 							})
 						})
 
@@ -503,21 +512,21 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 										OtherProcesses: []launch.Process{
 											{
 												Type:             "other-process",
-												Command:          "/other/process",
+												Command:          launch.RawCommand{Entries: []string{"/other/process"}},
 												Args:             []string{"opt", "1"},
 												Direct:           true,
 												WorkingDirectory: "/test-workdir",
 											},
 											{
 												Type:             "web",
-												Command:          "/start/web-process",
+												Command:          launch.RawCommand{Entries: []string{"/start/web-process"}},
 												Args:             []string{"-p", "1234"},
 												Direct:           false,
 												WorkingDirectory: "/test-workdir",
 											},
 										},
 									},
-								)
+									ignorePlatformAPI...)
 							})
 						})
 
@@ -532,7 +541,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 									ProcessDetails{
 										DefaultProcess: &launch.Process{
 											Type:             "other-process",
-											Command:          "/other/process",
+											Command:          launch.RawCommand{Entries: []string{"/other/process"}},
 											Args:             []string{"opt", "1"},
 											Direct:           true,
 											WorkingDirectory: "/test-workdir",
@@ -540,14 +549,14 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 										OtherProcesses: []launch.Process{
 											{
 												Type:             "web",
-												Command:          "/start/web-process",
+												Command:          launch.RawCommand{Entries: []string{"/start/web-process"}},
 												Args:             []string{"-p", "1234"},
 												Direct:           false,
 												WorkingDirectory: "/test-workdir",
 											},
 										},
 									},
-								)
+									ignorePlatformAPI...)
 							})
 						})
 					})
@@ -581,14 +590,14 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 									OtherProcesses: []launch.Process{
 										{
 											Type:             "other-process",
-											Command:          "/other/process",
+											Command:          launch.RawCommand{Entries: []string{"/other/process"}},
 											Args:             []string{"opt", "1"},
 											Direct:           true,
 											WorkingDirectory: "/other-workdir",
 										},
 									},
 								},
-							)
+								ignorePlatformAPI...)
 						})
 					})
 
@@ -601,7 +610,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 								ProcessDetails{
 									DefaultProcess: &launch.Process{
 										Type:             "web",
-										Command:          "/start/web-process",
+										Command:          launch.RawCommand{Entries: []string{"/start/web-process"}},
 										Args:             []string{"-p", "1234"},
 										Direct:           false,
 										WorkingDirectory: "/test-workdir",
@@ -609,14 +618,14 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 									OtherProcesses: []launch.Process{
 										{
 											Type:             "other-process",
-											Command:          "/other/process",
+											Command:          launch.RawCommand{Entries: []string{"/other/process"}},
 											Args:             []string{"opt", "1"},
 											Direct:           true,
 											WorkingDirectory: "/test-workdir",
 										},
 									},
 								},
-							)
+								ignorePlatformAPI...)
 						})
 					})
 				})
@@ -650,7 +659,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 				Return(fakes.NewImage("missing/labels", "", nil), nil)
 			info, err := subject.InspectImage("missing/labels", true)
 			h.AssertNil(t, err)
-			h.AssertEq(t, info, &ImageInfo{})
+			h.AssertEq(t, info, &ImageInfo{}, ignorePlatformAPI...)
 		})
 	})
 

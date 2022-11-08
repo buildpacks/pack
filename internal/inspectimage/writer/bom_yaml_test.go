@@ -91,7 +91,7 @@ remote:
 							},
 						},
 					},
-					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
+					Buildpack: buildpack.GroupElement{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
 				}}}
 
 			localInfo = &client.ImageInfo{
@@ -106,7 +106,7 @@ remote:
 							},
 						},
 					},
-					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
+					Buildpack: buildpack.GroupElement{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
 				}},
 			}
 
