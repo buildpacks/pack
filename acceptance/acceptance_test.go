@@ -786,8 +786,8 @@ func testAcceptance(
 
 					it("creates builder", func() {
 						// Linux containers (including Linux containers on Windows)
-						extSimpleLayersDiffID := "sha256:9a31b13bfd9c10ca83e727adb3c02f59833a32d241cbd6c5fab6222472d47121"
-						extReadEnvDiffID := "sha256:2705560ec16c78e12a912128a1f37d2e8b683a244352d8ec91d036923dcfc62d"
+						extSimpleLayersDiffID := "sha256:b9e4a0ddfb650c7aa71d1e6aceea1665365e409b3078bfdc1e51c2b07ab2b423"
+						extReadEnvDiffID := "sha256:309f91ff668089401271a1da060c4cc1e16f0c8e0980f26fb52ad74bfa683d5"
 						bpSimpleLayersDiffID := "sha256:285ff6683c99e5ae19805f6a62168fb40dca64d813c53b782604c9652d745c70"
 						bpReadEnvDiffID := "sha256:dd1e0efcbf3f08b014ef6eff9cfe7a9eac1cf20bd9b6a71a946f0a74575aa56f"
 						if imageManager.HostOS() == "windows" { // Windows containers on Windows
