@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/pack/pkg/buildpack"
 )
 
 type ExtensionDescriptor struct {
@@ -21,7 +20,7 @@ func (e *ExtensionDescriptor) EscapedID() string {
 }
 
 func (e *ExtensionDescriptor) Kind() string {
-	return buildpack.KindExtension
+	return "extension"
 }
 
 func (e *ExtensionDescriptor) API() *api.Version {

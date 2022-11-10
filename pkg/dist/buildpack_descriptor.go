@@ -9,7 +9,6 @@ import (
 
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/pkg/buildpack"
 )
 
 type BuildpackDescriptor struct {
@@ -52,7 +51,7 @@ func (b *BuildpackDescriptor) EnsureStackSupport(stackID string, providedMixins 
 }
 
 func (b *BuildpackDescriptor) Kind() string {
-	return buildpack.KindBuildpack
+	return "buildpack"
 }
 
 func (b *BuildpackDescriptor) API() *api.Version {
