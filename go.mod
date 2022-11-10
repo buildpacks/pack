@@ -3,12 +3,12 @@ module github.com/buildpacks/pack
 require (
 	github.com/BurntSushi/toml v1.2.0
 	github.com/Masterminds/semver v1.5.0
-	github.com/Microsoft/go-winio v0.5.2
+	github.com/Microsoft/go-winio v0.6.0
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20220913203928-6accc39f0cf9
 	github.com/buildpacks/lifecycle v0.14.2
-	github.com/docker/cli v20.10.18+incompatible
-	github.com/docker/docker v20.10.18+incompatible
+	github.com/docker/cli v20.10.21+incompatible
+	github.com/docker/docker v20.10.21+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gdamore/tcell/v2 v2.5.3
@@ -28,7 +28,7 @@ require (
 	github.com/rivo/tview v0.0.0-20220307222120-9994674d60a8
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/sclevine/spec v1.4.0
-	github.com/spf13/cobra v1.5.0
+	github.com/spf13/cobra v1.6.1
 	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
 	golang.org/x/oauth2 v0.0.0-20220718184931-c8730f7fcb92
@@ -83,7 +83,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
@@ -111,6 +111,7 @@ require (
 	golang.org/x/sync v0.0.0-20220907140024-f12130a52804 // indirect
 	golang.org/x/sys v0.0.0-20220913153101-76c7481b5158 // indirect
 	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/tools v0.1.12 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
