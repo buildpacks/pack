@@ -350,7 +350,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	if _, err := dist.GetLabel(b.image, dist.BuildpackLayersLabel, &bpLayers); err != nil {
 		return errors.Wrapf(err, "getting label %s", dist.BuildpackLayersLabel)
 	}
-	err = b.addModules("buildpack", logger, tmpDir, b.image, b.additionalBuildpacks, bpLayers)
+	err = b.addModules(buildpack.KindBuildpack, logger, tmpDir, b.image, b.additionalBuildpacks, bpLayers)
 	if err != nil {
 		return err
 	}
@@ -362,7 +362,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	if _, err := dist.GetLabel(b.image, dist.ExtensionLayersLabel, &extLayers); err != nil {
 		return errors.Wrapf(err, "getting label %s", dist.ExtensionLayersLabel)
 	}
-	err = b.addModules("extension", logger, tmpDir, b.image, b.additionalExtensions, extLayers)
+	err = b.addModules(buildpack.KindExtension, logger, tmpDir, b.image, b.additionalExtensions, extLayers)
 	if err != nil {
 		return err
 	}
@@ -371,11 +371,11 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	}
 
 	if b.replaceOrder {
-		resolvedOrderBp, err := processOrder(b.metadata.Buildpacks, b.order, "buildpack")
+		resolvedOrderBp, err := processOrder(b.metadata.Buildpacks, b.order, buildpack.KindBuildpack)
 		if err != nil {
 			return errors.Wrap(err, "processing buildpacks order")
 		}
-		resolvedOrderExt, err := processOrder(b.metadata.Extensions, b.orderExtensions, "extension")
+		resolvedOrderExt, err := processOrder(b.metadata.Extensions, b.orderExtensions, buildpack.KindExtension)
 		if err != nil {
 			return errors.Wrap(err, "processing extensions order")
 		}

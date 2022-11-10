@@ -212,7 +212,7 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 
 func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
 	for _, b := range opts.Config.Buildpacks {
-		if err := c.addConfig(ctx, "buildpack", b, opts, bldr); err != nil {
+		if err := c.addConfig(ctx, buildpack.KindBuildpack, b, opts, bldr); err != nil {
 			return err
 		}
 	}
@@ -221,7 +221,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 
 func (c *Client) addExtensionsToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
 	for _, e := range opts.Config.Extensions {
-		if err := c.addConfig(ctx, "extension", e, opts, bldr); err != nil {
+		if err := c.addConfig(ctx, buildpack.KindExtension, e, opts, bldr); err != nil {
 			return err
 		}
 	}
@@ -269,9 +269,9 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 
 	for _, module := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
 		switch kind {
-		case "buildpack":
+		case buildpack.KindBuildpack:
 			bldr.AddBuildpack(module)
-		case "extension":
+		case buildpack.KindExtension:
 			bldr.AddExtension(module)
 		default:
 			return fmt.Errorf("unknown module kind: %s", kind)

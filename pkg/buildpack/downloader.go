@@ -79,9 +79,9 @@ type DownloadOptions struct {
 }
 
 func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, opts DownloadOptions) (BuildModule, []BuildModule, error) {
-	kind := "buildpack"
-	if opts.ModuleKind == "extension" {
-		kind = "extension"
+	kind := KindBuildpack
+	if opts.ModuleKind == KindExtension {
+		kind = KindExtension
 	}
 
 	var err error
@@ -160,7 +160,7 @@ func decomposeBlob(blob blob.Blob, kind string, imageOS string) (mainModule Buil
 			return mainModule, depModules, errors.Wrapf(err, "get tar writer factory for OS %s", style.Symbol(imageOS))
 		}
 
-		if kind == "extension" {
+		if kind == KindExtension {
 			mainModule, err = FromExtensionRootBlob(blob, layerWriterFactory)
 		} else {
 			mainModule, err = FromBuildpackRootBlob(blob, layerWriterFactory)
@@ -175,9 +175,9 @@ func decomposeBlob(blob blob.Blob, kind string, imageOS string) (mainModule Buil
 
 func fromOCILayoutBlob(blob blob.Blob, kind string) (mainModule BuildModule, depModules []BuildModule, err error) {
 	switch kind {
-	case "buildpack":
+	case KindBuildpack:
 		mainModule, depModules, err = BuildpacksFromOCILayoutBlob(blob)
-	case "extension":
+	case KindExtension:
 		mainModule, err = ExtensionsFromOCILayoutBlob(blob)
 	default:
 		return nil, nil, fmt.Errorf("unknown module kind: %s", kind)
@@ -195,9 +195,9 @@ func extractPackaged(ctx context.Context, kind string, pkgImageRef string, fetch
 	}
 
 	switch kind {
-	case "buildpack":
+	case KindBuildpack:
 		mainModule, depModules, err = extractBuildpacks(pkgImage)
-	case "extension":
+	case KindExtension:
 		return nil, nil, nil // TODO: add extractExtensions when `pack extension package` is supported in https://github.com/buildpacks/pack/issues/1489
 	default:
 		return nil, nil, fmt.Errorf("unknown module kind: %s", kind)

@@ -17,8 +17,12 @@ import (
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
-//go:generate mockgen -package testmocks -destination ../testmocks/mock_build_module.go github.com/buildpacks/pack/pkg/buildpack BuildModule
+const (
+	KindBuildpack = "buildpack"
+	KindExtension = "extension"
+)
 
+//go:generate mockgen -package testmocks -destination ../testmocks/mock_build_module.go github.com/buildpacks/pack/pkg/buildpack BuildModule
 type BuildModule interface {
 	// Open returns a reader to a tar with contents structured as per the distribution spec
 	// (currently '/cnb/buildpacks/{ID}/{version}/*', all entries with a zeroed-out
@@ -67,7 +71,7 @@ func FromBlob(descriptor Descriptor, blob Blob) BuildModule {
 func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
 	descriptor := dist.BuildpackDescriptor{}
 	descriptor.WithAPI = api.MustParse(dist.AssumedBuildpackAPIVersion)
-	if err := readDescriptor("buildpack", &descriptor, blob); err != nil {
+	if err := readDescriptor(KindBuildpack, &descriptor, blob); err != nil {
 		return nil, err
 	}
 	if err := validateBuildpackDescriptor(descriptor); err != nil {
@@ -82,7 +86,7 @@ func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
 	descriptor := dist.ExtensionDescriptor{}
 	descriptor.WithAPI = api.MustParse(dist.AssumedBuildpackAPIVersion)
-	if err := readDescriptor("extension", &descriptor, blob); err != nil {
+	if err := readDescriptor(KindExtension, &descriptor, blob); err != nil {
 		return nil, err
 	}
 	if err := validateExtensionDescriptor(descriptor); err != nil {
@@ -141,7 +145,7 @@ func toDistTar(tw archive.TarWriter, descriptor Descriptor, blob Blob) error {
 	ts := archive.NormalizedDateTime
 
 	parentDir := dist.BuildpacksDir
-	if descriptor.Kind() == "extension" {
+	if descriptor.Kind() == KindExtension {
 		parentDir = dist.ExtensionsDir
 	}
 
