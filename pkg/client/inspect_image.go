@@ -50,8 +50,6 @@ type ImageInfo struct {
 
 	// Processes lists all processes contributed by buildpacks.
 	Processes ProcessDetails
-
-	PlatformAPIVersion *semver.Version
 }
 
 // ProcessDetails is a collection of all start command metadata
@@ -175,12 +173,11 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 	}
 
 	return &ImageInfo{
-		StackID:            stackID,
-		Stack:              layersMd.Stack,
-		Base:               layersMd.RunImage,
-		BOM:                buildMD.BOM,
-		Buildpacks:         buildMD.Buildpacks,
-		Processes:          processDetails,
-		PlatformAPIVersion: platformAPIVersion,
+		StackID:    stackID,
+		Stack:      layersMd.Stack,
+		Base:       layersMd.RunImage,
+		BOM:        buildMD.BOM,
+		Buildpacks: buildMD.Buildpacks,
+		Processes:  processDetails,
 	}, nil
 }

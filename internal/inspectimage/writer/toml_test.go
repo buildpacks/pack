@@ -209,7 +209,6 @@ working-dir = "/other-test-work-dir"
 						},
 					},
 				},
-				PlatformAPIVersion: platformAPIVersionLessThan010,
 			}
 
 			localInfo = &client.ImageInfo{
@@ -259,7 +258,6 @@ working-dir = "/other-test-work-dir"
 						},
 					},
 				},
-				PlatformAPIVersion: platformAPIVersionLessThan010,
 			}
 
 			outBuf = bytes.Buffer{}

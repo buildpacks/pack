@@ -33,7 +33,6 @@ func TestInspectImage(t *testing.T) {
 var ignorePlatformAPI = []cmp.Option{
 	cmpopts.IgnoreFields(launch.Process{}, "PlatformAPI"),
 	cmpopts.IgnoreFields(launch.RawCommand{}, "PlatformAPI"),
-	cmpopts.IgnoreFields(ImageInfo{}, "PlatformAPIVersion"),
 }
 
 func testInspectImage(t *testing.T, when spec.G, it spec.S) {

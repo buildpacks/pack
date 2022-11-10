@@ -1,7 +1,6 @@
 package inspectimage
 
 import (
-	"github.com/Masterminds/semver"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
@@ -27,13 +26,12 @@ type StackDisplay struct {
 }
 
 type ProcessDisplay struct {
-	Type            string   `json:"type" yaml:"type" toml:"type"`
-	Shell           string   `json:"shell" yaml:"shell" toml:"shell"`
-	Command         string   `json:"command" yaml:"command" toml:"command"`
-	OverridableArgs []string `json:"overridable-args,omitempty" yaml:"overridable-args,omitempty" toml:"overridable-args,omitempty"`
-	Default         bool     `json:"default" yaml:"default" toml:"default"`
-	Args            []string `json:"args" yaml:"args" toml:"args"`
-	WorkDir         string   `json:"working-dir" yaml:"working-dir" toml:"working-dir"`
+	Type    string   `json:"type" yaml:"type" toml:"type"`
+	Shell   string   `json:"shell" yaml:"shell" toml:"shell"`
+	Command string   `json:"command" yaml:"command" toml:"command"`
+	Default bool     `json:"default" yaml:"default" toml:"default"`
+	Args    []string `json:"args" yaml:"args" toml:"args"`
+	WorkDir string   `json:"working-dir" yaml:"working-dir" toml:"working-dir"`
 }
 
 type BaseDisplay struct {
@@ -64,7 +62,7 @@ func NewInfoDisplay(info *client.ImageInfo, generalInfo GeneralInfo) *InfoDispla
 		Base:            displayBase(info.Base),
 		RunImageMirrors: displayMirrors(info, generalInfo),
 		Buildpacks:      displayBuildpacks(info.Buildpacks),
-		Processes:       displayProcesses(info.Processes, info.PlatformAPIVersion),
+		Processes:       displayProcesses(info.Processes),
 	}
 }
 
@@ -142,20 +140,20 @@ func displayBuildpacks(buildpacks []buildpack.GroupElement) []dist.ModuleInfo {
 	return result
 }
 
-func displayProcesses(details client.ProcessDetails, platformAPIVersion *semver.Version) []ProcessDisplay {
+func displayProcesses(details client.ProcessDetails) []ProcessDisplay {
 	var result []ProcessDisplay
 	detailsArray := details.OtherProcesses
 	if details.DefaultProcess != nil {
-		result = append(result, convertToDisplay(*details.DefaultProcess, true, platformAPIVersion))
+		result = append(result, convertToDisplay(*details.DefaultProcess, true))
 	}
 
 	for _, detail := range detailsArray {
-		result = append(result, convertToDisplay(detail, false, platformAPIVersion))
+		result = append(result, convertToDisplay(detail, false))
 	}
 	return result
 }
 
-func convertToDisplay(proc launch.Process, isDefault bool, platformAPIVersion *semver.Version) ProcessDisplay {
+func convertToDisplay(proc launch.Process, isDefault bool) ProcessDisplay {
 	var shell string
 	switch proc.Direct {
 	case true:
@@ -163,27 +161,13 @@ func convertToDisplay(proc launch.Process, isDefault bool, platformAPIVersion *s
 	case false:
 		shell = "bash"
 	}
-	// launch.Process.Command is a list of string in lifecycle 0.15.0+
-	// launch.Process.Command[0] is the command
-	// For platform API >= 0.10, the other elements of launch.Process.Command are arguments that are always provided, whereas
-	// launch.Process.Args are arguments that may be overridden by the end user.
-	// For platform API < 0.10, launch.Process.Command only has one entry (the command itself), whereas
-	// launch.Process.Args are arguments that are always provided.
-	var alwaysArgs, overridableArgs []string
-	if platformAPIVersion.LessThan(semver.MustParse("0.10")) {
-		alwaysArgs = proc.Args
-	} else {
-		alwaysArgs = proc.Command.Entries[1:]
-		overridableArgs = proc.Args
-	}
 	result := ProcessDisplay{
-		Type:            proc.Type,
-		Shell:           shell,
-		Command:         proc.Command.Entries[0],
-		OverridableArgs: overridableArgs,
-		Default:         isDefault,
-		Args:            alwaysArgs,
-		WorkDir:         proc.WorkingDirectory,
+		Type:    proc.Type,
+		Shell:   shell,
+		Command: proc.Command.Entries[0],
+		Default: isDefault,
+		Args:    proc.Args, // overridable args are supported for platform API >= 0.10 with buildpack API >= 0.9, but we can't determine the buildpack API from the metadata label (to be fixed in platform 0.11)
+		WorkDir: proc.WorkingDirectory,
 	}
 
 	return result

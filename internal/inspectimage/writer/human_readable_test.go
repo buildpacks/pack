@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Masterminds/semver"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
@@ -20,11 +19,6 @@ import (
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
-)
-
-var (
-	platformAPIVersionLessThan010 = semver.MustParse("0.9")
-	//platformAPIVersionAtLeast010 = semver.MustParse("0.10") // TODO: add tests for newer platform
 )
 
 func TestHumanReadable(t *testing.T) {
@@ -157,7 +151,6 @@ Processes:
 						},
 					},
 				},
-				PlatformAPIVersion: platformAPIVersionLessThan010,
 			}
 
 			localInfo = &client.ImageInfo{
@@ -208,7 +201,6 @@ Processes:
 						},
 					},
 				},
-				PlatformAPIVersion: platformAPIVersionLessThan010,
 			}
 
 			outBuf = bytes.Buffer{}

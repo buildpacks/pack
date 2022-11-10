@@ -177,7 +177,6 @@ remote_info:
 						},
 					},
 				},
-				PlatformAPIVersion: platformAPIVersionLessThan010,
 			}
 
 			localInfo = &client.ImageInfo{
@@ -227,7 +226,6 @@ remote_info:
 						},
 					},
 				},
-				PlatformAPIVersion: platformAPIVersionLessThan010,
 			}
 
 			outBuf = bytes.Buffer{}

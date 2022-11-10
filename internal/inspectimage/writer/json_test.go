@@ -223,7 +223,6 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 				},
-				PlatformAPIVersion: platformAPIVersionLessThan010,
 			}
 
 			localInfo = &client.ImageInfo{
@@ -273,7 +272,6 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 				},
-				PlatformAPIVersion: platformAPIVersionLessThan010,
 			}
 
 			outBuf = bytes.Buffer{}
