@@ -8,6 +8,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -31,7 +32,7 @@ func testExtensionDescriptor(t *testing.T, when spec.G, it spec.S) {
 	when("#Kind", func() {
 		it("returns 'extension'", func() {
 			extDesc := dist.ExtensionDescriptor{}
-			h.AssertEq(t, extDesc.Kind(), "extension")
+			h.AssertEq(t, extDesc.Kind(), buildpack.KindExtension)
 		})
 	})
 

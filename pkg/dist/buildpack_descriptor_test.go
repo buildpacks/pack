@@ -8,6 +8,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -152,7 +153,7 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 	when("#Kind", func() {
 		it("returns 'buildpack'", func() {
 			bpDesc := dist.BuildpackDescriptor{}
-			h.AssertEq(t, bpDesc.Kind(), "buildpack")
+			h.AssertEq(t, bpDesc.Kind(), buildpack.KindBuildpack)
 		})
 	})
 
