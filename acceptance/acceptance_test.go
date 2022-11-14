@@ -787,7 +787,7 @@ func testAcceptance(
 					it("creates builder", func() {
 						// Linux containers (including Linux containers on Windows)
 						extSimpleLayersDiffID := "sha256:b9e4a0ddfb650c7aa71d1e6aceea1665365e409b3078bfdc1e51c2b07ab2b423"
-						extReadEnvDiffID := "sha256:309f91ff668089401271a1da060c4cc1e16f0c8e0980f26fb52ad74bfa683d5d"
+						extReadEnvDiffID := "sha256:b49f178f802bbeb04acf4776bd41dcea8c47504ce31b06b580ec697387629cf2"
 						bpSimpleLayersDiffID := "sha256:285ff6683c99e5ae19805f6a62168fb40dca64d813c53b782604c9652d745c70"
 						bpReadEnvDiffID := "sha256:dd1e0efcbf3f08b014ef6eff9cfe7a9eac1cf20bd9b6a71a946f0a74575aa56f"
 						if imageManager.HostOS() == "windows" { // Windows containers on Windows
@@ -797,7 +797,7 @@ func testAcceptance(
 							bpReadEnvDiffID = "sha256:8b22a7742ffdfbdd978787c6937456b68afb27c3585a3903048be7434d251e3f"
 						}
 						// extensions
-						assertImage.HasLabelWithData(builderName, "io.buildpacks.extension.layers", `{"read/env":{"read-env-version":{"api":"0.2","layerDiffID":"`+extReadEnvDiffID+`","name":"Read Env Extension"}},"simple/layers":{"simple-layers-version":{"api":"0.2","layerDiffID":"`+extSimpleLayersDiffID+`","name":"Simple Layers Extension"}}}`)
+						assertImage.HasLabelWithData(builderName, "io.buildpacks.extension.layers", `{"read/env":{"read-env-version":{"api":"0.9","layerDiffID":"`+extReadEnvDiffID+`","name":"Read Env Extension"}},"simple/layers":{"simple-layers-version":{"api":"0.2","layerDiffID":"`+extSimpleLayersDiffID+`","name":"Simple Layers Extension"}}}`)
 						assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.order-extensions", `[{"group":[{"id":"read/env","version":"read-env-version"},{"id":"simple/layers","version":"simple-layers-version"}]}]`)
 						// buildpacks
 						assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.layers", `{"read/env":{"read-env-version":{"api":"0.2","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpReadEnvDiffID+`","name":"Read Env Buildpack"}},"simple/layers":{"simple-layers-version":{"api":"0.2","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpSimpleLayersDiffID+`","name":"Simple Layers Buildpack"}}}`)
