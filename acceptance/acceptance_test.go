@@ -753,7 +753,8 @@ func testAcceptance(
 
 				when("builder has extensions", func() {
 					it.Before(func() {
-						h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.BuilderCreateWithExtensions), "")
+						h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.Extensions), "")
+						h.SkipIf(t, !pack.SupportsFeature(invoke.Extensions), "")
 						// create a task, handled by a 'task manager' which executes our pack commands during tests.
 						// looks like this is used to de-dup tasks
 						key := taskKey(
