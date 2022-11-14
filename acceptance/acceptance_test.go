@@ -818,6 +818,8 @@ func testAcceptance(
 						})
 
 						it.After(func() {
+							h.SkipIf(t, imageManager.HostOS() == "windows", "")
+
 							imageManager.CleanupImages(repoName)
 							ref, err := name.ParseReference(repoName, name.WeakValidation)
 							assert.Nil(err)
