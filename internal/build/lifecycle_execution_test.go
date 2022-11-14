@@ -435,6 +435,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			when("--clear-cache", func() {
 				providedUseCreator = false
 				providedClearCache = true
+				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) { // allow buildCache.Clear to succeed without requiring the docker daemon to be running
+					options.Cache.Build.Format = cache.CacheBind
+				})
 
 				when("platform < 0.10", func() {
 					platformAPI = api.MustParse("0.9")
