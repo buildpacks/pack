@@ -10,30 +10,30 @@ import (
 	gomock "github.com/golang/mock/gomock"
 )
 
-// MockRegistryResolver is a mock of RegistryResolver interface
+// MockRegistryResolver is a mock of RegistryResolver interface.
 type MockRegistryResolver struct {
 	ctrl     *gomock.Controller
 	recorder *MockRegistryResolverMockRecorder
 }
 
-// MockRegistryResolverMockRecorder is the mock recorder for MockRegistryResolver
+// MockRegistryResolverMockRecorder is the mock recorder for MockRegistryResolver.
 type MockRegistryResolverMockRecorder struct {
 	mock *MockRegistryResolver
 }
 
-// NewMockRegistryResolver creates a new mock instance
+// NewMockRegistryResolver creates a new mock instance.
 func NewMockRegistryResolver(ctrl *gomock.Controller) *MockRegistryResolver {
 	mock := &MockRegistryResolver{ctrl: ctrl}
 	mock.recorder = &MockRegistryResolverMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockRegistryResolver) EXPECT() *MockRegistryResolverMockRecorder {
 	return m.recorder
 }
 
-// Resolve mocks base method
+// Resolve mocks base method.
 func (m *MockRegistryResolver) Resolve(arg0, arg1 string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Resolve", arg0, arg1)
@@ -42,7 +42,7 @@ func (m *MockRegistryResolver) Resolve(arg0, arg1 string) (string, error) {
 	return ret0, ret1
 }
 
-// Resolve indicates an expected call of Resolve
+// Resolve indicates an expected call of Resolve.
 func (mr *MockRegistryResolverMockRecorder) Resolve(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Resolve", reflect.TypeOf((*MockRegistryResolver)(nil).Resolve), arg0, arg1)

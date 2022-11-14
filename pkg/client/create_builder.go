@@ -11,6 +11,7 @@ import (
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/paths"
+	"github.com/buildpacks/pack/internal/strings"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/image"
@@ -55,7 +56,12 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		return errors.Wrap(err, "failed to add buildpacks to builder")
 	}
 
+	if err := c.addExtensionsToBuilder(ctx, opts, bldr); err != nil {
+		return errors.Wrap(err, "failed to add extensions to builder")
+	}
+
 	bldr.SetOrder(opts.Config.Order)
+	bldr.SetOrderExtensions(opts.Config.OrderExtensions)
 	bldr.SetStack(opts.Config.Stack)
 
 	return bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version})
@@ -206,62 +212,93 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 
 func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
 	for _, b := range opts.Config.Buildpacks {
-		c.logger.Debugf("Looking up buildpack %s", style.Symbol(b.DisplayString()))
-
-		imageOS, err := bldr.Image().OS()
-		if err != nil {
-			return errors.Wrapf(err, "getting OS from %s", style.Symbol(bldr.Image().Name()))
-		}
-
-		mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, b.URI, buildpack.DownloadOptions{
-			RegistryName:    opts.Registry,
-			ImageOS:         imageOS,
-			RelativeBaseDir: opts.RelativeBaseDir,
-			Daemon:          !opts.Publish,
-			PullPolicy:      opts.PullPolicy,
-			ImageName:       b.ImageName,
-		})
-		if err != nil {
-			return errors.Wrap(err, "downloading buildpack")
-		}
-
-		err = validateBuildpack(mainBP, b.URI, b.ID, b.Version)
-		if err != nil {
-			return errors.Wrap(err, "invalid buildpack")
-		}
-
-		bpDesc := mainBP.Descriptor()
-		for _, deprecatedAPI := range bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated {
-			if deprecatedAPI.Equal(bpDesc.API) {
-				c.logger.Warnf("Buildpack %s is using deprecated Buildpacks API version %s", style.Symbol(bpDesc.Info.FullName()), style.Symbol(bpDesc.API.String()))
-				break
-			}
-		}
-
-		for _, bp := range append([]buildpack.Buildpack{mainBP}, depBPs...) {
-			bldr.AddBuildpack(bp)
+		if err := c.addConfig(ctx, buildpack.KindBuildpack, b, opts, bldr); err != nil {
+			return err
 		}
 	}
-
 	return nil
 }
 
-func validateBuildpack(bp buildpack.Buildpack, source, expectedID, expectedBPVersion string) error {
-	if expectedID != "" && bp.Descriptor().Info.ID != expectedID {
+func (c *Client) addExtensionsToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
+	for _, e := range opts.Config.Extensions {
+		if err := c.addConfig(ctx, buildpack.KindExtension, e, opts, bldr); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.ModuleConfig, opts CreateBuilderOptions, bldr *builder.Builder) error {
+	c.logger.Debugf("Looking up %s %s", kind, style.Symbol(config.DisplayString()))
+
+	imageOS, err := bldr.Image().OS()
+	if err != nil {
+		return errors.Wrapf(err, "getting OS from %s", style.Symbol(bldr.Image().Name()))
+	}
+
+	mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, config.URI, buildpack.DownloadOptions{
+		Daemon:          !opts.Publish,
+		ImageName:       config.ImageName,
+		ImageOS:         imageOS,
+		ModuleKind:      kind,
+		PullPolicy:      opts.PullPolicy,
+		RegistryName:    opts.Registry,
+		RelativeBaseDir: opts.RelativeBaseDir,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "downloading %s", kind)
+	}
+
+	err = validateModule(kind, mainBP, config.URI, config.ID, config.Version)
+	if err != nil {
+		return errors.Wrapf(err, "invalid %s", kind)
+	}
+
+	bpDesc := mainBP.Descriptor()
+	for _, deprecatedAPI := range bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated {
+		if deprecatedAPI.Equal(bpDesc.API()) {
+			c.logger.Warnf(
+				"%s %s is using deprecated Buildpacks API version %s",
+				strings.Title(kind),
+				style.Symbol(bpDesc.Info().FullName()),
+				style.Symbol(bpDesc.API().String()),
+			)
+			break
+		}
+	}
+
+	for _, module := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
+		switch kind {
+		case buildpack.KindBuildpack:
+			bldr.AddBuildpack(module)
+		case buildpack.KindExtension:
+			bldr.AddExtension(module)
+		default:
+			return fmt.Errorf("unknown module kind: %s", kind)
+		}
+	}
+	return nil
+}
+
+func validateModule(kind string, module buildpack.BuildModule, source, expectedID, expectedVersion string) error {
+	info := module.Descriptor().Info()
+	if expectedID != "" && info.ID != expectedID {
 		return fmt.Errorf(
-			"buildpack from URI %s has ID %s which does not match ID %s from builder config",
+			"%s from URI %s has ID %s which does not match ID %s from builder config",
+			kind,
 			style.Symbol(source),
-			style.Symbol(bp.Descriptor().Info.ID),
+			style.Symbol(info.ID),
 			style.Symbol(expectedID),
 		)
 	}
 
-	if expectedBPVersion != "" && bp.Descriptor().Info.Version != expectedBPVersion {
+	if expectedVersion != "" && info.Version != expectedVersion {
 		return fmt.Errorf(
-			"buildpack from URI %s has version %s which does not match version %s from builder config",
+			"%s from URI %s has version %s which does not match version %s from builder config",
+			kind,
 			style.Symbol(source),
-			style.Symbol(bp.Descriptor().Info.Version),
-			style.Symbol(expectedBPVersion),
+			style.Symbol(info.Version),
+			style.Symbol(expectedVersion),
 		)
 	}
 

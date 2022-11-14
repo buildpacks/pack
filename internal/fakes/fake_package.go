@@ -14,7 +14,7 @@ import (
 
 type Package interface {
 	Name() string
-	BuildpackLayers() dist.BuildpackLayers
+	BuildpackLayers() dist.ModuleLayers
 	GetLayer(diffID string) (io.ReadCloser, error)
 }
 
@@ -23,11 +23,11 @@ var _ Package = (*fakePackage)(nil)
 type fakePackage struct {
 	name       string
 	bpTarFiles map[string]string
-	bpLayers   dist.BuildpackLayers
+	bpLayers   dist.ModuleLayers
 }
 
-func NewPackage(tmpDir string, name string, buildpacks []buildpack.Buildpack) (Package, error) {
-	processBuildpack := func(bp buildpack.Buildpack) (tarFile string, diffID string, err error) {
+func NewPackage(tmpDir string, name string, buildpacks []buildpack.BuildModule) (Package, error) {
+	processBuildpack := func(bp buildpack.BuildModule) (tarFile string, diffID string, err error) {
 		tarFile, err = buildpack.ToLayerTar(tmpDir, bp)
 		if err != nil {
 			return "", "", err
@@ -46,7 +46,7 @@ func NewPackage(tmpDir string, name string, buildpacks []buildpack.Buildpack) (P
 		return tarFile, hash.String(), nil
 	}
 
-	bpLayers := dist.BuildpackLayers{}
+	bpLayers := dist.ModuleLayers{}
 	bpTarFiles := map[string]string{}
 	for _, bp := range buildpacks {
 		tarFile, diffID, err := processBuildpack(bp)
@@ -54,7 +54,7 @@ func NewPackage(tmpDir string, name string, buildpacks []buildpack.Buildpack) (P
 			return nil, err
 		}
 		bpTarFiles[diffID] = tarFile
-		dist.AddBuildpackToLayersMD(bpLayers, bp.Descriptor(), diffID)
+		dist.AddToLayersMD(bpLayers, bp.Descriptor(), diffID)
 	}
 
 	return &fakePackage{
@@ -68,7 +68,7 @@ func (f *fakePackage) Name() string {
 	return f.name
 }
 
-func (f *fakePackage) BuildpackLayers() dist.BuildpackLayers {
+func (f *fakePackage) BuildpackLayers() dist.ModuleLayers {
 	return f.bpLayers
 }
 

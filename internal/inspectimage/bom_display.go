@@ -18,7 +18,7 @@ type BOMEntryDisplay struct {
 	Name      string                 `toml:"name" json:"name" yaml:"name"`
 	Version   string                 `toml:"version,omitempty" json:"version,omitempty" yaml:"version,omitempty"`
 	Metadata  map[string]interface{} `toml:"metadata" json:"metadata" yaml:"metadata"`
-	Buildpack dist.BuildpackRef      `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
+	Buildpack dist.ModuleRef         `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
 }
 
 func NewBOMDisplay(info *client.ImageInfo) []BOMEntryDisplay {
@@ -36,8 +36,8 @@ func displayBOM(bom []buildpack.BOMEntry) []BOMEntryDisplay {
 			Version:  entry.Version,
 			Metadata: entry.Metadata,
 
-			Buildpack: dist.BuildpackRef{
-				BuildpackInfo: dist.BuildpackInfo{
+			Buildpack: dist.ModuleRef{
+				ModuleInfo: dist.ModuleInfo{
 					ID:      entry.Buildpack.ID,
 					Version: entry.Buildpack.Version,
 				},

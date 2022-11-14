@@ -273,7 +273,7 @@ func writeLocalMirrors(logWriter io.Writer, runImage string, localRunImages []co
 	return nil
 }
 
-func buildpacksOutput(buildpacks []dist.BuildpackInfo, builderName string) (string, []string, error) {
+func buildpacksOutput(buildpacks []dist.ModuleInfo, builderName string) (string, []string, error) {
 	output := "Buildpacks:\n"
 
 	if len(buildpacks) == 0 {

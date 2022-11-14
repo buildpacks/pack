@@ -32,7 +32,7 @@ type app interface {
 
 type buildr interface {
 	BaseImageName() string
-	Buildpacks() []dist.BuildpackInfo
+	Buildpacks() []dist.ModuleInfo
 	LifecycleDescriptor() builder.LifecycleDescriptor
 	Stack() builder.StackMetadata
 }
@@ -52,7 +52,7 @@ type Termui struct {
 	runImageName  string
 	exitCode      int64
 	textChan      chan string
-	buildpackChan chan dist.BuildpackInfo
+	buildpackChan chan dist.ModuleInfo
 	nodes         map[string]*tview.TreeNode
 }
 
@@ -62,7 +62,7 @@ func NewTermui(appName string, bldr *builder.Builder, runImageName string) *Term
 		bldr:          bldr,
 		runImageName:  runImageName,
 		app:           tview.NewApplication(),
-		buildpackChan: make(chan dist.BuildpackInfo, 50),
+		buildpackChan: make(chan dist.ModuleInfo, 50),
 		textChan:      make(chan string, 50),
 		nodes:         map[string]*tview.TreeNode{},
 	}
@@ -199,10 +199,10 @@ func (s *Termui) showBuildStatus() {
 	s.textChan <- "[red::b]\n\nBUILD FAILED"
 }
 
-func collect(buildpackChan chan dist.BuildpackInfo) []dist.BuildpackInfo {
+func collect(buildpackChan chan dist.ModuleInfo) []dist.ModuleInfo {
 	close(buildpackChan)
 
-	var result []dist.BuildpackInfo
+	var result []dist.ModuleInfo
 	for txt := range buildpackChan {
 		result = append(result, txt)
 	}

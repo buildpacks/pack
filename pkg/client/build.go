@@ -502,7 +502,7 @@ func (c *Client) validateRunImage(context context.Context, name string, pullPoli
 	return img, nil
 }
 
-func (c *Client) validateMixins(additionalBuildpacks []buildpack.Buildpack, bldr *builder.Builder, runImageName string, runMixins []string) error {
+func (c *Client) validateMixins(additionalBuildpacks []buildpack.BuildModule, bldr *builder.Builder, runImageName string, runMixins []string) error {
 	if err := stack.ValidateMixins(bldr.Image().Name(), bldr.Mixins(), runImageName, runMixins); err != nil {
 		return err
 	}
@@ -552,23 +552,23 @@ func assembleAvailableMixins(buildMixins, runMixins []string) []string {
 
 // allBuildpacks aggregates all buildpacks declared on the image with additional buildpacks passed in. They are sorted
 // by ID then Version.
-func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.Buildpack) ([]dist.BuildpackDescriptor, error) {
-	var all []dist.BuildpackDescriptor
-	var bpLayers dist.BuildpackLayers
+func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.BuildModule) ([]buildpack.Descriptor, error) {
+	var all []buildpack.Descriptor
+	var bpLayers dist.ModuleLayers
 	if _, err := dist.GetLabel(builderImage, dist.BuildpackLayersLabel, &bpLayers); err != nil {
 		return nil, err
 	}
 	for id, bps := range bpLayers {
 		for ver, bp := range bps {
 			desc := dist.BuildpackDescriptor{
-				Info: dist.BuildpackInfo{
+				WithInfo: dist.ModuleInfo{
 					ID:      id,
 					Version: ver,
 				},
-				Stacks: bp.Stacks,
-				Order:  bp.Order,
+				WithStacks: bp.Stacks,
+				WithOrder:  bp.Order,
 			}
-			all = append(all, desc)
+			all = append(all, &desc)
 		}
 	}
 	for _, bp := range additionalBuildpacks {
@@ -576,10 +576,10 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.
 	}
 
 	sort.Slice(all, func(i, j int) bool {
-		if all[i].Info.ID != all[j].Info.ID {
-			return all[i].Info.ID < all[j].Info.ID
+		if all[i].Info().ID != all[j].Info().ID {
+			return all[i].Info().ID < all[j].Info().ID
 		}
-		return all[i].Info.Version < all[j].Info.Version
+		return all[i].Info().Version < all[j].Info().Version
 	})
 
 	return all, nil
@@ -692,7 +692,7 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 // 	----------
 // 	- group:
 //		- A
-func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedBPs []buildpack.Buildpack, order dist.Order, err error) {
+func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedBPs []buildpack.BuildModule, order dist.Order, err error) {
 	pullPolicy := opts.PullPolicy
 	publish := opts.Publish
 	registry := opts.Registry
@@ -725,7 +725,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 		}
 	}
 
-	order = dist.Order{{Group: []dist.BuildpackRef{}}}
+	order = dist.Order{{Group: []dist.ModuleRef{}}}
 	for _, bp := range declaredBPs {
 		locatorType, err := buildpack.GetLocatorType(bp, relativeBaseDir, builderBPs)
 		if err != nil {
@@ -752,7 +752,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			}
 		case buildpack.IDLocator:
 			id, version := buildpack.ParseIDLocator(bp)
-			order = appendBuildpackToOrder(order, dist.BuildpackInfo{
+			order = appendBuildpackToOrder(order, dist.ModuleInfo{
 				ID:      id,
 				Version: version,
 			})
@@ -772,19 +772,19 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				return fetchedBPs, order, errors.Wrap(err, "downloading buildpack")
 			}
 			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
-			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
+			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info())
 		}
 	}
 
 	return fetchedBPs, order, nil
 }
 
-func appendBuildpackToOrder(order dist.Order, bpInfo dist.BuildpackInfo) (newOrder dist.Order) {
+func appendBuildpackToOrder(order dist.Order, bpInfo dist.ModuleInfo) (newOrder dist.Order) {
 	for _, orderEntry := range order {
 		newEntry := orderEntry
-		newEntry.Group = append(newEntry.Group, dist.BuildpackRef{
-			BuildpackInfo: bpInfo,
-			Optional:      false,
+		newEntry.Group = append(newEntry.Group, dist.ModuleRef{
+			ModuleInfo: bpInfo,
+			Optional:   false,
 		})
 		newOrder = append(newOrder, newEntry)
 	}
@@ -792,7 +792,7 @@ func appendBuildpackToOrder(order dist.Order, bpInfo dist.BuildpackInfo) (newOrd
 	return newOrder
 }
 
-func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []buildpack.Buildpack) (*builder.Builder, error) {
+func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []buildpack.BuildModule) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
 	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {
@@ -801,7 +801,7 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 
 	bldr.SetEnv(env)
 	for _, bp := range buildpacks {
-		bpInfo := bp.Descriptor().Info
+		bpInfo := bp.Descriptor().Info()
 		c.logger.Debugf("Adding buildpack %s version %s to builder", style.Symbol(bpInfo.ID), style.Symbol(bpInfo.Version))
 		bldr.AddBuildpack(bp)
 	}

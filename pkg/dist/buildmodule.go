@@ -8,8 +8,9 @@ import (
 
 const AssumedBuildpackAPIVersion = "0.1"
 const BuildpacksDir = "/cnb/buildpacks"
+const ExtensionsDir = "/cnb/extensions"
 
-type BuildpackInfo struct {
+type ModuleInfo struct {
 	ID          string    `toml:"id,omitempty" json:"id,omitempty" yaml:"id,omitempty"`
 	Name        string    `toml:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
 	Version     string    `toml:"version,omitempty" json:"version,omitempty" yaml:"version,omitempty"`
@@ -19,14 +20,14 @@ type BuildpackInfo struct {
 	Licenses    []License `toml:"licenses,omitempty" json:"licenses,omitempty" yaml:"licenses,omitempty"`
 }
 
-func (b BuildpackInfo) FullName() string {
+func (b ModuleInfo) FullName() string {
 	if b.Version != "" {
 		return b.ID + "@" + b.Version
 	}
 	return b.ID
 }
 
-func (b BuildpackInfo) FullNameWithVersion() (string, error) {
+func (b ModuleInfo) FullNameWithVersion() (string, error) {
 	if b.Version == "" {
 		return b.ID, errors.Errorf("buildpack %s does not have a version defined", style.Symbol(b.ID))
 	}
@@ -34,10 +35,10 @@ func (b BuildpackInfo) FullNameWithVersion() (string, error) {
 }
 
 // Satisfy stringer
-func (b BuildpackInfo) String() string { return b.FullName() }
+func (b ModuleInfo) String() string { return b.FullName() }
 
 // Match compares two buildpacks by ID and Version
-func (b BuildpackInfo) Match(o BuildpackInfo) bool {
+func (b ModuleInfo) Match(o ModuleInfo) bool {
 	return b.ID == o.ID && b.Version == o.Version
 }
 

@@ -26,59 +26,59 @@ func testDetectionOrderCalculator(t *testing.T, when spec.G, it spec.S) {
 		var (
 			assert = h.NewAssertionManager(t)
 
-			testBuildpackOne = dist.BuildpackInfo{
+			testBuildpackOne = dist.ModuleInfo{
 				ID:      "test.buildpack",
 				Version: "test.buildpack.version",
 			}
-			testBuildpackTwo = dist.BuildpackInfo{
+			testBuildpackTwo = dist.ModuleInfo{
 				ID:      "test.buildpack.2",
 				Version: "test.buildpack.2.version",
 			}
-			testTopNestedBuildpack = dist.BuildpackInfo{
+			testTopNestedBuildpack = dist.ModuleInfo{
 				ID:      "test.top.nested",
 				Version: "test.top.nested.version",
 			}
-			testLevelOneNestedBuildpack = dist.BuildpackInfo{
+			testLevelOneNestedBuildpack = dist.ModuleInfo{
 				ID:      "test.nested.level.one",
 				Version: "test.nested.level.one.version",
 			}
-			testLevelOneNestedBuildpackTwo = dist.BuildpackInfo{
+			testLevelOneNestedBuildpackTwo = dist.ModuleInfo{
 				ID:      "test.nested.level.one.two",
 				Version: "test.nested.level.one.two.version",
 			}
-			testLevelOneNestedBuildpackThree = dist.BuildpackInfo{
+			testLevelOneNestedBuildpackThree = dist.ModuleInfo{
 				ID:      "test.nested.level.one.three",
 				Version: "test.nested.level.one.three.version",
 			}
-			testLevelTwoNestedBuildpack = dist.BuildpackInfo{
+			testLevelTwoNestedBuildpack = dist.ModuleInfo{
 				ID:      "test.nested.level.two",
 				Version: "test.nested.level.two.version",
 			}
 			topLevelOrder = dist.Order{
 				{
-					Group: []dist.BuildpackRef{
-						{BuildpackInfo: testBuildpackOne},
-						{BuildpackInfo: testBuildpackTwo},
-						{BuildpackInfo: testTopNestedBuildpack},
+					Group: []dist.ModuleRef{
+						{ModuleInfo: testBuildpackOne},
+						{ModuleInfo: testBuildpackTwo},
+						{ModuleInfo: testTopNestedBuildpack},
 					},
 				},
 			}
-			buildpackLayers = dist.BuildpackLayers{
+			buildpackLayers = dist.ModuleLayers{
 				"test.buildpack": {
-					"test.buildpack.version": dist.BuildpackLayerInfo{
+					"test.buildpack.version": dist.ModuleLayerInfo{
 						API:         api.MustParse("0.2"),
 						LayerDiffID: "layer:diff",
 					},
 				},
 				"test.top.nested": {
-					"test.top.nested.version": dist.BuildpackLayerInfo{
+					"test.top.nested.version": dist.ModuleLayerInfo{
 						API: api.MustParse("0.2"),
 						Order: dist.Order{
 							{
-								Group: []dist.BuildpackRef{
-									{BuildpackInfo: testLevelOneNestedBuildpack},
-									{BuildpackInfo: testLevelOneNestedBuildpackTwo},
-									{BuildpackInfo: testLevelOneNestedBuildpackThree},
+								Group: []dist.ModuleRef{
+									{ModuleInfo: testLevelOneNestedBuildpack},
+									{ModuleInfo: testLevelOneNestedBuildpackTwo},
+									{ModuleInfo: testLevelOneNestedBuildpackThree},
 								},
 							},
 						},
@@ -86,12 +86,12 @@ func testDetectionOrderCalculator(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 				"test.nested.level.one": {
-					"test.nested.level.one.version": dist.BuildpackLayerInfo{
+					"test.nested.level.one.version": dist.ModuleLayerInfo{
 						API: api.MustParse("0.2"),
 						Order: dist.Order{
 							{
-								Group: []dist.BuildpackRef{
-									{BuildpackInfo: testLevelTwoNestedBuildpack},
+								Group: []dist.ModuleRef{
+									{ModuleInfo: testLevelTwoNestedBuildpack},
 								},
 							},
 						},
@@ -99,13 +99,13 @@ func testDetectionOrderCalculator(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 				"test.nested.level.one.three": {
-					"test.nested.level.one.three.version": dist.BuildpackLayerInfo{
+					"test.nested.level.one.three.version": dist.ModuleLayerInfo{
 						API: api.MustParse("0.2"),
 						Order: dist.Order{
 							{
-								Group: []dist.BuildpackRef{
-									{BuildpackInfo: testLevelTwoNestedBuildpack},
-									{BuildpackInfo: testTopNestedBuildpack},
+								Group: []dist.ModuleRef{
+									{ModuleInfo: testLevelTwoNestedBuildpack},
+									{ModuleInfo: testTopNestedBuildpack},
 								},
 							},
 						},
@@ -124,9 +124,9 @@ func testDetectionOrderCalculator(t *testing.T, when spec.G, it spec.S) {
 				expectedOrder := pubbldr.DetectionOrder{
 					{
 						GroupDetectionOrder: pubbldr.DetectionOrder{
-							{BuildpackRef: dist.BuildpackRef{BuildpackInfo: testBuildpackOne}},
-							{BuildpackRef: dist.BuildpackRef{BuildpackInfo: testBuildpackTwo}},
-							{BuildpackRef: dist.BuildpackRef{BuildpackInfo: testTopNestedBuildpack}},
+							{ModuleRef: dist.ModuleRef{ModuleInfo: testBuildpackOne}},
+							{ModuleRef: dist.ModuleRef{ModuleInfo: testBuildpackTwo}},
+							{ModuleRef: dist.ModuleRef{ModuleInfo: testTopNestedBuildpack}},
 						},
 					},
 				}
@@ -144,28 +144,28 @@ func testDetectionOrderCalculator(t *testing.T, when spec.G, it spec.S) {
 				expectedOrder := pubbldr.DetectionOrder{
 					{
 						GroupDetectionOrder: pubbldr.DetectionOrder{
-							{BuildpackRef: dist.BuildpackRef{BuildpackInfo: testBuildpackOne}},
-							{BuildpackRef: dist.BuildpackRef{BuildpackInfo: testBuildpackTwo}},
+							{ModuleRef: dist.ModuleRef{ModuleInfo: testBuildpackOne}},
+							{ModuleRef: dist.ModuleRef{ModuleInfo: testBuildpackTwo}},
 							{
-								BuildpackRef: dist.BuildpackRef{BuildpackInfo: testTopNestedBuildpack},
+								ModuleRef: dist.ModuleRef{ModuleInfo: testTopNestedBuildpack},
 								GroupDetectionOrder: pubbldr.DetectionOrder{
 									{
-										BuildpackRef: dist.BuildpackRef{BuildpackInfo: testLevelOneNestedBuildpack},
+										ModuleRef: dist.ModuleRef{ModuleInfo: testLevelOneNestedBuildpack},
 										GroupDetectionOrder: pubbldr.DetectionOrder{
-											{BuildpackRef: dist.BuildpackRef{BuildpackInfo: testLevelTwoNestedBuildpack}},
+											{ModuleRef: dist.ModuleRef{ModuleInfo: testLevelTwoNestedBuildpack}},
 										},
 									},
-									{BuildpackRef: dist.BuildpackRef{BuildpackInfo: testLevelOneNestedBuildpackTwo}},
+									{ModuleRef: dist.ModuleRef{ModuleInfo: testLevelOneNestedBuildpackTwo}},
 									{
-										BuildpackRef: dist.BuildpackRef{BuildpackInfo: testLevelOneNestedBuildpackThree},
+										ModuleRef: dist.ModuleRef{ModuleInfo: testLevelOneNestedBuildpackThree},
 										GroupDetectionOrder: pubbldr.DetectionOrder{
 											{
-												BuildpackRef: dist.BuildpackRef{BuildpackInfo: testLevelTwoNestedBuildpack},
-												Cyclical:     false,
+												ModuleRef: dist.ModuleRef{ModuleInfo: testLevelTwoNestedBuildpack},
+												Cyclical:  false,
 											},
 											{
-												BuildpackRef: dist.BuildpackRef{BuildpackInfo: testTopNestedBuildpack},
-												Cyclical:     true,
+												ModuleRef: dist.ModuleRef{ModuleInfo: testTopNestedBuildpack},
+												Cyclical:  true,
 											},
 										},
 									},
@@ -188,14 +188,14 @@ func testDetectionOrderCalculator(t *testing.T, when spec.G, it spec.S) {
 				expectedOrder := pubbldr.DetectionOrder{
 					{
 						GroupDetectionOrder: pubbldr.DetectionOrder{
-							{BuildpackRef: dist.BuildpackRef{BuildpackInfo: testBuildpackOne}},
-							{BuildpackRef: dist.BuildpackRef{BuildpackInfo: testBuildpackTwo}},
+							{ModuleRef: dist.ModuleRef{ModuleInfo: testBuildpackOne}},
+							{ModuleRef: dist.ModuleRef{ModuleInfo: testBuildpackTwo}},
 							{
-								BuildpackRef: dist.BuildpackRef{BuildpackInfo: testTopNestedBuildpack},
+								ModuleRef: dist.ModuleRef{ModuleInfo: testTopNestedBuildpack},
 								GroupDetectionOrder: pubbldr.DetectionOrder{
-									{BuildpackRef: dist.BuildpackRef{BuildpackInfo: testLevelOneNestedBuildpack}},
-									{BuildpackRef: dist.BuildpackRef{BuildpackInfo: testLevelOneNestedBuildpackTwo}},
-									{BuildpackRef: dist.BuildpackRef{BuildpackInfo: testLevelOneNestedBuildpackThree}},
+									{ModuleRef: dist.ModuleRef{ModuleInfo: testLevelOneNestedBuildpack}},
+									{ModuleRef: dist.ModuleRef{ModuleInfo: testLevelOneNestedBuildpackTwo}},
+									{ModuleRef: dist.ModuleRef{ModuleInfo: testLevelOneNestedBuildpackThree}},
 								},
 							},
 						},
@@ -208,14 +208,14 @@ func testDetectionOrderCalculator(t *testing.T, when spec.G, it spec.S) {
 
 		when("a buildpack is referenced in a sub detection group", func() {
 			it("marks the buildpack is cyclic and doesn't attempt to calculate that buildpacks order", func() {
-				cyclicBuildpackLayers := dist.BuildpackLayers{
+				cyclicBuildpackLayers := dist.ModuleLayers{
 					"test.top.nested": {
-						"test.top.nested.version": dist.BuildpackLayerInfo{
+						"test.top.nested.version": dist.ModuleLayerInfo{
 							API: api.MustParse("0.2"),
 							Order: dist.Order{
 								{
-									Group: []dist.BuildpackRef{
-										{BuildpackInfo: testLevelOneNestedBuildpack},
+									Group: []dist.ModuleRef{
+										{ModuleInfo: testLevelOneNestedBuildpack},
 									},
 								},
 							},
@@ -223,12 +223,12 @@ func testDetectionOrderCalculator(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 					"test.nested.level.one": {
-						"test.nested.level.one.version": dist.BuildpackLayerInfo{
+						"test.nested.level.one.version": dist.ModuleLayerInfo{
 							API: api.MustParse("0.2"),
 							Order: dist.Order{
 								{
-									Group: []dist.BuildpackRef{
-										{BuildpackInfo: testTopNestedBuildpack},
+									Group: []dist.ModuleRef{
+										{ModuleInfo: testTopNestedBuildpack},
 									},
 								},
 							},
@@ -238,7 +238,7 @@ func testDetectionOrderCalculator(t *testing.T, when spec.G, it spec.S) {
 				}
 				cyclicOrder := dist.Order{
 					{
-						Group: []dist.BuildpackRef{{BuildpackInfo: testTopNestedBuildpack}},
+						Group: []dist.ModuleRef{{ModuleInfo: testTopNestedBuildpack}},
 					},
 				}
 
@@ -250,14 +250,14 @@ func testDetectionOrderCalculator(t *testing.T, when spec.G, it spec.S) {
 					{
 						GroupDetectionOrder: pubbldr.DetectionOrder{
 							{
-								BuildpackRef: dist.BuildpackRef{BuildpackInfo: testTopNestedBuildpack},
+								ModuleRef: dist.ModuleRef{ModuleInfo: testTopNestedBuildpack},
 								GroupDetectionOrder: pubbldr.DetectionOrder{
 									{
-										BuildpackRef: dist.BuildpackRef{BuildpackInfo: testLevelOneNestedBuildpack},
+										ModuleRef: dist.ModuleRef{ModuleInfo: testLevelOneNestedBuildpack},
 										GroupDetectionOrder: pubbldr.DetectionOrder{
 											{
-												BuildpackRef: dist.BuildpackRef{
-													BuildpackInfo: testTopNestedBuildpack,
+												ModuleRef: dist.ModuleRef{
+													ModuleInfo: testTopNestedBuildpack,
 												},
 												Cyclical: true,
 											},

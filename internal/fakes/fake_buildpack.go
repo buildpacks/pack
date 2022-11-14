@@ -37,23 +37,23 @@ func WithExtraBuildpackContents(filename, contents string) FakeBuildpackOption {
 	}
 }
 
-func WithOpenError(err error) FakeBuildpackOption {
+func WithBpOpenError(err error) FakeBuildpackOption {
 	return func(f *fakeBuildpackConfig) {
 		f.OpenError = err
 	}
 }
 
-// NewFakeBuildpack creates a fake buildpacks with contents:
+// NewFakeBuildpack creates a fake buildpack with contents:
 //
-// 	\_ /cnbs/buildpacks/{ID}
-// 	\_ /cnbs/buildpacks/{ID}/{version}
-// 	\_ /cnbs/buildpacks/{ID}/{version}/buildpack.toml
-// 	\_ /cnbs/buildpacks/{ID}/{version}/bin
-// 	\_ /cnbs/buildpacks/{ID}/{version}/bin/build
+// 	\_ /cnb/buildpacks/{ID}
+// 	\_ /cnb/buildpacks/{ID}/{version}
+// 	\_ /cnb/buildpacks/{ID}/{version}/buildpack.toml
+// 	\_ /cnb/buildpacks/{ID}/{version}/bin
+// 	\_ /cnb/buildpacks/{ID}/{version}/bin/build
 //  	build-contents
-// 	\_ /cnbs/buildpacks/{ID}/{version}/bin/detect
+// 	\_ /cnb/buildpacks/{ID}/{version}/bin/detect
 //  	detect-contents
-func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64, options ...FakeBuildpackOption) (buildpack.Buildpack, error) {
+func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64, options ...FakeBuildpackOption) (buildpack.BuildModule, error) {
 	return &fakeBuildpack{
 		descriptor: descriptor,
 		chmod:      chmod,
@@ -61,8 +61,8 @@ func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64, options 
 	}, nil
 }
 
-func (b *fakeBuildpack) Descriptor() dist.BuildpackDescriptor {
-	return b.descriptor
+func (b *fakeBuildpack) Descriptor() buildpack.Descriptor {
+	return &b.descriptor
 }
 
 func (b *fakeBuildpack) Open() (io.ReadCloser, error) {
@@ -83,11 +83,11 @@ func (b *fakeBuildpack) Open() (io.ReadCloser, error) {
 	tarBuilder := archive.TarBuilder{}
 	ts := archive.NormalizedDateTime
 	tarBuilder.AddDir(fmt.Sprintf("/cnb/buildpacks/%s", b.descriptor.EscapedID()), b.chmod, ts)
-	bpDir := fmt.Sprintf("/cnb/buildpacks/%s/%s", b.descriptor.EscapedID(), b.descriptor.Info.Version)
+	bpDir := fmt.Sprintf("/cnb/buildpacks/%s/%s", b.descriptor.EscapedID(), b.descriptor.Info().Version)
 	tarBuilder.AddDir(bpDir, b.chmod, ts)
 	tarBuilder.AddFile(bpDir+"/buildpack.toml", b.chmod, ts, buf.Bytes())
 
-	if len(b.descriptor.Order) == 0 {
+	if len(b.descriptor.Order()) == 0 {
 		tarBuilder.AddDir(bpDir+"/bin", b.chmod, ts)
 		tarBuilder.AddFile(bpDir+"/bin/build", b.chmod, ts, []byte("build-contents"))
 		tarBuilder.AddFile(bpDir+"/bin/detect", b.chmod, ts, []byte("detect-contents"))

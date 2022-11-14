@@ -17,9 +17,9 @@ type Info struct {
 	Mixins          []string
 	RunImage        string
 	RunImageMirrors []string
-	Buildpacks      []dist.BuildpackInfo
+	Buildpacks      []dist.ModuleInfo
 	Order           pubbldr.DetectionOrder
-	BuildpackLayers dist.BuildpackLayers
+	BuildpackLayers dist.ModuleLayers
 	Lifecycle       LifecycleDescriptor
 	CreatedBy       CreatorMetadata
 }
@@ -41,11 +41,11 @@ type LabelInspector interface {
 	StackID() (string, error)
 	Mixins() ([]string, error)
 	Order() (dist.Order, error)
-	BuildpackLayers() (dist.BuildpackLayers, error)
+	BuildpackLayers() (dist.ModuleLayers, error)
 }
 
 type DetectionCalculator interface {
-	Order(topOrder dist.Order, layers dist.BuildpackLayers, depth int) (pubbldr.DetectionOrder, error)
+	Order(topOrder dist.Order, layers dist.ModuleLayers, depth int) (pubbldr.DetectionOrder, error)
 }
 
 type Inspector struct {
@@ -130,9 +130,9 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 	}, nil
 }
 
-func uniqueBuildpacks(buildpacks []dist.BuildpackInfo) []dist.BuildpackInfo {
+func uniqueBuildpacks(buildpacks []dist.ModuleInfo) []dist.ModuleInfo {
 	foundBuildpacks := map[string]interface{}{}
-	var uniqueBuildpacks []dist.BuildpackInfo
+	var uniqueBuildpacks []dist.ModuleInfo
 
 	for _, bp := range buildpacks {
 		_, ok := foundBuildpacks[bp.FullName()]
@@ -145,7 +145,7 @@ func uniqueBuildpacks(buildpacks []dist.BuildpackInfo) []dist.BuildpackInfo {
 	return uniqueBuildpacks
 }
 
-func sortBuildPacksByID(buildpacks []dist.BuildpackInfo) []dist.BuildpackInfo {
+func sortBuildPacksByID(buildpacks []dist.ModuleInfo) []dist.ModuleInfo {
 	sort.Slice(buildpacks, func(i int, j int) bool {
 		if buildpacks[i].ID == buildpacks[j].ID {
 			return buildpacks[i].Version < buildpacks[j].Version

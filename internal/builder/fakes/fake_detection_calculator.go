@@ -11,13 +11,13 @@ type FakeDetectionCalculator struct {
 	ErrorForOrder error
 
 	ReceivedTopOrder dist.Order
-	ReceivedLayers   dist.BuildpackLayers
+	ReceivedLayers   dist.ModuleLayers
 	ReceivedDepth    int
 }
 
 func (c *FakeDetectionCalculator) Order(
 	topOrder dist.Order,
-	layers dist.BuildpackLayers,
+	layers dist.ModuleLayers,
 	depth int,
 ) (builder.DetectionOrder, error) {
 	c.ReceivedTopOrder = topOrder

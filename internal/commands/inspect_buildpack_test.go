@@ -59,7 +59,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 		complexInfo = &client.BuildpackInfo{
 			BuildpackMetadata: buildpack.Metadata{
-				BuildpackInfo: dist.BuildpackInfo{
+				ModuleInfo: dist.ModuleInfo{
 					ID:       "some/top-buildpack",
 					Version:  "0.0.1",
 					Homepage: "top-buildpack-homepage",
@@ -69,7 +69,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					{ID: "io.buildpacks.stacks.second-stack", Mixins: []string{"mixin1", "mixin2"}},
 				},
 			},
-			Buildpacks: []dist.BuildpackInfo{
+			Buildpacks: []dist.ModuleInfo{
 				{
 					ID:       "some/first-inner-buildpack",
 					Version:  "1.0.0",
@@ -94,9 +94,9 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			},
 			Order: dist.Order{
 				{
-					Group: []dist.BuildpackRef{
+					Group: []dist.ModuleRef{
 						{
-							BuildpackInfo: dist.BuildpackInfo{
+							ModuleInfo: dist.ModuleInfo{
 								ID:       "some/top-buildpack",
 								Version:  "0.0.1",
 								Homepage: "top-buildpack-homepage",
@@ -106,7 +106,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			},
-			BuildpackLayers: dist.BuildpackLayers{
+			BuildpackLayers: dist.ModuleLayers{
 				"some/first-inner-buildpack": {
 					"1.0.0": {
 						API: apiVersion,
@@ -116,16 +116,16 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 						},
 						Order: dist.Order{
 							{
-								Group: []dist.BuildpackRef{
+								Group: []dist.ModuleRef{
 									{
-										BuildpackInfo: dist.BuildpackInfo{
+										ModuleInfo: dist.ModuleInfo{
 											ID:      "some/first-inner-buildpack",
 											Version: "1.0.0",
 										},
 										Optional: false,
 									},
 									{
-										BuildpackInfo: dist.BuildpackInfo{
+										ModuleInfo: dist.ModuleInfo{
 											ID:      "some/third-inner-buildpack",
 											Version: "3.0.0",
 										},
@@ -134,9 +134,9 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 							{
-								Group: []dist.BuildpackRef{
+								Group: []dist.ModuleRef{
 									{
-										BuildpackInfo: dist.BuildpackInfo{
+										ModuleInfo: dist.ModuleInfo{
 											ID:      "some/third-inner-buildpack",
 											Version: "3.0.0",
 										},
@@ -176,16 +176,16 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 						API: apiVersion,
 						Order: dist.Order{
 							{
-								Group: []dist.BuildpackRef{
+								Group: []dist.ModuleRef{
 									{
-										BuildpackInfo: dist.BuildpackInfo{
+										ModuleInfo: dist.ModuleInfo{
 											ID:      "some/first-inner-buildpack",
 											Version: "1.0.0",
 										},
 										Optional: false,
 									},
 									{
-										BuildpackInfo: dist.BuildpackInfo{
+										ModuleInfo: dist.ModuleInfo{
 											ID:      "some/second-inner-buildpack",
 											Version: "2.0.0",
 										},
@@ -194,9 +194,9 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 							{
-								Group: []dist.BuildpackRef{
+								Group: []dist.ModuleRef{
 									{
-										BuildpackInfo: dist.BuildpackInfo{
+										ModuleInfo: dist.ModuleInfo{
 											ID:      "some/first-inner-buildpack",
 											Version: "1.0.0",
 										},
@@ -214,7 +214,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 		simpleInfo = &client.BuildpackInfo{
 			BuildpackMetadata: buildpack.Metadata{
-				BuildpackInfo: dist.BuildpackInfo{
+				ModuleInfo: dist.ModuleInfo{
 					ID:       "some/single-buildpack",
 					Version:  "0.0.1",
 					Homepage: "single-homepage-homepace",
@@ -224,7 +224,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					{ID: "io.buildpacks.stacks.second-stack", Mixins: []string{"mixin1", "mixin2"}},
 				},
 			},
-			Buildpacks: []dist.BuildpackInfo{
+			Buildpacks: []dist.ModuleInfo{
 				{
 					ID:       "some/single-buildpack",
 					Version:  "0.0.1",
@@ -238,9 +238,9 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			},
 			Order: dist.Order{
 				{
-					Group: []dist.BuildpackRef{
+					Group: []dist.ModuleRef{
 						{
-							BuildpackInfo: dist.BuildpackInfo{
+							ModuleInfo: dist.ModuleInfo{
 								ID:       "some/single-buildpack",
 								Version:  "0.0.1",
 								Homepage: "single-buildpack-homepage",
@@ -250,7 +250,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			},
-			BuildpackLayers: dist.BuildpackLayers{
+			BuildpackLayers: dist.ModuleLayers{
 				"some/single-buildpack": {
 					"0.0.1": {
 						API: apiVersion,

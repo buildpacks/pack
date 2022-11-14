@@ -21,10 +21,10 @@ type PackageFile struct {
 	pack                 *invoke.PackInvoker
 	destination          string
 	sourceConfigLocation string
-	buildpacks           []TestBuildpack
+	buildpacks           []TestBuildModule
 }
 
-func (p *PackageFile) SetBuildpacks(buildpacks []TestBuildpack) {
+func (p *PackageFile) SetBuildpacks(buildpacks []TestBuildModule) {
 	p.buildpacks = buildpacks
 }
 

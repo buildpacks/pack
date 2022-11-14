@@ -21,6 +21,7 @@ import (
 	"github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/stack"
+	istrings "github.com/buildpacks/pack/internal/strings"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/buildpack"
@@ -48,11 +49,11 @@ const (
 	EnvUID = "CNB_USER_ID"
 	EnvGID = "CNB_GROUP_ID"
 
-	BuildpackOnBuilderMessage = `buildpack %s already exists on builder and will be overwritten
+	ModuleOnBuilderMessage = `%s %s already exists on builder and will be overwritten
   - existing diffID: %s
   - new diffID: %s`
 
-	BuildpackPreviouslyDefinedMessage = `buildpack %s was previously defined with different contents and will be overwritten
+	ModulePreviouslyDefinedMessage = `%s %s was previously defined with different contents and will be overwritten
   - previous diffID: %s
   - using diffID: %s`
 )
@@ -64,7 +65,8 @@ type Builder struct {
 	layerWriterFactory   archive.TarWriterFactory
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
-	additionalBuildpacks []buildpack.Buildpack
+	additionalBuildpacks []buildpack.BuildModule
+	additionalExtensions []buildpack.BuildModule
 	metadata             Metadata
 	mixins               []string
 	env                  map[string]string
@@ -72,10 +74,12 @@ type Builder struct {
 	StackID              string
 	replaceOrder         bool
 	order                dist.Order
+	orderExtensions      dist.Order
 }
 
 type orderTOML struct {
-	Order dist.Order `toml:"order"`
+	Order    dist.Order `toml:"order,omitempty"`
+	OrderExt dist.Order `toml:"order-extensions,omitempty"`
 }
 
 // FromImage constructs a builder from a builder image
@@ -161,6 +165,10 @@ func addImgLabelsToBuildr(bldr *Builder) error {
 		return errors.Wrapf(err, "getting label %s", OrderLabel)
 	}
 
+	if _, err = dist.GetLabel(bldr.image, OrderExtensionsLabel, &bldr.orderExtensions); err != nil {
+		return errors.Wrapf(err, "getting label %s", OrderExtensionsLabel)
+	}
+
 	return nil
 }
 
@@ -177,8 +185,13 @@ func (b *Builder) LifecycleDescriptor() LifecycleDescriptor {
 }
 
 // Buildpacks returns the buildpack list
-func (b *Builder) Buildpacks() []dist.BuildpackInfo {
+func (b *Builder) Buildpacks() []dist.ModuleInfo {
 	return b.metadata.Buildpacks
+}
+
+// Extensions returns the extensions list
+func (b *Builder) Extensions() []dist.ModuleInfo {
+	return b.metadata.Extensions
 }
 
 // CreatedBy returns metadata around the creation of the builder
@@ -189,6 +202,11 @@ func (b *Builder) CreatedBy() CreatorMetadata {
 // Order returns the order
 func (b *Builder) Order() dist.Order {
 	return b.order
+}
+
+// OrderExtensions returns the order for extensions
+func (b *Builder) OrderExtensions() dist.Order {
+	return b.orderExtensions
 }
 
 // BaseImageName returns the name of the builder base image
@@ -229,9 +247,15 @@ func (b *Builder) GID() int {
 // Setters
 
 // AddBuildpack adds a buildpack to the builder
-func (b *Builder) AddBuildpack(bp buildpack.Buildpack) {
+func (b *Builder) AddBuildpack(bp buildpack.BuildModule) {
 	b.additionalBuildpacks = append(b.additionalBuildpacks, bp)
-	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().Info)
+	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().Info())
+}
+
+// AddExtension adds an extension to the builder
+func (b *Builder) AddExtension(bp buildpack.BuildModule) {
+	b.additionalExtensions = append(b.additionalExtensions, bp)
+	b.metadata.Extensions = append(b.metadata.Extensions, bp.Descriptor().Info())
 }
 
 // SetLifecycle sets the lifecycle of the builder
@@ -248,6 +272,19 @@ func (b *Builder) SetEnv(env map[string]string) {
 // SetOrder sets the order of the builder
 func (b *Builder) SetOrder(order dist.Order) {
 	b.order = order
+	b.replaceOrder = true
+}
+
+// SetOrderExtensions sets the order of the builder
+func (b *Builder) SetOrderExtensions(order dist.Order) {
+	for i, entry := range order {
+		for j, ref := range entry.Group {
+			ref.Optional = false // ensure `optional = true` isn't redundantly printed for extensions (as they are always optional)
+			entry.Group[j] = ref
+		}
+		order[i] = entry
+	}
+	b.orderExtensions = order
 	b.replaceOrder = true
 }
 
@@ -271,11 +308,6 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	logger.Debugf("Creating builder with the following buildpacks:")
 	for _, bpInfo := range b.metadata.Buildpacks {
 		logger.Debugf("-> %s", style.Symbol(bpInfo.FullName()))
-	}
-
-	resolvedOrder, err := processOrder(b.metadata.Buildpacks, b.order)
-	if err != nil {
-		return errors.Wrap(err, "processing order")
 	}
 
 	tmpDir, err := ioutil.TempDir("", "create-builder-scratch")
@@ -310,30 +342,55 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		return errors.Wrap(err, "validating buildpacks")
 	}
 
-	bpLayers := dist.BuildpackLayers{}
+	if err := validateExtensions(b.lifecycleDescriptor, b.Extensions(), b.additionalExtensions); err != nil {
+		return errors.Wrap(err, "validating extensions")
+	}
+
+	bpLayers := dist.ModuleLayers{}
 	if _, err := dist.GetLabel(b.image, dist.BuildpackLayersLabel, &bpLayers); err != nil {
 		return errors.Wrapf(err, "getting label %s", dist.BuildpackLayersLabel)
 	}
-
-	err = b.addBuildpacks(logger, tmpDir, b.image, b.additionalBuildpacks, bpLayers)
+	err = b.addModules(buildpack.KindBuildpack, logger, tmpDir, b.image, b.additionalBuildpacks, bpLayers)
 	if err != nil {
 		return err
 	}
-
 	if err := dist.SetLabel(b.image, dist.BuildpackLayersLabel, bpLayers); err != nil {
 		return err
 	}
 
+	extLayers := dist.ModuleLayers{}
+	if _, err := dist.GetLabel(b.image, dist.ExtensionLayersLabel, &extLayers); err != nil {
+		return errors.Wrapf(err, "getting label %s", dist.ExtensionLayersLabel)
+	}
+	err = b.addModules(buildpack.KindExtension, logger, tmpDir, b.image, b.additionalExtensions, extLayers)
+	if err != nil {
+		return err
+	}
+	if err := dist.SetLabel(b.image, dist.ExtensionLayersLabel, extLayers); err != nil {
+		return err
+	}
+
 	if b.replaceOrder {
-		orderTar, err := b.orderLayer(resolvedOrder, tmpDir)
+		resolvedOrderBp, err := processOrder(b.metadata.Buildpacks, b.order, buildpack.KindBuildpack)
+		if err != nil {
+			return errors.Wrap(err, "processing buildpacks order")
+		}
+		resolvedOrderExt, err := processOrder(b.metadata.Extensions, b.orderExtensions, buildpack.KindExtension)
+		if err != nil {
+			return errors.Wrap(err, "processing extensions order")
+		}
+
+		orderTar, err := b.orderLayer(resolvedOrderBp, resolvedOrderExt, tmpDir)
 		if err != nil {
 			return err
 		}
 		if err := b.image.AddLayer(orderTar); err != nil {
 			return errors.Wrap(err, "adding order.tar layer")
 		}
-
 		if err := dist.SetLabel(b.image, OrderLabel, b.order); err != nil {
+			return err
+		}
+		if err := dist.SetLabel(b.image, OrderExtensionsLabel, b.orderExtensions); err != nil {
 			return err
 		}
 	}
@@ -382,44 +439,45 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 // Helpers
 
-func (b *Builder) addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, additionalBuildpacks []buildpack.Buildpack, bpLayers dist.BuildpackLayers) error {
-	type buildpackToAdd struct {
-		tarPath   string
-		diffID    string
-		buildpack buildpack.Buildpack
+func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.ModuleLayers) error {
+	type toAdd struct {
+		tarPath string
+		diffID  string
+		module  buildpack.BuildModule
 	}
 
-	buildpacksToAdd := map[string]buildpackToAdd{}
-	for i, bp := range additionalBuildpacks {
-		// create buildpack directory
-		bpTmpDir := filepath.Join(tmpDir, strconv.Itoa(i))
-		if err := os.MkdirAll(bpTmpDir, os.ModePerm); err != nil {
-			return errors.Wrap(err, "creating buildpack temp dir")
+	collectionToAdd := map[string]toAdd{}
+	for i, module := range additionalModules {
+		// create directory
+		modTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s", kind, strconv.Itoa(i)))
+		if err := os.MkdirAll(modTmpDir, os.ModePerm); err != nil {
+			return errors.Wrapf(err, "creating %s temp dir", kind)
 		}
 
 		// create tar file
-		bpLayerTar, err := buildpack.ToLayerTar(bpTmpDir, bp)
+		layerTar, err := buildpack.ToLayerTar(modTmpDir, module)
 		if err != nil {
 			return err
 		}
 
 		// generate diff id
-		diffID, err := dist.LayerDiffID(bpLayerTar)
+		diffID, err := dist.LayerDiffID(layerTar)
+		info := module.Descriptor().Info()
 		if err != nil {
 			return errors.Wrapf(err,
-				"getting content hashes for buildpack %s",
-				style.Symbol(bp.Descriptor().Info.FullName()),
+				"getting content hashes for %s %s",
+				kind,
+				style.Symbol(info.FullName()),
 			)
 		}
 
-		bpInfo := bp.Descriptor().Info
 		// check against builder layers
-		if existingBPInfo, ok := bpLayers[bpInfo.ID][bpInfo.Version]; ok {
-			if existingBPInfo.LayerDiffID == diffID.String() {
-				logger.Debugf("Buildpack %s already exists on builder with same contents, skipping...", style.Symbol(bpInfo.FullName()))
+		if existingInfo, ok := layers[info.ID][info.Version]; ok {
+			if existingInfo.LayerDiffID == diffID.String() {
+				logger.Debugf("%s %s already exists on builder with same contents, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
 				continue
 			} else {
-				whiteoutsTar, err := b.whiteoutLayer(tmpDir, i, bpInfo)
+				whiteoutsTar, err := b.whiteoutLayer(tmpDir, i, info)
 				if err != nil {
 					return err
 				}
@@ -429,89 +487,98 @@ func (b *Builder) addBuildpacks(logger logging.Logger, tmpDir string, image imgu
 				}
 			}
 
-			logger.Debugf(BuildpackOnBuilderMessage, style.Symbol(bpInfo.FullName()), style.Symbol(existingBPInfo.LayerDiffID), style.Symbol(diffID.String()))
+			logger.Debugf(ModuleOnBuilderMessage, kind, style.Symbol(info.FullName()), style.Symbol(existingInfo.LayerDiffID), style.Symbol(diffID.String()))
 		}
 
-		// check against other buildpacks to be added
-		if otherAdditionalBP, ok := buildpacksToAdd[bp.Descriptor().Info.FullName()]; ok {
-			if otherAdditionalBP.diffID == diffID.String() {
-				logger.Debugf("Buildpack %s with same contents is already being added, skipping...", style.Symbol(bpInfo.FullName()))
+		// check against other modules to be added
+		if otherAdditionalMod, ok := collectionToAdd[info.FullName()]; ok {
+			if otherAdditionalMod.diffID == diffID.String() {
+				logger.Debugf("%s %s with same contents is already being added, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
 				continue
 			}
 
-			logger.Debugf(BuildpackPreviouslyDefinedMessage, style.Symbol(bpInfo.FullName()), style.Symbol(otherAdditionalBP.diffID), style.Symbol(diffID.String()))
+			logger.Debugf(ModulePreviouslyDefinedMessage, kind, style.Symbol(info.FullName()), style.Symbol(otherAdditionalMod.diffID), style.Symbol(diffID.String()))
 		}
 
-		// note: if same id@version is in additionalBuildpacks, last one wins (see warnings above)
-		buildpacksToAdd[bp.Descriptor().Info.FullName()] = buildpackToAdd{
-			tarPath:   bpLayerTar,
-			diffID:    diffID.String(),
-			buildpack: bp,
+		// note: if same id@version is in additionalModules, last one wins (see warnings above)
+		collectionToAdd[info.FullName()] = toAdd{
+			tarPath: layerTar,
+			diffID:  diffID.String(),
+			module:  module,
 		}
 	}
 
-	for _, bp := range buildpacksToAdd {
-		logger.Debugf("Adding buildpack %s (diffID=%s)", style.Symbol(bp.buildpack.Descriptor().Info.FullName()), bp.diffID)
-		if err := image.AddLayerWithDiffID(bp.tarPath, bp.diffID); err != nil {
+	for _, module := range collectionToAdd {
+		logger.Debugf("Adding %s %s (diffID=%s)", kind, style.Symbol(module.module.Descriptor().Info().FullName()), module.diffID)
+		if err := image.AddLayerWithDiffID(module.tarPath, module.diffID); err != nil {
 			return errors.Wrapf(err,
-				"adding layer tar for buildpack %s",
-				style.Symbol(bp.buildpack.Descriptor().Info.FullName()),
+				"adding layer tar for %s %s",
+				kind,
+				style.Symbol(module.module.Descriptor().Info().FullName()),
 			)
 		}
 
-		dist.AddBuildpackToLayersMD(bpLayers, bp.buildpack.Descriptor(), bp.diffID)
+		dist.AddToLayersMD(layers, module.module.Descriptor(), module.diffID)
 	}
 
 	return nil
 }
 
-func processOrder(buildpacks []dist.BuildpackInfo, order dist.Order) (dist.Order, error) {
-	resolvedOrder := dist.Order{}
-
-	for gi, g := range order {
-		resolvedOrder = append(resolvedOrder, dist.OrderEntry{})
-
-		for _, bpRef := range g.Group {
-			var matchingBps []dist.BuildpackInfo
-			for _, bp := range buildpacks {
-				if bpRef.ID == bp.ID {
-					matchingBps = append(matchingBps, bp)
-				}
+func processOrder(modulesOnBuilder []dist.ModuleInfo, order dist.Order, kind string) (dist.Order, error) {
+	resolved := dist.Order{}
+	for idx, g := range order {
+		resolved = append(resolved, dist.OrderEntry{})
+		for _, ref := range g.Group {
+			var err error
+			if ref, err = resolveRef(modulesOnBuilder, ref, kind); err != nil {
+				return dist.Order{}, err
 			}
+			resolved[idx].Group = append(resolved[idx].Group, ref)
+		}
+	}
+	return resolved, nil
+}
 
-			if len(matchingBps) == 0 {
-				return dist.Order{}, fmt.Errorf("no versions of buildpack %s were found on the builder", style.Symbol(bpRef.ID))
-			}
-
-			if bpRef.Version == "" {
-				if len(uniqueVersions(matchingBps)) > 1 {
-					return dist.Order{}, fmt.Errorf("unable to resolve version: multiple versions of %s - must specify an explicit version", style.Symbol(bpRef.ID))
-				}
-
-				bpRef.Version = matchingBps[0].Version
-			}
-
-			if !hasBuildpackWithVersion(matchingBps, bpRef.Version) {
-				return dist.Order{}, fmt.Errorf("buildpack %s with version %s was not found on the builder", style.Symbol(bpRef.ID), style.Symbol(bpRef.Version))
-			}
-
-			resolvedOrder[gi].Group = append(resolvedOrder[gi].Group, bpRef)
+func resolveRef(moduleList []dist.ModuleInfo, ref dist.ModuleRef, kind string) (dist.ModuleRef, error) {
+	var matching []dist.ModuleInfo
+	for _, bp := range moduleList {
+		if ref.ID == bp.ID {
+			matching = append(matching, bp)
 		}
 	}
 
-	return resolvedOrder, nil
+	if len(matching) == 0 {
+		return dist.ModuleRef{},
+			fmt.Errorf("no versions of %s %s were found on the builder", kind, style.Symbol(ref.ID))
+	}
+
+	if ref.Version == "" {
+		if len(uniqueVersions(matching)) > 1 {
+			return dist.ModuleRef{},
+				fmt.Errorf("unable to resolve version: multiple versions of %s - must specify an explicit version", style.Symbol(ref.ID))
+		}
+
+		ref.Version = matching[0].Version
+	}
+
+	if !hasElementWithVersion(matching, ref.Version) {
+		return dist.ModuleRef{},
+			fmt.Errorf("%s %s with version %s was not found on the builder", kind, style.Symbol(ref.ID), style.Symbol(ref.Version))
+	}
+
+	return ref, nil
 }
 
-func hasBuildpackWithVersion(bps []dist.BuildpackInfo, version string) bool {
-	for _, bp := range bps {
-		if bp.Version == version {
+func hasElementWithVersion(moduleList []dist.ModuleInfo, version string) bool {
+	for _, el := range moduleList {
+		if el.Version == version {
 			return true
 		}
 	}
 	return false
 }
 
-func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, allBuildpacks []dist.BuildpackInfo, bpsToValidate []buildpack.Buildpack) error {
+func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, allBuildpacks []dist.ModuleInfo, bpsToValidate []buildpack.BuildModule) error {
 	bpLookup := map[string]interface{}{}
 
 	for _, bp := range allBuildpacks {
@@ -520,32 +587,16 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 
 	for _, bp := range bpsToValidate {
 		bpd := bp.Descriptor()
-
-		// TODO: Warn when Buildpack API is deprecated - https://github.com/buildpacks/pack/issues/788
-		compatible := false
-		for _, version := range append(lifecycleDescriptor.APIs.Buildpack.Supported, lifecycleDescriptor.APIs.Buildpack.Deprecated...) {
-			compatible = version.Compare(bpd.API) == 0
-			if compatible {
-				break
-			}
+		if err := validateLifecycleCompat(bpd, lifecycleDescriptor); err != nil {
+			return err
 		}
 
-		if !compatible {
-			return fmt.Errorf(
-				"buildpack %s (Buildpack API %s) is incompatible with lifecycle %s (Buildpack API(s) %s)",
-				style.Symbol(bpd.Info.FullName()),
-				bpd.API.String(),
-				style.Symbol(lifecycleDescriptor.Info.Version.String()),
-				strings.Join(lifecycleDescriptor.APIs.Buildpack.Supported.AsStrings(), ", "),
-			)
-		}
-
-		if len(bpd.Stacks) >= 1 { // standard buildpack
+		if len(bpd.Stacks()) >= 1 { // standard buildpack
 			if err := bpd.EnsureStackSupport(stackID, mixins, false); err != nil {
 				return err
 			}
 		} else { // order buildpack
-			for _, g := range bpd.Order {
+			for _, g := range bpd.Order() {
 				for _, r := range g.Group {
 					if _, ok := bpLookup[r.FullName()]; !ok {
 						return fmt.Errorf(
@@ -556,6 +607,47 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 				}
 			}
 		}
+	}
+
+	return nil
+}
+
+func validateExtensions(lifecycleDescriptor LifecycleDescriptor, allExtensions []dist.ModuleInfo, extsToValidate []buildpack.BuildModule) error {
+	extLookup := map[string]interface{}{}
+
+	for _, ext := range allExtensions {
+		extLookup[ext.FullName()] = nil
+	}
+
+	for _, ext := range extsToValidate {
+		extd := ext.Descriptor()
+		if err := validateLifecycleCompat(extd, lifecycleDescriptor); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func validateLifecycleCompat(descriptor buildpack.Descriptor, lifecycleDescriptor LifecycleDescriptor) error {
+	// TODO: Warn when Buildpack API is deprecated - https://github.com/buildpacks/pack/issues/788
+	compatible := false
+	for _, version := range append(lifecycleDescriptor.APIs.Buildpack.Supported, lifecycleDescriptor.APIs.Buildpack.Deprecated...) {
+		compatible = version.Compare(descriptor.API()) == 0
+		if compatible {
+			break
+		}
+	}
+
+	if !compatible {
+		return fmt.Errorf(
+			"%s %s (Buildpack API %s) is incompatible with lifecycle %s (Buildpack API(s) %s)",
+			descriptor.Kind(),
+			style.Symbol(descriptor.Info().FullName()),
+			descriptor.API().String(),
+			style.Symbol(lifecycleDescriptor.Info.Version.String()),
+			strings.Join(lifecycleDescriptor.APIs.Buildpack.Supported.AsStrings(), ", "),
+		)
 	}
 
 	return nil
@@ -590,7 +682,7 @@ func userAndGroupIDs(img imgutil.Image) (int, int, error) {
 	return uid, gid, nil
 }
 
-func uniqueVersions(buildpacks []dist.BuildpackInfo) []string {
+func uniqueVersions(buildpacks []dist.ModuleInfo) []string {
 	results := []string{}
 	set := map[string]interface{}{}
 	for _, bpInfo := range buildpacks {
@@ -731,8 +823,8 @@ func (b *Builder) embedLifecycleTar(tw archive.TarWriter) error {
 	return nil
 }
 
-func (b *Builder) orderLayer(order dist.Order, dest string) (string, error) {
-	contents, err := orderFileContents(order)
+func (b *Builder) orderLayer(order dist.Order, orderExt dist.Order, dest string) (string, error) {
+	contents, err := orderFileContents(order, orderExt)
 	if err != nil {
 		return "", err
 	}
@@ -746,10 +838,9 @@ func (b *Builder) orderLayer(order dist.Order, dest string) (string, error) {
 	return layerTar, nil
 }
 
-func orderFileContents(order dist.Order) (string, error) {
+func orderFileContents(order dist.Order, orderExt dist.Order) (string, error) {
 	buf := &bytes.Buffer{}
-
-	tomlData := orderTOML{Order: order}
+	tomlData := orderTOML{Order: order, OrderExt: orderExt}
 	if err := toml.NewEncoder(buf).Encode(tomlData); err != nil {
 		return "", errors.Wrapf(err, "failed to marshal order.toml")
 	}
@@ -799,7 +890,7 @@ func (b *Builder) envLayer(dest string, env map[string]string) (string, error) {
 	return fh.Name(), nil
 }
 
-func (b *Builder) whiteoutLayer(tmpDir string, i int, bpInfo dist.BuildpackInfo) (string, error) {
+func (b *Builder) whiteoutLayer(tmpDir string, i int, bpInfo dist.ModuleInfo) (string, error) {
 	bpWhiteoutsTmpDir := filepath.Join(tmpDir, strconv.Itoa(i)+"_whiteouts")
 	if err := os.MkdirAll(bpWhiteoutsTmpDir, os.ModePerm); err != nil {
 		return "", errors.Wrap(err, "creating buildpack whiteouts temp dir")

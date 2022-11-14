@@ -48,7 +48,7 @@ var _ client.BuildpackDownloader = (*bpDownloader)(nil)
 
 type bpDownloader struct{}
 
-func (f *bpDownloader) Download(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.Buildpack, []buildpack.Buildpack, error) {
+func (f *bpDownloader) Download(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error) {
 	fmt.Println("custom buildpack downloader called")
 	return nil, nil, errors.New("not implemented")
 }

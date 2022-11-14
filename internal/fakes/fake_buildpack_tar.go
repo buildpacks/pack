@@ -10,7 +10,7 @@ import (
 )
 
 func CreateBuildpackTar(t *testing.T, tmpDir string, descriptor dist.BuildpackDescriptor) string {
-	buildpack, err := NewFakeBuildpackBlob(descriptor, 0777)
+	buildpack, err := NewFakeBuildpackBlob(&descriptor, 0777)
 	h.AssertNil(t, err)
 
 	tempFile, err := ioutil.TempFile(tmpDir, "bp-*.tar")

@@ -60,6 +60,12 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				logger.Warnf("builder configuration: %s", w)
 			}
 
+			if hasExtensions(builderConfig) {
+				if !cfg.Experimental {
+					return errors.New("builder config contains image extensions; support for image extensions is currently experimental")
+				}
+			}
+
 			relativeBaseDir, err := filepath.Abs(filepath.Dir(flags.BuilderTomlPath))
 			if err != nil {
 				return errors.Wrap(err, "getting absolute path for config")
@@ -92,6 +98,10 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 
 	AddHelpFlag(cmd, "create")
 	return cmd
+}
+
+func hasExtensions(builderConfig builder.Config) bool {
+	return len(builderConfig.Extensions) > 0 || len(builderConfig.OrderExtensions) > 0
 }
 
 func validateCreateFlags(flags *BuilderCreateFlags, cfg config.Config) error {

@@ -20,14 +20,14 @@ func TestDiveScreen(t *testing.T) {
 func testDive(t *testing.T, when spec.G, it spec.S) {
 	var (
 		fakeApp           app
-		buildpacks        []dist.BuildpackInfo
-		selectedBuildpack dist.BuildpackInfo
+		buildpacks        []dist.ModuleInfo
+		selectedBuildpack dist.ModuleInfo
 		nodes             map[string]*tview.TreeNode
 	)
 
 	it.Before(func() {
 		fakeApp = fakes.NewApp()
-		buildpacks = []dist.BuildpackInfo{
+		buildpacks = []dist.ModuleInfo{
 			{ID: "some/buildpack-1", Version: "0.0.1"},
 			{ID: "some/buildpack-2", Version: "0.0.2"}}
 		selectedBuildpack = buildpacks[0]

@@ -43,7 +43,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 			fakeDockerStdWriter = fakes.NewDockerStdWriter(w)
 
 			fakeBuilder = fakes.NewBuilder("some/basename",
-				[]dist.BuildpackInfo{
+				[]dist.ModuleInfo{
 					{ID: "some/buildpack-1", Version: "0.0.1", Homepage: "https://some/buildpack-1"},
 					{ID: "some/buildpack-2", Version: "0.0.2", Homepage: "https://some/buildpack-2"},
 				},
@@ -62,7 +62,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 				bldr:          fakeBuilder,
 				runImageName:  "some/run-image-name",
 				app:           fakeApp,
-				buildpackChan: make(chan dist.BuildpackInfo, 10),
+				buildpackChan: make(chan dist.ModuleInfo, 10),
 				textChan:      make(chan string, 10),
 				nodes:         map[string]*tview.TreeNode{},
 			}
@@ -160,7 +160,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 			fakeDockerStdWriter = fakes.NewDockerStdWriter(w)
 
 			fakeBuilder = fakes.NewBuilder("some/basename",
-				[]dist.BuildpackInfo{
+				[]dist.ModuleInfo{
 					{ID: "some/buildpack-1", Version: "0.0.1", Homepage: "https://some/buildpack-1"},
 					{ID: "some/buildpack-2", Version: "0.0.2", Homepage: "https://some/buildpack-2"},
 				},
@@ -179,7 +179,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 				bldr:          fakeBuilder,
 				runImageName:  "some/run-image-name",
 				app:           fakeApp,
-				buildpackChan: make(chan dist.BuildpackInfo, 10),
+				buildpackChan: make(chan dist.ModuleInfo, 10),
 				textChan:      make(chan string, 10),
 			}
 		)

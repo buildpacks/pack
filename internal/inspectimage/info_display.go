@@ -43,7 +43,7 @@ type InfoDisplay struct {
 	StackID         string                  `json:"stack" yaml:"stack" toml:"stack"`
 	Base            BaseDisplay             `json:"base_image" yaml:"base_image" toml:"base_image"`
 	RunImageMirrors []RunImageMirrorDisplay `json:"run_images" yaml:"run_images" toml:"run_images"`
-	Buildpacks      []dist.BuildpackInfo    `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
+	Buildpacks      []dist.ModuleInfo       `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
 	Processes       []ProcessDisplay        `json:"processes" yaml:"processes" toml:"processes"`
 }
 
@@ -128,10 +128,10 @@ func displayMirrors(info *client.ImageInfo, generalInfo GeneralInfo) []RunImageM
 	return result
 }
 
-func displayBuildpacks(buildpacks []buildpack.GroupBuildpack) []dist.BuildpackInfo {
-	var result []dist.BuildpackInfo
+func displayBuildpacks(buildpacks []buildpack.GroupBuildpack) []dist.ModuleInfo {
+	var result []dist.ModuleInfo
 	for _, buildpack := range buildpacks {
-		result = append(result, dist.BuildpackInfo{
+		result = append(result, dist.ModuleInfo{
 			ID:       buildpack.ID,
 			Version:  buildpack.Version,
 			Homepage: buildpack.Homepage,

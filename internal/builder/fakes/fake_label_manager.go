@@ -10,7 +10,7 @@ type FakeLabelManager struct {
 	ReturnForStackID         string
 	ReturnForMixins          []string
 	ReturnForOrder           dist.Order
-	ReturnForBuildpackLayers dist.BuildpackLayers
+	ReturnForBuildpackLayers dist.ModuleLayers
 
 	ErrorForMetadata        error
 	ErrorForStackID         error
@@ -35,6 +35,6 @@ func (m *FakeLabelManager) Order() (dist.Order, error) {
 	return m.ReturnForOrder, m.ErrorForOrder
 }
 
-func (m *FakeLabelManager) BuildpackLayers() (dist.BuildpackLayers, error) {
+func (m *FakeLabelManager) BuildpackLayers() (dist.ModuleLayers, error) {
 	return m.ReturnForBuildpackLayers, m.ErrorForBuildpackLayers
 }

@@ -14,7 +14,7 @@ type Package interface {
 	GetLayer(diffID string) (io.ReadCloser, error)
 }
 
-func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err error) {
+func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, err error) {
 	md := &Metadata{}
 	if found, err := dist.GetLabel(pkg, MetadataLabel, md); err != nil {
 		return nil, nil, err
@@ -25,8 +25,8 @@ func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err e
 		)
 	}
 
-	bpLayers := dist.BuildpackLayers{}
-	ok, err := dist.GetLabel(pkg, dist.BuildpackLayersLabel, &bpLayers)
+	pkgLayers := dist.ModuleLayers{}
+	ok, err := dist.GetLabel(pkg, dist.BuildpackLayersLabel, &pkgLayers)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -38,18 +38,18 @@ func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err e
 		)
 	}
 
-	for bpID, v := range bpLayers {
+	for bpID, v := range pkgLayers {
 		for bpVersion, bpInfo := range v {
 			desc := dist.BuildpackDescriptor{
-				API: bpInfo.API,
-				Info: dist.BuildpackInfo{
+				WithAPI: bpInfo.API,
+				WithInfo: dist.ModuleInfo{
 					ID:       bpID,
 					Version:  bpVersion,
 					Homepage: bpInfo.Homepage,
 					Name:     bpInfo.Name,
 				},
-				Stacks: bpInfo.Stacks,
-				Order:  bpInfo.Order,
+				WithStacks: bpInfo.Stacks,
+				WithOrder:  bpInfo.Order,
 			}
 
 			diffID := bpInfo.LayerDiffID // Allow use in closure
@@ -59,7 +59,7 @@ func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err e
 					if err != nil {
 						return nil, errors.Wrapf(err,
 							"extracting buildpack %s layer (diffID %s)",
-							style.Symbol(desc.Info.FullName()),
+							style.Symbol(desc.Info().FullName()),
 							style.Symbol(diffID),
 						)
 					}
@@ -67,10 +67,10 @@ func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err e
 				},
 			}
 
-			if desc.Info.Match(md.BuildpackInfo) { // This is the order buildpack of the package
-				mainBP = FromBlob(desc, b)
+			if desc.Info().Match(md.ModuleInfo) { // This is the order buildpack of the package
+				mainBP = FromBlob(&desc, b)
 			} else {
-				depBPs = append(depBPs, FromBlob(desc, b))
+				depBPs = append(depBPs, FromBlob(&desc, b))
 			}
 		}
 	}

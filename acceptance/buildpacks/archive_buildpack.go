@@ -23,37 +23,37 @@ const (
 	defaultMode     = 0755
 )
 
-type archiveBuildpack struct {
+type archiveBuildModule struct {
 	name string
 }
 
-func (a archiveBuildpack) Prepare(sourceDir, destination string) error {
+func (a archiveBuildModule) Prepare(sourceDir, destination string) error {
 	location, err := a.createTgz(sourceDir)
 	if err != nil {
-		return errors.Wrapf(err, "creating archive for buildpack %s", a)
+		return errors.Wrapf(err, "creating archive for build module %s", a)
 	}
 
 	err = os.Rename(location, filepath.Join(destination, a.FileName()))
 	if err != nil {
-		return errors.Wrapf(err, "renaming temporary archive for buildpack %s", a)
+		return errors.Wrapf(err, "renaming temporary archive for build module %s", a)
 	}
 
 	return nil
 }
 
-func (a archiveBuildpack) FileName() string {
+func (a archiveBuildModule) FileName() string {
 	return fmt.Sprintf("%s.tgz", a)
 }
 
-func (a archiveBuildpack) String() string {
+func (a archiveBuildModule) String() string {
 	return a.name
 }
 
-func (a archiveBuildpack) FullPathIn(parentFolder string) string {
+func (a archiveBuildModule) FullPathIn(parentFolder string) string {
 	return filepath.Join(parentFolder, a.FileName())
 }
 
-func (a archiveBuildpack) createTgz(sourceDir string) (string, error) {
+func (a archiveBuildModule) createTgz(sourceDir string) (string, error) {
 	tempFile, err := ioutil.TempFile("", "*.tgz")
 	if err != nil {
 		return "", errors.Wrap(err, "creating temporary archive")
@@ -86,17 +86,18 @@ func (a archiveBuildpack) createTgz(sourceDir string) (string, error) {
 }
 
 var (
-	SimpleLayersParent       = &archiveBuildpack{name: "simple-layers-parent-buildpack"}
-	SimpleLayers             = &archiveBuildpack{name: "simple-layers-buildpack"}
-	SimpleLayersDifferentSha = &archiveBuildpack{name: "simple-layers-buildpack-different-sha"}
-	InternetCapable          = &archiveBuildpack{name: "internet-capable-buildpack"}
-	ReadVolume               = &archiveBuildpack{name: "read-volume-buildpack"}
-	ReadWriteVolume          = &archiveBuildpack{name: "read-write-volume-buildpack"}
-	ArchiveNotInBuilder      = &archiveBuildpack{name: "not-in-builder-buildpack"}
-	Noop                     = &archiveBuildpack{name: "noop-buildpack"}
-	Noop2                    = &archiveBuildpack{name: "noop-buildpack-2"}
-	OtherStack               = &archiveBuildpack{name: "other-stack-buildpack"}
-	ReadEnv                  = &archiveBuildpack{name: "read-env-buildpack"}
-	NestedLevelOne           = &archiveBuildpack{name: "nested-level-1-buildpack"}
-	NestedLevelTwo           = &archiveBuildpack{name: "nested-level-2-buildpack"}
+	BpSimpleLayersParent       = &archiveBuildModule{name: "simple-layers-parent-buildpack"}
+	BpSimpleLayers             = &archiveBuildModule{name: "simple-layers-buildpack"}
+	BpSimpleLayersDifferentSha = &archiveBuildModule{name: "simple-layers-buildpack-different-sha"}
+	BpInternetCapable          = &archiveBuildModule{name: "internet-capable-buildpack"}
+	BpReadVolume               = &archiveBuildModule{name: "read-volume-buildpack"}
+	BpReadWriteVolume          = &archiveBuildModule{name: "read-write-volume-buildpack"}
+	BpArchiveNotInBuilder      = &archiveBuildModule{name: "not-in-builder-buildpack"}
+	BpNoop                     = &archiveBuildModule{name: "noop-buildpack"}
+	BpNoop2                    = &archiveBuildModule{name: "noop-buildpack-2"}
+	BpOtherStack               = &archiveBuildModule{name: "other-stack-buildpack"}
+	BpReadEnv                  = &archiveBuildModule{name: "read-env-buildpack"}
+	BpNestedLevelOne           = &archiveBuildModule{name: "nested-level-1-buildpack"}
+	BpNestedLevelTwo           = &archiveBuildModule{name: "nested-level-2-buildpack"}
+	ExtReadEnv                 = &archiveBuildModule{name: "read-env-extension"}
 )

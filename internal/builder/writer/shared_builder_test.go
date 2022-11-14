@@ -8,33 +8,33 @@ import (
 )
 
 var (
-	testTopNestedBuildpack = dist.BuildpackInfo{
+	testTopNestedBuildpack = dist.ModuleInfo{
 		ID:      "test.top.nested",
 		Version: "test.top.nested.version",
 	}
-	testNestedBuildpack = dist.BuildpackInfo{
+	testNestedBuildpack = dist.ModuleInfo{
 		ID:       "test.nested",
 		Homepage: "http://geocities.com/top-bp",
 	}
-	testBuildpackOne = dist.BuildpackInfo{
+	testBuildpackOne = dist.ModuleInfo{
 		ID:       "test.bp.one",
 		Version:  "test.bp.one.version",
 		Homepage: "http://geocities.com/cool-bp",
 	}
-	testBuildpackTwo = dist.BuildpackInfo{
+	testBuildpackTwo = dist.ModuleInfo{
 		ID:      "test.bp.two",
 		Version: "test.bp.two.version",
 	}
-	testBuildpackThree = dist.BuildpackInfo{
+	testBuildpackThree = dist.ModuleInfo{
 		ID:      "test.bp.three",
 		Version: "test.bp.three.version",
 	}
-	testNestedBuildpackTwo = dist.BuildpackInfo{
+	testNestedBuildpackTwo = dist.ModuleInfo{
 		ID:      "test.nested.two",
 		Version: "test.nested.two.version",
 	}
 
-	buildpacks = []dist.BuildpackInfo{
+	buildpacks = []dist.ModuleInfo{
 		testTopNestedBuildpack,
 		testNestedBuildpack,
 		testBuildpackOne,
@@ -46,34 +46,34 @@ var (
 		pubbldr.DetectionOrderEntry{
 			GroupDetectionOrder: pubbldr.DetectionOrder{
 				pubbldr.DetectionOrderEntry{
-					BuildpackRef: dist.BuildpackRef{
-						BuildpackInfo: testTopNestedBuildpack,
+					ModuleRef: dist.ModuleRef{
+						ModuleInfo: testTopNestedBuildpack,
 					},
 					GroupDetectionOrder: pubbldr.DetectionOrder{
 						pubbldr.DetectionOrderEntry{
-							BuildpackRef: dist.BuildpackRef{BuildpackInfo: testNestedBuildpack},
+							ModuleRef: dist.ModuleRef{ModuleInfo: testNestedBuildpack},
 							GroupDetectionOrder: pubbldr.DetectionOrder{
 								pubbldr.DetectionOrderEntry{
-									BuildpackRef: dist.BuildpackRef{
-										BuildpackInfo: testBuildpackOne,
-										Optional:      true,
+									ModuleRef: dist.ModuleRef{
+										ModuleInfo: testBuildpackOne,
+										Optional:   true,
 									},
 								},
 							},
 						},
 						pubbldr.DetectionOrderEntry{
-							BuildpackRef: dist.BuildpackRef{
-								BuildpackInfo: testBuildpackThree,
-								Optional:      true,
+							ModuleRef: dist.ModuleRef{
+								ModuleInfo: testBuildpackThree,
+								Optional:   true,
 							},
 						},
 						pubbldr.DetectionOrderEntry{
-							BuildpackRef: dist.BuildpackRef{BuildpackInfo: testNestedBuildpackTwo},
+							ModuleRef: dist.ModuleRef{ModuleInfo: testNestedBuildpackTwo},
 							GroupDetectionOrder: pubbldr.DetectionOrder{
 								pubbldr.DetectionOrderEntry{
-									BuildpackRef: dist.BuildpackRef{
-										BuildpackInfo: testBuildpackOne,
-										Optional:      true,
+									ModuleRef: dist.ModuleRef{
+										ModuleInfo: testBuildpackOne,
+										Optional:   true,
 									},
 									Cyclical: true,
 								},
@@ -82,16 +82,16 @@ var (
 					},
 				},
 				pubbldr.DetectionOrderEntry{
-					BuildpackRef: dist.BuildpackRef{
-						BuildpackInfo: testBuildpackTwo,
-						Optional:      true,
+					ModuleRef: dist.ModuleRef{
+						ModuleInfo: testBuildpackTwo,
+						Optional:   true,
 					},
 				},
 			},
 		},
 		pubbldr.DetectionOrderEntry{
-			BuildpackRef: dist.BuildpackRef{
-				BuildpackInfo: testBuildpackThree,
+			ModuleRef: dist.ModuleRef{
+				ModuleInfo: testBuildpackThree,
 			},
 		},
 	}

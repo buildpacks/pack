@@ -52,7 +52,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	var createBuildpack = func(descriptor dist.BuildpackDescriptor) string {
-		bp, err := ifakes.NewFakeBuildpackBlob(descriptor, 0644)
+		bp, err := ifakes.NewFakeBuildpackBlob(&descriptor, 0644)
 		h.AssertNil(t, err)
 		url := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
 		mockDownloader.EXPECT().Download(gomock.Any(), url).Return(bp, nil).AnyTimes()
@@ -77,9 +77,9 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			Config: pubbldpkg.Config{
 				Platform: dist.Platform{OS: "linux"},
 				Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
-					API:    api.MustParse("0.3"),
-					Info:   dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
-					Stacks: []dist.Stack{{ID: "some.stack.id"}},
+					WithAPI:    api.MustParse("0.3"),
+					WithInfo:   dist.ModuleInfo{ID: "example/foo", Version: "1.1.0"},
+					WithStacks: []dist.Stack{{ID: "some.stack.id"}},
 				})},
 			},
 			Publish: true,
@@ -122,10 +122,10 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, os.RemoveAll(tmpDir))
 	})
 
-	when("#DownloadBuildpack", func() {
+	when("#Download", func() {
 		var (
-			packageImage             *fakes.Image
-			buildpackDownloadOptions = buildpack.DownloadOptions{ImageOS: "linux"}
+			packageImage    *fakes.Image
+			downloadOptions = buildpack.DownloadOptions{ImageOS: "linux"}
 		)
 
 		shouldFetchPackageImageWith := func(demon bool, pull image.PullPolicy) {
@@ -139,7 +139,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 
 			when("daemon=true and pull-policy=always", func() {
 				it("should pull and use local package image", func() {
-					buildpackDownloadOptions = buildpack.DownloadOptions{
+					downloadOptions = buildpack.DownloadOptions{
 						RegistryName: "some-registry",
 						ImageOS:      "linux",
 						Daemon:       true,
@@ -147,15 +147,15 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					shouldFetchPackageImageWith(true, image.PullAlways)
-					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "urn:cnb:registry:example/foo@1.1.0", buildpackDownloadOptions)
+					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "urn:cnb:registry:example/foo@1.1.0", downloadOptions)
 					h.AssertNil(t, err)
-					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
+					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
 				})
 			})
 
 			when("ambigious URI provided", func() {
 				it("should find package in registry", func() {
-					buildpackDownloadOptions = buildpack.DownloadOptions{
+					downloadOptions = buildpack.DownloadOptions{
 						RegistryName: "some-registry",
 						ImageOS:      "linux",
 						Daemon:       true,
@@ -163,9 +163,9 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					shouldFetchPackageImageWith(true, image.PullAlways)
-					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "example/foo@1.1.0", buildpackDownloadOptions)
+					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "example/foo@1.1.0", downloadOptions)
 					h.AssertNil(t, err)
-					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
+					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
 				})
 			})
 		})
@@ -182,7 +182,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			when("image key is provided", func() {
 				it("should succeed", func() {
 					packageImage = createPackage("some/package:tag")
-					buildpackDownloadOptions = buildpack.DownloadOptions{
+					downloadOptions = buildpack.DownloadOptions{
 						Daemon:     true,
 						PullPolicy: image.PullAlways,
 						ImageOS:    "linux",
@@ -190,15 +190,15 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					shouldFetchPackageImageWith(true, image.PullAlways)
-					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
+					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
 					h.AssertNil(t, err)
-					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
+					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
 				})
 			})
 
 			when("daemon=true and pull-policy=always", func() {
 				it("should pull and use local package image", func() {
-					buildpackDownloadOptions = buildpack.DownloadOptions{
+					downloadOptions = buildpack.DownloadOptions{
 						ImageOS:    "linux",
 						ImageName:  packageImage.Name(),
 						Daemon:     true,
@@ -206,15 +206,15 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					shouldFetchPackageImageWith(true, image.PullAlways)
-					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
+					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
 					h.AssertNil(t, err)
-					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
+					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
 				})
 			})
 
 			when("daemon=false and pull-policy=always", func() {
 				it("should use remote package image", func() {
-					buildpackDownloadOptions = buildpack.DownloadOptions{
+					downloadOptions = buildpack.DownloadOptions{
 						ImageOS:    "linux",
 						ImageName:  packageImage.Name(),
 						Daemon:     false,
@@ -222,29 +222,29 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					shouldFetchPackageImageWith(false, image.PullAlways)
-					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
+					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
 					h.AssertNil(t, err)
-					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
+					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
 				})
 			})
 
 			when("daemon=false and pull-policy=always", func() {
 				it("should use remote package URI", func() {
-					buildpackDownloadOptions = buildpack.DownloadOptions{
+					downloadOptions = buildpack.DownloadOptions{
 						ImageOS:    "linux",
 						Daemon:     false,
 						PullPolicy: image.PullAlways,
 					}
 					shouldFetchPackageImageWith(false, image.PullAlways)
-					mainBP, _, err := buildpackDownloader.Download(context.TODO(), packageImage.Name(), buildpackDownloadOptions)
+					mainBP, _, err := buildpackDownloader.Download(context.TODO(), packageImage.Name(), downloadOptions)
 					h.AssertNil(t, err)
-					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
+					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
 				})
 			})
 
 			when("publish=true and pull-policy=never", func() {
 				it("should push to registry and not pull package image", func() {
-					buildpackDownloadOptions = buildpack.DownloadOptions{
+					downloadOptions = buildpack.DownloadOptions{
 						ImageOS:    "linux",
 						ImageName:  packageImage.Name(),
 						Daemon:     false,
@@ -252,71 +252,91 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					shouldFetchPackageImageWith(false, image.PullNever)
-					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
+					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
 					h.AssertNil(t, err)
-					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
+					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
 				})
 			})
 
 			when("daemon=true pull-policy=never and there is no local package image", func() {
 				it("should fail without trying to retrieve package image from registry", func() {
-					buildpackDownloadOptions = buildpack.DownloadOptions{
+					downloadOptions = buildpack.DownloadOptions{
 						ImageOS:    "linux",
 						ImageName:  packageImage.Name(),
 						Daemon:     true,
 						PullPolicy: image.PullNever,
 					}
 					prepareFetcherWithMissingPackageImage()
-					_, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
+					_, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
 					h.AssertError(t, err, "not found")
 				})
 			})
 		})
+
 		when("package lives on filesystem", func() {
 			it("should successfully retrieve package from absolute path", func() {
 				buildpackPath := filepath.Join("testdata", "buildpack")
 				buildpackURI, _ := paths.FilePathToURI(buildpackPath, "")
 				mockDownloader.EXPECT().Download(gomock.Any(), buildpackURI).Return(blob.NewBlob(buildpackPath), nil).AnyTimes()
-				mainBP, _, err := buildpackDownloader.Download(context.TODO(), buildpackURI, buildpackDownloadOptions)
+				mainBP, _, err := buildpackDownloader.Download(context.TODO(), buildpackURI, downloadOptions)
 				h.AssertNil(t, err)
-				h.AssertEq(t, mainBP.Descriptor().Info.ID, "bp.one")
+				h.AssertEq(t, mainBP.Descriptor().Info().ID, "bp.one")
 			})
+
 			it("should successfully retrieve package from relative path", func() {
 				buildpackPath := filepath.Join("testdata", "buildpack")
 				buildpackURI, _ := paths.FilePathToURI(buildpackPath, "")
 				mockDownloader.EXPECT().Download(gomock.Any(), buildpackURI).Return(blob.NewBlob(buildpackPath), nil).AnyTimes()
-				buildpackDownloadOptions = buildpack.DownloadOptions{
+				downloadOptions = buildpack.DownloadOptions{
 					ImageOS:         "linux",
 					RelativeBaseDir: "testdata",
 				}
-				mainBP, _, err := buildpackDownloader.Download(context.TODO(), "buildpack", buildpackDownloadOptions)
+				mainBP, _, err := buildpackDownloader.Download(context.TODO(), "buildpack", downloadOptions)
 				h.AssertNil(t, err)
-				h.AssertEq(t, mainBP.Descriptor().Info.ID, "bp.one")
+				h.AssertEq(t, mainBP.Descriptor().Info().ID, "bp.one")
+			})
+
+			when("kind == extension", func() {
+				it("succeeds", func() {
+					extensionPath := filepath.Join("testdata", "extension")
+					extensionURI, _ := paths.FilePathToURI(extensionPath, "")
+					mockDownloader.EXPECT().Download(gomock.Any(), extensionURI).Return(blob.NewBlob(extensionPath), nil).AnyTimes()
+					downloadOptions = buildpack.DownloadOptions{
+						ImageOS:         "linux",
+						ModuleKind:      "extension",
+						RelativeBaseDir: "testdata",
+					}
+					mainExt, _, err := buildpackDownloader.Download(context.TODO(), "extension", downloadOptions)
+					h.AssertNil(t, err)
+					h.AssertEq(t, mainExt.Descriptor().Info().ID, "ext.one")
+				})
 			})
 		})
+
 		when("package image is not a valid package", func() {
-			it("should error", func() {
+			it("errors", func() {
 				notPackageImage := fakes.NewImage("docker.io/not/package", "", nil)
 
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), gomock.Any()).Return(notPackageImage, nil)
 				h.AssertNil(t, notPackageImage.SetLabel("io.buildpacks.buildpack.layers", ""))
 
-				buildpackDownloadOptions.ImageName = notPackageImage.Name()
-				_, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
+				downloadOptions.ImageName = notPackageImage.Name()
+				_, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
 				h.AssertError(t, err, "extracting buildpacks from 'docker.io/not/package': could not find label 'io.buildpacks.buildpackage.metadata'")
 			})
 		})
+
 		when("invalid buildpack URI", func() {
 			when("buildpack URI is from=builder:fake", func() {
 				it("errors", func() {
-					_, _, err := buildpackDownloader.Download(context.TODO(), "from=builder:fake", buildpackDownloadOptions)
+					_, _, err := buildpackDownloader.Download(context.TODO(), "from=builder:fake", downloadOptions)
 					h.AssertError(t, err, "'from=builder:fake' is not a valid identifier")
 				})
 			})
 
 			when("buildpack URI is from=builder", func() {
 				it("errors", func() {
-					_, _, err := buildpackDownloader.Download(context.TODO(), "from=builder", buildpackDownloadOptions)
+					_, _, err := buildpackDownloader.Download(context.TODO(), "from=builder", downloadOptions)
 					h.AssertError(t, err,
 						"invalid locator: FromBuilderLocator")
 				})
@@ -329,8 +349,8 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						Return("", errors.New("bad mhkay")).
 						AnyTimes()
 
-					buildpackDownloadOptions.RegistryName = "://bad-url"
-					_, _, err := buildpackDownloader.Download(context.TODO(), "urn:cnb:registry:fake", buildpackDownloadOptions)
+					downloadOptions.RegistryName = "://bad-url"
+					_, _, err := buildpackDownloader.Download(context.TODO(), "urn:cnb:registry:fake", downloadOptions)
 					h.AssertError(t, err, "locating in registry")
 				})
 			})
@@ -340,15 +360,16 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					packageImage := fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways}).Return(nil, errors.New("failed to pull"))
 
-					buildpackDownloadOptions.RegistryName = "some-registry"
-					_, _, err := buildpackDownloader.Download(context.TODO(), "urn:cnb:registry:example/foo@1.1.0", buildpackDownloadOptions)
+					downloadOptions.RegistryName = "some-registry"
+					_, _, err := buildpackDownloader.Download(context.TODO(), "urn:cnb:registry:example/foo@1.1.0", downloadOptions)
 					h.AssertError(t, err,
 						"extracting from registry")
 				})
 			})
+
 			when("buildpack URI is an invalid locator", func() {
 				it("errors", func() {
-					_, _, err := buildpackDownloader.Download(context.TODO(), "nonsense string here", buildpackDownloadOptions)
+					_, _, err := buildpackDownloader.Download(context.TODO(), "nonsense string here", downloadOptions)
 					h.AssertError(t, err,
 						"invalid locator: InvalidLocator")
 				})

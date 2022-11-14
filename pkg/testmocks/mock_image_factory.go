@@ -11,30 +11,30 @@ import (
 	gomock "github.com/golang/mock/gomock"
 )
 
-// MockImageFactory is a mock of ImageFactory interface
+// MockImageFactory is a mock of ImageFactory interface.
 type MockImageFactory struct {
 	ctrl     *gomock.Controller
 	recorder *MockImageFactoryMockRecorder
 }
 
-// MockImageFactoryMockRecorder is the mock recorder for MockImageFactory
+// MockImageFactoryMockRecorder is the mock recorder for MockImageFactory.
 type MockImageFactoryMockRecorder struct {
 	mock *MockImageFactory
 }
 
-// NewMockImageFactory creates a new mock instance
+// NewMockImageFactory creates a new mock instance.
 func NewMockImageFactory(ctrl *gomock.Controller) *MockImageFactory {
 	mock := &MockImageFactory{ctrl: ctrl}
 	mock.recorder = &MockImageFactoryMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockImageFactory) EXPECT() *MockImageFactoryMockRecorder {
 	return m.recorder
 }
 
-// NewImage mocks base method
+// NewImage mocks base method.
 func (m *MockImageFactory) NewImage(arg0 string, arg1 bool, arg2 string) (imgutil.Image, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewImage", arg0, arg1, arg2)
@@ -43,7 +43,7 @@ func (m *MockImageFactory) NewImage(arg0 string, arg1 bool, arg2 string) (imguti
 	return ret0, ret1
 }
 
-// NewImage indicates an expected call of NewImage
+// NewImage indicates an expected call of NewImage.
 func (mr *MockImageFactoryMockRecorder) NewImage(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewImage", reflect.TypeOf((*MockImageFactory)(nil).NewImage), arg0, arg1, arg2)

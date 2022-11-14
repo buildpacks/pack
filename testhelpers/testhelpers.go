@@ -795,12 +795,14 @@ func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
 	return false
 }
 
-func AssertBuildpacksHaveDescriptors(t *testing.T, bps []buildpack.Buildpack, descriptors []dist.BuildpackDescriptor) {
-	AssertEq(t, len(bps), len(descriptors))
-	for _, bp := range bps {
+func AssertBuildpacksHaveDescriptors(t *testing.T, modules []buildpack.BuildModule, descriptors []dist.BuildpackDescriptor) {
+	AssertEq(t, len(modules), len(descriptors))
+	for _, mod := range modules {
 		found := false
+		modDesc, ok := mod.Descriptor().(*dist.BuildpackDescriptor)
+		AssertEq(t, ok, true)
 		for _, descriptor := range descriptors {
-			if diff := cmp.Diff(bp.Descriptor(), descriptor); diff == "" {
+			if diff := cmp.Diff(*modDesc, descriptor); diff == "" {
 				found = true
 				break
 			}

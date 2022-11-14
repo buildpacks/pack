@@ -17,73 +17,114 @@ import (
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
+const (
+	KindBuildpack = "buildpack"
+	KindExtension = "extension"
+)
+
+//go:generate mockgen -package testmocks -destination ../testmocks/mock_build_module.go github.com/buildpacks/pack/pkg/buildpack BuildModule
+type BuildModule interface {
+	// Open returns a reader to a tar with contents structured as per the distribution spec
+	// (currently '/cnb/buildpacks/{ID}/{version}/*', all entries with a zeroed-out
+	// timestamp and root UID/GID).
+	Open() (io.ReadCloser, error)
+	Descriptor() Descriptor
+}
+
+type Descriptor interface {
+	API() *api.Version
+	EnsureStackSupport(stackID string, providedMixins []string, validateRunStageMixins bool) error
+	EscapedID() string
+	Info() dist.ModuleInfo
+	Kind() string
+	Order() dist.Order
+	Stacks() []dist.Stack
+}
+
 type Blob interface {
 	// Open returns a io.ReadCloser for the contents of the Blob in tar format.
 	Open() (io.ReadCloser, error)
 }
 
-//go:generate mockgen -package testmocks -destination ../testmocks/mock_buildpack.go github.com/buildpacks/pack/pkg/buildpack Buildpack
-
-type Buildpack interface {
-	// Open returns a reader to a tar with contents structured as per the distribution spec
-	// (currently '/cnbs/buildpacks/{ID}/{version}/*', all entries with a zeroed-out
-	// timestamp and root UID/GID).
-	Open() (io.ReadCloser, error)
-	Descriptor() dist.BuildpackDescriptor
-}
-
-type buildpack struct {
-	descriptor dist.BuildpackDescriptor
+type buildModule struct {
+	descriptor Descriptor
 	Blob       `toml:"-"`
 }
 
-func (b *buildpack) Descriptor() dist.BuildpackDescriptor {
+func (b *buildModule) Descriptor() Descriptor {
 	return b.descriptor
 }
 
-// FromBlob constructs a buildpack from a blob. It is assumed that the buildpack
-// contents are structured as per the distribution spec (currently '/cnbs/buildpacks/{ID}/{version}/*').
-func FromBlob(bpd dist.BuildpackDescriptor, blob Blob) Buildpack {
-	return &buildpack{
+// FromBlob constructs a buildpack or extension from a blob. It is assumed that the buildpack
+// contents are structured as per the distribution spec (currently '/cnb/buildpacks/{ID}/{version}/*' or
+// '/cnb/extensions/{ID}/{version}/*').
+func FromBlob(descriptor Descriptor, blob Blob) BuildModule {
+	return &buildModule{
 		Blob:       blob,
-		descriptor: bpd,
+		descriptor: descriptor,
 	}
 }
 
-// FromRootBlob constructs a buildpack from a blob. It is assumed that the buildpack contents reside at the
+// FromBuildpackRootBlob constructs a buildpack from a blob. It is assumed that the buildpack contents reside at the
 // root of the blob. The constructed buildpack contents will be structured as per the distribution spec (currently
-// a tar with contents under '/cnbs/buildpacks/{ID}/{version}/*').
-func FromRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (Buildpack, error) {
-	bpd := dist.BuildpackDescriptor{}
+// a tar with contents under '/cnb/buildpacks/{ID}/{version}/*').
+func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
+	descriptor := dist.BuildpackDescriptor{}
+	descriptor.WithAPI = api.MustParse(dist.AssumedBuildpackAPIVersion)
+	if err := readDescriptor(KindBuildpack, &descriptor, blob); err != nil {
+		return nil, err
+	}
+	if err := validateBuildpackDescriptor(descriptor); err != nil {
+		return nil, err
+	}
+	return buildpackFrom(&descriptor, blob, layerWriterFactory)
+}
+
+// FromExtensionRootBlob constructs an extension from a blob. It is assumed that the extension contents reside at the
+// root of the blob. The constructed extension contents will be structured as per the distribution spec (currently
+// a tar with contents under '/cnb/extensions/{ID}/{version}/*').
+func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
+	descriptor := dist.ExtensionDescriptor{}
+	descriptor.WithAPI = api.MustParse(dist.AssumedBuildpackAPIVersion)
+	if err := readDescriptor(KindExtension, &descriptor, blob); err != nil {
+		return nil, err
+	}
+	if err := validateExtensionDescriptor(descriptor); err != nil {
+		return nil, err
+	}
+	return buildpackFrom(&descriptor, blob, layerWriterFactory)
+}
+
+func readDescriptor(kind string, descriptor interface{}, blob Blob) error {
 	rc, err := blob.Open()
 	if err != nil {
-		return nil, errors.Wrap(err, "open buildpack")
+		return errors.Wrapf(err, "open %s", kind)
 	}
 	defer rc.Close()
 
-	_, buf, err := archive.ReadTarEntry(rc, "buildpack.toml")
+	descriptorFile := kind + ".toml"
+
+	_, buf, err := archive.ReadTarEntry(rc, descriptorFile)
 	if err != nil {
-		return nil, errors.Wrap(err, "reading buildpack.toml")
+		return errors.Wrapf(err, "reading %s", descriptorFile)
 	}
 
-	bpd.API = api.MustParse(dist.AssumedBuildpackAPIVersion)
-	_, err = toml.Decode(string(buf), &bpd)
+	_, err = toml.Decode(string(buf), descriptor)
 	if err != nil {
-		return nil, errors.Wrap(err, "decoding buildpack.toml")
+		return errors.Wrapf(err, "decoding %s", descriptorFile)
 	}
 
-	err = validateDescriptor(bpd)
-	if err != nil {
-		return nil, errors.Wrap(err, "invalid buildpack.toml")
-	}
+	return nil
+}
 
-	return &buildpack{
-		descriptor: bpd,
+func buildpackFrom(descriptor Descriptor, blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
+	return &buildModule{
+		descriptor: descriptor,
 		Blob: &distBlob{
 			openFn: func() io.ReadCloser {
 				return archive.GenerateTarWithWriter(
 					func(tw archive.TarWriter) error {
-						return toDistTar(tw, bpd, blob)
+						return toDistTar(tw, descriptor, blob)
 					},
 					layerWriterFactory,
 				)
@@ -100,31 +141,36 @@ func (b *distBlob) Open() (io.ReadCloser, error) {
 	return b.openFn(), nil
 }
 
-func toDistTar(tw archive.TarWriter, bpd dist.BuildpackDescriptor, blob Blob) error {
+func toDistTar(tw archive.TarWriter, descriptor Descriptor, blob Blob) error {
 	ts := archive.NormalizedDateTime
+
+	parentDir := dist.BuildpacksDir
+	if descriptor.Kind() == KindExtension {
+		parentDir = dist.ExtensionsDir
+	}
 
 	if err := tw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeDir,
-		Name:     path.Join(dist.BuildpacksDir, bpd.EscapedID()),
+		Name:     path.Join(parentDir, descriptor.EscapedID()),
 		Mode:     0755,
 		ModTime:  ts,
 	}); err != nil {
-		return errors.Wrapf(err, "writing buildpack id dir header")
+		return errors.Wrapf(err, "writing %s id dir header", descriptor.Kind())
 	}
 
-	baseTarDir := path.Join(dist.BuildpacksDir, bpd.EscapedID(), bpd.Info.Version)
+	baseTarDir := path.Join(parentDir, descriptor.EscapedID(), descriptor.Info().Version)
 	if err := tw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeDir,
 		Name:     baseTarDir,
 		Mode:     0755,
 		ModTime:  ts,
 	}); err != nil {
-		return errors.Wrapf(err, "writing buildpack version dir header")
+		return errors.Wrapf(err, "writing %s version dir header", descriptor.Kind())
 	}
 
 	rc, err := blob.Open()
 	if err != nil {
-		return errors.Wrap(err, "reading buildpack blob")
+		return errors.Wrapf(err, "reading %s blob", descriptor.Kind())
 	}
 	defer rc.Close()
 
@@ -165,8 +211,9 @@ func calcFileMode(header *tar.Header) int64 {
 	case header.Typeflag == tar.TypeDir:
 		return 0755
 	case nameOneOf(header.Name,
-		path.Join("bin", "detect"),
 		path.Join("bin", "build"),
+		path.Join("bin", "detect"),
+		path.Join("bin", "generate"),
 	):
 		return 0755
 	case anyExecBit(header.Mode):
@@ -189,28 +236,28 @@ func anyExecBit(mode int64) bool {
 	return mode&0111 != 0
 }
 
-func validateDescriptor(bpd dist.BuildpackDescriptor) error {
-	if bpd.Info.ID == "" {
+func validateBuildpackDescriptor(bpd dist.BuildpackDescriptor) error {
+	if bpd.Info().ID == "" {
 		return errors.Errorf("%s is required", style.Symbol("buildpack.id"))
 	}
 
-	if bpd.Info.Version == "" {
+	if bpd.Info().Version == "" {
 		return errors.Errorf("%s is required", style.Symbol("buildpack.version"))
 	}
 
-	if len(bpd.Order) == 0 && len(bpd.Stacks) == 0 {
+	if len(bpd.Order()) == 0 && len(bpd.Stacks()) == 0 {
 		return errors.Errorf(
 			"buildpack %s: must have either %s or an %s defined",
-			style.Symbol(bpd.Info.FullName()),
+			style.Symbol(bpd.Info().FullName()),
 			style.Symbol("stacks"),
 			style.Symbol("order"),
 		)
 	}
 
-	if len(bpd.Order) >= 1 && len(bpd.Stacks) >= 1 {
+	if len(bpd.Order()) >= 1 && len(bpd.Stacks()) >= 1 {
 		return errors.Errorf(
 			"buildpack %s: cannot have both %s and an %s defined",
-			style.Symbol(bpd.Info.FullName()),
+			style.Symbol(bpd.Info().FullName()),
 			style.Symbol("stacks"),
 			style.Symbol("order"),
 		)
@@ -219,23 +266,35 @@ func validateDescriptor(bpd dist.BuildpackDescriptor) error {
 	return nil
 }
 
-func ToLayerTar(dest string, bp Buildpack) (string, error) {
-	bpd := bp.Descriptor()
-	bpReader, err := bp.Open()
-	if err != nil {
-		return "", errors.Wrap(err, "opening buildpack blob")
+func validateExtensionDescriptor(extd dist.ExtensionDescriptor) error {
+	if extd.Info().ID == "" {
+		return errors.Errorf("%s is required", style.Symbol("extension.id"))
 	}
-	defer bpReader.Close()
 
-	layerTar := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", bpd.EscapedID(), bpd.Info.Version))
+	if extd.Info().Version == "" {
+		return errors.Errorf("%s is required", style.Symbol("extension.version"))
+	}
+
+	return nil
+}
+
+func ToLayerTar(dest string, module BuildModule) (string, error) {
+	descriptor := module.Descriptor()
+	modReader, err := module.Open()
+	if err != nil {
+		return "", errors.Wrap(err, "opening blob")
+	}
+	defer modReader.Close()
+
+	layerTar := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", descriptor.EscapedID(), descriptor.Info().Version))
 	fh, err := os.Create(layerTar)
 	if err != nil {
 		return "", errors.Wrap(err, "create file for tar")
 	}
 	defer fh.Close()
 
-	if _, err := io.Copy(fh, bpReader); err != nil {
-		return "", errors.Wrap(err, "writing buildpack blob to tar")
+	if _, err := io.Copy(fh, modReader); err != nil {
+		return "", errors.Wrap(err, "writing blob to tar")
 	}
 
 	return layerTar, nil

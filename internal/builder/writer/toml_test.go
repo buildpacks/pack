@@ -275,7 +275,7 @@ default = false
 				RunImageMirrors: []string{"first/default", "second/default"},
 				Buildpacks:      buildpacks,
 				Order:           order,
-				BuildpackLayers: dist.BuildpackLayers{},
+				BuildpackLayers: dist.ModuleLayers{},
 				Lifecycle: builder.LifecycleDescriptor{
 					Info: builder.LifecycleInfo{
 						Version: &builder.Version{
@@ -307,7 +307,7 @@ default = false
 				RunImageMirrors: []string{"first/local-default", "second/local-default"},
 				Buildpacks:      buildpacks,
 				Order:           order,
-				BuildpackLayers: dist.BuildpackLayers{},
+				BuildpackLayers: dist.ModuleLayers{},
 				Lifecycle: builder.LifecycleDescriptor{
 					Info: builder.LifecycleInfo{
 						Version: &builder.Version{
@@ -450,8 +450,8 @@ default = false
 
 		when("no buildpacks are specified", func() {
 			it("omits buildpacks from output", func() {
-				localInfo.Buildpacks = []dist.BuildpackInfo{}
-				remoteInfo.Buildpacks = []dist.BuildpackInfo{}
+				localInfo.Buildpacks = []dist.ModuleInfo{}
+				remoteInfo.Buildpacks = []dist.ModuleInfo{}
 
 				tomlWriter := writer.NewTOML()
 

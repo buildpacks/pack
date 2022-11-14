@@ -22,11 +22,11 @@ type PackageImage struct {
 	pack                 *invoke.PackInvoker
 	name                 string
 	sourceConfigLocation string
-	buildpacks           []TestBuildpack
+	buildpacks           []TestBuildModule
 	publish              bool
 }
 
-func (p *PackageImage) SetBuildpacks(buildpacks []TestBuildpack) {
+func (p *PackageImage) SetBuildpacks(buildpacks []TestBuildModule) {
 	p.buildpacks = buildpacks
 }
 

@@ -18,7 +18,7 @@ import (
 
 type FakeImageCreator func(name string, topLayerSha string, identifier imgutil.Identifier) *fakes.Image
 
-func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid string, metadata builder.Metadata, bpLayers dist.BuildpackLayers, order dist.Order, creator FakeImageCreator) *fakes.Image {
+func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid string, metadata builder.Metadata, bpLayers dist.ModuleLayers, order dist.Order, creator FakeImageCreator) *fakes.Image {
 	fakeBuilderImage := creator(name, "", nil)
 
 	h.AssertNil(t, fakeBuilderImage.SetLabel("io.buildpacks.stack.id", stackID))
@@ -30,16 +30,16 @@ func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid st
 
 	for bpID, v := range bpLayers {
 		for bpVersion, bpLayerInfo := range v {
-			bpInfo := dist.BuildpackInfo{
+			bpInfo := dist.ModuleInfo{
 				ID:      bpID,
 				Version: bpVersion,
 			}
 
 			buildpackDescriptor := dist.BuildpackDescriptor{
-				API:    bpLayerInfo.API,
-				Info:   bpInfo,
-				Stacks: bpLayerInfo.Stacks,
-				Order:  bpLayerInfo.Order,
+				WithAPI:    bpLayerInfo.API,
+				WithInfo:   bpInfo,
+				WithStacks: bpLayerInfo.Stacks,
+				WithOrder:  bpLayerInfo.Order,
 			}
 
 			buildpackTar := CreateBuildpackTar(t, tmpDir, buildpackDescriptor)

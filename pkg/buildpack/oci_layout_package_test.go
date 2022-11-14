@@ -30,8 +30,8 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 			mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
 			h.AssertNil(t, err)
 
-			h.AssertEq(t, mainBP.Descriptor().Info.ID, "io.buildpacks.samples.hello-universe")
-			h.AssertEq(t, mainBP.Descriptor().Info.Version, "0.0.1")
+			h.AssertEq(t, mainBP.Descriptor().Info().ID, "io.buildpacks.samples.hello-universe")
+			h.AssertEq(t, mainBP.Descriptor().Info().Version, "0.0.1")
 			h.AssertEq(t, len(depBPs), 2)
 		})
 
@@ -39,21 +39,50 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 			mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
 			h.AssertNil(t, err)
 
-			for _, bp := range append([]buildpack.Buildpack{mainBP}, depBPs...) {
+			for _, bp := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
 				reader, err := bp.Open()
 				h.AssertNil(t, err)
 
 				_, contents, err := archive.ReadTarEntry(
 					reader,
 					fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml",
-						bp.Descriptor().Info.ID,
-						bp.Descriptor().Info.Version,
+						bp.Descriptor().Info().ID,
+						bp.Descriptor().Info().Version,
 					),
 				)
 				h.AssertNil(t, err)
-				h.AssertContains(t, string(contents), bp.Descriptor().Info.ID)
-				h.AssertContains(t, string(contents), bp.Descriptor().Info.Version)
+				h.AssertContains(t, string(contents), bp.Descriptor().Info().ID)
+				h.AssertContains(t, string(contents), bp.Descriptor().Info().Version)
 			}
+		})
+	})
+
+	when.Pend("#ExtensionsFromOCILayoutBlob", func() { // TODO: add fixture when `pack extension package` is supported in https://github.com/buildpacks/pack/issues/1489
+		it("extracts buildpacks", func() {
+			ext, err := buildpack.ExtensionsFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-extensions.cnb")))
+			h.AssertNil(t, err)
+
+			h.AssertEq(t, ext.Descriptor().Info().ID, "io.buildpacks.samples.hello-extensions")
+			h.AssertEq(t, ext.Descriptor().Info().Version, "0.0.1")
+		})
+
+		it("provides readable blobs", func() {
+			ext, err := buildpack.ExtensionsFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-extensions.cnb")))
+			h.AssertNil(t, err)
+
+			reader, err := ext.Open()
+			h.AssertNil(t, err)
+
+			_, contents, err := archive.ReadTarEntry(
+				reader,
+				fmt.Sprintf("/cnb/extensions/%s/%s/extension.toml",
+					ext.Descriptor().Info().ID,
+					ext.Descriptor().Info().Version,
+				),
+			)
+			h.AssertNil(t, err)
+			h.AssertContains(t, string(contents), ext.Descriptor().Info().ID)
+			h.AssertContains(t, string(contents), ext.Descriptor().Info().Version)
 		})
 	})
 
@@ -68,14 +97,14 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 
 		when("is NOT an OCI layout blob", func() {
 			it("returns false", func() {
-				buildpackBlob, err := fakes.NewFakeBuildpackBlob(dist.BuildpackDescriptor{
-					API: api.MustParse("0.3"),
-					Info: dist.BuildpackInfo{
+				buildpackBlob, err := fakes.NewFakeBuildpackBlob(&dist.BuildpackDescriptor{
+					WithAPI: api.MustParse("0.3"),
+					WithInfo: dist.ModuleInfo{
 						ID:      "bp.id",
 						Version: "bp.version",
 					},
-					Stacks: []dist.Stack{{}},
-					Order:  nil,
+					WithStacks: []dist.Stack{{}},
+					WithOrder:  nil,
 				}, 0755)
 				h.AssertNil(t, err)
 
