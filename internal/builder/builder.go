@@ -714,7 +714,7 @@ func (b *Builder) defaultDirsLayer(dest string) (string, error) {
 	}
 
 	// can't use filepath.Join(), to ensure Windows doesn't transform it to Windows join
-	for _, path := range []string{cnbDir, dist.BuildpacksDir, platformDir, platformDir + "/env"} {
+	for _, path := range []string{cnbDir, dist.BuildpacksDir, dist.ExtensionsDir, platformDir, platformDir + "/env"} {
 		if err := lw.WriteHeader(b.rootOwnedDir(path, ts)); err != nil {
 			return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(path))
 		}
