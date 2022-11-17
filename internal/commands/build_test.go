@@ -108,7 +108,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					it("ignoring the mentioned lifecycle image, going with default version", func() {
 						command.SetArgs([]string{"--builder", "my-builder", "image", "--lifecycle-image", "some-lifecycle-image"})
 						h.AssertNil(t, command.Execute())
-						h.AssertContains(t, outBuf.String(), "Warning: Ignoring the mentioned lifecycle image, going with default version")
+						h.AssertContains(t, outBuf.String(), "Warning: Ignoring the provided lifecycle image as the builder is trusted, running the creator in a single container using the provided builder")
 					})
 				})
 			})
