@@ -103,6 +103,9 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			trustBuilder := isTrustedBuilder(cfg, builder) || flags.TrustBuilder
 			if trustBuilder {
 				logger.Debugf("Builder %s is trusted", style.Symbol(builder))
+				if flags.LifecycleImage != "" {
+					logger.Warn("Ignoring the provided lifecycle image as the builder is trusted, running the creator in a single container using the provided builder")
+				}
 			} else {
 				logger.Debugf("Builder %s is untrusted", style.Symbol(builder))
 				logger.Debug("As a result, the phases of the lifecycle which require root access will be run in separate trusted ephemeral containers.")
