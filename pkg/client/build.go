@@ -301,6 +301,18 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "getting builder OS")
 	}
 
+	if len(bldr.OrderExtensions()) > 0 {
+		if !c.experimental {
+			return fmt.Errorf("experimental features must be enabled when builder contains image extensions")
+		}
+		if imgOS == "windows" {
+			return fmt.Errorf("builder contains image extensions which are not supported for Windows builds")
+		}
+		if !(opts.PullPolicy == image.PullAlways) {
+			return fmt.Errorf("pull policy must be 'always' when builder contains image extensions")
+		}
+	}
+
 	processedVolumes, warnings, err := processVolumes(imgOS, opts.ContainerConfig.Volumes)
 	if err != nil {
 		return err
@@ -344,6 +356,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		AppPath:            appPath,
 		Image:              imageRef,
 		Builder:            ephemeralBuilder,
+		BuilderImage:       builderRef.Name(),
 		LifecycleImage:     ephemeralBuilder.Name(),
 		RunImage:           runImageName,
 		ProjectMetadata:    projectMetadata,

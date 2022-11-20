@@ -70,6 +70,12 @@ func (l LifecycleOutputAssertionManager) IncludesSeparatePhases() {
 	l.assert.ContainsAll(l.output, "[detector]", "[analyzer]", "[builder]", "[exporter]")
 }
 
+func (l LifecycleOutputAssertionManager) IncludesSeparatePhasesWithExtension() {
+	l.testObject.Helper()
+
+	l.assert.ContainsAll(l.output, "[detector]", "[analyzer]", "[extender]", "[exporter]")
+}
+
 func (l LifecycleOutputAssertionManager) IncludesLifecycleImageTag(tag string) {
 	l.testObject.Helper()
 

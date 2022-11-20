@@ -75,7 +75,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		outBuf                       bytes.Buffer
 		logger                       *logging.LogWithWriters
 		fakeLifecycleImage           *fakes.Image
+
+		withExtensionsLabel bool
 	)
+
 	it.Before(func() {
 		var err error
 
@@ -88,10 +91,16 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		defaultBuilderImage = newFakeBuilderImage(t, tmpDir, defaultBuilderName, defaultBuilderStackID, defaultRunImageName, builder.DefaultLifecycleVersion, newLinuxImage)
 		h.AssertNil(t, defaultBuilderImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
 		fakeImageFetcher.LocalImages[defaultBuilderImage.Name()] = defaultBuilderImage
+		if withExtensionsLabel {
+			h.AssertNil(t, defaultBuilderImage.SetLabel("io.buildpacks.buildpack.order-extensions", `[{"group":[{"id":"some-extension-id","version":"some-extension-version"}]}]`))
+		}
 
 		defaultWindowsBuilderImage = newFakeBuilderImage(t, tmpDir, defaultWindowsBuilderName, defaultWindowsBuilderStackID, defaultWindowsRunImageName, builder.DefaultLifecycleVersion, newWindowsImage)
 		h.AssertNil(t, defaultWindowsBuilderImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
 		fakeImageFetcher.LocalImages[defaultWindowsBuilderImage.Name()] = defaultWindowsBuilderImage
+		if withExtensionsLabel {
+			h.AssertNil(t, defaultWindowsBuilderImage.SetLabel("io.buildpacks.buildpack.order-extensions", `[{"group":[{"id":"some-extension-id","version":"some-extension-version"}]}]`))
+		}
 
 		fakeDefaultWindowsRunImage = newWindowsImage("default/win-run", "", nil)
 		h.AssertNil(t, fakeDefaultWindowsRunImage.SetLabel("io.buildpacks.stack.id", defaultWindowsBuilderStackID))
@@ -1857,7 +1866,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.PullPolicy, image.PullNever)
 
-					args = fakeImageFetcher.FetchCalls["buildpacksio/lifecycle:0.14.1"]
+					args = fakeImageFetcher.FetchCalls["buildpacksio/lifecycle:0.15.1"]
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.PullPolicy, image.PullNever)
 					h.AssertEq(t, args.Platform, "linux/amd64")
@@ -2505,6 +2514,103 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					SBOMDestinationDir: "some-destination-dir",
 				}))
 				h.AssertEq(t, fakeLifecycle.Opts.SBOMDestinationDir, "some-destination-dir")
+			})
+		})
+
+		when("there are extensions", func() {
+			withExtensionsLabel = true
+
+			when("experimental", func() {
+				when("false", func() {
+					it("errors", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: defaultBuilderName,
+						})
+
+						h.AssertNotNil(t, err)
+					})
+				})
+
+				when("true", func() {
+					it.Before(func() {
+						subject.experimental = true
+					})
+
+					it("succeeds", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: defaultBuilderName,
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.BuilderImage, defaultBuilderName)
+					})
+				})
+			})
+
+			when("os", func() {
+				it.Before(func() {
+					subject.experimental = true
+				})
+
+				when("windows", func() {
+					it.Before(func() {
+						h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
+					})
+
+					it("errors", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: defaultWindowsBuilderName,
+						})
+
+						h.AssertNotNil(t, err)
+					})
+				})
+
+				when("linux", func() {
+					it("succeeds", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: defaultBuilderName,
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.BuilderImage, defaultBuilderName)
+					})
+				})
+			})
+
+			when("pull policy", func() {
+				it.Before(func() {
+					subject.experimental = true
+				})
+
+				when("always", func() {
+					it("succeeds", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							PullPolicy: image.PullAlways,
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.BuilderImage, defaultBuilderName)
+					})
+				})
+
+				when("other", func() {
+					it("errors", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							PullPolicy: image.PullNever,
+						})
+
+						h.AssertNotNil(t, err)
+					})
+				})
 			})
 		})
 	})

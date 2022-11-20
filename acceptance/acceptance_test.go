@@ -745,6 +745,7 @@ func testAcceptance(
 						assertOutput := assertions.NewOutputAssertionManager(t, output)
 						assertOutput.ReportsSuccesfulRunImageMirrorsAdd("pack-test/run", "some-registry.com/pack-test/run1")
 					})
+
 					it("buildpack layers have no duplication", func() {
 						assertImage.DoesNotHaveDuplicateLayers(builderName)
 					})
@@ -752,7 +753,9 @@ func testAcceptance(
 
 				when("builder has extensions", func() {
 					it.Before(func() {
-						h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.BuilderCreateWithExtensions), "")
+						h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.Extensions), "")
+						h.SkipIf(t, !pack.SupportsFeature(invoke.Extensions), "")
+						h.SkipIf(t, !lifecycle.SupportsFeature(config.Extensions), "")
 						// create a task, handled by a 'task manager' which executes our pack commands during tests.
 						// looks like this is used to de-dup tasks
 						key := taskKey(
@@ -782,23 +785,76 @@ func testAcceptance(
 						})
 						builderName = value
 					})
-					it("creates builder", func() { // Linux containers (including Linux containers on Windows)
-						extSimpleLayersDiffID := "sha256:9a31b13bfd9c10ca83e727adb3c02f59833a32d241cbd6c5fab6222472d47121"
-						extReadEnvDiffID := "sha256:2705560ec16c78e12a912128a1f37d2e8b683a244352d8ec91d036923dcfc62d"
+
+					it("creates builder", func() {
+						// Linux containers (including Linux containers on Windows)
+						extSimpleLayersDiffID := "sha256:b9e4a0ddfb650c7aa71d1e6aceea1665365e409b3078bfdc1e51c2b07ab2b423"
+						extReadEnvDiffID := "sha256:b49f178f802bbeb04acf4776bd41dcea8c47504ce31b06b580ec697387629cf2"
 						bpSimpleLayersDiffID := "sha256:285ff6683c99e5ae19805f6a62168fb40dca64d813c53b782604c9652d745c70"
 						bpReadEnvDiffID := "sha256:dd1e0efcbf3f08b014ef6eff9cfe7a9eac1cf20bd9b6a71a946f0a74575aa56f"
 						if imageManager.HostOS() == "windows" { // Windows containers on Windows
-							extSimpleLayersDiffID = "sha256:97f578edae653ceb81f95c1c20df5b84a9f577229ac98a42dbf673fd34475b99"
-							extReadEnvDiffID = "sha256:118b0b249624e05dc64f52e9e3e90a6d4e137ac5b3cd039c86365faf1119267c"
+							extSimpleLayersDiffID = "sha256:a063cf949b9c267133e451ac8cd95b4e77571bb7c629dd817461dca769170810"
+							extReadEnvDiffID = "sha256:283db968a0d0908a454e0bd6388b08310d724b52e0619a0bec0b9e274d269454"
 							bpSimpleLayersDiffID = "sha256:ccd1234cc5685e8a412b70c5f9a8e7b584b8e4f2a20c987ec242c9055de3e45e"
 							bpReadEnvDiffID = "sha256:8b22a7742ffdfbdd978787c6937456b68afb27c3585a3903048be7434d251e3f"
 						}
 						// extensions
-						assertImage.HasLabelWithData(builderName, "io.buildpacks.extension.layers", `{"read/env":{"read-env-version":{"api":"0.2","layerDiffID":"`+extReadEnvDiffID+`","name":"Read Env Extension"}},"simple/layers":{"simple-layers-version":{"api":"0.2","layerDiffID":"`+extSimpleLayersDiffID+`","name":"Simple Layers Extension"}}}`)
+						assertImage.HasLabelWithData(builderName, "io.buildpacks.extension.layers", `{"read/env":{"read-env-version":{"api":"0.9","layerDiffID":"`+extReadEnvDiffID+`","name":"Read Env Extension"}},"simple/layers":{"simple-layers-version":{"api":"0.2","layerDiffID":"`+extSimpleLayersDiffID+`","name":"Simple Layers Extension"}}}`)
 						assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.order-extensions", `[{"group":[{"id":"read/env","version":"read-env-version"},{"id":"simple/layers","version":"simple-layers-version"}]}]`)
 						// buildpacks
 						assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.layers", `{"read/env":{"read-env-version":{"api":"0.2","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpReadEnvDiffID+`","name":"Read Env Buildpack"}},"simple/layers":{"simple-layers-version":{"api":"0.2","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpSimpleLayersDiffID+`","name":"Simple Layers Buildpack"}}}`)
 						assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.order", `[{"group":[{"id":"read/env","version":"read-env-version","optional":true},{"id":"simple/layers","version":"simple-layers-version","optional":true}]}]`)
+					})
+
+					when("build", func() {
+						var repo, repoName string
+
+						it.Before(func() {
+							h.SkipIf(t, imageManager.HostOS() == "windows", "")
+
+							repo = "some-org/" + h.RandString(10)
+							repoName = registryConfig.RepoName(repo)
+							pack.JustRunSuccessfully("config", "lifecycle-image", lifecycle.Image())
+						})
+
+						it.After(func() {
+							h.SkipIf(t, imageManager.HostOS() == "windows", "")
+
+							imageManager.CleanupImages(repoName)
+							ref, err := name.ParseReference(repoName, name.WeakValidation)
+							assert.Nil(err)
+							cacheImage := cache.NewImageCache(ref, dockerCli)
+							buildCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "build", dockerCli)
+							launchCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "launch", dockerCli)
+							cacheImage.Clear(context.TODO())
+							buildCacheVolume.Clear(context.TODO())
+							launchCacheVolume.Clear(context.TODO())
+						})
+
+						when("builder is untrusted", func() {
+							it("uses the 5 phases, and runs the extender", func() {
+								output := pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--network", "host", // export target is the daemon, but we need to be able to reach the registry where the builder image is saved
+									"-B", builderName,
+								)
+
+								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+
+								assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
+								assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+								assertOutput.IncludesSeparatePhasesWithExtension()
+
+								t.Log("inspecting image")
+								inspectCmd := "inspect"
+								if !pack.Supports("inspect") {
+									inspectCmd = "inspect-image"
+								}
+
+								output = pack.RunSuccessfully(inspectCmd, repoName)
+							})
+						})
 					})
 				})
 			})
@@ -925,7 +981,7 @@ func testAcceptance(
 					})
 				})
 
-				when("default builder is set", func() {
+				when("builder is trusted (and set as default)", func() {
 					it.Before(func() {
 						pack.RunSuccessfully("config", "default-builder", builderName)
 						pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)

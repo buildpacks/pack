@@ -128,7 +128,7 @@ func displayMirrors(info *client.ImageInfo, generalInfo GeneralInfo) []RunImageM
 	return result
 }
 
-func displayBuildpacks(buildpacks []buildpack.GroupBuildpack) []dist.ModuleInfo {
+func displayBuildpacks(buildpacks []buildpack.GroupElement) []dist.ModuleInfo {
 	var result []dist.ModuleInfo
 	for _, buildpack := range buildpacks {
 		result = append(result, dist.ModuleInfo{
@@ -164,9 +164,9 @@ func convertToDisplay(proc launch.Process, isDefault bool) ProcessDisplay {
 	result := ProcessDisplay{
 		Type:    proc.Type,
 		Shell:   shell,
-		Command: proc.Command,
+		Command: proc.Command.Entries[0],
 		Default: isDefault,
-		Args:    proc.Args,
+		Args:    proc.Args, // overridable args are supported for platform API >= 0.10 with buildpack API >= 0.9, but we can't determine the buildpack API from the metadata label (to be fixed in platform 0.11)
 		WorkDir: proc.WorkingDirectory,
 	}
 

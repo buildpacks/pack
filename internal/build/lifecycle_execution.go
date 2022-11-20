@@ -176,23 +176,36 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 				return err
 			}
 		}
+
 		l.logger.Info(style.Step("RESTORING"))
-		if l.opts.ClearCache {
+		if l.opts.ClearCache && l.PlatformAPI().LessThan("0.10") {
 			l.logger.Info("Skipping 'restore' due to clearing cache")
 		} else if err := l.Restore(ctx, buildCache, phaseFactory); err != nil {
 			return err
 		}
 
-		l.logger.Info(style.Step("BUILDING"))
-
-		if err := l.Build(ctx, phaseFactory); err != nil {
-			return err
+		if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
+			if l.os == "windows" {
+				return fmt.Errorf("builder has an order for extensions which is not supported for Windows builds")
+			}
+			l.logger.Info(style.Step("EXTENDING"))
+			if err := l.Extend(ctx, buildCache, phaseFactory); err != nil {
+				return err
+			}
+		} else {
+			l.logger.Info(style.Step("BUILDING"))
+			if err := l.Build(ctx, phaseFactory); err != nil {
+				return err
+			}
 		}
 
 		l.logger.Info(style.Step("EXPORTING"))
 		return l.Export(ctx, buildCache, launchCache, phaseFactory)
 	}
 
+	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
+		return errors.New("builder has an order for extensions which is not supported when using the creator")
+	}
 	return l.Create(ctx, buildCache, launchCache, phaseFactory)
 }
 
@@ -304,6 +317,12 @@ func (l *LifecycleExecution) Create(ctx context.Context, buildCache, launchCache
 
 func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFactory) error {
 	flags := []string{"-app", l.mountPaths.appDir()}
+
+	envOp := NullOp()
+	if l.hasExtensions() && l.platformAPI.AtLeast("0.10") {
+		envOp = WithEnv("CNB_EXPERIMENTAL_MODE=warn")
+	}
+
 	configProvider := NewPhaseConfigProvider(
 		"detector",
 		l,
@@ -318,6 +337,7 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 			CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter),
 		),
 		WithFlags(flags...),
+		envOp,
 	)
 
 	detect := phaseFactory.New(configProvider)
@@ -326,23 +346,51 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 }
 
 func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, phaseFactory PhaseFactory) error {
+	// build up flags and ops
 	var flags []string
+	if l.opts.ClearCache {
+		flags = append(flags, "-skip-layers")
+	}
+	var registryImages []string
+
+	// for cache
 	cacheBindOp := NullOp()
-	registryOp := NullOp()
 	switch buildCache.Type() {
 	case cache.Image:
 		flags = append(flags, "-cache-image", buildCache.Name())
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, l.opts.CacheImage)
-		if err != nil {
-			return err
-		}
-		registryOp = WithRegistryAccess(authConfig)
+		registryImages = append(registryImages, buildCache.Name())
 	case cache.Volume:
 		flags = append(flags, "-cache-dir", l.mountPaths.cacheDir())
 		cacheBindOp = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
+
+	// for gid
 	if l.opts.GID >= overrideGID {
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
+	}
+
+	// for kaniko
+	kanikoCacheBindOp := NullOp()
+	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
+		flags = append(flags, "-build-image", l.opts.BuilderImage)
+		registryImages = append(registryImages, l.opts.BuilderImage)
+
+		switch buildCache.Type() {
+		case cache.Volume:
+			kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.kanikoCacheDir()))
+		default:
+			return fmt.Errorf("build cache must be volume cache when building with extensions")
+		}
+	}
+
+	// for auths
+	registryOp := NullOp()
+	if len(registryImages) > 0 {
+		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, registryImages...)
+		if err != nil {
+			return err
+		}
+		registryOp = WithRegistryAccess(authConfig)
 	}
 
 	flagsOp := WithFlags(flags...)
@@ -361,6 +409,7 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, phas
 		flagsOp,
 		cacheBindOp,
 		registryOp,
+		kanikoCacheBindOp,
 	)
 
 	restore := phaseFactory.New(configProvider)
@@ -511,6 +560,36 @@ func (l *LifecycleExecution) Build(ctx context.Context, phaseFactory PhaseFactor
 	return build.Run(ctx)
 }
 
+func (l *LifecycleExecution) Extend(ctx context.Context, buildCache Cache, phaseFactory PhaseFactory) error {
+	flags := []string{"-app", l.mountPaths.appDir()}
+
+	// set kaniko cache opt
+	var kanikoCacheBindOp PhaseConfigProviderOperation
+	switch buildCache.Type() {
+	case cache.Volume:
+		kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.kanikoCacheDir()))
+	default:
+		return fmt.Errorf("build cache must be volume cache when building with extensions")
+	}
+
+	configProvider := NewPhaseConfigProvider(
+		"extender",
+		l,
+		WithLogPrefix("extender"),
+		WithArgs(l.withLogLevel()...),
+		WithBinds(l.opts.Volumes...),
+		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
+		WithFlags(flags...),
+		WithNetwork(l.opts.Network),
+		WithRoot(),
+		kanikoCacheBindOp,
+	)
+
+	extend := phaseFactory.New(configProvider)
+	defer extend.Cleanup()
+	return extend.Run(ctx)
+}
+
 func determineDefaultProcessType(platformAPI *api.Version, providedValue string) string {
 	shouldSetForceDefault := platformAPI.Compare(api.MustParse("0.4")) >= 0 &&
 		platformAPI.Compare(api.MustParse("0.6")) < 0
@@ -611,6 +690,10 @@ func (l *LifecycleExecution) withLogLevel(args ...string) []string {
 		return append([]string{"-log-level", "debug"}, args...)
 	}
 	return args
+}
+
+func (l *LifecycleExecution) hasExtensions() bool {
+	return len(l.opts.Builder.OrderExtensions()) > 0
 }
 
 func prependArg(arg string, args []string) []string {

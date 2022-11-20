@@ -105,7 +105,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					},
-					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
+					Buildpack: buildpack.GroupElement{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
 				}}}
 
 			localInfo = &client.ImageInfo{
@@ -120,7 +120,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					},
-					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
+					Buildpack: buildpack.GroupElement{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
 				}},
 			}
 
