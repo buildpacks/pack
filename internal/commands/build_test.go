@@ -90,18 +90,26 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("the builder is trusted", func() {
-				it("sets the trust builder option", func() {
+				it.Before(func() {
 					mockClient.EXPECT().
 						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(true)).
 						Return(nil)
 
 					cfg := config.Config{TrustedBuilders: []config.TrustedBuilder{{Name: "my-builder"}}}
-					command := commands.Build(logger, cfg, mockClient)
-
+					command = commands.Build(logger, cfg, mockClient)
+				})
+				it("sets the trust builder option", func() {
 					logger.WantVerbose(true)
 					command.SetArgs([]string{"image", "--builder", "my-builder"})
 					h.AssertNil(t, command.Execute())
 					h.AssertContains(t, outBuf.String(), "Builder 'my-builder' is trusted")
+				})
+				when("a lifecycle-image is provided", func() {
+					it("ignoring the mentioned lifecycle image, going with default version", func() {
+						command.SetArgs([]string{"--builder", "my-builder", "image", "--lifecycle-image", "some-lifecycle-image"})
+						h.AssertNil(t, command.Execute())
+						h.AssertContains(t, outBuf.String(), "Warning: Ignoring the provided lifecycle image as the builder is trusted, running the creator in a single container using the provided builder")
+					})
 				})
 			})
 
