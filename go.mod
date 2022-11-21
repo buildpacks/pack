@@ -29,7 +29,7 @@ require (
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/sclevine/spec v1.4.0
 	github.com/spf13/cobra v1.6.1
-	golang.org/x/crypto v0.1.0
+	golang.org/x/crypto v0.3.0
 	golang.org/x/mod v0.6.0
 	golang.org/x/oauth2 v0.2.0
 	golang.org/x/term v0.2.0
