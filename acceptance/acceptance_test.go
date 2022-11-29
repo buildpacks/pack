@@ -4,6 +4,7 @@
 package acceptance
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -786,7 +787,7 @@ func testAcceptance(
 						builderName = value
 					})
 
-					it("creates builder", func() {
+					it.Focus("creates builder", func() {
 						// Linux containers (including Linux containers on Windows)
 						extSimpleLayersDiffID := "sha256:b9e4a0ddfb650c7aa71d1e6aceea1665365e409b3078bfdc1e51c2b07ab2b423"
 						extReadEnvDiffID := "sha256:b49f178f802bbeb04acf4776bd41dcea8c47504ce31b06b580ec697387629cf2"
@@ -2995,6 +2996,24 @@ func createBuilderWithExtensions(
 		"-c", builderConfigFile.Name(),
 		"--no-color",
 	)
+	t.Logf("Create builder has output: %s", output)
+
+	// find in output temp directory containing generated layers
+	var outDir string
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		text := scanner.Text()
+		if strings.HasPrefix(text, "ZZZ ") {
+			outDir = strings.TrimPrefix(text, "ZZZ ")
+			break
+		}
+	}
+	// copy temp directory to ./out
+	h.AssertNil(t, os.MkdirAll("out", 0755))
+	newDir, err := filepath.Abs(filepath.Join("out", "layers"))
+	h.AssertNil(t, err)
+	t.Logf("Moving %s to %s", outDir, newDir)
+	h.AssertNil(t, os.Rename(outDir, newDir))
 
 	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
 	assert.Succeeds(h.PushImage(dockerCli, bldr, registryConfig))

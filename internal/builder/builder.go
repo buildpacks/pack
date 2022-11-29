@@ -314,7 +314,8 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpDir)
+	// defer os.RemoveAll(tmpDir)
+	logger.Infof("ZZZ %s", tmpDir)
 
 	dirsTar, err := b.defaultDirsLayer(tmpDir)
 	if err != nil {
@@ -462,6 +463,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 
 		// generate diff id
 		diffID, err := dist.LayerDiffID(layerTar)
+		fmt.Printf("XXX layer tar %s has diff ID %s", layerTar, diffID)
 		info := module.Descriptor().Info()
 		if err != nil {
 			return errors.Wrapf(err,
