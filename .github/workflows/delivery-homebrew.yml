@@ -65,15 +65,15 @@ jobs:
         run: |
           curl -sSL ${{ steps.assets.outputs.linux_url }} -o ${{ steps.assets.outputs.linux_name }}
           linux_sha256=$(sha256sum ${{ steps.assets.outputs.linux_name }} | cut -d ' ' -f1)
-          echo "::set-output name=linux_sha256::$linux_sha256"
+          echo "linux_sha256=$linux_sha256" >> $GITHUB_OUTPUT
 
           curl -sSL ${{ steps.assets.outputs.macos_url }} -o ${{ steps.assets.outputs.macos_name }}
           macos_sha256=$(sha256sum ${{ steps.assets.outputs.macos_name }} | cut -d ' ' -f1)
-          echo "::set-output name=macos_sha256::$macos_sha256"
+          echo "macos_sha256=$macos_sha256" >> $GITHUB_OUTPUT
 
           curl -sSL ${{ steps.assets.outputs.macos_arm64_url }} -o ${{ steps.assets.outputs.macos_arm64_name }}
           macos_arm64_sha256=$(sha256sum ${{ steps.assets.outputs.macos_arm64_name }} | cut -d ' ' -f1)
-          echo "::set-output name=macos_arm64_sha256::$macos_arm64_sha256"
+          echo "macos_arm64_sha256=$macos_arm64_sha256" >> $GITHUB_OUTPUT
       - name: Fill pack.rb
         uses: cschleiden/replace-tokens@v1
         with:
