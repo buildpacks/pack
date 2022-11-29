@@ -3008,12 +3008,8 @@ func createBuilderWithExtensions(
 			break
 		}
 	}
-	// copy temp directory to ./out
-	h.AssertNil(t, os.MkdirAll("out", 0755))
-	newDir, err := filepath.Abs(filepath.Join("out", "layers"))
-	h.AssertNil(t, err)
-	t.Logf("Moving %s to %s", outDir, newDir)
-	h.AssertNil(t, os.Rename(outDir, newDir))
+	// write location of directory to pack/acceptance/layers.txt
+	h.AssertNil(t, os.WriteFile("layers.txt", []byte(outDir), 0644))
 
 	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
 	assert.Succeeds(h.PushImage(dockerCli, bldr, registryConfig))
