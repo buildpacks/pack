@@ -247,7 +247,7 @@ jobs:
         id: lifecycle_version
         run: |
           LIFECYCLE_VERSION=$(./pack-linux/pack report | grep 'Default Lifecycle Version:' | grep -o '[^ ]*$')
-          echo "version::$LIFECYCLE_VERSION" >> $GITHUB_OUTPUT
+          echo "version=$LIFECYCLE_VERSION" >> $GITHUB_OUTPUT
       - name: Extract pack help
         id: pack_help
         # Replacements have to do with multiline output.
