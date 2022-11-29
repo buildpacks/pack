@@ -121,7 +121,7 @@ jobs:
           curl -sSL ${{ steps.assets.outputs.linux_url }} -o ${{ steps.assets.outputs.linux_name }}
           sha512=$(sha512sum ${{ steps.assets.outputs.linux_name }} | cut -d ' ' -f1)
           
-          echo "url::${{ steps.assets.outputs.linux_url }}" >> $GITHUB_OUTPUT
+          echo "url=${{ steps.assets.outputs.linux_url }}" >> $GITHUB_OUTPUT
           echo "sha512=$sha512" >> $GITHUB_OUTPUT
       - name: Fill PKGBUILD
         uses: cschleiden/replace-tokens@v1
