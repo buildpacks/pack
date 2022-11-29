@@ -257,7 +257,7 @@ jobs:
           PACK_HELP="${PACK_HELP//'%'/'%25'}"
           PACK_HELP="${PACK_HELP//$'\n'/'%0A'}"
           PACK_HELP="${PACK_HELP//$'\r'/'%0D'}"
-          echo "help::$PACK_HELP" >> $GITHUB_OUTPUT
+          echo "help=$PACK_HELP" >> $GITHUB_OUTPUT
       - name: Generate changelog
         uses: ./.github/workflows/actions/release-notes
         id: changelog
