@@ -45,7 +45,7 @@ jobs:
 
           curl -sSL "$url" -o "$fullpath"
           sha512=$(sha512sum "$fullpath" | awk '{ print $1 }')
-          echo "url::$url" >> $GITHUB_OUTPUT
+          echo "url=$url" >> $GITHUB_OUTPUT
           echo "sha512::$sha512" >> $GITHUB_OUTPUT
       - name: Fill PKGBUILD
         uses: cschleiden/replace-tokens@v1
