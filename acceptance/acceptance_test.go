@@ -2963,6 +2963,9 @@ func createBuilderWithExtensions(
 		f, err := os.Stat(path)
 		assert.Nil(err)
 		t.Logf("YYY %s has size %d", path, f.Size())
+		content, err := ioutil.ReadFile(path)
+		assert.Nil(err)
+		t.Logf("YYY %s has content %v", path, content)
 	}
 
 	// ADD lifecycle
