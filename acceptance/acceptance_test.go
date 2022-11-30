@@ -2956,6 +2956,15 @@ func createBuilderWithExtensions(
 	}
 	buildpackManager.PrepareBuildModules(tmpDir, builderExtensions...)
 
+	// print sizes
+	ext1DetectPathTestdata := filepath.Join("testdata", "mock_buildpacks", "0.2", "simple-layers-extension", "bin", "detect")
+	ext1DetectPathTmpdir := filepath.Join(tmpDir, "simple-layers-extension", "bin", "detect")
+	for _, path := range []string{ext1DetectPathTestdata, ext1DetectPathTmpdir} {
+		f, err := os.Stat(path)
+		assert.Nil(err)
+		t.Logf("YYY %s has size %d", path, f.Size())
+	}
+
 	// ADD lifecycle
 	var lifecycleURI string
 	var lifecycleVersion string
