@@ -93,6 +93,16 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
       "version": "other-version"
     }
   ],
+  "extensions": [
+    {
+      "id": "some-extension",
+      "version": "some-version"
+    },
+    {
+      "id": "other-extension",
+      "version": "other-version"
+    }
+  ],
   "processes": [
     {
       "type": "other-process",
@@ -183,6 +193,17 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, info.Buildpacks[1].Version, "other-version")
 				})
 
+				it("returns the extensions", func() {
+					info, err := subject.InspectImage("some/image", useDaemon)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, len(info.Extensions), 2)
+					h.AssertEq(t, info.Extensions[0].ID, "some-extension")
+					h.AssertEq(t, info.Extensions[0].Version, "some-version")
+					h.AssertEq(t, info.Extensions[1].ID, "other-extension")
+					h.AssertEq(t, info.Extensions[1].Version, "other-version")
+				})
+				
 				it("returns the processes setting the web process as default", func() {
 					info, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
