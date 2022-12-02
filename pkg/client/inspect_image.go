@@ -182,6 +182,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		Base:       layersMd.RunImage,
 		BOM:        buildMD.BOM,
 		Buildpacks: buildMD.Buildpacks,
+		Extensions: buildMD.Extensions,
 		Processes:  processDetails,
 	}, nil
 }
