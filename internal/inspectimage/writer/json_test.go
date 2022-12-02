@@ -67,6 +67,18 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
         "version": "2.0.0"
       }
     ],
+    "extensions": [
+      {
+        "homepage": "https://some-homepage-one",
+        "id": "test.ext.one.local",
+        "version": "1.0.0"
+      },
+      {
+        "homepage": "https://some-homepage-two",
+        "id": "test.ext.two.local",
+        "version": "2.0.0"
+      }
+    ],
     "processes": [
       {
         "type": "some-local-type",
@@ -129,6 +141,18 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
         "homepage": "https://some-homepage-two"
       }
     ],
+    "extensions": [
+      {
+        "id": "test.ext.one.remote",
+        "version": "1.0.0",
+        "homepage": "https://some-homepage-one"
+      },
+      {
+        "id": "test.ext.two.remote",
+        "version": "2.0.0",
+        "homepage": "https://some-homepage-two"
+      }
+    ],
     "processes": [
       {
         "type": "some-remote-type",
@@ -175,6 +199,10 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				Buildpacks: []buildpack.GroupElement{
 					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
+				},
+				Extensions: []buildpack.GroupElement{
+					{ID: "test.ext.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+					{ID: "test.ext.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
 				Base: platform.RunImageMetadata{
 					TopLayer:  "some-remote-top-layer",
@@ -231,6 +259,10 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
+				Extensions: []buildpack.GroupElement{
+					{ID: "test.ext.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+					{ID: "test.ext.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
+				},
 				Base: platform.RunImageMetadata{
 					TopLayer:  "some-local-top-layer",
 					Reference: "some-local-run-image-reference",
@@ -277,7 +309,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 			outBuf = bytes.Buffer{}
 		})
 
-		when("local and remote image exits", func() {
+		when("local and remote image exists", func() {
 			it("prints both local and remote image info in a JSON format", func() {
 				runImageMirrors := []config.RunImage{
 					{

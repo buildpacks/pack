@@ -44,6 +44,7 @@ type InfoDisplay struct {
 	Base            BaseDisplay             `json:"base_image" yaml:"base_image" toml:"base_image"`
 	RunImageMirrors []RunImageMirrorDisplay `json:"run_images" yaml:"run_images" toml:"run_images"`
 	Buildpacks      []dist.ModuleInfo       `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
+	Extensions      []dist.ModuleInfo       `json:"extensions,omitempty" yaml:"extensions,omitempty" toml:"extensions,omitempty"`
 	Processes       []ProcessDisplay        `json:"processes" yaml:"processes" toml:"processes"`
 }
 
