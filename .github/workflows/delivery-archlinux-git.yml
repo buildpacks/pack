@@ -26,9 +26,9 @@ jobs:
           version=$(echo "${git_description}" | awk -F- '{print $(1)}' | sed 's/^v//')
           revision=$(echo "${git_description}" | awk -F- '{print $(NF-1)}')
           commit=$(echo "${git_description}" | awk -F- '{print $(NF)}'  | sed 's/^g//')
-          echo "::set-output name=version::$version"
-          echo "::set-output name=revision::$revision"
-          echo "::set-output name=commit::$commit"
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "revision=$revision" >> $GITHUB_OUTPUT
+          echo "commit=$commit" >> $GITHUB_OUTPUT
       - name: Fill PKGBUILD
         uses: cschleiden/replace-tokens@v1
         with:
