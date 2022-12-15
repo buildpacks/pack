@@ -65,8 +65,8 @@ install:
 	cp ./out/$(PACK_BIN) ${DESTDIR}${BINDIR}/
 
 mod-tidy:
-	$(GOCMD) mod tidy  -compat=1.17
-	cd tools && $(GOCMD) mod tidy -compat=1.17
+	$(GOCMD) mod tidy  -compat=1.18
+	cd tools && $(GOCMD) mod tidy -compat=1.18
 
 tidy: mod-tidy format
 
