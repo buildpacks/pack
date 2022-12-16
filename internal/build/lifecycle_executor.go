@@ -29,6 +29,8 @@ var (
 		api.MustParse("0.8"),
 		api.MustParse("0.9"),
 		api.MustParse("0.10"),
+		api.MustParse("0.11"),
+		api.MustParse("0.12"),
 	}
 )
 
@@ -85,6 +87,7 @@ type LifecycleOptions struct {
 	CacheImage           string
 	HTTPProxy            string
 	HTTPSProxy           string
+	LayoutPath           string
 	NoProxy              string
 	Network              string
 	AdditionalTags       []string
@@ -97,6 +100,8 @@ type LifecycleOptions struct {
 	ReportDestinationDir string
 	SBOMDestinationDir   string
 	CreationTime         *time.Time
+	ImageDestinationDir  string
+	LayoutRepoDir        string
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker DockerClient) *LifecycleExecutor {

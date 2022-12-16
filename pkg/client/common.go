@@ -3,7 +3,6 @@ package client
 import (
 	"errors"
 	"fmt"
-
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/builder"

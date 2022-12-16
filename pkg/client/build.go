@@ -91,6 +91,12 @@ type BuildOptions struct {
 	// built atop.
 	RunImage string
 
+	// LayoutAppPath is the path to export the output image in OCI layout format
+	LayoutAppPath string
+
+	// LayoutRepoDir is the root path of layout repository to be use when exporting to OCI layout format
+	LayoutRepoDir string
+
 	// Address of docker daemon exposed to build container
 	// e.g. tcp://example.com:1234, unix:///run/user/1000/podman/podman.sock
 	DockerHost string
@@ -126,6 +132,9 @@ type BuildOptions struct {
 
 	// Launch a terminal UI to depict the build process
 	Interactive bool
+
+	// Configure the OCI layout fetch mode to avoid saving layers from run-image
+	Sparse bool
 
 	// List of buildpack images or archives to add to a builder.
 	// These buildpacks may overwrite those on the builder if they
@@ -235,9 +244,20 @@ var IsSuggestedBuilderFunc = func(b string) bool {
 // If any configuration is deemed invalid, or if any lifecycle phases fail,
 // an error will be returned and no image produced.
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
+	var imageDestinationDir string
 	imageRef, err := c.parseTagReference(opts.Image)
 	if err != nil {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.Image)
+	}
+	imgRegistry := imageRef.Context().RegistryStr()
+	imageName := imageRef.Name()
+
+	if opts.LayoutAppPath != "" {
+		imageDestinationDir, imageRef, err = c.processLayoutPath(opts.LayoutAppPath)
+		if err != nil {
+			return errors.Wrapf(err, "invalid path '%s' to save the image in oci layout format", imageName)
+		}
+		imgRegistry = ""
 	}
 
 	appPath, err := c.processAppPath(opts.AppPath)
@@ -262,8 +282,23 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
 
-	runImageName := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), builderRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors, opts.Publish)
-	runImage, err := c.validateRunImage(ctx, runImageName, opts.PullPolicy, opts.Publish, bldr.StackID)
+	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors, opts.Publish)
+
+	fetchOptions := image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy}
+	if opts.LayoutAppPath != "" {
+		// TODO this is a logic that must be encapsulated
+		reference, err := name.ParseReference(runImageName, name.WeakValidation)
+		if err != nil {
+			return err
+		}
+		runImagePath := filepath.Join(opts.LayoutRepoDir, reference.Name())
+		// --end
+		fetchOptions.LayoutOption = image.LayoutOption{
+			Path:   runImagePath,
+			Sparse: opts.Sparse,
+		}
+	}
+	runImage, err := c.validateRunImage(ctx, runImageName, fetchOptions, bldr.StackID)
 	if err != nil {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
 	}
@@ -366,6 +401,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	lifecycleOpts := build.LifecycleOptions{
 		AppPath:              appPath,
 		Image:                imageRef,
+		ImageDestinationDir:  imageDestinationDir,
 		Builder:              ephemeralBuilder,
 		BuilderImage:         builderRef.Name(),
 		LifecycleImage:       ephemeralBuilder.Name(),
@@ -390,10 +426,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		GID:                  opts.GroupID,
 		PreviousImage:        opts.PreviousImage,
 		Interactive:          opts.Interactive,
-		Termui:               termui.NewTermui(imageRef.Name(), ephemeralBuilder, runImageName),
+		Termui:               termui.NewTermui(imageName, ephemeralBuilder, runImageName),
 		ReportDestinationDir: opts.ReportDestinationDir,
 		SBOMDestinationDir:   opts.SBOMDestinationDir,
 		CreationTime:         opts.CreationTime,
+		LayoutRepoDir:        opts.LayoutRepoDir,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
@@ -540,11 +577,11 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	return bldr, nil
 }
 
-func (c *Client) validateRunImage(context context.Context, name string, pullPolicy image.PullPolicy, publish bool, expectedStack string) (imgutil.Image, error) {
-	if name == "" {
+func (c *Client) validateRunImage(context context.Context, imageName string, opts image.FetchOptions, expectedStack string) (imgutil.Image, error) {
+	if imageName == "" {
 		return nil, errors.New("run image must be specified")
 	}
-	img, err := c.imageFetcher.Fetch(context, name, image.FetchOptions{Daemon: !publish, PullPolicy: pullPolicy})
+	img, err := c.imageFetcher.Fetch(context, imageName, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -678,6 +715,40 @@ func (c *Client) processAppPath(appPath string) (string, error) {
 	}
 
 	return resolvedAppPath, nil
+}
+
+// processLayoutPath parses the imagePath provided by the user
+func (c *Client) processLayoutPath(imagePath string) (string, name.Reference, error) {
+	var (
+		fullImagePath string
+		err           error
+	)
+
+	if imagePath == "" {
+		return "", nil, errors.New("layout path must no be empty")
+	}
+
+	if fullImagePath, err = filepath.EvalSymlinks(imagePath); err != nil {
+		if !os.IsNotExist(err) {
+			return "", nil, errors.Wrap(err, "evaluate symlink")
+		}
+	}
+
+	// Abs calls Clean on the result, so at this point the fullImagePath do not have trailing "/"
+	if fullImagePath, err = filepath.Abs(imagePath); err != nil {
+		return "", nil, errors.Wrap(err, "resolve absolute path")
+	}
+
+	if _, err := os.Stat(fullImagePath); !os.IsNotExist(err) {
+		os.RemoveAll(fullImagePath)
+	}
+
+	imageRef, err := c.parseTagReference(filepath.Base(imagePath))
+	if err != nil {
+		return "", nil, errors.Wrapf(err, "invalid image name '%s'", imagePath)
+	}
+
+	return fullImagePath, imageRef, nil
 }
 
 func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {

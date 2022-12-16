@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"path/filepath"
 	"strconv"
 
 	"github.com/buildpacks/lifecycle/api"
@@ -30,6 +31,7 @@ type LifecycleExecution struct {
 	docker       DockerClient
 	platformAPI  *api.Version
 	layersVolume string
+	layoutVolume string
 	appVolume    string
 	os           string
 	mountPaths   mountPaths
@@ -55,6 +57,7 @@ func NewLifecycleExecution(logger logging.Logger, docker DockerClient, opts Life
 		docker:       docker,
 		layersVolume: paths.FilterReservedNames("pack-layers-" + randString(10)),
 		appVolume:    paths.FilterReservedNames("pack-app-" + randString(10)),
+		layoutVolume: paths.FilterReservedNames("pack-layout-" + randString(10)),
 		platformAPI:  latestSupportedPlatformAPI,
 		opts:         opts,
 		os:           osType,
@@ -252,6 +255,11 @@ func (l *LifecycleExecution) Cleanup() error {
 	if err := l.docker.VolumeRemove(context.Background(), l.appVolume, true); err != nil {
 		reterr = errors.Wrapf(err, "failed to clean up app volume %s", l.appVolume)
 	}
+	if l.opts.ImageDestinationDir != "" {
+		if err := l.docker.VolumeRemove(context.Background(), l.layoutVolume, true); err != nil {
+			reterr = errors.Wrapf(err, "failed to clean up app volume %s", l.layoutVolume)
+		}
+	}
 	return reterr
 }
 
@@ -331,6 +339,19 @@ func (l *LifecycleExecution) Create(ctx context.Context, buildCache, launchCache
 			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
 			CopyOut(l.opts.Termui.ReadLayers, l.mountPaths.layersDir(), l.mountPaths.appDir()))),
 		withEnv,
+	}
+
+	if l.opts.ImageDestinationDir != "" {
+		runImageRef, err := name.ParseReference(l.opts.RunImage, name.WeakValidation)
+		if err != nil {
+			return fmt.Errorf("invalid run image name: %s", err)
+		}
+		outputImagePath := filepath.Join(l.mountPaths.LayoutRepoDir(), l.opts.Image.Name())
+		runImagePath := filepath.Join(l.opts.LayoutRepoDir, runImageRef.Name())
+
+		opts = append(opts, WithEnv("CNB_USE_LAYOUT=true", "CNB_EXPERIMENTAL_MODE=warn"),
+			WithContainerOperations(CopyDir(runImagePath, filepath.Join(l.mountPaths.LayoutRepoDir(), runImageRef.Name()), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, nil)),
+			WithPostContainerRunOperations(CopyOutTo(outputImagePath, l.opts.ImageDestinationDir)))
 	}
 
 	if l.opts.Publish {
@@ -532,7 +553,14 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 	flagsOp := WithFlags(flags...)
 
 	var analyze RunnerCleaner
-	if l.opts.Publish {
+
+	layoutOpts := NullOp()
+	if l.opts.ImageDestinationDir != "" {
+		args = append([]string{"-layout"}, args...)
+		layoutOpts = WithBinds(fmt.Sprintf("%s:%s", l.opts.ImageDestinationDir, l.mountPaths.LayoutRepoDir()))
+	}
+
+	if l.opts.Publish || l.opts.ImageDestinationDir != "" {
 		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
@@ -543,7 +571,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 			l,
 			WithLogPrefix("analyzer"),
 			WithImage(l.opts.LifecycleImage),
-			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.opts.Builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.opts.Builder.GID())),
+			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.opts.Builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.opts.Builder.GID()), "CNB_EXPERIMENTAL_MODE=warn"),
 			WithRegistryAccess(authConfig),
 			WithRoot(),
 			WithArgs(l.withLogLevel(args...)...),
@@ -551,6 +579,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 			flagsOp,
 			cacheBindOp,
 			stackOp,
+			layoutOpts,
 		)
 
 		analyze = phaseFactory.New(configProvider)
@@ -713,12 +742,21 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		)
 		export = phaseFactory.New(NewPhaseConfigProvider("exporter", l, opts...))
 	} else {
-		opts = append(
-			opts,
-			WithDaemonAccess(l.opts.DockerHost),
-			WithFlags("-daemon", "-launch-cache", l.mountPaths.launchCacheDir()),
-			WithBinds(fmt.Sprintf("%s:%s", launchCache.Name(), l.mountPaths.launchCacheDir())),
-		)
+		if l.opts.ImageDestinationDir != "" {
+			opts = append(
+				opts,
+				WithFlags("-layout"),
+				WithBinds(fmt.Sprintf("%s:%s", l.opts.ImageDestinationDir, l.mountPaths.LayoutRepoDir())),
+				WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
+			)
+		} else {
+			opts = append(
+				opts,
+				WithDaemonAccess(l.opts.DockerHost),
+				WithFlags("-daemon", "-launch-cache", l.mountPaths.launchCacheDir()),
+				WithBinds(fmt.Sprintf("%s:%s", launchCache.Name(), l.mountPaths.launchCacheDir())),
+			)
+		}
 		export = phaseFactory.New(NewPhaseConfigProvider("exporter", l, opts...))
 	}
 
@@ -735,6 +773,14 @@ func (l *LifecycleExecution) withLogLevel(args ...string) []string {
 
 func (l *LifecycleExecution) hasExtensions() bool {
 	return len(l.opts.Builder.OrderExtensions()) > 0
+}
+
+func (l *LifecycleExecution) layoutPath(imageName string) (string, error) {
+	image, err := name.ParseReference(imageName, name.WeakValidation)
+	if err != nil {
+		return "", fmt.Errorf("invalid image name: %s", err)
+	}
+	return filepath.Join(l.mountPaths.LayoutRepoDir(), image.Name()), nil
 }
 
 func prependArg(arg string, args []string) []string {

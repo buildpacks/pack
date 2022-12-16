@@ -69,3 +69,7 @@ func (m mountPaths) launchCacheDir() string {
 func (m mountPaths) sbomDir() string {
 	return m.join(m.volume, "layers", "sbom")
 }
+
+func (m mountPaths) LayoutRepoDir() string {
+	return m.join(m.volume, "layout-repo")
+}

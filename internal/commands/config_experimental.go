@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"path/filepath"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -33,6 +34,11 @@ func ConfigExperimental(logger logging.Logger, cfg config.Config, cfgPath string
 					return errors.Wrapf(err, "invalid value %s provided", style.Symbol(args[0]))
 				}
 				cfg.Experimental = val
+				if cfg.Experimental {
+					cfg.LayoutRepositoryDir = filepath.Join(filepath.Dir(cfgPath), "layout-repo")
+				} else {
+					cfg.LayoutRepositoryDir = ""
+				}
 
 				if err = config.Write(cfg, cfgPath); err != nil {
 					return errors.Wrap(err, "writing to config")
