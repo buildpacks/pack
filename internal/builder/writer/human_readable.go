@@ -27,6 +27,7 @@ const (
 	writerMinWidth     = 0
 	writerTabWidth     = 0
 	buildpacksTabWidth = 8
+	extensionsTabWidth = 8
 	defaultTabWidth    = 4
 	writerPadChar      = ' '
 	writerFlags        = 0
@@ -59,7 +60,8 @@ Stack:
 {{ .Lifecycle }}
 {{ .RunImages }}
 {{ .Buildpacks }}
-{{ .Order }}`
+{{ .Order }}
+{{ .Extensions }}`
 )
 
 type HumanReadable struct{}
@@ -132,10 +134,16 @@ func writeBuilderInfo(
 	}
 	lifecycleString, lifecycleWarnings := lifecycleOutput(info.Lifecycle, sharedInfo.Name)
 
+	extensionsString, extensionsWarnings, err := extensionsOutput(info.Extensions, sharedInfo.Name)
+	if err != nil {
+		return fmt.Errorf("compiling extensions output: %w", err)
+	}
+
 	warnings = append(warnings, runImagesWarnings...)
 	warnings = append(warnings, orderWarnings...)
 	warnings = append(warnings, buildpacksWarnings...)
 	warnings = append(warnings, lifecycleWarnings...)
+	warnings = append(warnings, extensionsWarnings...)
 
 	outputTemplate, _ := template.New("").Parse(outputTemplate)
 	err = outputTemplate.Execute(
@@ -148,6 +156,7 @@ func writeBuilderInfo(
 			Order      string
 			Trusted    string
 			Lifecycle  string
+			Extensions string
 		}{
 			*info,
 			logger.IsVerbose(),
@@ -156,6 +165,7 @@ func writeBuilderInfo(
 			orderString,
 			stringFromBool(sharedInfo.Trusted),
 			lifecycleString,
+			extensionsString,
 		},
 	)
 
@@ -271,6 +281,47 @@ func writeLocalMirrors(logWriter io.Writer, runImage string, localRunImages []co
 	}
 
 	return nil
+}
+
+func extensionsOutput(extensions []dist.ModuleInfo, builderName string) (string, []string, error) {
+	output := "Extensions:\n"
+
+	if len(extensions) == 0 {
+		warnings := []string{
+			fmt.Sprintf("%s has no buildpacks", builderName),
+			"",
+		}
+
+		return fmt.Sprintf("%s  %s\n", output, none), warnings, nil
+	}
+
+	var (
+		tabWriterBuf         = bytes.Buffer{}
+		spaceStrippingWriter = &trailingSpaceStrippingWriter{
+			output: &tabWriterBuf,
+		}
+		extensionsTabWriter = tabwriter.NewWriter(spaceStrippingWriter, writerMinWidth, writerPadChar, buildpacksTabWidth, writerPadChar, writerFlags)
+	)
+
+	_, err := fmt.Fprint(extensionsTabWriter, "  ID\tNAME\tVERSION\tHOMEPAGE\n")
+	if err != nil {
+		return "", []string{}, fmt.Errorf("writing to tab writer: %w", err)
+	}
+
+	for _, b := range extensions {
+		_, err = fmt.Fprintf(extensionsTabWriter, "  %s\t%s\t%s\t%s\n", b.ID, strs.ValueOrDefault(b.Name, "-"), b.Version, strs.ValueOrDefault(b.Homepage, "-"))
+		if err != nil {
+			return "", []string{}, fmt.Errorf("writing to tab writer: %w", err)
+		}
+	}
+
+	err = extensionsTabWriter.Flush()
+	if err != nil {
+		return "", []string{}, fmt.Errorf("flushing tab writer: %w", err)
+	}
+
+	output += tabWriterBuf.String()
+	return output, []string{}, nil
 }
 
 func buildpacksOutput(buildpacks []dist.ModuleInfo, builderName string) (string, []string, error) {

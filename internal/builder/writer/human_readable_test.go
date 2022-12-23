@@ -86,6 +86,14 @@ Detection Order:
  │  │           └ test.bp.one@test.bp.one.version    (optional)[cyclic]
  │  └ test.bp.two@test.bp.two.version                (optional)
  └ test.bp.three@test.bp.three.version
+
+Extensions:
+  ID                     NAME        VERSION                        HOMEPAGE
+  test.top.nested        -           test.top.nested.version        -
+  test.nested            -                                          http://geocities.com/top-bp
+  test.bp.one            -           test.bp.one.version            http://geocities.com/cool-bp
+  test.bp.two            -           test.bp.two.version            -
+  test.bp.three          -           test.bp.three.version          -
 `
 
 		expectedLocalOutput = `
@@ -139,6 +147,14 @@ Detection Order:
  │  │           └ test.bp.one@test.bp.one.version    (optional)[cyclic]
  │  └ test.bp.two@test.bp.two.version                (optional)
  └ test.bp.three@test.bp.three.version
+
+Extensions:
+  ID                     NAME        VERSION                        HOMEPAGE
+  test.top.nested        -           test.top.nested.version        -
+  test.nested            -                                          http://geocities.com/top-bp
+  test.bp.one            -           test.bp.one.version            http://geocities.com/cool-bp
+  test.bp.two            -           test.bp.two.version            -
+  test.bp.three          -           test.bp.three.version          -
 `
 		expectedVerboseStack = `
 Stack:
@@ -185,6 +201,7 @@ REMOTE:
 				RunImageMirrors: []string{"first/default", "second/default"},
 				Buildpacks:      buildpacks,
 				Order:           order,
+				Extensions:      buildpacks,
 				BuildpackLayers: dist.ModuleLayers{},
 				Lifecycle: builder.LifecycleDescriptor{
 					Info: builder.LifecycleInfo{
@@ -217,6 +234,7 @@ REMOTE:
 				RunImageMirrors: []string{"first/local-default", "second/local-default"},
 				Buildpacks:      buildpacks,
 				Order:           order,
+				Extensions:      buildpacks,
 				BuildpackLayers: dist.ModuleLayers{},
 				Lifecycle: builder.LifecycleDescriptor{
 					Info: builder.LifecycleInfo{

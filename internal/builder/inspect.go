@@ -22,6 +22,7 @@ type Info struct {
 	BuildpackLayers dist.ModuleLayers
 	Lifecycle       LifecycleDescriptor
 	CreatedBy       CreatorMetadata
+	Extensions      []dist.ModuleInfo
 }
 
 type Inspectable interface {
@@ -127,6 +128,7 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 		BuildpackLayers: layers,
 		Lifecycle:       lifecycle,
 		CreatedBy:       metadata.CreatedBy,
+		Extensions:      metadata.Extensions,
 	}, nil
 }
 
