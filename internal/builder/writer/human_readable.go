@@ -300,7 +300,7 @@ func extensionsOutput(extensions []dist.ModuleInfo, builderName string) (string,
 		spaceStrippingWriter = &trailingSpaceStrippingWriter{
 			output: &tabWriterBuf,
 		}
-		extensionsTabWriter = tabwriter.NewWriter(spaceStrippingWriter, writerMinWidth, writerPadChar, buildpacksTabWidth, writerPadChar, writerFlags)
+		extensionsTabWriter = tabwriter.NewWriter(spaceStrippingWriter, writerMinWidth, writerPadChar, extensionsTabWidth, writerPadChar, writerFlags)
 	)
 
 	_, err := fmt.Fprint(extensionsTabWriter, "  ID\tNAME\tVERSION\tHOMEPAGE\n")
