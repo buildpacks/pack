@@ -94,6 +94,20 @@ Extensions:
   test.bp.one            -           test.bp.one.version            http://geocities.com/cool-bp
   test.bp.two            -           test.bp.two.version            -
   test.bp.three          -           test.bp.three.version          -
+
+Detection Order (Extensions):
+ ├ Group #1:
+ │  ├ test.top.nested@test.top.nested.version
+ │  │  └ Group #1:
+ │  │     ├ test.nested
+ │  │     │  └ Group #1:
+ │  │     │     └ test.bp.one@test.bp.one.version      (optional)
+ │  │     ├ test.bp.three@test.bp.three.version        (optional)
+ │  │     └ test.nested.two@test.nested.two.version
+ │  │        └ Group #2:
+ │  │           └ test.bp.one@test.bp.one.version    (optional)[cyclic]
+ │  └ test.bp.two@test.bp.two.version                (optional)
+ └ test.bp.three@test.bp.three.version
 `
 
 		expectedLocalOutput = `
@@ -155,6 +169,20 @@ Extensions:
   test.bp.one            -           test.bp.one.version            http://geocities.com/cool-bp
   test.bp.two            -           test.bp.two.version            -
   test.bp.three          -           test.bp.three.version          -
+
+Detection Order (Extensions):
+ ├ Group #1:
+ │  ├ test.top.nested@test.top.nested.version
+ │  │  └ Group #1:
+ │  │     ├ test.nested
+ │  │     │  └ Group #1:
+ │  │     │     └ test.bp.one@test.bp.one.version      (optional)
+ │  │     ├ test.bp.three@test.bp.three.version        (optional)
+ │  │     └ test.nested.two@test.nested.two.version
+ │  │        └ Group #2:
+ │  │           └ test.bp.one@test.bp.one.version    (optional)[cyclic]
+ │  └ test.bp.two@test.bp.two.version                (optional)
+ └ test.bp.three@test.bp.three.version
 `
 		expectedVerboseStack = `
 Stack:
@@ -202,6 +230,7 @@ REMOTE:
 				Buildpacks:      buildpacks,
 				Order:           order,
 				Extensions:      buildpacks,
+				OrderExtensions: order,
 				BuildpackLayers: dist.ModuleLayers{},
 				Lifecycle: builder.LifecycleDescriptor{
 					Info: builder.LifecycleInfo{
@@ -235,6 +264,7 @@ REMOTE:
 				Buildpacks:      buildpacks,
 				Order:           order,
 				Extensions:      buildpacks,
+				OrderExtensions: order,
 				BuildpackLayers: dist.ModuleLayers{},
 				Lifecycle: builder.LifecycleDescriptor{
 					Info: builder.LifecycleInfo{

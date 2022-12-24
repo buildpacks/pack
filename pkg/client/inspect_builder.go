@@ -52,6 +52,9 @@ type BuilderInfo struct {
 	// Extension (metadata?) included with builder image
 	// to be displayed in cmd line
 	Extensions []dist.ModuleInfo
+
+	// Detailed ordering of buildpacks and nested buildpacks where depth is specified.
+	OrderExtensions pubbldr.DetectionOrder
 }
 
 // BuildpackInfoKey contains all information needed to determine buildpack equivalence.
@@ -107,5 +110,6 @@ func (c *Client) InspectBuilder(name string, daemon bool, modifiers ...BuilderIn
 		Lifecycle:       info.Lifecycle,
 		CreatedBy:       info.CreatedBy,
 		Extensions:      info.Extensions,
+		OrderExtensions: info.OrderExtensions,
 	}, nil
 }

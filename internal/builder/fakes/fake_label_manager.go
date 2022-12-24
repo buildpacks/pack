@@ -11,12 +11,14 @@ type FakeLabelManager struct {
 	ReturnForMixins          []string
 	ReturnForOrder           dist.Order
 	ReturnForBuildpackLayers dist.ModuleLayers
+	ReturnForOrderExtensions dist.Order
 
 	ErrorForMetadata        error
 	ErrorForStackID         error
 	ErrorForMixins          error
 	ErrorForOrder           error
 	ErrorForBuildpackLayers error
+	ErrorForOrderExtensions error
 }
 
 func (m *FakeLabelManager) Metadata() (builder.Metadata, error) {
@@ -33,6 +35,10 @@ func (m *FakeLabelManager) Mixins() ([]string, error) {
 
 func (m *FakeLabelManager) Order() (dist.Order, error) {
 	return m.ReturnForOrder, m.ErrorForOrder
+}
+
+func (m *FakeLabelManager) OrderExtensions() (dist.Order, error) {
+	return m.ReturnForOrder, m.ErrorForOrderExtensions
 }
 
 func (m *FakeLabelManager) BuildpackLayers() (dist.ModuleLayers, error) {

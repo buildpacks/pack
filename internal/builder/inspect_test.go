@@ -94,6 +94,15 @@ var (
 			{ModuleInfo: testTopNestedBuildpack, Optional: true},
 		}},
 	}
+	testOrderExtensions = dist.Order{
+		dist.OrderEntry{Group: []dist.ModuleRef{
+			{ModuleInfo: testBuildpack, Optional: false},
+		}},
+		dist.OrderEntry{Group: []dist.ModuleRef{
+			{ModuleInfo: testNestedBuildpack, Optional: false},
+			{ModuleInfo: testTopNestedBuildpack, Optional: true},
+		}},
+	}
 	testLayers = dist.ModuleLayers{
 		"test.top.nested": {
 			"test.top.nested.version": {
@@ -333,6 +342,23 @@ func testInspect(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("label manager returns an error for `OrderExtensions`", func() {
+			it("returns the wrapped error", func() {
+				expectedBaseError := errors.New("label not found")
+
+				labelManager := newLabelManager(errorForOrderExtensions(expectedBaseError))
+
+				inspector := builder.NewInspector(
+					newDefaultInspectableFetcher(),
+					newLabelManagerFactory(labelManager),
+					newDefaultDetectionCalculator(),
+				)
+				_, err := inspector.Inspect(testBuilderName, true, pubbldr.OrderDetectionNone)
+
+				assert.ErrorWithMessage(err, "reading image order extensions: label not found")
+			})
+		})
+
 		when("label manager returns an error for `ModuleLayers`", func() {
 			it("returns the wrapped error", func() {
 				expectedBaseError := errors.New("label not found")
@@ -392,6 +418,7 @@ func newDefaultLabelManager() *fakes.FakeLabelManager {
 		ReturnForMixins:          testMixins,
 		ReturnForOrder:           testOrder,
 		ReturnForBuildpackLayers: testLayers,
+		ReturnForOrderExtensions: testOrderExtensions,
 	}
 }
 
@@ -424,6 +451,12 @@ func errorForMixins(err error) labelManagerModifier {
 func errorForOrder(err error) labelManagerModifier {
 	return func(manager *fakes.FakeLabelManager) {
 		manager.ErrorForOrder = err
+	}
+}
+
+func errorForOrderExtensions(err error) labelManagerModifier {
+	return func(manager *fakes.FakeLabelManager) {
+		manager.ErrorForOrderExtensions = err
 	}
 }
 

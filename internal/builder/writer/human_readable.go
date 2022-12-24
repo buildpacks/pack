@@ -61,7 +61,8 @@ Stack:
 {{ .RunImages }}
 {{ .Buildpacks }}
 {{ .Order }}
-{{ .Extensions }}`
+{{ .Extensions }}
+{{ .OrderExtensions}}`
 )
 
 type HumanReadable struct{}
@@ -128,6 +129,10 @@ func writeBuilderInfo(
 	if err != nil {
 		return fmt.Errorf("compiling detection order output: %w", err)
 	}
+	orderExtString, orderExtWarnings, err := detectionOrderExtOutput(info.OrderExtensions, sharedInfo.Name)
+	if err != nil {
+		return fmt.Errorf("compiling detection order output: %w", err)
+	}
 	buildpacksString, buildpacksWarnings, err := buildpacksOutput(info.Buildpacks, sharedInfo.Name)
 	if err != nil {
 		return fmt.Errorf("compiling buildpacks output: %w", err)
@@ -144,19 +149,21 @@ func writeBuilderInfo(
 	warnings = append(warnings, buildpacksWarnings...)
 	warnings = append(warnings, lifecycleWarnings...)
 	warnings = append(warnings, extensionsWarnings...)
+	warnings = append(warnings, orderExtWarnings...)
 
 	outputTemplate, _ := template.New("").Parse(outputTemplate)
 	err = outputTemplate.Execute(
 		logger.Writer(),
 		&struct {
-			Info       client.BuilderInfo
-			Verbose    bool
-			Buildpacks string
-			RunImages  string
-			Order      string
-			Trusted    string
-			Lifecycle  string
-			Extensions string
+			Info            client.BuilderInfo
+			Verbose         bool
+			Buildpacks      string
+			RunImages       string
+			Order           string
+			Trusted         string
+			Lifecycle       string
+			Extensions      string
+			OrderExtensions string
 		}{
 			*info,
 			logger.IsVerbose(),
@@ -166,6 +173,7 @@ func writeBuilderInfo(
 			stringFromBool(sharedInfo.Trusted),
 			lifecycleString,
 			extensionsString,
+			orderExtString,
 		},
 	)
 
@@ -445,6 +453,37 @@ func detectionOrderOutput(order pubbldr.DetectionOrder, builderName string) (str
 		return "", []string{}, fmt.Errorf("writing detection order group: %w", err)
 	}
 	err = detectionOrderTabWriter.Flush()
+	if err != nil {
+		return "", []string{}, fmt.Errorf("flushing tab writer: %w", err)
+	}
+
+	output += tabWriterBuf.String()
+	return output, []string{}, nil
+}
+
+func detectionOrderExtOutput(order pubbldr.DetectionOrder, builderName string) (string, []string, error) {
+	output := "Detection Order (Extensions):\n"
+
+	if len(order) == 0 {
+		warnings := []string{
+			fmt.Sprintf("%s has no buildpacks", builderName),
+			"Users must build with explicitly specified buildpacks",
+		}
+
+		return fmt.Sprintf("%s  %s\n", output, none), warnings, nil
+	}
+
+	tabWriterBuf := bytes.Buffer{}
+	spaceStrippingWriter := &trailingSpaceStrippingWriter{
+		output: &tabWriterBuf,
+	}
+
+	detectionOrderExtTabWriter := tabwriter.NewWriter(spaceStrippingWriter, writerMinWidth, writerTabWidth, defaultTabWidth, writerPadChar, writerFlags)
+	err := writeDetectionOrderGroup(detectionOrderExtTabWriter, order, "")
+	if err != nil {
+		return "", []string{}, fmt.Errorf("writing detection order group: %w", err)
+	}
+	err = detectionOrderExtTabWriter.Flush()
 	if err != nil {
 		return "", []string{}, fmt.Errorf("flushing tab writer: %w", err)
 	}

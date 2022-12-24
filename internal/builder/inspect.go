@@ -23,6 +23,7 @@ type Info struct {
 	Lifecycle       LifecycleDescriptor
 	CreatedBy       CreatorMetadata
 	Extensions      []dist.ModuleInfo
+	OrderExtensions pubbldr.DetectionOrder
 }
 
 type Inspectable interface {
@@ -43,6 +44,7 @@ type LabelInspector interface {
 	Mixins() ([]string, error)
 	Order() (dist.Order, error)
 	BuildpackLayers() (dist.ModuleLayers, error)
+	OrderExtensions() (dist.Order, error)
 }
 
 type DetectionCalculator interface {
@@ -96,6 +98,11 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 		}
 	}
 
+	orderExtensions, err := labelManager.OrderExtensions()
+	if err != nil {
+		return Info{}, fmt.Errorf("reading image order extensions: %w", err)
+	}
+
 	order, err := labelManager.Order()
 	if err != nil {
 		return Info{}, fmt.Errorf("reading image order: %w", err)
@@ -107,6 +114,11 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 	}
 
 	detectionOrder, err := i.detectionOrderCalculator.Order(order, layers, orderDetectionDepth)
+	if err != nil {
+		return Info{}, fmt.Errorf("calculating detection order: %w", err)
+	}
+
+	detectionOrderExtensions, err := i.detectionOrderCalculator.Order(orderExtensions, layers, orderDetectionDepth)
 	if err != nil {
 		return Info{}, fmt.Errorf("calculating detection order: %w", err)
 	}
@@ -129,6 +141,7 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 		Lifecycle:       lifecycle,
 		CreatedBy:       metadata.CreatedBy,
 		Extensions:      metadata.Extensions,
+		OrderExtensions: detectionOrderExtensions,
 	}, nil
 }
 
