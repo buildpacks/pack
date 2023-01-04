@@ -33,7 +33,7 @@ require (
 	golang.org/x/mod v0.7.0
 	golang.org/x/oauth2 v0.2.0
 	golang.org/x/term v0.2.0
-	golang.org/x/text v0.4.0
+	golang.org/x/text v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
