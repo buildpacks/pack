@@ -295,12 +295,7 @@ func extensionsOutput(extensions []dist.ModuleInfo, builderName string) (string,
 	output := "Extensions:\n"
 
 	if len(extensions) == 0 {
-		warnings := []string{
-			fmt.Sprintf("%s has no buildpacks", builderName),
-			"",
-		}
-
-		return fmt.Sprintf("%s  %s\n", output, none), warnings, nil
+		return fmt.Sprintf("%s  %s\n", output, none), nil, nil
 	}
 
 	var (
@@ -465,12 +460,7 @@ func detectionOrderExtOutput(order pubbldr.DetectionOrder, builderName string) (
 	output := "Detection Order (Extensions):\n"
 
 	if len(order) == 0 {
-		warnings := []string{
-			fmt.Sprintf("%s has no buildpacks", builderName),
-			"Users must build with explicitly specified buildpacks",
-		}
-
-		return fmt.Sprintf("%s  %s\n", output, none), warnings, nil
+		return fmt.Sprintf("%s  %s\n", output, none), nil, nil
 	}
 
 	tabWriterBuf := bytes.Buffer{}
