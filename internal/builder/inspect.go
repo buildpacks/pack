@@ -120,7 +120,7 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 
 	detectionOrderExtensions, err := i.detectionOrderCalculator.Order(orderExtensions, layers, orderDetectionDepth)
 	if err != nil {
-		return Info{}, fmt.Errorf("calculating detection order: %w", err)
+		return Info{}, fmt.Errorf("calculating detection order extensions: %w", err)
 	}
 
 	lifecycle := CompatDescriptor(LifecycleDescriptor{

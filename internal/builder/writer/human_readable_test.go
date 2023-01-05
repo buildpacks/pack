@@ -205,8 +205,16 @@ Run Images:
 Buildpacks:
   (none)
 `
+		expectedEmptyExtensions = `
+Extensions:
+  (none)
+`
 		expectedEmptyOrder = `
 Detection Order:
+  (none)
+`
+		expectedEmptyOrderExt = `
+Detection Order (Extensions):
   (none)
 `
 		expectedMissingLocalInfo = `
@@ -519,6 +527,21 @@ REMOTE:
 			})
 		})
 
+		when("no extensions are specified", func() {
+			it("displays buildpacks as (none)", func() {
+				localInfo.Extensions = []dist.ModuleInfo{}
+				remoteInfo.Extensions = []dist.ModuleInfo{}
+
+				humanReadableWriter := writer.NewHumanReadable()
+
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
+				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
+				assert.Nil(err)
+
+				assert.Contains(outBuf.String(), expectedEmptyExtensions)
+			})
+		})
+
 		when("multiple top level groups", func() {
 			it("displays order correctly", func() {
 
@@ -539,6 +562,21 @@ REMOTE:
 				assert.Contains(outBuf.String(), expectedEmptyOrder)
 				assert.Contains(outBuf.String(), "test-builder has no buildpacks")
 				assert.Contains(outBuf.String(), "Users must build with explicitly specified buildpacks")
+			})
+		})
+
+		when("no detection order extension is specified", func() {
+			it("displays detection order extensions as (none)", func() {
+				localInfo.OrderExtensions = pubbldr.DetectionOrder{}
+				remoteInfo.OrderExtensions = pubbldr.DetectionOrder{}
+
+				humanReadableWriter := writer.NewHumanReadable()
+
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
+				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
+				assert.Nil(err)
+
+				assert.Contains(outBuf.String(), expectedEmptyOrderExt)
 			})
 		})
 	})

@@ -131,7 +131,7 @@ func writeBuilderInfo(
 	}
 	orderExtString, orderExtWarnings, err := detectionOrderExtOutput(info.OrderExtensions, sharedInfo.Name)
 	if err != nil {
-		return fmt.Errorf("compiling detection order output: %w", err)
+		return fmt.Errorf("compiling detection order extensions output: %w", err)
 	}
 	buildpacksString, buildpacksWarnings, err := buildpacksOutput(info.Buildpacks, sharedInfo.Name)
 	if err != nil {
