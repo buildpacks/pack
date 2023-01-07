@@ -93,6 +93,22 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
         "version": "test.bp.three.version"
       }
     ]`
+
+		expectedExtensions = `"extensions": [
+      {
+        "homepage": "http://geocities.com/cool-bp",
+        "id": "test.bp.one",
+        "version": "test.bp.one.version"
+      },
+      {
+        "id": "test.bp.two",
+        "version": "test.bp.two.version"
+      },
+      {
+        "id": "test.bp.three",
+        "version": "test.bp.three.version"
+      }
+    ]`
 		expectedDetectionOrder = `"detection_order": [
       {
         "buildpacks": [
@@ -139,6 +155,27 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
           }
         ]
       },
+      {
+        "id": "test.bp.three",
+        "version": "test.bp.three.version"
+      }
+    ]`
+		expectedOrderExtensions = `"order_extensions": [
+	  {
+		"id": "test.top.nested",
+		"version": "test.top.nested.version"
+	  },
+	  {
+		"homepage": "http://geocities.com/cool-bp",
+		"id": "test.bp.one",
+		"version": "test.bp.one.version",
+		"optional": true
+	  },
+	  {
+		"id": "test.bp.two",
+		"version": "test.bp.two.version",
+		"optional": true
+	  },
       {
         "id": "test.bp.three",
         "version": "test.bp.three.version"
@@ -192,8 +229,10 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
     },
     %s,
     %s,
-    %s
-  }`, expectedRemoteRunImages, expectedBuildpacks, expectedDetectionOrder)
+    %s,
+	%s,
+	%s
+  }`, expectedRemoteRunImages, expectedBuildpacks, expectedDetectionOrder, expectedExtensions, expectedOrderExtensions)
 
 		expectedLocalInfo = fmt.Sprintf(`"local_info": {
     "description": "Some local description",
@@ -225,8 +264,10 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
     },
     %s,
     %s,
-    %s
-  }`, expectedLocalRunImages, expectedBuildpacks, expectedDetectionOrder)
+    %s,
+	%s,
+	%s
+  }`, expectedLocalRunImages, expectedBuildpacks, expectedDetectionOrder, expectedExtensions, expectedOrderExtensions)
 
 		expectedPrettifiedJSON = fmt.Sprintf(`{
   "builder_name": "test-builder",
@@ -248,6 +289,8 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				RunImageMirrors: []string{"first/default", "second/default"},
 				Buildpacks:      buildpacks,
 				Order:           order,
+				Extensions:      extensions,
+				OrderExtensions: orderExtensions,
 				BuildpackLayers: dist.ModuleLayers{},
 				Lifecycle: builder.LifecycleDescriptor{
 					Info: builder.LifecycleInfo{
@@ -280,6 +323,8 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				RunImageMirrors: []string{"first/local-default", "second/local-default"},
 				Buildpacks:      buildpacks,
 				Order:           order,
+				Extensions:      extensions,
+				OrderExtensions: orderExtensions,
 				BuildpackLayers: dist.ModuleLayers{},
 				Lifecycle: builder.LifecycleDescriptor{
 					Info: builder.LifecycleInfo{

@@ -118,7 +118,7 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 		return Info{}, fmt.Errorf("calculating detection order: %w", err)
 	}
 
-	detectionOrderExtensions, err := i.detectionOrderCalculator.Order(orderExtensions, layers, orderDetectionDepth)
+	detectionOrderExtensions, err := i.detectionOrderCalculator.Order(orderExtensions, layers, pubbldr.OrderDetectionNone)
 	if err != nil {
 		return Info{}, fmt.Errorf("calculating detection order extensions: %w", err)
 	}

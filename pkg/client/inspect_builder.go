@@ -49,11 +49,10 @@ type BuilderInfo struct {
 	// to produce this builder.
 	CreatedBy builder.CreatorMetadata
 
-	// Extension (metadata?) included with builder image
-	// to be displayed in cmd line
+	// All extensions included within the builder.
 	Extensions []dist.ModuleInfo
 
-	// Detailed ordering of buildpacks and nested buildpacks where depth is specified.
+	// Detailed ordering of extensions.
 	OrderExtensions pubbldr.DetectionOrder
 }
 
