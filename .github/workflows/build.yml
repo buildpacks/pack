@@ -122,7 +122,8 @@ jobs:
       - name: Test
         env:
           TEST_COVERAGE: 1
-        run: make test
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: make test       
       - name: Upload Coverage
         uses: codecov/codecov-action@v3
         with:
