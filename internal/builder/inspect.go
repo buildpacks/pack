@@ -118,10 +118,7 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 		return Info{}, fmt.Errorf("calculating detection order: %w", err)
 	}
 
-	detectionOrderExtensions, err := i.detectionOrderCalculator.Order(orderExtensions, layers, orderDetectionDepth)
-	if err != nil {
-		return Info{}, fmt.Errorf("calculating detection order extensions: %w", err)
-	}
+	detectionOrderExtensions := orderExttoPubbldrDetectionOrderExt(orderExtensions)
 
 	lifecycle := CompatDescriptor(LifecycleDescriptor{
 		Info: LifecycleInfo{Version: metadata.Lifecycle.Version},
@@ -143,6 +140,20 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 		Extensions:      metadata.Extensions,
 		OrderExtensions: detectionOrderExtensions,
 	}, nil
+}
+
+func orderExttoPubbldrDetectionOrderExt(orderExt dist.Order) pubbldr.DetectionOrder {
+	var detectionOrderExt pubbldr.DetectionOrder
+
+	for _, orderEntry := range orderExt {
+		var detectionOrderEntry pubbldr.DetectionOrderEntry
+		for _, moduleRef := range orderEntry.Group {
+			detectionOrderEntry.ModuleRef = moduleRef
+		}
+		detectionOrderExt = append(detectionOrderExt, detectionOrderEntry)
+	}
+
+	return detectionOrderExt
 }
 
 func uniqueBuildpacks(buildpacks []dist.ModuleInfo) []dist.ModuleInfo {
