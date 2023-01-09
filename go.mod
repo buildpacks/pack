@@ -6,7 +6,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.0
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20221109161319-3252b1f13dfa
-	github.com/buildpacks/lifecycle v0.15.1
+	github.com/buildpacks/lifecycle v0.15.2
 	github.com/docker/cli v20.10.21+incompatible
 	github.com/docker/docker v20.10.21+incompatible
 	github.com/docker/go-connections v0.4.0
@@ -31,9 +31,9 @@ require (
 	github.com/spf13/cobra v1.6.1
 	golang.org/x/crypto v0.3.0
 	golang.org/x/mod v0.7.0
-	golang.org/x/oauth2 v0.2.0
-	golang.org/x/term v0.2.0
-	golang.org/x/text v0.4.0
+	golang.org/x/oauth2 v0.4.0
+	golang.org/x/term v0.4.0
+	golang.org/x/text v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -68,7 +68,7 @@ require (
 	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20221027043306-dc425bc05c64 // indirect
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20221002210726-e883f69e0206 // indirect
 	github.com/containerd/cgroups v1.0.4 // indirect
-	github.com/containerd/containerd v1.6.9 // indirect
+	github.com/containerd/containerd v1.6.12 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.12.1 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
@@ -111,9 +111,9 @@ require (
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/net v0.2.0 // indirect
+	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.2.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
