@@ -96,6 +96,37 @@ var (
 		},
 	}
 
+	extensions = []dist.ModuleInfo{
+		testBuildpackOne,
+		testBuildpackTwo,
+		testBuildpackThree,
+	}
+
+	orderExtensions = pubbldr.DetectionOrder{
+		pubbldr.DetectionOrderEntry{
+			ModuleRef: dist.ModuleRef{
+				ModuleInfo: testTopNestedBuildpack,
+			},
+		},
+		pubbldr.DetectionOrderEntry{
+			ModuleRef: dist.ModuleRef{
+				ModuleInfo: testBuildpackOne,
+				Optional:   true,
+			},
+		},
+		pubbldr.DetectionOrderEntry{
+			ModuleRef: dist.ModuleRef{
+				ModuleInfo: testBuildpackTwo,
+				Optional:   true,
+			},
+		},
+		pubbldr.DetectionOrderEntry{
+			ModuleRef: dist.ModuleRef{
+				ModuleInfo: testBuildpackThree,
+			},
+		},
+	}
+
 	sharedBuilderInfo = writer.SharedBuilderInfo{
 		Name:      "test-builder",
 		Trusted:   false,

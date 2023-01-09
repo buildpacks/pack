@@ -86,6 +86,18 @@ Detection Order:
  │  │           └ test.bp.one@test.bp.one.version    (optional)[cyclic]
  │  └ test.bp.two@test.bp.two.version                (optional)
  └ test.bp.three@test.bp.three.version
+
+Extensions:
+  ID                   NAME        VERSION                      HOMEPAGE
+  test.bp.one          -           test.bp.one.version          http://geocities.com/cool-bp
+  test.bp.two          -           test.bp.two.version          -
+  test.bp.three        -           test.bp.three.version        -
+
+Detection Order (Extensions):
+ ├ test.top.nested@test.top.nested.version
+ ├ test.bp.one@test.bp.one.version            (optional)
+ ├ test.bp.two@test.bp.two.version            (optional)
+ └ test.bp.three@test.bp.three.version
 `
 
 		expectedLocalOutput = `
@@ -139,6 +151,18 @@ Detection Order:
  │  │           └ test.bp.one@test.bp.one.version    (optional)[cyclic]
  │  └ test.bp.two@test.bp.two.version                (optional)
  └ test.bp.three@test.bp.three.version
+
+Extensions:
+  ID                   NAME        VERSION                      HOMEPAGE
+  test.bp.one          -           test.bp.one.version          http://geocities.com/cool-bp
+  test.bp.two          -           test.bp.two.version          -
+  test.bp.three        -           test.bp.three.version        -
+
+Detection Order (Extensions):
+ ├ test.top.nested@test.top.nested.version
+ ├ test.bp.one@test.bp.one.version            (optional)
+ ├ test.bp.two@test.bp.two.version            (optional)
+ └ test.bp.three@test.bp.three.version
 `
 		expectedVerboseStack = `
 Stack:
@@ -161,8 +185,16 @@ Run Images:
 Buildpacks:
   (none)
 `
+		expectedEmptyExtensions = `
+Extensions:
+  (none)
+`
 		expectedEmptyOrder = `
 Detection Order:
+  (none)
+`
+		expectedEmptyOrderExt = `
+Detection Order (Extensions):
   (none)
 `
 		expectedMissingLocalInfo = `
@@ -185,6 +217,8 @@ REMOTE:
 				RunImageMirrors: []string{"first/default", "second/default"},
 				Buildpacks:      buildpacks,
 				Order:           order,
+				Extensions:      extensions,
+				OrderExtensions: orderExtensions,
 				BuildpackLayers: dist.ModuleLayers{},
 				Lifecycle: builder.LifecycleDescriptor{
 					Info: builder.LifecycleInfo{
@@ -217,6 +251,8 @@ REMOTE:
 				RunImageMirrors: []string{"first/local-default", "second/local-default"},
 				Buildpacks:      buildpacks,
 				Order:           order,
+				Extensions:      extensions,
+				OrderExtensions: orderExtensions,
 				BuildpackLayers: dist.ModuleLayers{},
 				Lifecycle: builder.LifecycleDescriptor{
 					Info: builder.LifecycleInfo{
@@ -471,6 +507,21 @@ REMOTE:
 			})
 		})
 
+		when("no extensions are specified", func() {
+			it("displays extensions as (none)", func() {
+				localInfo.Extensions = []dist.ModuleInfo{}
+				remoteInfo.Extensions = []dist.ModuleInfo{}
+
+				humanReadableWriter := writer.NewHumanReadable()
+
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
+				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
+				assert.Nil(err)
+
+				assert.Contains(outBuf.String(), expectedEmptyExtensions)
+			})
+		})
+
 		when("multiple top level groups", func() {
 			it("displays order correctly", func() {
 
@@ -491,6 +542,21 @@ REMOTE:
 				assert.Contains(outBuf.String(), expectedEmptyOrder)
 				assert.Contains(outBuf.String(), "test-builder has no buildpacks")
 				assert.Contains(outBuf.String(), "Users must build with explicitly specified buildpacks")
+			})
+		})
+
+		when("no detection order for extension is specified", func() {
+			it("displays detection order for extensions as (none)", func() {
+				localInfo.OrderExtensions = pubbldr.DetectionOrder{}
+				remoteInfo.OrderExtensions = pubbldr.DetectionOrder{}
+
+				humanReadableWriter := writer.NewHumanReadable()
+
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
+				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
+				assert.Nil(err)
+
+				assert.Contains(outBuf.String(), expectedEmptyOrderExt)
 			})
 		})
 	})

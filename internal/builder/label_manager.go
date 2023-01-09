@@ -39,6 +39,12 @@ func (m *LabelManager) Order() (dist.Order, error) {
 	return parsedOrder, err
 }
 
+func (m *LabelManager) OrderExtensions() (dist.Order, error) {
+	parsedOrder := dist.Order{}
+	err := m.labelJSONDefaultEmpty(OrderExtensionsLabel, &parsedOrder)
+	return parsedOrder, err
+}
+
 func (m *LabelManager) BuildpackLayers() (dist.ModuleLayers, error) {
 	parsedLayers := dist.ModuleLayers{}
 	err := m.labelJSONDefaultEmpty(dist.BuildpackLayersLabel, &parsedLayers)

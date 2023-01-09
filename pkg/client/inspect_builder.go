@@ -48,6 +48,12 @@ type BuilderInfo struct {
 	// Name and Version information from tooling used
 	// to produce this builder.
 	CreatedBy builder.CreatorMetadata
+
+	// All extensions included within the builder.
+	Extensions []dist.ModuleInfo
+
+	// Detailed ordering of extensions.
+	OrderExtensions pubbldr.DetectionOrder
 }
 
 // BuildpackInfoKey contains all information needed to determine buildpack equivalence.
@@ -102,5 +108,7 @@ func (c *Client) InspectBuilder(name string, daemon bool, modifiers ...BuilderIn
 		BuildpackLayers: info.BuildpackLayers,
 		Lifecycle:       info.Lifecycle,
 		CreatedBy:       info.CreatedBy,
+		Extensions:      info.Extensions,
+		OrderExtensions: info.OrderExtensions,
 	}, nil
 }

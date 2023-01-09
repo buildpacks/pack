@@ -43,6 +43,8 @@ type BuilderInfo struct {
 	RunImages              []RunImage              `json:"run_images" yaml:"run_images" toml:"run_images"`
 	Buildpacks             []dist.ModuleInfo       `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
 	pubbldr.DetectionOrder `json:"detection_order" yaml:"detection_order" toml:"detection_order"`
+	Extensions             []dist.ModuleInfo      `json:"extensions" yaml:"extensions" toml:"extensions"`
+	OrderExtensions        pubbldr.DetectionOrder `json:"order_extensions" yaml:"order_extensions" toml:"order_extensions"`
 }
 
 type StructuredFormat struct {
@@ -82,9 +84,11 @@ func (w *StructuredFormat) Print(
 				BuildpackAPIs: local.Lifecycle.APIs.Buildpack,
 				PlatformAPIs:  local.Lifecycle.APIs.Platform,
 			},
-			RunImages:      runImages(local.RunImage, localRunImages, local.RunImageMirrors),
-			Buildpacks:     local.Buildpacks,
-			DetectionOrder: local.Order,
+			RunImages:       runImages(local.RunImage, localRunImages, local.RunImageMirrors),
+			Buildpacks:      local.Buildpacks,
+			DetectionOrder:  local.Order,
+			Extensions:      local.Extensions,
+			OrderExtensions: local.OrderExtensions,
 		}
 	}
 
@@ -104,9 +108,11 @@ func (w *StructuredFormat) Print(
 				BuildpackAPIs: remote.Lifecycle.APIs.Buildpack,
 				PlatformAPIs:  remote.Lifecycle.APIs.Platform,
 			},
-			RunImages:      runImages(remote.RunImage, localRunImages, remote.RunImageMirrors),
-			Buildpacks:     remote.Buildpacks,
-			DetectionOrder: remote.Order,
+			RunImages:       runImages(remote.RunImage, localRunImages, remote.RunImageMirrors),
+			Buildpacks:      remote.Buildpacks,
+			DetectionOrder:  remote.Order,
+			Extensions:      remote.Extensions,
+			OrderExtensions: remote.OrderExtensions,
 		}
 	}
 
