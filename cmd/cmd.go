@@ -23,8 +23,9 @@ type ConfigurableLogger interface {
 	WantVerbose(f bool)
 }
 
-//nolint:staticcheck
 // NewPackCommand generates a Pack command
+//
+//nolint:staticcheck
 func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	cobra.EnableCommandSorting = false
 	cfg, cfgPath, err := initConfig()

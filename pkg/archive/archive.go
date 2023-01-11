@@ -353,11 +353,11 @@ func finalizeHeader(header *tar.Header, uid, gid int, mode int64, normalizeModTi
 // NormalizeHeader normalizes a tar.Header
 //
 // Normalizes the following:
-// 	- ModTime
-// 	- GID
-// 	- UID
-// 	- User Name
-// 	- Group Name
+//   - ModTime
+//   - GID
+//   - UID
+//   - User Name
+//   - Group Name
 func NormalizeHeader(header *tar.Header, normalizeModTime bool) {
 	if normalizeModTime {
 		header.ModTime = NormalizedDateTime

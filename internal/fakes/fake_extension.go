@@ -45,14 +45,14 @@ func WithExtOpenError(err error) FakeExtensionOption {
 
 // NewFakeExtension creates a fake extension with contents:
 //
-// 	\_ /cnb/extensions/{ID}
-// 	\_ /cnb/extensions/{ID}/{version}
-// 	\_ /cnb/extensions/{ID}/{version}/extension.toml
-// 	\_ /cnb/extensions/{ID}/{version}/bin
-// 	\_ /cnb/extensions/{ID}/{version}/bin/generate
-//  	generate-contents
-// 	\_ /cnb/extensions/{ID}/{version}/bin/detect
-//  	detect-contents
+//		\_ /cnb/extensions/{ID}
+//		\_ /cnb/extensions/{ID}/{version}
+//		\_ /cnb/extensions/{ID}/{version}/extension.toml
+//		\_ /cnb/extensions/{ID}/{version}/bin
+//		\_ /cnb/extensions/{ID}/{version}/bin/generate
+//	 	generate-contents
+//		\_ /cnb/extensions/{ID}/{version}/bin/detect
+//	 	detect-contents
 func NewFakeExtension(descriptor dist.ExtensionDescriptor, chmod int64, options ...FakeExtensionOption) (buildpack.BuildModule, error) {
 	return &fakeExtension{
 		descriptor: descriptor,
