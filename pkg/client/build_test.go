@@ -2517,6 +2517,17 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("report destination dir option", func() {
+			it("passthroughs to lifecycle", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Builder:              defaultBuilderName,
+					Image:                "example.com/some/repo:tag",
+					ReportDestinationDir: "a-destination-dir",
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.ReportDestinationDir, "a-destination-dir")
+			})
+		})
+
 		when("there are extensions", func() {
 			withExtensionsLabel = true
 
