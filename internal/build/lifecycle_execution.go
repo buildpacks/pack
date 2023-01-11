@@ -289,6 +289,9 @@ func (l *LifecycleExecution) Create(ctx context.Context, buildCache, launchCache
 		If(l.opts.SBOMDestinationDir != "", WithPostContainerRunOperations(
 			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
 			CopyOutTo(l.mountPaths.sbomDir(), l.opts.SBOMDestinationDir))),
+		If(l.opts.ReportDestinationDir != "", WithPostContainerRunOperations(
+			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
+			CopyOutTo(l.mountPaths.reportPath(), l.opts.ReportDestinationDir))),
 		If(l.opts.Interactive, WithPostContainerRunOperations(
 			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
 			CopyOut(l.opts.Termui.ReadLayers, l.mountPaths.layersDir(), l.mountPaths.appDir()))),
@@ -652,6 +655,9 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		If(l.opts.SBOMDestinationDir != "", WithPostContainerRunOperations(
 			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
 			CopyOutTo(l.mountPaths.sbomDir(), l.opts.SBOMDestinationDir))),
+		If(l.opts.ReportDestinationDir != "", WithPostContainerRunOperations(
+			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
+			CopyOutTo(l.mountPaths.reportPath(), l.opts.ReportDestinationDir))),
 		If(l.opts.Interactive, WithPostContainerRunOperations(
 			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
 			CopyOut(l.opts.Termui.ReadLayers, l.mountPaths.layersDir(), l.mountPaths.appDir()))),

@@ -67,35 +67,36 @@ func init() {
 }
 
 type LifecycleOptions struct {
-	AppPath            string
-	Image              name.Reference
-	Builder            Builder
-	BuilderImage       string // differs from Builder.Name() and Builder.Image().Name() in that it includes the registry context
-	LifecycleImage     string
-	RunImage           string
-	ProjectMetadata    platform.ProjectMetadata
-	ClearCache         bool
-	Publish            bool
-	TrustBuilder       bool
-	UseCreator         bool
-	Interactive        bool
-	Termui             Termui
-	DockerHost         string
-	Cache              cache.CacheOpts
-	CacheImage         string
-	HTTPProxy          string
-	HTTPSProxy         string
-	NoProxy            string
-	Network            string
-	AdditionalTags     []string
-	Volumes            []string
-	DefaultProcessType string
-	FileFilter         func(string) bool
-	Workspace          string
-	GID                int
-	PreviousImage      string
-	SBOMDestinationDir string
-	CreationTime       *time.Time
+	AppPath              string
+	Image                name.Reference
+	Builder              Builder
+	BuilderImage         string // differs from Builder.Name() and Builder.Image().Name() in that it includes the registry context
+	LifecycleImage       string
+	RunImage             string
+	ProjectMetadata      platform.ProjectMetadata
+	ClearCache           bool
+	Publish              bool
+	TrustBuilder         bool
+	UseCreator           bool
+	Interactive          bool
+	Termui               Termui
+	DockerHost           string
+	Cache                cache.CacheOpts
+	CacheImage           string
+	HTTPProxy            string
+	HTTPSProxy           string
+	NoProxy              string
+	Network              string
+	AdditionalTags       []string
+	Volumes              []string
+	DefaultProcessType   string
+	FileFilter           func(string) bool
+	Workspace            string
+	GID                  int
+	PreviousImage        string
+	ReportDestinationDir string
+	SBOMDestinationDir   string
+	CreationTime         *time.Time
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker client.CommonAPIClient) *LifecycleExecutor {

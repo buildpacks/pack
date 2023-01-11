@@ -42,6 +42,10 @@ func (m mountPaths) projectPath() string {
 	return m.join(m.layersDir(), "project-metadata.toml")
 }
 
+func (m mountPaths) reportPath() string {
+	return m.join(m.layersDir(), "report.toml")
+}
+
 func (m mountPaths) appDirName() string {
 	return m.workspace
 }
