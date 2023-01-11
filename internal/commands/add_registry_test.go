@@ -2,7 +2,7 @@ package commands_test
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -39,7 +39,7 @@ func testAddRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			tmpDir, err = ioutil.TempDir("", "pack-home-*")
+			tmpDir, err = os.MkdirTemp("", "pack-home-*")
 			assert.Nil(err)
 
 			configFile = filepath.Join(tmpDir, "config.toml")
@@ -81,7 +81,7 @@ func testAddRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("validation", func() {
 			it("fails with missing args", func() {
-				command.SetOut(ioutil.Discard)
+				command.SetOut(io.Discard)
 				command.SetArgs([]string{})
 				err := command.Execute()
 				assert.ErrorContains(err, "accepts 2 arg")

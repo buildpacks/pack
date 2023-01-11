@@ -3,7 +3,7 @@ package sshdialer_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -436,7 +436,7 @@ func testCreateDialer(connConfig *SSHServer, tt testParams) func(t *testing.T, w
 			}
 			defer resp.Body.Close()
 
-			b, err := ioutil.ReadAll(resp.Body)
+			b, err := io.ReadAll(resp.Body)
 			th.AssertTrue(t, err == nil)
 			if err != nil {
 				return
@@ -476,7 +476,7 @@ func cp(src, dest string) error {
 		return fmt.Errorf("the cp() function failed to stat source file: %w", err)
 	}
 
-	data, err := ioutil.ReadFile(src)
+	data, err := os.ReadFile(src)
 	if err != nil {
 		return fmt.Errorf("the cp() function failed to read source file: %w", err)
 	}
@@ -486,7 +486,7 @@ func cp(src, dest string) error {
 		return fmt.Errorf("destination file already exists: %w", os.ErrExist)
 	}
 
-	return ioutil.WriteFile(dest, data, srcFs.Mode())
+	return os.WriteFile(dest, data, srcFs.Mode())
 }
 
 // puts key from ./testdata/{keyName} to $HOME/.ssh/{keyName}
@@ -545,7 +545,7 @@ func withCleanHome(t *testing.T) func() {
 	if runtime.GOOS == "windows" {
 		homeName = "USERPROFILE"
 	}
-	tmpDir, err := ioutil.TempDir("", "tmpHome")
+	tmpDir, err := os.MkdirTemp("", "tmpHome")
 	th.AssertNil(t, err)
 
 	oldHome, hadHome := os.LookupEnv(homeName)
@@ -584,7 +584,7 @@ func withKnowHosts(connConfig *SSHServer) setUpEnvFn {
 		serverKeysDir := filepath.Join("testdata", "etc", "ssh")
 		for _, k := range []string{"ecdsa"} {
 			keyPath := filepath.Join(serverKeysDir, fmt.Sprintf("ssh_host_%s_key.pub", k))
-			key, err := ioutil.ReadFile(keyPath)
+			key, err := os.ReadFile(keyPath)
 			th.AssertNil(t, err)
 
 			fmt.Fprintf(f, "%s %s", connConfig.hostIPv4, string(key))
@@ -753,7 +753,7 @@ func withBadSSHAgentSocket(t *testing.T) func() {
 func withGoodSSHAgent(t *testing.T) func() {
 	t.Helper()
 
-	key, err := ioutil.ReadFile(filepath.Join("testdata", "id_ed25519"))
+	key, err := os.ReadFile(filepath.Join("testdata", "id_ed25519"))
 	th.AssertNil(t, err)
 
 	signer, err := ssh.ParsePrivateKey(key)
@@ -778,7 +778,7 @@ func withSSHAgent(t *testing.T, ag agent.Agent) func() {
 	if runtime.GOOS == "windows" {
 		agentSocketPath = `\\.\pipe\openssh-ssh-agent-test`
 	} else {
-		tmpDirForSocket, err = ioutil.TempDir("", "forAuthSock")
+		tmpDirForSocket, err = os.MkdirTemp("", "forAuthSock")
 		th.AssertNil(t, err)
 
 		agentSocketPath = filepath.Join(tmpDirForSocket, "agent.sock")
@@ -946,7 +946,7 @@ SSH_BIN -o PasswordAuthentication=no -o ConnectTimeout=3 -o UserKnownHostsFile=%
 	}
 
 	sshScriptFullPath := filepath.Join(homeBin, sshScriptName)
-	err = ioutil.WriteFile(sshScriptFullPath, []byte(sshScript), 0700)
+	err = os.WriteFile(sshScriptFullPath, []byte(sshScript), 0700)
 	th.AssertNil(t, err)
 
 	oldPath := os.Getenv("PATH")

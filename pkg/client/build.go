@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -915,7 +914,7 @@ func parseDigestFromImageID(id imgutil.Identifier) string {
 }
 
 func createInlineBuildpack(bp projectTypes.Buildpack, stackID string) (string, error) {
-	pathToInlineBuilpack, err := ioutil.TempDir("", "inline-cnb")
+	pathToInlineBuilpack, err := os.MkdirTemp("", "inline-cnb")
 	if err != nil {
 		return pathToInlineBuilpack, err
 	}

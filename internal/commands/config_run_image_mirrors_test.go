@@ -3,7 +3,6 @@ package commands_test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,7 +55,7 @@ func testConfigRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
-		tempPackHome, err = ioutil.TempDir("", "pack-home")
+		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
 
@@ -104,7 +103,7 @@ func testConfigRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 		when("config path doesn't exist", func() {
 			it("fails to run", func() {
 				fakePath := filepath.Join(tempPackHome, "not-exist.toml")
-				h.AssertNil(t, ioutil.WriteFile(fakePath, []byte("something"), 0001))
+				h.AssertNil(t, os.WriteFile(fakePath, []byte("something"), 0001))
 				cmd = commands.ConfigRunImagesMirrors(logger, config.Config{}, fakePath)
 				cmd.SetArgs([]string{"add", runImage, "-m", testMirror1})
 
@@ -156,7 +155,7 @@ func testConfigRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 		when("config path doesn't exist", func() {
 			it("fails to run", func() {
 				fakePath := filepath.Join(tempPackHome, "not-exist.toml")
-				h.AssertNil(t, ioutil.WriteFile(fakePath, []byte("something"), 0001))
+				h.AssertNil(t, os.WriteFile(fakePath, []byte("something"), 0001))
 				cmd = commands.ConfigRunImagesMirrors(logger, testCfg, fakePath)
 				cmd.SetArgs([]string{"remove", runImage, "-m", testMirror1})
 

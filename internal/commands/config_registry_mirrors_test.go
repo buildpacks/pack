@@ -3,7 +3,6 @@ package commands_test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,7 +48,7 @@ func testConfigRegistryMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
-		tempPackHome, err = ioutil.TempDir("", "pack-home")
+		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
 
@@ -96,7 +95,7 @@ func testConfigRegistryMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 		when("config path doesn't exist", func() {
 			it("fails to run", func() {
 				fakePath := filepath.Join(tempPackHome, "not-exist.toml")
-				h.AssertNil(t, ioutil.WriteFile(fakePath, []byte("something"), 0001))
+				h.AssertNil(t, os.WriteFile(fakePath, []byte("something"), 0001))
 				cmd = commands.ConfigRegistryMirrors(logger, config.Config{}, fakePath)
 				cmd.SetArgs([]string{"add", registry1, "-m", testMirror1})
 
@@ -165,7 +164,7 @@ func testConfigRegistryMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 		when("config path doesn't exist", func() {
 			it("fails to run", func() {
 				fakePath := filepath.Join(tempPackHome, "not-exist.toml")
-				h.AssertNil(t, ioutil.WriteFile(fakePath, []byte("something"), 0001))
+				h.AssertNil(t, os.WriteFile(fakePath, []byte("something"), 0001))
 				cmd = commands.ConfigRegistryMirrors(logger, testCfg, fakePath)
 				cmd.SetArgs([]string{"remove", registry1})
 

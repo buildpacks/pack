@@ -2,7 +2,6 @@ package commands_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -36,7 +35,7 @@ func testSetDefaultRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			tmpDir, err = ioutil.TempDir("", "pack-home-*")
+			tmpDir, err = os.MkdirTemp("", "pack-home-*")
 			assert.Nil(err)
 
 			configFile = filepath.Join(tmpDir, "config.toml")

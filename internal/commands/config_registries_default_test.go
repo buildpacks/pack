@@ -3,7 +3,6 @@ package commands_test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -38,7 +37,7 @@ func testConfigRegistriesDefaultCommand(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			tmpDir, err = ioutil.TempDir("", "pack-home-*")
+			tmpDir, err = os.MkdirTemp("", "pack-home-*")
 			assert.Nil(err)
 
 			configFile = filepath.Join(tmpDir, "config.toml")
@@ -97,7 +96,7 @@ func testConfigRegistriesDefaultCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns clear error if fails to write", func() {
-				assert.Nil(ioutil.WriteFile(configFile, []byte("something"), 0001))
+				assert.Nil(os.WriteFile(configFile, []byte("something"), 0001))
 				cfg := config.Config{
 					Registries: []config.Registry{
 						{
@@ -138,7 +137,7 @@ func testConfigRegistriesDefaultCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns clear error if fails to write", func() {
-				assert.Nil(ioutil.WriteFile(configFile, []byte("something"), 0001))
+				assert.Nil(os.WriteFile(configFile, []byte("something"), 0001))
 				command := commands.ConfigRegistriesDefault(logger, config.Config{DefaultRegistryName: "some-registry"}, configFile)
 				command.SetArgs([]string{"--unset"})
 				assert.ErrorContains(command.Execute(), "writing config to")

@@ -3,7 +3,6 @@ package logging_test
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"testing"
 	"time"
 
@@ -78,7 +77,7 @@ func testLogWithWriters(t *testing.T, when spec.G, it spec.S) {
 
 		it("will return correct writers", func() {
 			h.AssertSameInstance(t, logger.Writer(), outCons)
-			h.AssertSameInstance(t, logger.WriterForLevel(logging.DebugLevel), ioutil.Discard)
+			h.AssertSameInstance(t, logger.WriterForLevel(logging.DebugLevel), io.Discard)
 		})
 
 		it("is only verbose for debug level", func() {
@@ -166,8 +165,8 @@ func testLogWithWriters(t *testing.T, when spec.G, it spec.S) {
 
 		it("will return correct writers", func() {
 			h.AssertSameInstance(t, logger.Writer(), outCons)
-			h.AssertSameInstance(t, logger.WriterForLevel(logging.DebugLevel), ioutil.Discard)
-			h.AssertSameInstance(t, logger.WriterForLevel(logging.InfoLevel), ioutil.Discard)
+			h.AssertSameInstance(t, logger.WriterForLevel(logging.DebugLevel), io.Discard)
+			h.AssertSameInstance(t, logger.WriterForLevel(logging.InfoLevel), io.Discard)
 		})
 	})
 

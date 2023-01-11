@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -177,7 +176,7 @@ func testWithoutSpecificBuilderRequirement(
 
 			it.Before(func() {
 				var err error
-				tmpDir, err = ioutil.TempDir("", "buildpack-package-tests")
+				tmpDir, err = os.MkdirTemp("", "buildpack-package-tests")
 				assert.Nil(err)
 
 				buildpackManager = buildpacks.NewBuildModuleManager(t, assert)
@@ -188,9 +187,9 @@ func testWithoutSpecificBuilderRequirement(
 				assert.Nil(os.RemoveAll(tmpDir))
 			})
 
-			generateAggregatePackageToml := func(buildpackURI, nestedPackageName, os string) string {
+			generateAggregatePackageToml := func(buildpackURI, nestedPackageName, operatingSystem string) string {
 				t.Helper()
-				packageTomlFile, err := ioutil.TempFile(tmpDir, "package_aggregate-*.toml")
+				packageTomlFile, err := os.CreateTemp(tmpDir, "package_aggregate-*.toml")
 				assert.Nil(err)
 
 				pack.FixtureManager().TemplateFixtureToFile(
@@ -199,7 +198,7 @@ func testWithoutSpecificBuilderRequirement(
 					map[string]interface{}{
 						"BuildpackURI": buildpackURI,
 						"PackageName":  nestedPackageName,
-						"OS":           os,
+						"OS":           operatingSystem,
 					},
 				)
 
@@ -402,7 +401,7 @@ func testWithoutSpecificBuilderRequirement(
 
 			it.Before(func() {
 				var err error
-				tmpDir, err = ioutil.TempDir("", "buildpack-inspect-tests")
+				tmpDir, err = os.MkdirTemp("", "buildpack-inspect-tests")
 				assert.Nil(err)
 			})
 
@@ -1159,7 +1158,7 @@ func testAcceptance(
 							h.SkipIf(t, imageManager.HostOS() == "windows", "temporarily disabled on WCOW due to CI flakiness")
 
 							var err error
-							tmpDir, err = ioutil.TempDir("", "archive-buildpacks-")
+							tmpDir, err = os.MkdirTemp("", "archive-buildpacks-")
 							assert.Nil(err)
 
 							buildpackManager.PrepareBuildModules(tmpDir, buildpacks.BpInternetCapable)
@@ -1229,12 +1228,12 @@ func testAcceptance(
 							}
 
 							var err error
-							tmpDir, err = ioutil.TempDir("", "volume-buildpack-tests-")
+							tmpDir, err = os.MkdirTemp("", "volume-buildpack-tests-")
 							assert.Nil(err)
 
 							buildpackManager.PrepareBuildModules(tmpDir, buildpacks.BpReadVolume, buildpacks.BpReadWriteVolume)
 
-							tmpVolumeSrc, err = ioutil.TempDir("", "volume-mount-source")
+							tmpVolumeSrc, err = os.MkdirTemp("", "volume-mount-source")
 							assert.Nil(err)
 							assert.Succeeds(os.Chmod(tmpVolumeSrc, 0777)) // Override umask
 
@@ -1243,7 +1242,7 @@ func testAcceptance(
 							tmpVolumeSrc, err = filepath.EvalSymlinks(tmpVolumeSrc)
 							assert.Nil(err)
 
-							err = ioutil.WriteFile(filepath.Join(tmpVolumeSrc, "some-file"), []byte("some-content\n"), 0777)
+							err = os.WriteFile(filepath.Join(tmpVolumeSrc, "some-file"), []byte("some-content\n"), 0777)
 							assert.Nil(err)
 						})
 
@@ -1354,7 +1353,7 @@ func testAcceptance(
 
 							it.Before(func() {
 								var err error
-								tmpDir, err = ioutil.TempDir("", "archive-buildpack-tests-")
+								tmpDir, err = os.MkdirTemp("", "archive-buildpack-tests-")
 								assert.Nil(err)
 							})
 
@@ -1385,7 +1384,7 @@ func testAcceptance(
 
 							it.Before(func() {
 								var err error
-								tmpDir, err = ioutil.TempDir("", "folder-buildpack-tests-")
+								tmpDir, err = os.MkdirTemp("", "folder-buildpack-tests-")
 								assert.Nil(err)
 							})
 
@@ -1465,7 +1464,7 @@ func testAcceptance(
 
 							it.Before(func() {
 								var err error
-								tmpDir, err = ioutil.TempDir("", "package-file")
+								tmpDir, err = os.MkdirTemp("", "package-file")
 								assert.Nil(err)
 							})
 
@@ -1542,7 +1541,7 @@ func testAcceptance(
 						var envPath string
 
 						it.Before(func() {
-							envfile, err := ioutil.TempFile("", "envfile")
+							envfile, err := os.CreateTemp("", "envfile")
 							assert.Nil(err)
 							defer envfile.Close()
 
@@ -1910,7 +1909,7 @@ func testAcceptance(
 						it.Before(func() {
 							h.SkipIf(t, !pack.SupportsFeature(invoke.Cache), "")
 							cacheBindName := fmt.Sprintf("%s-bind", repoName)
-							bindCacheDir, err := ioutil.TempDir("", cacheBindName)
+							bindCacheDir, err := os.MkdirTemp("", cacheBindName)
 							assert.Nil(err)
 							cacheFlags = fmt.Sprintf("type=build;format=bind;source=%s", bindCacheDir)
 						})
@@ -1957,10 +1956,10 @@ func testAcceptance(
 								h.SkipIf(t, runtime.GOOS == "windows", "buildpack directories not supported on windows")
 
 								var err error
-								tempAppDir, err = ioutil.TempDir("", "descriptor-app")
+								tempAppDir, err = os.MkdirTemp("", "descriptor-app")
 								assert.Nil(err)
 
-								tempWorkingDir, err = ioutil.TempDir("", "descriptor-app")
+								tempWorkingDir, err = os.MkdirTemp("", "descriptor-app")
 								assert.Nil(err)
 
 								origWorkingDir, err = os.Getwd()
@@ -1979,14 +1978,14 @@ func testAcceptance(
 
 								err = os.Mkdir(filepath.Join(tempAppDir, "media"), 0755)
 								assert.Nil(err)
-								err = ioutil.WriteFile(filepath.Join(tempAppDir, "media", "mountain.jpg"), []byte("fake image bytes"), 0755)
+								err = os.WriteFile(filepath.Join(tempAppDir, "media", "mountain.jpg"), []byte("fake image bytes"), 0755)
 								assert.Nil(err)
-								err = ioutil.WriteFile(filepath.Join(tempAppDir, "media", "person.png"), []byte("fake image bytes"), 0755)
+								err = os.WriteFile(filepath.Join(tempAppDir, "media", "person.png"), []byte("fake image bytes"), 0755)
 								assert.Nil(err)
 
-								err = ioutil.WriteFile(filepath.Join(tempAppDir, "cookie.jar"), []byte("chocolate chip"), 0755)
+								err = os.WriteFile(filepath.Join(tempAppDir, "cookie.jar"), []byte("chocolate chip"), 0755)
 								assert.Nil(err)
-								err = ioutil.WriteFile(filepath.Join(tempAppDir, "test.sh"), []byte("echo test"), 0755)
+								err = os.WriteFile(filepath.Join(tempAppDir, "test.sh"), []byte("echo test"), 0755)
 								assert.Nil(err)
 
 								projectToml := `
@@ -2001,7 +2000,7 @@ exclude = [ "*.sh", "media/person.png", "descriptor-buildpack" ]
 uri = "descriptor-buildpack"
 `
 								excludeDescriptorPath := filepath.Join(tempAppDir, "project.toml")
-								err = ioutil.WriteFile(excludeDescriptorPath, []byte(projectToml), 0755)
+								err = os.WriteFile(excludeDescriptorPath, []byte(projectToml), 0755)
 								assert.Nil(err)
 
 								// set working dir to be outside of the app we are building
@@ -2033,7 +2032,7 @@ uri = "descriptor-buildpack"
 								buildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "descriptor-buildpack"), "./", 0755)
 
 								var err error
-								tempAppDir, err = ioutil.TempDir("", "descriptor-app")
+								tempAppDir, err = os.MkdirTemp("", "descriptor-app")
 								assert.Nil(err)
 
 								// Create test directories and files:
@@ -2053,32 +2052,32 @@ uri = "descriptor-buildpack"
 
 								err = os.Mkdir(filepath.Join(tempAppDir, "secrets"), 0755)
 								assert.Nil(err)
-								err = ioutil.WriteFile(filepath.Join(tempAppDir, "secrets", "api_keys.json"), []byte("{}"), 0755)
+								err = os.WriteFile(filepath.Join(tempAppDir, "secrets", "api_keys.json"), []byte("{}"), 0755)
 								assert.Nil(err)
-								err = ioutil.WriteFile(filepath.Join(tempAppDir, "secrets", "user_token"), []byte("token"), 0755)
+								err = os.WriteFile(filepath.Join(tempAppDir, "secrets", "user_token"), []byte("token"), 0755)
 								assert.Nil(err)
 
 								err = os.Mkdir(filepath.Join(tempAppDir, "nested"), 0755)
 								assert.Nil(err)
-								err = ioutil.WriteFile(filepath.Join(tempAppDir, "nested", "nested-cookie.jar"), []byte("chocolate chip"), 0755)
+								err = os.WriteFile(filepath.Join(tempAppDir, "nested", "nested-cookie.jar"), []byte("chocolate chip"), 0755)
 								assert.Nil(err)
 
-								err = ioutil.WriteFile(filepath.Join(tempAppDir, "other-cookie.jar"), []byte("chocolate chip"), 0755)
+								err = os.WriteFile(filepath.Join(tempAppDir, "other-cookie.jar"), []byte("chocolate chip"), 0755)
 								assert.Nil(err)
 
-								err = ioutil.WriteFile(filepath.Join(tempAppDir, "nested-cookie.jar"), []byte("chocolate chip"), 0755)
+								err = os.WriteFile(filepath.Join(tempAppDir, "nested-cookie.jar"), []byte("chocolate chip"), 0755)
 								assert.Nil(err)
 
 								err = os.Mkdir(filepath.Join(tempAppDir, "media"), 0755)
 								assert.Nil(err)
-								err = ioutil.WriteFile(filepath.Join(tempAppDir, "media", "mountain.jpg"), []byte("fake image bytes"), 0755)
+								err = os.WriteFile(filepath.Join(tempAppDir, "media", "mountain.jpg"), []byte("fake image bytes"), 0755)
 								assert.Nil(err)
-								err = ioutil.WriteFile(filepath.Join(tempAppDir, "media", "person.png"), []byte("fake image bytes"), 0755)
+								err = os.WriteFile(filepath.Join(tempAppDir, "media", "person.png"), []byte("fake image bytes"), 0755)
 								assert.Nil(err)
 
-								err = ioutil.WriteFile(filepath.Join(tempAppDir, "cookie.jar"), []byte("chocolate chip"), 0755)
+								err = os.WriteFile(filepath.Join(tempAppDir, "cookie.jar"), []byte("chocolate chip"), 0755)
 								assert.Nil(err)
-								err = ioutil.WriteFile(filepath.Join(tempAppDir, "test.sh"), []byte("echo test"), 0755)
+								err = os.WriteFile(filepath.Join(tempAppDir, "test.sh"), []byte("echo test"), 0755)
 								assert.Nil(err)
 							})
 
@@ -2096,7 +2095,7 @@ type = "MIT"
 exclude = [ "*.sh", "secrets/", "media/metadata", "/other-cookie.jar" ,"/nested-cookie.jar"]
 `
 								excludeDescriptorPath := filepath.Join(tempAppDir, "exclude.toml")
-								err := ioutil.WriteFile(excludeDescriptorPath, []byte(projectToml), 0755)
+								err := os.WriteFile(excludeDescriptorPath, []byte(projectToml), 0755)
 								assert.Nil(err)
 
 								output := pack.RunSuccessfully(
@@ -2127,7 +2126,7 @@ type = "MIT"
 include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 `
 								includeDescriptorPath := filepath.Join(tempAppDir, "include.toml")
-								err := ioutil.WriteFile(includeDescriptorPath, []byte(projectToml), 0755)
+								err := os.WriteFile(includeDescriptorPath, []byte(projectToml), 0755)
 								assert.Nil(err)
 
 								output := pack.RunSuccessfully(
@@ -2694,7 +2693,7 @@ func createComplexBuilder(t *testing.T,
 	t.Log("creating complex builder image...")
 
 	// CREATE TEMP WORKING DIR
-	tmpDir, err := ioutil.TempDir("", "create-complex-test-builder")
+	tmpDir, err := os.MkdirTemp("", "create-complex-test-builder")
 	if err != nil {
 		return "", err
 	}
@@ -2726,7 +2725,7 @@ func createComplexBuilder(t *testing.T,
 
 	fixtureManager := pack.FixtureManager()
 
-	nestedLevelOneConfigFile, err := ioutil.TempFile(tmpDir, "nested-level-1-package.toml")
+	nestedLevelOneConfigFile, err := os.CreateTemp(tmpDir, "nested-level-1-package.toml")
 	assert.Nil(err)
 	fixtureManager.TemplateFixtureToFile(
 		"nested-level-1-buildpack_package.toml",
@@ -2736,7 +2735,7 @@ func createComplexBuilder(t *testing.T,
 	err = nestedLevelOneConfigFile.Close()
 	assert.Nil(err)
 
-	nestedLevelTwoConfigFile, err := ioutil.TempFile(tmpDir, "nested-level-2-package.toml")
+	nestedLevelTwoConfigFile, err := os.CreateTemp(tmpDir, "nested-level-2-package.toml")
 	assert.Nil(err)
 	fixtureManager.TemplateFixtureToFile(
 		"nested-level-2-buildpack_package.toml",
@@ -2803,7 +2802,7 @@ func createComplexBuilder(t *testing.T,
 	}
 
 	// RENDER builder.toml
-	builderConfigFile, err := ioutil.TempFile(tmpDir, "nested_builder.toml")
+	builderConfigFile, err := os.CreateTemp(tmpDir, "nested_builder.toml")
 	if err != nil {
 		return "", err
 	}
@@ -2842,7 +2841,7 @@ func createBuilder(
 	t.Log("creating builder image...")
 
 	// CREATE TEMP WORKING DIR
-	tmpDir, err := ioutil.TempDir("", "create-test-builder")
+	tmpDir, err := os.MkdirTemp("", "create-test-builder")
 	assert.Nil(err)
 	defer os.RemoveAll(tmpDir)
 
@@ -2894,7 +2893,7 @@ func createBuilder(
 	// RENDER builder.toml
 	configFileName := "builder.toml"
 
-	builderConfigFile, err := ioutil.TempFile(tmpDir, "builder.toml")
+	builderConfigFile, err := os.CreateTemp(tmpDir, "builder.toml")
 	assert.Nil(err)
 
 	pack.FixtureManager().TemplateFixtureToFile(
@@ -2933,7 +2932,7 @@ func createBuilderWithExtensions(
 	t.Log("creating builder image with extensions...")
 
 	// CREATE TEMP WORKING DIR
-	tmpDir, err := ioutil.TempDir("", "create-test-builder-extensions")
+	tmpDir, err := os.MkdirTemp("", "create-test-builder-extensions")
 	assert.Nil(err)
 	defer os.RemoveAll(tmpDir)
 
@@ -2971,7 +2970,7 @@ func createBuilderWithExtensions(
 	// RENDER builder.toml
 	configFileName := "builder_extensions.toml"
 
-	builderConfigFile, err := ioutil.TempFile(tmpDir, "builder.toml")
+	builderConfigFile, err := os.CreateTemp(tmpDir, "builder.toml")
 	assert.Nil(err)
 
 	pack.FixtureManager().TemplateFixtureToFile(
@@ -3012,7 +3011,7 @@ func generatePackageTomlWithOS(
 ) string {
 	t.Helper()
 
-	packageTomlFile, err := ioutil.TempFile(tmpDir, "package-*.toml")
+	packageTomlFile, err := os.CreateTemp(tmpDir, "package-*.toml")
 	assert.Nil(err)
 
 	pack.FixtureManager().TemplateFixtureToFile(

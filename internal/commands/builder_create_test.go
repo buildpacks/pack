@@ -2,7 +2,7 @@ package commands_test
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -66,7 +66,7 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		var err error
-		tmpDir, err = ioutil.TempDir("", "create-builder-test")
+		tmpDir, err = os.MkdirTemp("", "create-builder-test")
 		h.AssertNil(t, err)
 		builderConfigPath = filepath.Join(tmpDir, "builder.toml")
 		cfg = config.Config{}
@@ -137,7 +137,7 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("warnings encountered in builder.toml", func() {
 			it.Before(func() {
-				h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
+				h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(`
 [[buildpacks]]
   id = "some.buildpack"
 `), 0666))
@@ -158,7 +158,7 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("uses --builder-config", func() {
 			it.Before(func() {
-				h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(validConfig), 0666))
+				h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(validConfig), 0666))
 			})
 
 			it("errors with a descriptive message", func() {
@@ -181,7 +181,7 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("builder config has extensions but experimental isn't set in the config", func() {
 			it.Before(func() {
-				h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(validConfigWithExtensions), 0666))
+				h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(validConfigWithExtensions), 0666))
 			})
 
 			it("errors", func() {
