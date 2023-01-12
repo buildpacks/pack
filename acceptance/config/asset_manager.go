@@ -5,7 +5,6 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -248,7 +247,7 @@ func (b assetManagerBuilder) ensurePreviousPackFixtures() string {
 	sourceDir, err := b.githubAssetFetcher.FetchReleaseSource("buildpacks", "pack", version)
 	b.assert.Nil(err)
 
-	sourceDirFiles, err := ioutil.ReadDir(sourceDir)
+	sourceDirFiles, err := os.ReadDir(sourceDir)
 	b.assert.Nil(err)
 	// GitHub source tarballs have a top-level directory whose name includes the current commit sha.
 	innerDir := sourceDirFiles[0].Name()
@@ -346,7 +345,7 @@ func (b assetManagerBuilder) downloadLifecycleRelative(relativeVersion int) stri
 func (b assetManagerBuilder) buildPack(compileVersion string) string {
 	b.testObject.Helper()
 
-	packTmpDir, err := ioutil.TempDir("", "pack.acceptance.binary.")
+	packTmpDir, err := os.MkdirTemp("", "pack.acceptance.binary.")
 	b.assert.Nil(err)
 
 	packPath := filepath.Join(packTmpDir, acceptanceOS.PackBinaryName)

@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -330,7 +329,7 @@ func (f *GithubAssetFetcher) loadCacheManifest() (assetCache, error) {
 		return assetCache{}, nil
 	}
 
-	content, err := ioutil.ReadFile(filepath.Join(f.cacheDir, assetCacheManifest))
+	content, err := os.ReadFile(filepath.Join(f.cacheDir, assetCacheManifest))
 	if err != nil {
 		return nil, errors.Wrap(err, "reading cache manifest")
 	}
@@ -371,7 +370,7 @@ func (f *GithubAssetFetcher) writeCacheManifest(owner, repo string, op func(cach
 		return errors.Wrap(err, "marshaling cache manifest content")
 	}
 
-	return ioutil.WriteFile(filepath.Join(f.cacheDir, assetCacheManifest), content, 0644)
+	return os.WriteFile(filepath.Join(f.cacheDir, assetCacheManifest), content, 0644)
 }
 
 func (f *GithubAssetFetcher) downloadAndSave(assetURI, destPath string) error {

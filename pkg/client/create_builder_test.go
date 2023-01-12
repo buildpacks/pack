@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -178,7 +177,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				PullPolicy: image.PullAlways,
 			}
 
-			tmpDir, err = ioutil.TempDir("", "create-builder-test")
+			tmpDir, err = os.MkdirTemp("", "create-builder-test")
 			h.AssertNil(t, err)
 		})
 

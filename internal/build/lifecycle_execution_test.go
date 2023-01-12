@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -95,7 +94,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		// GGCR resolves the default keychain by inspecting DOCKER_CONFIG - this is used by the Analyze step
 		// when constructing the auth config (see `auth.BuildEnvVar` in phases.go).
 		var err error
-		dockerConfigDir, err = ioutil.TempDir("", "empty-docker-config-dir")
+		dockerConfigDir, err = os.MkdirTemp("", "empty-docker-config-dir")
 		h.AssertNil(t, err)
 		h.AssertNil(t, os.Setenv("DOCKER_CONFIG", dockerConfigDir))
 

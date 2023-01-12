@@ -2,7 +2,6 @@ package registry_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,7 +33,7 @@ func testGit(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 
-		tmpDir, err = ioutil.TempDir("", "registry")
+		tmpDir, err = os.MkdirTemp("", "registry")
 		h.AssertNil(t, err)
 
 		registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("..", "..", "testdata", "registry"))

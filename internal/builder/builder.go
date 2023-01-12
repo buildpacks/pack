@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -310,7 +309,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		logger.Debugf("-> %s", style.Symbol(bpInfo.FullName()))
 	}
 
-	tmpDir, err := ioutil.TempDir("", "create-builder-scratch")
+	tmpDir, err := os.MkdirTemp("", "create-builder-scratch")
 	if err != nil {
 		return err
 	}
@@ -808,7 +807,7 @@ func (b *Builder) embedLifecycleTar(tw archive.TarWriter) error {
 				return errors.Wrapf(err, "failed to write header for '%s'", header.Name)
 			}
 
-			buf, err := ioutil.ReadAll(tr)
+			buf, err := io.ReadAll(tr)
 			if err != nil {
 				return errors.Wrapf(err, "failed to read contents of '%s'", header.Name)
 			}

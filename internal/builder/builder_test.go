@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -66,7 +65,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			".", 0, 0, 0755, true, false, nil,
 		)
 
-		descriptorContents, err := ioutil.ReadFile(filepath.Join("testdata", "lifecycle", "platform-0.4", "lifecycle.toml"))
+		descriptorContents, err := os.ReadFile(filepath.Join("testdata", "lifecycle", "platform-0.4", "lifecycle.toml"))
 		h.AssertNil(t, err)
 
 		lifecycleDescriptor, err := builder.ParseDescriptor(string(descriptorContents))
@@ -427,7 +426,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not overwrite the order layer when SetOrder has not been called", func() {
-				tmpDir, err := ioutil.TempDir("", "")
+				tmpDir, err := os.MkdirTemp("", "")
 				h.AssertNil(t, err)
 				defer os.RemoveAll(tmpDir)
 

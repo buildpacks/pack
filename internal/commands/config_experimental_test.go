@@ -3,7 +3,6 @@ package commands_test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -39,7 +38,7 @@ func testConfigExperimental(t *testing.T, when spec.G, it spec.S) {
 		var err error
 
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
-		tempPackHome, err = ioutil.TempDir("", "pack-home")
+		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
 

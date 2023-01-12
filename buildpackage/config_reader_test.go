@@ -1,7 +1,6 @@
 package buildpackage_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,7 +25,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			tmpDir, err = ioutil.TempDir("", "buildpackage-config-test")
+			tmpDir, err = os.MkdirTemp("", "buildpackage-config-test")
 			h.AssertNil(t, err)
 		})
 
@@ -37,7 +36,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 		it("returns correct config when provided toml file is valid", func() {
 			configFile := filepath.Join(tmpDir, "package.toml")
 
-			err := ioutil.WriteFile(configFile, []byte(validPackageToml), os.ModePerm)
+			err := os.WriteFile(configFile, []byte(validPackageToml), os.ModePerm)
 			h.AssertNil(t, err)
 
 			packageConfigReader := buildpackage.NewConfigReader()
@@ -54,7 +53,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 		it("returns a config with 'linux' as default when platform is missing", func() {
 			configFile := filepath.Join(tmpDir, "package.toml")
 
-			err := ioutil.WriteFile(configFile, []byte(validPackageWithoutPlatformToml), os.ModePerm)
+			err := os.WriteFile(configFile, []byte(validPackageWithoutPlatformToml), os.ModePerm)
 			h.AssertNil(t, err)
 
 			packageConfigReader := buildpackage.NewConfigReader()
@@ -68,7 +67,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 		it("returns an error when toml decode fails", func() {
 			configFile := filepath.Join(tmpDir, "package.toml")
 
-			err := ioutil.WriteFile(configFile, []byte(brokenPackageToml), os.ModePerm)
+			err := os.WriteFile(configFile, []byte(brokenPackageToml), os.ModePerm)
 			h.AssertNil(t, err)
 
 			packageConfigReader := buildpackage.NewConfigReader()
@@ -82,7 +81,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 		it("returns an error when buildpack uri is invalid", func() {
 			configFile := filepath.Join(tmpDir, "package.toml")
 
-			err := ioutil.WriteFile(configFile, []byte(invalidBPURIPackageToml), os.ModePerm)
+			err := os.WriteFile(configFile, []byte(invalidBPURIPackageToml), os.ModePerm)
 			h.AssertNil(t, err)
 
 			packageConfigReader := buildpackage.NewConfigReader()
@@ -96,7 +95,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 		it("returns an error when platform os is invalid", func() {
 			configFile := filepath.Join(tmpDir, "package.toml")
 
-			err := ioutil.WriteFile(configFile, []byte(invalidPlatformOSPackageToml), os.ModePerm)
+			err := os.WriteFile(configFile, []byte(invalidPlatformOSPackageToml), os.ModePerm)
 			h.AssertNil(t, err)
 
 			packageConfigReader := buildpackage.NewConfigReader()
@@ -110,7 +109,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 		it("returns an error when dependency uri is invalid", func() {
 			configFile := filepath.Join(tmpDir, "package.toml")
 
-			err := ioutil.WriteFile(configFile, []byte(invalidDepURIPackageToml), os.ModePerm)
+			err := os.WriteFile(configFile, []byte(invalidDepURIPackageToml), os.ModePerm)
 			h.AssertNil(t, err)
 
 			packageConfigReader := buildpackage.NewConfigReader()
@@ -124,7 +123,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 		it("returns an error when unknown array table is present", func() {
 			configFile := filepath.Join(tmpDir, "package.toml")
 
-			err := ioutil.WriteFile(configFile, []byte(invalidDepTablePackageToml), os.ModePerm)
+			err := os.WriteFile(configFile, []byte(invalidDepTablePackageToml), os.ModePerm)
 			h.AssertNil(t, err)
 
 			packageConfigReader := buildpackage.NewConfigReader()
@@ -140,7 +139,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 		it("returns an error when unknown buildpack key is present", func() {
 			configFile := filepath.Join(tmpDir, "package.toml")
 
-			err := ioutil.WriteFile(configFile, []byte(unknownBPKeyPackageToml), os.ModePerm)
+			err := os.WriteFile(configFile, []byte(unknownBPKeyPackageToml), os.ModePerm)
 			h.AssertNil(t, err)
 
 			packageConfigReader := buildpackage.NewConfigReader()
@@ -155,7 +154,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 		it("returns an error when multiple unknown keys are present", func() {
 			configFile := filepath.Join(tmpDir, "package.toml")
 
-			err := ioutil.WriteFile(configFile, []byte(multipleUnknownKeysPackageToml), os.ModePerm)
+			err := os.WriteFile(configFile, []byte(multipleUnknownKeysPackageToml), os.ModePerm)
 			h.AssertNil(t, err)
 
 			packageConfigReader := buildpackage.NewConfigReader()
@@ -171,7 +170,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 		it("returns an error when both dependency options are configured", func() {
 			configFile := filepath.Join(tmpDir, "package.toml")
 
-			err := ioutil.WriteFile(configFile, []byte(conflictingDependencyKeysPackageToml), os.ModePerm)
+			err := os.WriteFile(configFile, []byte(conflictingDependencyKeysPackageToml), os.ModePerm)
 			h.AssertNil(t, err)
 
 			packageConfigReader := buildpackage.NewConfigReader()
@@ -184,7 +183,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 		it("returns an error no buildpack is configured", func() {
 			configFile := filepath.Join(tmpDir, "package.toml")
 
-			err := ioutil.WriteFile(configFile, []byte(missingBuildpackPackageToml), os.ModePerm)
+			err := os.WriteFile(configFile, []byte(missingBuildpackPackageToml), os.ModePerm)
 			h.AssertNil(t, err)
 
 			packageConfigReader := buildpackage.NewConfigReader()

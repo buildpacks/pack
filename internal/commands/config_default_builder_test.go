@@ -3,7 +3,6 @@ package commands_test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -46,7 +45,7 @@ func testConfigDefaultBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
-		tempPackHome, err = ioutil.TempDir("", "pack-home")
+		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
 		cmd = commands.ConfigDefaultBuilder(logger, config.Config{}, configPath, mockClient)
@@ -95,7 +94,7 @@ func testConfigDefaultBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("gives clear error if unable to write to config", func() {
-				h.AssertNil(t, ioutil.WriteFile(configPath, []byte("some-data"), 0001))
+				h.AssertNil(t, os.WriteFile(configPath, []byte("some-data"), 0001))
 				cmd = commands.ConfigDefaultBuilder(logger, config.Config{DefaultBuilder: "some/builder"}, configPath, mockClient)
 				cmd.SetArgs([]string{"--unset"})
 				err := cmd.Execute()
@@ -123,7 +122,7 @@ func testConfigDefaultBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("gives clear error if unable to write to config", func() {
-						h.AssertNil(t, ioutil.WriteFile(configPath, []byte("some-data"), 0001))
+						h.AssertNil(t, os.WriteFile(configPath, []byte("some-data"), 0001))
 						mockClient.EXPECT().InspectBuilder(imageName, true).Return(&client.BuilderInfo{
 							Stack: "test.stack.id",
 						}, nil)

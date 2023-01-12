@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"os"
@@ -85,7 +84,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		fakeImageFetcher = ifakes.NewFakeImageFetcher()
 		fakeLifecycle = &ifakes.FakeLifecycle{}
 
-		tmpDir, err = ioutil.TempDir("", "build-test")
+		tmpDir, err = os.MkdirTemp("", "build-test")
 		h.AssertNil(t, err)
 
 		defaultBuilderImage = newFakeBuilderImage(t, tmpDir, defaultBuilderName, defaultBuilderStackID, defaultRunImageName, builder.DefaultLifecycleVersion, newLinuxImage)
@@ -130,7 +129,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 
-		dlCacheDir, err := ioutil.TempDir(tmpDir, "dl-cache")
+		dlCacheDir, err := os.MkdirTemp(tmpDir, "dl-cache")
 		h.AssertNil(t, err)
 
 		blobDownloader := blob.NewDownloader(logger, dlCacheDir)
@@ -355,7 +354,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				)
 
 				it.Before(func() {
-					tmpDir, err = ioutil.TempDir("", "build-symlink-test")
+					tmpDir, err = os.MkdirTemp("", "build-symlink-test")
 					h.AssertNil(t, err)
 
 					appDirPath := filepath.Join(tmpDir, appDirName)
@@ -1302,7 +1301,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					it.Before(func() {
 						var err error
-						tmpDir, err = ioutil.TempDir("", "project-desc")
+						tmpDir, err = os.MkdirTemp("", "project-desc")
 						h.AssertNil(t, err)
 					})
 
@@ -1460,7 +1459,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					it.Before(func() {
 						var err error
-						tmpDir, err = ioutil.TempDir("", "registry")
+						tmpDir, err = os.MkdirTemp("", "registry")
 						h.AssertNil(t, err)
 
 						packHome = filepath.Join(tmpDir, ".pack")
@@ -2317,7 +2316,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 				when("linux container", func() {
 					it("drive is transformed", func() {
-						dir, _ := ioutil.TempDir("", "pack-test-mount")
+						dir, _ := os.MkdirTemp("", "pack-test-mount")
 						volume := fmt.Sprintf("%v:/x", dir)
 						err := subject.Build(context.TODO(), BuildOptions{
 							Image:   "some/app",
@@ -2386,7 +2385,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 				when("windows container", func() {
 					it("drive is mounted", func() {
-						dir, _ := ioutil.TempDir("", "pack-test-mount")
+						dir, _ := os.MkdirTemp("", "pack-test-mount")
 						volume := fmt.Sprintf("%v:c:\\x", dir)
 						err := subject.Build(context.TODO(), BuildOptions{
 							Image:   "some/app",

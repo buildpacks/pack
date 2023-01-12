@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/buildpacks/imgutil/layer"
@@ -161,7 +160,7 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 		return errors.Wrap(err, "creating layout image")
 	}
 
-	tmpDir, err := ioutil.TempDir("", "package-buildpack")
+	tmpDir, err := os.MkdirTemp("", "package-buildpack")
 	if err != nil {
 		return err
 	}
@@ -171,7 +170,7 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 		return err
 	}
 
-	layoutDir, err := ioutil.TempDir(tmpDir, "oci-layout")
+	layoutDir, err := os.MkdirTemp(tmpDir, "oci-layout")
 	if err != nil {
 		return errors.Wrap(err, "creating oci-layout temp dir")
 	}
@@ -241,7 +240,7 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS stri
 		return nil, errors.Wrapf(err, "creating image")
 	}
 
-	tmpDir, err := ioutil.TempDir("", "package-buildpack")
+	tmpDir, err := os.MkdirTemp("", "package-buildpack")
 	if err != nil {
 		return nil, err
 	}

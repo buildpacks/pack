@@ -3,7 +3,6 @@ package builder_test
 import (
 	"archive/tar"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -58,10 +57,10 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				var err error
-				tmpDir, err = ioutil.TempDir("", "lifecycle")
+				tmpDir, err = os.MkdirTemp("", "lifecycle")
 				h.AssertNil(t, err)
 
-				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "lifecycle.toml"), []byte(`
+				h.AssertNil(t, os.WriteFile(filepath.Join(tmpDir, "lifecycle.toml"), []byte(`
 [api]
   platform "0.1"
 `), 0711))
@@ -82,10 +81,10 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				var err error
-				tmpDir, err = ioutil.TempDir("", "")
+				tmpDir, err = os.MkdirTemp("", "")
 				h.AssertNil(t, err)
 
-				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "lifecycle.toml"), []byte(`
+				h.AssertNil(t, os.WriteFile(filepath.Join(tmpDir, "lifecycle.toml"), []byte(`
 [api]
   platform = "0.2"
   buildpack = "0.3"
@@ -95,9 +94,9 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 `), os.ModePerm))
 
 				h.AssertNil(t, os.Mkdir(filepath.Join(tmpDir, "lifecycle"), os.ModePerm))
-				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "lifecycle", "analyzer"), []byte("content"), os.ModePerm))
-				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "lifecycle", "detector"), []byte("content"), os.ModePerm))
-				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "lifecycle", "builder"), []byte("content"), os.ModePerm))
+				h.AssertNil(t, os.WriteFile(filepath.Join(tmpDir, "lifecycle", "analyzer"), []byte("content"), os.ModePerm))
+				h.AssertNil(t, os.WriteFile(filepath.Join(tmpDir, "lifecycle", "detector"), []byte("content"), os.ModePerm))
+				h.AssertNil(t, os.WriteFile(filepath.Join(tmpDir, "lifecycle", "builder"), []byte("content"), os.ModePerm))
 			})
 
 			it.After(func() {

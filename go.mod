@@ -124,7 +124,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-go 1.18
+go 1.19
 
 // Ensure compatibility with lifecycle/kaniko; match dependencies configured in:
 // https://github.com/GoogleContainerTools/kaniko/blob/f9aaa9fca7bf4077778ed527c1a8a6e09e60c53c/go.mod (v1.9.1)

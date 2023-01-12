@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -50,16 +49,15 @@ const (
 // Implementations of the Lifecycle must execute the following phases by calling the
 // phase-specific lifecycle binary in order:
 //
-//  Detection:         /cnb/lifecycle/detector
-//  Analysis:          /cnb/lifecycle/analyzer
-//  Cache Restoration: /cnb/lifecycle/restorer
-//  Build:             /cnb/lifecycle/builder
-//  Export:            /cnb/lifecycle/exporter
+//	Detection:         /cnb/lifecycle/detector
+//	Analysis:          /cnb/lifecycle/analyzer
+//	Cache Restoration: /cnb/lifecycle/restorer
+//	Build:             /cnb/lifecycle/builder
+//	Export:            /cnb/lifecycle/exporter
 //
 // or invoke the single creator binary:
 //
-//  Creator:            /cnb/lifecycle/creator
-//
+//	Creator:            /cnb/lifecycle/creator
 type LifecycleExecutor interface {
 	// Execute is responsible for invoking each of these binaries
 	// with the desired configuration.
@@ -666,45 +664,45 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 //
 // Visual examples:
 //
-// 	BUILDER ORDER
-// 	----------
-//  - group:
-//		- A
-//		- B
-//  - group:
-//		- A
+//		BUILDER ORDER
+//		----------
+//	 - group:
+//			- A
+//			- B
+//	 - group:
+//			- A
 //
-//	WITH DECLARED: "from=builder", X
-// 	----------
-// 	- group:
-//		- A
-//		- B
-//		- X
-// 	 - group:
-//		- A
-//		- X
+//		WITH DECLARED: "from=builder", X
+//		----------
+//		- group:
+//			- A
+//			- B
+//			- X
+//		 - group:
+//			- A
+//			- X
 //
-//	WITH DECLARED: X, "from=builder", Y
-// 	----------
-// 	- group:
-//		- X
-//		- A
-//		- B
-//      - Y
-// 	- group:
-//		- X
-//		- A
-//      - Y
+//		WITH DECLARED: X, "from=builder", Y
+//		----------
+//		- group:
+//			- X
+//			- A
+//			- B
+//	     - Y
+//		- group:
+//			- X
+//			- A
+//	     - Y
 //
-//	WITH DECLARED: X
-// 	----------
-//	- group:
-//		- X
+//		WITH DECLARED: X
+//		----------
+//		- group:
+//			- X
 //
-//	WITH DECLARED: A
-// 	----------
-// 	- group:
-//		- A
+//		WITH DECLARED: A
+//		----------
+//		- group:
+//			- A
 func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedBPs []buildpack.BuildModule, order dist.Order, err error) {
 	pullPolicy := opts.PullPolicy
 	publish := opts.Publish
@@ -916,7 +914,7 @@ func parseDigestFromImageID(id imgutil.Identifier) string {
 }
 
 func createInlineBuildpack(bp projectTypes.Buildpack, stackID string) (string, error) {
-	pathToInlineBuilpack, err := ioutil.TempDir("", "inline-cnb")
+	pathToInlineBuilpack, err := os.MkdirTemp("", "inline-cnb")
 	if err != nil {
 		return pathToInlineBuilpack, err
 	}

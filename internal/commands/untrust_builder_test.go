@@ -3,7 +3,6 @@ package commands_test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -39,7 +38,7 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 
-		tempPackHome, err = ioutil.TempDir("", "pack-home")
+		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
 		configManager = newConfigManager(t, configPath)
@@ -73,7 +72,7 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertNil(t, command.Execute())
 
-				b, err := ioutil.ReadFile(configPath)
+				b, err := os.ReadFile(configPath)
 				h.AssertNil(t, err)
 				h.AssertNotContains(t, string(b), builderName)
 
@@ -93,7 +92,7 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertNil(t, command.Execute())
 
-				b, err := ioutil.ReadFile(configPath)
+				b, err := os.ReadFile(configPath)
 				h.AssertNil(t, err)
 				h.AssertContains(t, string(b), stillTrustedBuilder)
 				h.AssertNotContains(t, string(b), untrustBuilder)
@@ -111,7 +110,7 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertNil(t, command.Execute())
 
-				b, err := ioutil.ReadFile(configPath)
+				b, err := os.ReadFile(configPath)
 				h.AssertNil(t, err)
 				h.AssertContains(t, string(b), stillTrustedBuilder)
 				h.AssertNotContains(t, string(b), neverTrustedBuilder)

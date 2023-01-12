@@ -6,7 +6,6 @@ package invoke
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -45,7 +44,7 @@ func NewPackInvoker(
 
 	testObject.Helper()
 
-	home, err := ioutil.TempDir("", "buildpack.pack.home.")
+	home, err := os.MkdirTemp("", "buildpack.pack.home.")
 	if err != nil {
 		testObject.Fatalf("couldn't create home folder for pack: %s", err)
 	}
@@ -267,7 +266,7 @@ func (i *PackInvoker) atLeast(version string) bool {
 func (i *PackInvoker) ConfigFileContents() string {
 	i.testObject.Helper()
 
-	contents, err := ioutil.ReadFile(filepath.Join(i.home, "config.toml"))
+	contents, err := os.ReadFile(filepath.Join(i.home, "config.toml"))
 	i.assert.Nil(err)
 
 	return string(contents)

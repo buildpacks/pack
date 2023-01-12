@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"runtime"
 
@@ -157,7 +156,7 @@ func copyDirWindows(ctx context.Context, ctrClient client.CommonAPIClient, conta
 		ctrClient,
 		ctr.ID,
 		container.DefaultHandler(
-			ioutil.Discard, // Suppress xcopy output
+			io.Discard, // Suppress xcopy output
 			stderr,
 		),
 	)
@@ -307,7 +306,7 @@ func EnsureVolumeAccess(uid, gid int, os string, volumeNames ...string) Containe
 			ctrClient,
 			ctr.ID,
 			container.DefaultHandler(
-				ioutil.Discard, // Suppress icacls output
+				io.Discard, // Suppress icacls output
 				stderr,
 			),
 		)

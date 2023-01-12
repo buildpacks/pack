@@ -1,7 +1,7 @@
 package name_test
 
 import (
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/sclevine/spec"
@@ -19,7 +19,7 @@ func TestTranslateRegistry(t *testing.T) {
 func testTranslateRegistry(t *testing.T, when spec.G, it spec.S) {
 	var (
 		assert = h.NewAssertionManager(t)
-		logger = logging.NewSimpleLogger(ioutil.Discard)
+		logger = logging.NewSimpleLogger(io.Discard)
 	)
 
 	when("#TranslateRegistry", func() {

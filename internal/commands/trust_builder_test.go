@@ -2,7 +2,6 @@ package commands_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -37,7 +36,7 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		var err error
 
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
-		tempPackHome, err = ioutil.TempDir("", "pack-home")
+		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
 		command = commands.TrustBuilder(logger, config.Config{}, configPath)
@@ -61,7 +60,7 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 					command.SetArgs([]string{"some-builder"})
 					h.AssertNil(t, command.Execute())
 
-					b, err := ioutil.ReadFile(configPath)
+					b, err := os.ReadFile(configPath)
 					h.AssertNil(t, err)
 					h.AssertContains(t, string(b), `[[trusted-builders]]
   name = "some-builder"`)
@@ -72,13 +71,13 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				it("does nothing", func() {
 					command.SetArgs([]string{"some-already-trusted-builder"})
 					h.AssertNil(t, command.Execute())
-					oldContents, err := ioutil.ReadFile(configPath)
+					oldContents, err := os.ReadFile(configPath)
 					h.AssertNil(t, err)
 
 					command.SetArgs([]string{"some-already-trusted-builder"})
 					h.AssertNil(t, command.Execute())
 
-					newContents, err := ioutil.ReadFile(configPath)
+					newContents, err := os.ReadFile(configPath)
 					h.AssertNil(t, err)
 					h.AssertEq(t, newContents, oldContents)
 				})
@@ -86,11 +85,11 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 			when("builder is a suggested builder", func() {
 				it("does nothing", func() {
-					h.AssertNil(t, ioutil.WriteFile(configPath, []byte(""), os.ModePerm))
+					h.AssertNil(t, os.WriteFile(configPath, []byte(""), os.ModePerm))
 
 					command.SetArgs([]string{"paketobuildpacks/builder:base"})
 					h.AssertNil(t, command.Execute())
-					oldContents, err := ioutil.ReadFile(configPath)
+					oldContents, err := os.ReadFile(configPath)
 					h.AssertNil(t, err)
 					h.AssertEq(t, string(oldContents), "")
 				})

@@ -3,7 +3,6 @@ package buildpack_test
 import (
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -32,7 +31,7 @@ func testBuildpack(t *testing.T, when spec.G, it spec.S) {
 		bpReader, err := bp.Open()
 		h.AssertNil(t, err)
 
-		tmpDir, err := ioutil.TempDir("", "")
+		tmpDir, err := os.MkdirTemp("", "")
 		h.AssertNil(t, err)
 
 		p := filepath.Join(tmpDir, "bp.tar")
@@ -173,7 +172,7 @@ id = "some.stack.id"
 			bpReader, err := bp.Open()
 			h.AssertNil(t, err)
 
-			_, err = io.Copy(ioutil.Discard, bpReader)
+			_, err = io.Copy(io.Discard, bpReader)
 			h.AssertError(t, err, "error from errBlob")
 		})
 
