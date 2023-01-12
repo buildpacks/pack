@@ -24,18 +24,18 @@ func ExtensionInspect(logger logging.Logger, cfg config.Config, client PackClien
 			extensionName := args[0]
 			registry := flags.Registry
 			if registry == "" {
-				//fix registry for extension
+				// fix registry for extension
 			}
 
 			return extensionInspect(logger, extensionName, registry, flags, cfg, client)
 		}),
 	}
-    //flags will be added here
+	// flags will be added here
 	AddHelpFlag(cmd, "inspect")
 	return cmd
 }
 
 func extensionInspect(logger logging.Logger, extensionName, registry string, flags ExtensionInspectFlags, cfg config.Config, client PackClient) error {
-//logic to inspect extension
-return nil
+	// logic to inspect extension
+	return nil
 }

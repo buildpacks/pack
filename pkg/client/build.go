@@ -668,45 +668,45 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 //
 // Visual examples:
 //
-// 	BUILDER ORDER
-// 	----------
-//  - group:
-//		- A
-//		- B
-//  - group:
-//		- A
+//		BUILDER ORDER
+//		----------
+//	 - group:
+//			- A
+//			- B
+//	 - group:
+//			- A
 //
-//	WITH DECLARED: "from=builder", X
-// 	----------
-// 	- group:
-//		- A
-//		- B
-//		- X
-// 	 - group:
-//		- A
-//		- X
+//		WITH DECLARED: "from=builder", X
+//		----------
+//		- group:
+//			- A
+//			- B
+//			- X
+//		 - group:
+//			- A
+//			- X
 //
-//	WITH DECLARED: X, "from=builder", Y
-// 	----------
-// 	- group:
-//		- X
-//		- A
-//		- B
-//      - Y
-// 	- group:
-//		- X
-//		- A
-//      - Y
+//		WITH DECLARED: X, "from=builder", Y
+//		----------
+//		- group:
+//			- X
+//			- A
+//			- B
+//	     - Y
+//		- group:
+//			- X
+//			- A
+//	     - Y
 //
-//	WITH DECLARED: X
-// 	----------
-//	- group:
-//		- X
+//		WITH DECLARED: X
+//		----------
+//		- group:
+//			- X
 //
-//	WITH DECLARED: A
-// 	----------
-// 	- group:
-//		- A
+//		WITH DECLARED: A
+//		----------
+//		- group:
+//			- A
 func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedBPs []buildpack.BuildModule, order dist.Order, err error) {
 	pullPolicy := opts.PullPolicy
 	publish := opts.Publish
