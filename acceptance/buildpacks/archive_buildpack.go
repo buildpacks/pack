@@ -7,7 +7,6 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -54,7 +53,7 @@ func (a archiveBuildModule) FullPathIn(parentFolder string) string {
 }
 
 func (a archiveBuildModule) createTgz(sourceDir string) (string, error) {
-	tempFile, err := ioutil.TempFile("", "*.tgz")
+	tempFile, err := os.CreateTemp("", "*.tgz")
 	if err != nil {
 		return "", errors.Wrap(err, "creating temporary archive")
 	}

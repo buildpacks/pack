@@ -2,7 +2,6 @@ package commands_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,7 +34,7 @@ func testSetRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		cfg = config.Config{}
 		var err error
-		tempPackHome, err = ioutil.TempDir("", "pack-home")
+		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		h.AssertNil(t, err)
 		cfgPath = filepath.Join(tempPackHome, "config.toml")
 

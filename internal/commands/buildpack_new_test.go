@@ -2,7 +2,6 @@ package commands_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -40,7 +39,7 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		var err error
-		tmpDir, err = ioutil.TempDir("", "build-test")
+		tmpDir, err = os.MkdirTemp("", "build-test")
 		h.AssertNil(t, err)
 
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -281,30 +280,30 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			defer cleanupContainer(ctx, ctr.ID)
 
 			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), containerDir, 123, 456, osType, false, nil)
-			err = copyDirOp(ctrClient, ctx, ctr.ID, ioutil.Discard, ioutil.Discard)
+			err = copyDirOp(ctrClient, ctx, ctr.ID, io.Discard, io.Discard)
 			h.AssertNil(t, err)
 
-			tarDestination, err := ioutil.TempFile("", "pack.container.ops.test.")
+			tarDestination, err := os.CreateTemp("", "pack.container.ops.test.")
 			h.AssertNil(t, err)
 			defer os.RemoveAll(tarDestination.Name())
 
 			handler := func(reader io.ReadCloser) error {
 				defer reader.Close()
 
-				contents, err := ioutil.ReadAll(reader)
+				contents, err := io.ReadAll(reader)
 				h.AssertNil(t, err)
 
-				err = ioutil.WriteFile(tarDestination.Name(), contents, 0600)
+				err = os.WriteFile(tarDestination.Name(), contents, 0600)
 				h.AssertNil(t, err)
 
 				return nil
 			}
 
 			copyOutDirsOp := build.CopyOut(handler, containerDir)
-			err = copyOutDirsOp(ctrClient, ctx, ctr.ID, ioutil.Discard, ioutil.Discard)
+			err = copyOutDirsOp(ctrClient, ctx, ctr.ID, io.Discard, io.Discard)
 			h.AssertNil(t, err)
 
-			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(ioutil.Discard, ioutil.Discard))
+			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(io.Discard, io.Discard))
 			h.AssertNil(t, err)
 
 			separator := "/"

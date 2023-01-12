@@ -2,7 +2,6 @@ package commands_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,7 +38,7 @@ func testConfigPullPolicyCommand(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
-		tempPackHome, err = ioutil.TempDir("", "pack-home")
+		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		h.AssertNil(t, err)
 		configFile = filepath.Join(tempPackHome, "config.toml")
 
@@ -154,7 +153,7 @@ func testConfigPullPolicyCommand(t *testing.T, when spec.G, it spec.S) {
 					assert.Equal(readCfg.PullPolicy, "never")
 				})
 				it("returns clear error if fails to write", func() {
-					assert.Nil(ioutil.WriteFile(configFile, []byte("something"), 0001))
+					assert.Nil(os.WriteFile(configFile, []byte("something"), 0001))
 					command := commands.ConfigPullPolicy(logger, cfg, configFile)
 					command.SetArgs([]string{"if-not-present"})
 					assert.ErrorContains(command.Execute(), "writing config to")
@@ -174,7 +173,7 @@ func testConfigPullPolicyCommand(t *testing.T, when spec.G, it spec.S) {
 				assert.Equal(cfg.PullPolicy, "")
 			})
 			it("returns clear error if fails to write", func() {
-				assert.Nil(ioutil.WriteFile(configFile, []byte("something"), 0001))
+				assert.Nil(os.WriteFile(configFile, []byte("something"), 0001))
 				command := commands.ConfigPullPolicy(logger, config.Config{PullPolicy: "never"}, configFile)
 				command.SetArgs([]string{"--unset"})
 				assert.ErrorContains(command.Execute(), "writing config to")

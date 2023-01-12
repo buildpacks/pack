@@ -1,7 +1,6 @@
 package project
 
 import (
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -366,7 +365,7 @@ name = "licenses should have either a type or uri defined"
 }
 
 func createTmpProjectTomlFile(projectToml string) (*os.File, error) {
-	tmpProjectToml, err := ioutil.TempFile(os.TempDir(), "project-")
+	tmpProjectToml, err := os.CreateTemp(os.TempDir(), "project-")
 	if err != nil {
 		log.Fatal("Failed to create temporary project toml file", err)
 	}

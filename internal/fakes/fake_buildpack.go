@@ -45,14 +45,14 @@ func WithBpOpenError(err error) FakeBuildpackOption {
 
 // NewFakeBuildpack creates a fake buildpack with contents:
 //
-// 	\_ /cnb/buildpacks/{ID}
-// 	\_ /cnb/buildpacks/{ID}/{version}
-// 	\_ /cnb/buildpacks/{ID}/{version}/buildpack.toml
-// 	\_ /cnb/buildpacks/{ID}/{version}/bin
-// 	\_ /cnb/buildpacks/{ID}/{version}/bin/build
-//  	build-contents
-// 	\_ /cnb/buildpacks/{ID}/{version}/bin/detect
-//  	detect-contents
+//		\_ /cnb/buildpacks/{ID}
+//		\_ /cnb/buildpacks/{ID}/{version}
+//		\_ /cnb/buildpacks/{ID}/{version}/buildpack.toml
+//		\_ /cnb/buildpacks/{ID}/{version}/bin
+//		\_ /cnb/buildpacks/{ID}/{version}/bin/build
+//	 	build-contents
+//		\_ /cnb/buildpacks/{ID}/{version}/bin/detect
+//	 	detect-contents
 func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64, options ...FakeBuildpackOption) (buildpack.BuildModule, error) {
 	return &fakeBuildpack{
 		descriptor: descriptor,

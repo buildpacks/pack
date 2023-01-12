@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -184,7 +183,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 		apiVersion, err = api.NewVersion("0.2")
 		h.AssertNil(t, err)
 
-		tmpDir, err = ioutil.TempDir("", "inspectBuildpack")
+		tmpDir, err = os.MkdirTemp("", "inspectBuildpack")
 		h.AssertNil(t, err)
 
 		buildpackPath = filepath.Join(tmpDir, "buildpackTarFile.tar")
@@ -493,7 +492,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 			when("archive is not a buildpack", func() {
 				it.Before(func() {
 					invalidBuildpackPath := filepath.Join(tmpDir, "fake-buildpack-path")
-					h.AssertNil(t, ioutil.WriteFile(invalidBuildpackPath, []byte("not a buildpack"), os.ModePerm))
+					h.AssertNil(t, os.WriteFile(invalidBuildpackPath, []byte("not a buildpack"), os.ModePerm))
 
 					mockDownloader.EXPECT().Download(gomock.Any(), "https://invalid/buildpack").Return(blob.NewBlob(invalidBuildpackPath), nil)
 				})

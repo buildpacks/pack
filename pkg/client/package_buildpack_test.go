@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -419,7 +418,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 	when("FormatFile", func() {
 		when("simple package for both OS formats (experimental only)", func() {
 			it("creates package image in either OS format", func() {
-				tmpDir, err := ioutil.TempDir("", "package-buildpack")
+				tmpDir, err := os.MkdirTemp("", "package-buildpack")
 				h.AssertNil(t, err)
 				defer os.Remove(tmpDir)
 
@@ -484,7 +483,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					}},
 				}
 
-				tmpDir, err = ioutil.TempDir("", "package-buildpack")
+				tmpDir, err = os.MkdirTemp("", "package-buildpack")
 				h.AssertNil(t, err)
 			})
 
@@ -712,7 +711,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						}},
 					}
 
-					tmpDir, err = ioutil.TempDir("", "registry")
+					tmpDir, err = os.MkdirTemp("", "registry")
 					h.AssertNil(t, err)
 
 					packHome = filepath.Join(tmpDir, ".pack")

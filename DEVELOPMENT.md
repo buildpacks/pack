@@ -55,11 +55,15 @@ To run unit and integration tests:
 ```shell
 make unit
 ```
+Test output will be streamed to your terminal and also saved to the file
+out/unit
 
 To run acceptance tests:
 ```shell
 make acceptance
 ```
+Test output will be streamed to your terminal and also saved to the file
+out/acceptance
 
 Alternately, to run all tests:
 ```shell

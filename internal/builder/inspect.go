@@ -22,6 +22,8 @@ type Info struct {
 	BuildpackLayers dist.ModuleLayers
 	Lifecycle       LifecycleDescriptor
 	CreatedBy       CreatorMetadata
+	Extensions      []dist.ModuleInfo
+	OrderExtensions pubbldr.DetectionOrder
 }
 
 type Inspectable interface {
@@ -42,6 +44,7 @@ type LabelInspector interface {
 	Mixins() ([]string, error)
 	Order() (dist.Order, error)
 	BuildpackLayers() (dist.ModuleLayers, error)
+	OrderExtensions() (dist.Order, error)
 }
 
 type DetectionCalculator interface {
@@ -95,6 +98,11 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 		}
 	}
 
+	orderExtensions, err := labelManager.OrderExtensions()
+	if err != nil {
+		return Info{}, fmt.Errorf("reading image order extensions: %w", err)
+	}
+
 	order, err := labelManager.Order()
 	if err != nil {
 		return Info{}, fmt.Errorf("reading image order: %w", err)
@@ -109,6 +117,8 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 	if err != nil {
 		return Info{}, fmt.Errorf("calculating detection order: %w", err)
 	}
+
+	detectionOrderExtensions := orderExttoPubbldrDetectionOrderExt(orderExtensions)
 
 	lifecycle := CompatDescriptor(LifecycleDescriptor{
 		Info: LifecycleInfo{Version: metadata.Lifecycle.Version},
@@ -127,7 +137,23 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 		BuildpackLayers: layers,
 		Lifecycle:       lifecycle,
 		CreatedBy:       metadata.CreatedBy,
+		Extensions:      metadata.Extensions,
+		OrderExtensions: detectionOrderExtensions,
 	}, nil
+}
+
+func orderExttoPubbldrDetectionOrderExt(orderExt dist.Order) pubbldr.DetectionOrder {
+	var detectionOrderExt pubbldr.DetectionOrder
+
+	for _, orderEntry := range orderExt {
+		var detectionOrderEntry pubbldr.DetectionOrderEntry
+		for _, moduleRef := range orderEntry.Group {
+			detectionOrderEntry.ModuleRef = moduleRef
+		}
+		detectionOrderExt = append(detectionOrderExt, detectionOrderEntry)
+	}
+
+	return detectionOrderExt
 }
 
 func uniqueBuildpacks(buildpacks []dist.ModuleInfo) []dist.ModuleInfo {

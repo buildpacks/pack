@@ -65,8 +65,8 @@ install:
 	cp ./out/$(PACK_BIN) ${DESTDIR}${BINDIR}/
 
 mod-tidy:
-	$(GOCMD) mod tidy  -compat=1.18
-	cd tools && $(GOCMD) mod tidy -compat=1.18
+	$(GOCMD) mod tidy  -compat=1.19
+	cd tools && $(GOCMD) mod tidy -compat=1.19
 
 tidy: mod-tidy format
 
@@ -105,16 +105,16 @@ unit: GOTESTFLAGS:=$(GOTESTFLAGS) --tags=example
 endif
 unit: out
 	@echo "> Running unit/integration tests..."
-	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(UNIT_TIMEOUT) ./...
+	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(UNIT_TIMEOUT) ./... | tee out/unit
 
 acceptance: out
 	@echo "> Running acceptance tests..."
-	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(ACCEPTANCE_TIMEOUT) -tags=acceptance ./acceptance
+	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(ACCEPTANCE_TIMEOUT) -tags=acceptance ./acceptance | tee out/acceptance
 
 acceptance-all: export ACCEPTANCE_SUITE_CONFIG:=$(shell $(CAT) .$/acceptance$/testconfig$/all.json)
 acceptance-all:
 	@echo "> Running acceptance tests..."
-	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(ACCEPTANCE_TIMEOUT) -tags=acceptance ./acceptance
+	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(ACCEPTANCE_TIMEOUT) -tags=acceptance ./acceptance | tee out/acceptance
 
 clean:
 	@echo "> Cleaning workspace..."

@@ -2,7 +2,6 @@ package archive_test
 
 import (
 	"archive/tar"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
@@ -36,7 +35,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		var err error
-		tmpDir, err = ioutil.TempDir("", "create-tar-test")
+		tmpDir, err = os.MkdirTemp("", "create-tar-test")
 		if err != nil {
 			t.Fatalf("failed to create tmp dir %s: %s", tmpDir, err)
 		}
@@ -112,7 +111,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 			tarFile *os.File
 		)
 		it.Before(func() {
-			tarFile, err = ioutil.TempFile(tmpDir, "file.tgz")
+			tarFile, err = os.CreateTemp(tmpDir, "file.tgz")
 			h.AssertNil(t, err)
 		})
 
@@ -375,7 +374,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				)
 
 				it.Before(func() {
-					tmpSrcDir, err = ioutil.TempDir("", "socket-test")
+					tmpSrcDir, err = os.MkdirTemp("", "socket-test")
 					h.AssertNil(t, err)
 
 					fakeSocket, err = net.Listen(
@@ -383,7 +382,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 						filepath.Join(tmpSrcDir, "fake-socket"),
 					)
 
-					err = ioutil.WriteFile(filepath.Join(tmpSrcDir, "fake-file"), []byte("some-content"), 0777)
+					err = os.WriteFile(filepath.Join(tmpSrcDir, "fake-file"), []byte("some-content"), 0777)
 					h.AssertNil(t, err)
 				})
 
@@ -592,11 +591,11 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 		when("file is not a zip file", func() {
 			when("file has some content", func() {
 				it("returns false", func() {
-					file, err := ioutil.TempFile(tmpDir, "file.txt")
+					file, err := os.CreateTemp(tmpDir, "file.txt")
 					h.AssertNil(t, err)
 					defer file.Close()
 
-					err = ioutil.WriteFile(file.Name(), []byte("content"), os.ModePerm)
+					err = os.WriteFile(file.Name(), []byte("content"), os.ModePerm)
 					h.AssertNil(t, err)
 
 					isZip, err := archive.IsZip(file.Name())
@@ -607,7 +606,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 			when("file doesn't have content", func() {
 				it("returns false", func() {
-					file, err := ioutil.TempFile(tmpDir, "file.txt")
+					file, err := os.CreateTemp(tmpDir, "file.txt")
 					h.AssertNil(t, err)
 					defer file.Close()
 

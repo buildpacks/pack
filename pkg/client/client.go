@@ -1,11 +1,11 @@
 /*
 Package client provides all the functionally provided by pack as a library through a go api.
 
-Prerequisites
+# Prerequisites
 
 In order to use most functionality, you will need an OCI runtime such as Docker or podman installed.
 
-References
+# References
 
 This package provides functionality to create and manipulate all artifacts outlined in the Cloud Native Buildpacks specification.
 An introduction to these artifacts and their usage can be found at https://buildpacks.io/docs/.

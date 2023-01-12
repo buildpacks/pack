@@ -19,12 +19,12 @@ type fakeBuildpackBlob struct {
 
 // NewFakeBuildpackBlob creates a fake blob with contents:
 //
-// 	\_ buildpack.toml
-// 	\_ bin
-// 	\_ bin/build
-//  	build-contents
-// 	\_ bin/detect
-//  	detect-contents
+//		\_ buildpack.toml
+//		\_ bin
+//		\_ bin/build
+//	 	build-contents
+//		\_ bin/detect
+//	 	detect-contents
 func NewFakeBuildpackBlob(descriptor buildpack.Descriptor, chmod int64) (blob.Blob, error) {
 	return &fakeBuildpackBlob{
 		descriptor: descriptor,

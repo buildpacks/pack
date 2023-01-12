@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -57,7 +56,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		var err error
-		tmpDir, err = ioutil.TempDir("", "package_builder_tests")
+		tmpDir, err = os.MkdirTemp("", "package_builder_tests")
 		h.AssertNil(t, err)
 	})
 
@@ -801,7 +800,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			// layer: application/vnd.docker.image.rootfs.diff.tar.gzip
-			expectedBaseLayerSHA, err := computeLayerSHA(ioutil.NopCloser(expectedBaseLayerReader))
+			expectedBaseLayerSHA, err := computeLayerSHA(io.NopCloser(expectedBaseLayerReader))
 			h.AssertNil(t, err)
 			h.AssertOnTarEntry(t, outputFile,
 				"/blobs/sha256/"+expectedBaseLayerSHA,
@@ -834,7 +833,7 @@ func computeLayerSHA(reader io.ReadCloser) (string, error) {
 	}
 	defer compressed.Close()
 
-	if _, err := io.Copy(ioutil.Discard, compressed); err != nil {
+	if _, err := io.Copy(io.Discard, compressed); err != nil {
 		return "", err
 	}
 

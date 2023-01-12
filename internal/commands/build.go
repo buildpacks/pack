@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -301,7 +300,7 @@ func parseEnv(envFiles []string, envVars []string) (map[string]string, error) {
 
 func parseEnvFile(filename string) (map[string]string, error) {
 	out := make(map[string]string)
-	f, err := ioutil.ReadFile(filepath.Clean(filename))
+	f, err := os.ReadFile(filepath.Clean(filename))
 	if err != nil {
 		return nil, errors.Wrapf(err, "open %s", filename)
 	}

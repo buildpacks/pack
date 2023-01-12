@@ -3,7 +3,6 @@ package commands_test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -238,7 +237,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				var envPath string
 
 				it.Before(func() {
-					envfile, err := ioutil.TempFile("", "envfile")
+					envfile, err := os.CreateTemp("", "envfile")
 					h.AssertNil(t, err)
 					defer envfile.Close()
 
@@ -274,7 +273,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				var envPath string
 
 				it.Before(func() {
-					envfile, err := ioutil.TempFile("", "envfile")
+					envfile, err := os.CreateTemp("", "envfile")
 					h.AssertNil(t, err)
 					defer envfile.Close()
 
@@ -301,14 +300,14 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				var envPath2 string
 
 				it.Before(func() {
-					envfile1, err := ioutil.TempFile("", "envfile")
+					envfile1, err := os.CreateTemp("", "envfile")
 					h.AssertNil(t, err)
 					defer envfile1.Close()
 
 					envfile1.WriteString("KEY1=VALUE1\nKEY2=IGNORED")
 					envPath1 = envfile1.Name()
 
-					envfile2, err := ioutil.TempFile("", "envfile")
+					envfile2, err := os.CreateTemp("", "envfile")
 					h.AssertNil(t, err)
 					defer envfile2.Close()
 
@@ -526,7 +525,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				var projectTomlPath string
 
 				it.Before(func() {
-					projectToml, err := ioutil.TempFile("", "project.toml")
+					projectToml, err := os.CreateTemp("", "project.toml")
 					h.AssertNil(t, err)
 					defer projectToml.Close()
 
@@ -569,7 +568,7 @@ version = "1.0"
 				var projectTomlPath string
 
 				it.Before(func() {
-					projectToml, err := ioutil.TempFile("", "project.toml")
+					projectToml, err := os.CreateTemp("", "project.toml")
 					h.AssertNil(t, err)
 					defer projectToml.Close()
 
@@ -611,7 +610,7 @@ builder = "my-builder"
 				var projectTomlPath string
 
 				it.Before(func() {
-					projectToml, err := ioutil.TempFile("", "project.toml")
+					projectToml, err := os.CreateTemp("", "project.toml")
 					h.AssertNil(t, err)
 					defer projectToml.Close()
 
