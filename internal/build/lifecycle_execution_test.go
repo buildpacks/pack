@@ -1007,6 +1007,21 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("report destination directory is provided", func() {
+			lifecycleOps = append(lifecycleOps, func(opts *build.LifecycleOptions) {
+				opts.ReportDestinationDir = "a-destination-dir"
+			})
+
+			it("provides copy-sbom-func as a post container operation", func() {
+				h.AssertEq(t, fakePhase.CleanupCallCount, 1)
+				h.AssertEq(t, fakePhase.RunCallCount, 1)
+
+				h.AssertEq(t, len(configProvider.PostContainerRunOps()), 2)
+				h.AssertFunctionName(t, configProvider.PostContainerRunOps()[0], "EnsureVolumeAccess")
+				h.AssertFunctionName(t, configProvider.PostContainerRunOps()[1], "CopyOut")
+			})
+		})
+
 		when("--creation-time", func() {
 			when("platform < 0.9", func() {
 				platformAPI = api.MustParse("0.8")
@@ -1961,6 +1976,18 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		when("sbom destination directory is provided", func() {
 			lifecycleOps = append(lifecycleOps, func(opts *build.LifecycleOptions) {
 				opts.SBOMDestinationDir = "some-destination-dir"
+			})
+
+			it("provides copy-sbom-func as a post container operation", func() {
+				h.AssertEq(t, len(configProvider.PostContainerRunOps()), 2)
+				h.AssertFunctionName(t, configProvider.PostContainerRunOps()[0], "EnsureVolumeAccess")
+				h.AssertFunctionName(t, configProvider.PostContainerRunOps()[1], "CopyOut")
+			})
+		})
+
+		when("report destination directory is provided", func() {
+			lifecycleOps = append(lifecycleOps, func(opts *build.LifecycleOptions) {
+				opts.ReportDestinationDir = "a-destination-dir"
 			})
 
 			it("provides copy-sbom-func as a post container operation", func() {

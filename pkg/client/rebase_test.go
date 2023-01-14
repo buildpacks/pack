@@ -3,6 +3,8 @@ package client
 import (
 	"bytes"
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
@@ -197,6 +199,18 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 							h.AssertContains(t, lbl, `"runImage":{"topLayer":"run-image-top-layer-sha","reference":"run-image-digest"`)
 						})
+					})
+				})
+
+				when("report directory is set", func() {
+					it("writes the report", func() {
+						tmpdir := t.TempDir()
+						h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
+							RepoName:             "some/app",
+							ReportDestinationDir: tmpdir,
+						}))
+						_, err := os.Stat(filepath.Join(tmpdir, "report.toml"))
+						h.AssertNil(t, err)
 					})
 				})
 

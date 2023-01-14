@@ -175,6 +175,9 @@ type BuildOptions struct {
 	// Directory to output any SBOM artifacts
 	SBOMDestinationDir string
 
+	// Directory to output the report.toml metadata artifact
+	ReportDestinationDir string
+
 	// Desired create time in the output image config
 	CreationTime *time.Time
 }
@@ -351,35 +354,36 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	lifecycleOpts := build.LifecycleOptions{
-		AppPath:            appPath,
-		Image:              imageRef,
-		Builder:            ephemeralBuilder,
-		BuilderImage:       builderRef.Name(),
-		LifecycleImage:     ephemeralBuilder.Name(),
-		RunImage:           runImageName,
-		ProjectMetadata:    projectMetadata,
-		ClearCache:         opts.ClearCache,
-		Publish:            opts.Publish,
-		TrustBuilder:       opts.TrustBuilder(opts.Builder),
-		UseCreator:         false,
-		DockerHost:         opts.DockerHost,
-		Cache:              opts.Cache,
-		CacheImage:         opts.CacheImage,
-		HTTPProxy:          proxyConfig.HTTPProxy,
-		HTTPSProxy:         proxyConfig.HTTPSProxy,
-		NoProxy:            proxyConfig.NoProxy,
-		Network:            opts.ContainerConfig.Network,
-		AdditionalTags:     opts.AdditionalTags,
-		Volumes:            processedVolumes,
-		DefaultProcessType: opts.DefaultProcessType,
-		FileFilter:         fileFilter,
-		Workspace:          opts.Workspace,
-		GID:                opts.GroupID,
-		PreviousImage:      opts.PreviousImage,
-		Interactive:        opts.Interactive,
-		Termui:             termui.NewTermui(imageRef.Name(), ephemeralBuilder, runImageName),
-		SBOMDestinationDir: opts.SBOMDestinationDir,
-		CreationTime:       opts.CreationTime,
+		AppPath:              appPath,
+		Image:                imageRef,
+		Builder:              ephemeralBuilder,
+		BuilderImage:         builderRef.Name(),
+		LifecycleImage:       ephemeralBuilder.Name(),
+		RunImage:             runImageName,
+		ProjectMetadata:      projectMetadata,
+		ClearCache:           opts.ClearCache,
+		Publish:              opts.Publish,
+		TrustBuilder:         opts.TrustBuilder(opts.Builder),
+		UseCreator:           false,
+		DockerHost:           opts.DockerHost,
+		Cache:                opts.Cache,
+		CacheImage:           opts.CacheImage,
+		HTTPProxy:            proxyConfig.HTTPProxy,
+		HTTPSProxy:           proxyConfig.HTTPSProxy,
+		NoProxy:              proxyConfig.NoProxy,
+		Network:              opts.ContainerConfig.Network,
+		AdditionalTags:       opts.AdditionalTags,
+		Volumes:              processedVolumes,
+		DefaultProcessType:   opts.DefaultProcessType,
+		FileFilter:           fileFilter,
+		Workspace:            opts.Workspace,
+		GID:                  opts.GroupID,
+		PreviousImage:        opts.PreviousImage,
+		Interactive:          opts.Interactive,
+		Termui:               termui.NewTermui(imageRef.Name(), ephemeralBuilder, runImageName),
+		ReportDestinationDir: opts.ReportDestinationDir,
+		SBOMDestinationDir:   opts.SBOMDestinationDir,
+		CreationTime:         opts.CreationTime,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version

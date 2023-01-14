@@ -2,7 +2,10 @@ package client
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
+	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/pkg/errors"
@@ -34,6 +37,9 @@ type RebaseOptions struct {
 	// AdditionalMirrors gives us inputs to recalculate the 'best' run image
 	// based on the registry we are publishing to.
 	AdditionalMirrors map[string][]string
+
+	// If provided, directory to which report.toml will be copied
+	ReportDestinationDir string
 }
 
 // Rebase updates the run image layers in an app image.
@@ -80,7 +86,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 
 	c.logger.Infof("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
 	rebaser := &lifecycle.Rebaser{Logger: c.logger, PlatformAPI: build.SupportedPlatformAPIVersions.Latest()}
-	_, err = rebaser.Rebase(appImage, baseImage, nil)
+	report, err := rebaser.Rebase(appImage, baseImage, nil)
 	if err != nil {
 		return err
 	}
@@ -91,5 +97,21 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	}
 
 	c.logger.Infof("Rebased Image: %s", style.Symbol(appImageIdentifier.String()))
+
+	if opts.ReportDestinationDir != "" {
+		reportPath := filepath.Join(opts.ReportDestinationDir, "report.toml")
+		reportFile, err := os.OpenFile(reportPath, os.O_RDWR|os.O_CREATE, 0644)
+		if err != nil {
+			c.logger.Warnf("unable to open %s for writing rebase report", reportPath)
+			return err
+		}
+
+		defer reportFile.Close()
+		err = toml.NewEncoder(reportFile).Encode(report)
+		if err != nil {
+			c.logger.Warnf("unable to write rebase report to %s", reportPath)
+			return err
+		}
+	}
 	return nil
 }
