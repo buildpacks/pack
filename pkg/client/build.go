@@ -735,7 +735,7 @@ func (c *Client) processLayoutPath(imagePath string) (string, name.Reference, er
 	}
 
 	// Abs calls Clean on the result, so at this point the fullImagePath do not have trailing "/"
-	if fullImagePath, err = filepath.Abs(imagePath); err != nil {
+	if fullImagePath, err = filepath.Abs(fullImagePath); err != nil {
 		return "", nil, errors.Wrap(err, "resolve absolute path")
 	}
 
