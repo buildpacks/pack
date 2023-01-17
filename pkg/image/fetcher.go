@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"github.com/buildpacks/imgutil/layout"
-	"github.com/buildpacks/imgutil/layout/sparse"
 	"io"
 	"strings"
+
+	"github.com/buildpacks/imgutil/layout"
+	"github.com/buildpacks/imgutil/layout/sparse"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
