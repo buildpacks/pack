@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -79,6 +80,12 @@ type Builder struct {
 type orderTOML struct {
 	Order    dist.Order `toml:"order,omitempty"`
 	OrderExt dist.Order `toml:"order-extensions,omitempty"`
+}
+
+type toAdd struct {
+	tarPath string
+	diffID  string
+	module  buildpack.BuildModule
 }
 
 // FromImage constructs a builder from a builder image
@@ -439,12 +446,6 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 // Helpers
 
 func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.ModuleLayers) error {
-	type toAdd struct {
-		tarPath string
-		diffID  string
-		module  buildpack.BuildModule
-	}
-
 	collectionToAdd := map[string]toAdd{}
 	for i, module := range additionalModules {
 		// create directory
@@ -507,7 +508,10 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 		}
 	}
 
-	for _, module := range collectionToAdd {
+	// Fixes 1453
+	keys := sortKeys(collectionToAdd)
+	for _, k := range keys {
+		module := collectionToAdd[k]
 		logger.Debugf("Adding %s %s (diffID=%s)", kind, style.Symbol(module.module.Descriptor().Info().FullName()), module.diffID)
 		if err := image.AddLayerWithDiffID(module.tarPath, module.diffID); err != nil {
 			return errors.Wrapf(err,
@@ -919,4 +923,13 @@ func (b *Builder) whiteoutLayer(tmpDir string, i int, bpInfo dist.ModuleInfo) (s
 	}
 
 	return fh.Name(), nil
+}
+
+func sortKeys(collection map[string]toAdd) []string {
+	keys := make([]string, 0, len(collection))
+	for k := range collection {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }

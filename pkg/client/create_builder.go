@@ -3,6 +3,8 @@ package client
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
@@ -11,7 +13,6 @@ import (
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/paths"
-	"github.com/buildpacks/pack/internal/strings"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/image"
@@ -266,6 +267,11 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 			break
 		}
 	}
+
+	// Fixes 1453
+	sort.Slice(depBPs, func(i, j int) bool {
+		return strings.Compare(depBPs[i].Descriptor().Info().ID, depBPs[j].Descriptor().Info().ID) <= 0
+	})
 
 	for _, module := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
 		switch kind {
