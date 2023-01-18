@@ -97,6 +97,7 @@ type LifecycleOptions struct {
 	Workspace            string
 	GID                  int
 	PreviousImage        string
+	PreviousImageDir     string
 	ReportDestinationDir string
 	SBOMDestinationDir   string
 	CreationTime         *time.Time

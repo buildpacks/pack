@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/buildpacks/imgutil/layout"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
@@ -342,19 +345,14 @@ func (l *LifecycleExecution) Create(ctx context.Context, buildCache, launchCache
 	}
 
 	if l.opts.ImageDestinationDir != "" {
-		runImageRef, err := name.ParseReference(l.opts.RunImage, name.WeakValidation)
+		var err error
+		opts, err = l.appendLayoutOperations(opts)
 		if err != nil {
-			return fmt.Errorf("invalid run image name: %s", err)
+			return err
 		}
-		outputImagePath := filepath.Join(l.mountPaths.LayoutRepoDir(), l.opts.Image.Name())
-		runImagePath := filepath.Join(l.opts.LayoutRepoDir, runImageRef.Name())
-
-		opts = append(opts, WithEnv("CNB_USE_LAYOUT=true", "CNB_EXPERIMENTAL_MODE=warn"),
-			WithContainerOperations(CopyDir(runImagePath, filepath.Join(l.mountPaths.LayoutRepoDir(), runImageRef.Name()), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, nil)),
-			WithPostContainerRunOperations(CopyOutTo(outputImagePath, l.opts.ImageDestinationDir)))
 	}
 
-	if l.opts.Publish {
+	if l.opts.Publish || l.opts.ImageDestinationDir != "" {
 		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
@@ -553,14 +551,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 	flagsOp := WithFlags(flags...)
 
 	var analyze RunnerCleaner
-
-	layoutOpts := NullOp()
-	if l.opts.ImageDestinationDir != "" {
-		args = append([]string{"-layout"}, args...)
-		layoutOpts = WithBinds(fmt.Sprintf("%s:%s", l.opts.ImageDestinationDir, l.mountPaths.LayoutRepoDir()))
-	}
-
-	if l.opts.Publish || l.opts.ImageDestinationDir != "" {
+	if l.opts.Publish {
 		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
@@ -571,7 +562,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 			l,
 			WithLogPrefix("analyzer"),
 			WithImage(l.opts.LifecycleImage),
-			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.opts.Builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.opts.Builder.GID()), "CNB_EXPERIMENTAL_MODE=warn"),
+			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.opts.Builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.opts.Builder.GID())),
 			WithRegistryAccess(authConfig),
 			WithRoot(),
 			WithArgs(l.withLogLevel(args...)...),
@@ -579,7 +570,6 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 			flagsOp,
 			cacheBindOp,
 			stackOp,
-			layoutOpts,
 		)
 
 		analyze = phaseFactory.New(configProvider)
@@ -742,21 +732,12 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		)
 		export = phaseFactory.New(NewPhaseConfigProvider("exporter", l, opts...))
 	} else {
-		if l.opts.ImageDestinationDir != "" {
-			opts = append(
-				opts,
-				WithFlags("-layout"),
-				WithBinds(fmt.Sprintf("%s:%s", l.opts.ImageDestinationDir, l.mountPaths.LayoutRepoDir())),
-				WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
-			)
-		} else {
-			opts = append(
-				opts,
-				WithDaemonAccess(l.opts.DockerHost),
-				WithFlags("-daemon", "-launch-cache", l.mountPaths.launchCacheDir()),
-				WithBinds(fmt.Sprintf("%s:%s", launchCache.Name(), l.mountPaths.launchCacheDir())),
-			)
-		}
+		opts = append(
+			opts,
+			WithDaemonAccess(l.opts.DockerHost),
+			WithFlags("-daemon", "-launch-cache", l.mountPaths.launchCacheDir()),
+			WithBinds(fmt.Sprintf("%s:%s", launchCache.Name(), l.mountPaths.launchCacheDir())),
+		)
 		export = phaseFactory.New(NewPhaseConfigProvider("exporter", l, opts...))
 	}
 
@@ -775,12 +756,39 @@ func (l *LifecycleExecution) hasExtensions() bool {
 	return len(l.opts.Builder.OrderExtensions()) > 0
 }
 
-func (l *LifecycleExecution) layoutPath(imageName string) (string, error) {
-	image, err := name.ParseReference(imageName, name.WeakValidation)
+func (l *LifecycleExecution) appendLayoutOperations(opts []PhaseConfigProviderOperation) ([]PhaseConfigProviderOperation, error) {
+	runImageRef, err := layout.ParseRefToPath(l.opts.RunImage)
 	if err != nil {
-		return "", fmt.Errorf("invalid image name: %s", err)
+		return nil, fmt.Errorf("invalid run image name: %s", err)
 	}
-	return filepath.Join(l.mountPaths.LayoutRepoDir(), image.Name()), nil
+
+	outputImageRef, err := layout.ParseRefToPath(l.opts.Image.Name())
+	if err != nil {
+		return nil, fmt.Errorf("invalid image name: %s", err)
+	}
+
+	prevImage := l.opts.Image.Name()
+	if l.opts.PreviousImage != "" {
+		prevImage = l.opts.PreviousImage
+	}
+
+	prevImageRef, err := layout.ParseRefToPath(prevImage)
+	if err != nil {
+		return nil, fmt.Errorf("invalid previous name: %s", err)
+	}
+
+	containerOutputImagePath := filepath.Join(l.mountPaths.LayoutRepoDir(), outputImageRef)
+	localRunImagePath := filepath.Join(l.opts.LayoutRepoDir, runImageRef)
+	containerRunImagePath := filepath.Join(l.mountPaths.LayoutRepoDir(), runImageRef)
+	containerPreviousImagePath := filepath.Join(l.mountPaths.LayoutRepoDir(), prevImageRef)
+
+	opts = append(opts, WithEnv("CNB_USE_LAYOUT=true", "CNB_EXPERIMENTAL_MODE=warn"),
+		WithContainerOperations(CopyDir(localRunImagePath, containerRunImagePath, l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, nil)),
+		If(exists(l.opts.PreviousImageDir),
+			WithContainerOperations(CopyDir(l.opts.PreviousImageDir, containerPreviousImagePath, l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, nil))),
+		WithPostContainerRunOperations(CopyOutTo(containerOutputImagePath, l.opts.ImageDestinationDir)))
+
+	return opts, nil
 }
 
 func prependArg(arg string, args []string) []string {
@@ -792,4 +800,9 @@ func addTags(flags, additionalTags []string) []string {
 		flags = append(flags, "-tag", tag)
 	}
 	return flags
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
 }

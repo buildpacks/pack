@@ -70,13 +70,17 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			"on how to use `pack build`, see: https://buildpacks.io/docs/app-developer-guide/build-an-app/.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			imageName := args[0]
-			layoutAppPath := exportToLayout(imageName)
-			if err := validateBuildFlags(&flags, cfg, packClient, layoutAppPath, logger); err != nil {
+			previousImage := flags.PreviousImage
+			userProvidedLayoutPath := parseLayoutDestinationPath(imageName)
+			if err := validateBuildFlags(&flags, cfg, packClient, userProvidedLayoutPath, logger); err != nil {
 				return err
 			}
-			if layoutAppPath != "" {
-				imageName = layoutAppPath
+			if userProvidedLayoutPath != "" {
+				imageName = userProvidedLayoutPath
 				logger.Debugf("Using layout repository directory at %s", cfg.LayoutRepositoryDir)
+				if previousImage != "" {
+					previousImage = parseLayoutDestinationPath(previousImage)
+				}
 			}
 
 			descriptor, actualDescriptorPath, err := parseProjectToml(flags.AppPath, flags.DescriptorPath)
@@ -176,14 +180,14 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Workspace:                flags.Workspace,
 				LifecycleImage:           lifecycleImage,
 				GroupID:                  gid,
-				PreviousImage:            flags.PreviousImage,
+				PreviousImage:            previousImage,
 				Interactive:              flags.Interactive,
 				SBOMDestinationDir:       flags.SBOMDestinationDir,
 				ReportDestinationDir:     flags.ReportDestinationDir,
 				CreationTime:             dateTime,
 				PreBuildpacks:            flags.PreBuildpacks,
 				PostBuildpacks:           flags.PostBuildpacks,
-				LayoutAppPath:            layoutAppPath,
+				LayoutAppPath:            userProvidedLayoutPath,
 				LayoutRepoDir:            cfg.LayoutRepositoryDir,
 				Sparse:                   flags.Sparse,
 			}); err != nil {
@@ -363,9 +367,9 @@ func parseProjectToml(appPath, descriptorPath string) (projectTypes.Descriptor, 
 	return descriptor, actualPath, err
 }
 
-func exportToLayout(imageName string) string {
+func parseLayoutDestinationPath(imageName string) string {
 	if strings.HasPrefix(imageName, "oci:") {
-		imageNameParsed := strings.Split(imageName, ":")
+		imageNameParsed := strings.SplitN(imageName, ":", 2)
 		return imageNameParsed[1]
 	}
 	return ""

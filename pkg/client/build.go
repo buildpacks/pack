@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buildpacks/imgutil/layout"
+
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
@@ -244,7 +246,7 @@ var IsSuggestedBuilderFunc = func(b string) bool {
 // If any configuration is deemed invalid, or if any lifecycle phases fail,
 // an error will be returned and no image produced.
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
-	var imageDestinationDir string
+	var imageDestinationDir, previousImageDir string
 	imageRef, err := c.parseTagReference(opts.Image)
 	if err != nil {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.Image)
@@ -253,11 +255,25 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	imageName := imageRef.Name()
 
 	if opts.LayoutAppPath != "" {
-		imageDestinationDir, imageRef, err = c.processLayoutPath(opts.LayoutAppPath)
+		imageDestinationDir, err = c.processLayoutPath(opts.LayoutAppPath)
 		if err != nil {
 			return errors.Wrapf(err, "invalid path '%s' to save the image in oci layout format", imageName)
 		}
 		imgRegistry = ""
+		if opts.PreviousImage != "" {
+			prevImageRef, err := c.parseTagReference(opts.PreviousImage)
+			if err != nil {
+				return errors.Wrapf(err, "invalid image name '%s'", opts.PreviousImage)
+			}
+			previousImageDir, err = c.processLayoutPath(opts.PreviousImage)
+			if err != nil {
+				return errors.Wrapf(err, "invalid path '%s' for previous image", opts.PreviousImage)
+			}
+			previousImageDir = filepath.Join(previousImageDir, prevImageRef.Identifier())
+		} else {
+			previousImageDir = filepath.Join(imageDestinationDir, imageRef.Identifier())
+		}
+		c.logger.Debugf("previous image path %s", previousImageDir)
 	}
 
 	appPath, err := c.processAppPath(opts.AppPath)
@@ -286,13 +302,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	fetchOptions := image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy}
 	if opts.LayoutAppPath != "" {
-		// TODO this is a logic that must be encapsulated
-		reference, err := name.ParseReference(runImageName, name.WeakValidation)
+		runImageRelativePath, err := layout.ParseRefToPath(runImageName)
 		if err != nil {
 			return err
 		}
-		runImagePath := filepath.Join(opts.LayoutRepoDir, reference.Name())
-		// --end
+		runImagePath := filepath.Join(opts.LayoutRepoDir, runImageRelativePath)
 		fetchOptions.LayoutOption = image.LayoutOption{
 			Path:   runImagePath,
 			Sparse: opts.Sparse,
@@ -431,6 +445,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		SBOMDestinationDir:   opts.SBOMDestinationDir,
 		CreationTime:         opts.CreationTime,
 		LayoutRepoDir:        opts.LayoutRepoDir,
+		PreviousImageDir:     previousImageDir,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
@@ -718,37 +733,41 @@ func (c *Client) processAppPath(appPath string) (string, error) {
 }
 
 // processLayoutPath parses the imagePath provided by the user
-func (c *Client) processLayoutPath(imagePath string) (string, name.Reference, error) {
+func (c *Client) processLayoutPath(path string) (string, error) {
 	var (
 		fullImagePath string
 		err           error
 	)
 
+	imagePath := path
 	if imagePath == "" {
-		return "", nil, errors.New("layout path must no be empty")
+		return "", errors.New("layout path must no be empty")
+	}
+
+	// path/to/save/image:tag was provided
+	if strings.Contains(imagePath, ":") {
+		split := strings.SplitN(imagePath, ":", 2)
+		// do not include the tag in the path
+		imagePath = filepath.Join(split[0])
 	}
 
 	if fullImagePath, err = filepath.EvalSymlinks(imagePath); err != nil {
 		if !os.IsNotExist(err) {
-			return "", nil, errors.Wrap(err, "evaluate symlink")
+			return "", errors.Wrap(err, "evaluate symlink")
+		} else {
+			fullImagePath = imagePath
 		}
 	}
 
-	// Abs calls Clean on the result, so at this point the fullImagePath do not have trailing "/"
 	if fullImagePath, err = filepath.Abs(fullImagePath); err != nil {
-		return "", nil, errors.Wrap(err, "resolve absolute path")
+		return "", errors.Wrap(err, "resolve absolute path")
 	}
 
-	if _, err := os.Stat(fullImagePath); !os.IsNotExist(err) {
-		os.RemoveAll(fullImagePath)
+	if err := os.MkdirAll(fullImagePath, os.ModePerm); err != nil {
+		return "", errors.Wrapf(err, "creating %s layout application destination", fullImagePath)
 	}
 
-	imageRef, err := c.parseTagReference(filepath.Base(imagePath))
-	if err != nil {
-		return "", nil, errors.Wrapf(err, "invalid image name '%s'", imagePath)
-	}
-
-	return fullImagePath, imageRef, nil
+	return fullImagePath, nil
 }
 
 func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
