@@ -748,7 +748,7 @@ func (c *Client) processLayoutPath(path string) (string, error) {
 	if strings.Contains(imagePath, ":") {
 		split := strings.SplitN(imagePath, ":", 2)
 		// do not include the tag in the path
-		imagePath = filepath.Join(split[0])
+		imagePath = split[0]
 	}
 
 	if fullImagePath, err = filepath.EvalSymlinks(imagePath); err != nil {
