@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/buildpacks/imgutil"
@@ -47,6 +48,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		bp1v1          buildpack.BuildModule
 		bp1v2          buildpack.BuildModule
 		bp2v1          buildpack.BuildModule
+		bp2v2          buildpack.BuildModule
 		ext1v1         buildpack.BuildModule
 		ext1v2         buildpack.BuildModule
 		ext2v1         buildpack.BuildModule
@@ -846,6 +848,61 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertError(t, err, "unable to open buildpack")
 					})
+				})
+			})
+
+			when("modules are added in random order", func() {
+				var fakeLayerImage *fakeAddedLayerImage
+
+				it.Before(func() {
+					var err error
+					fakeLayerImage = &fakeAddedLayerImage{Image: baseImage}
+					subject, err = builder.New(fakeLayerImage, "some/builder")
+					h.AssertNil(t, err)
+					subject.SetLifecycle(mockLifecycle)
+
+					bp2v2, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+						WithAPI: api.MustParse("0.2"),
+						WithInfo: dist.ModuleInfo{
+							ID:      "buildpack-2-id",
+							Version: "buildpack-2-version-2",
+						},
+						WithStacks: []dist.Stack{{
+							ID:     "some.stack.id",
+							Mixins: []string{"build:mixinA", "run:mixinB"},
+						}},
+					}, 0644)
+					h.AssertNil(t, err)
+				})
+
+				it("layers are written ordered by buildpacks ID & Version", func() {
+					// add buildpacks in a random order
+					subject.AddBuildpack(bp2v2)
+					subject.AddBuildpack(bp1v2)
+					subject.AddBuildpack(bp1v1)
+					subject.AddBuildpack(bp2v1)
+					h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+
+					layers := fakeLayerImage.AddedLayersOrder()
+					h.AssertEq(t, len(layers), 4)
+					h.AssertTrue(t, strings.Contains(layers[0], layerFileName(bp1v1)))
+					h.AssertTrue(t, strings.Contains(layers[1], layerFileName(bp1v2)))
+					h.AssertTrue(t, strings.Contains(layers[2], layerFileName(bp2v1)))
+					h.AssertTrue(t, strings.Contains(layers[3], layerFileName(bp2v2)))
+				})
+
+				it("extensions are written ordered by buildpacks ID & Version", func() {
+					// add buildpacks in a random order
+					subject.AddBuildpack(ext2v1)
+					subject.AddBuildpack(ext1v2)
+					subject.AddBuildpack(ext1v1)
+					h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+
+					layers := fakeLayerImage.AddedLayersOrder()
+					h.AssertEq(t, len(layers), 3)
+					h.AssertTrue(t, strings.Contains(layers[0], layerFileName(ext1v1)))
+					h.AssertTrue(t, strings.Contains(layers[1], layerFileName(ext1v2)))
+					h.AssertTrue(t, strings.Contains(layers[2], layerFileName(ext2v1)))
 				})
 			})
 		})
@@ -1711,4 +1768,22 @@ func assertImageHasOrderBpLayer(t *testing.T, image *fakes.Image, bp buildpack.B
 	h.AssertOnTarEntry(t, layerTar, path.Dir(dirPath),
 		h.IsDirectory(),
 	)
+}
+
+func layerFileName(bp buildpack.BuildModule) string {
+	return fmt.Sprintf("%s.%s.tar", bp.Descriptor().Info().ID, bp.Descriptor().Info().Version)
+}
+
+type fakeAddedLayerImage struct {
+	*fakes.Image
+	addedLayersOrder []string
+}
+
+func (f *fakeAddedLayerImage) AddedLayersOrder() []string {
+	return f.addedLayersOrder
+}
+
+func (f *fakeAddedLayerImage) AddLayerWithDiffID(path, diffID string) error {
+	f.addedLayersOrder = append(f.addedLayersOrder, path)
+	return f.Image.AddLayerWithDiffID(path, diffID)
 }
