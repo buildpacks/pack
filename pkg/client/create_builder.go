@@ -270,7 +270,11 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 
 	// Fixes 1453
 	sort.Slice(depBPs, func(i, j int) bool {
-		return strings.Compare(depBPs[i].Descriptor().Info().ID, depBPs[j].Descriptor().Info().ID) <= 0
+		compareId := strings.Compare(depBPs[i].Descriptor().Info().ID, depBPs[j].Descriptor().Info().ID)
+		if compareId == 0 {
+			return strings.Compare(depBPs[i].Descriptor().Info().Version, depBPs[j].Descriptor().Info().Version) <= 0
+		}
+		return compareId < 0
 	})
 
 	for _, module := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
