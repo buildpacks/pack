@@ -852,11 +852,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("modules are added in random order", func() {
-				var fakeLayerImage *fakeAddedLayerImage
+				var fakeLayerImage *h.FakeAddedLayerImage
 
 				it.Before(func() {
 					var err error
-					fakeLayerImage = &fakeAddedLayerImage{Image: baseImage}
+					fakeLayerImage = &h.FakeAddedLayerImage{Image: baseImage}
 					subject, err = builder.New(fakeLayerImage, "some/builder")
 					h.AssertNil(t, err)
 					subject.SetLifecycle(mockLifecycle)
@@ -885,10 +885,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					layers := fakeLayerImage.AddedLayersOrder()
 					h.AssertEq(t, len(layers), 4)
-					h.AssertTrue(t, strings.Contains(layers[0], layerFileName(bp1v1)))
-					h.AssertTrue(t, strings.Contains(layers[1], layerFileName(bp1v2)))
-					h.AssertTrue(t, strings.Contains(layers[2], layerFileName(bp2v1)))
-					h.AssertTrue(t, strings.Contains(layers[3], layerFileName(bp2v2)))
+					h.AssertTrue(t, strings.Contains(layers[0], h.LayerFileName(bp1v1)))
+					h.AssertTrue(t, strings.Contains(layers[1], h.LayerFileName(bp1v2)))
+					h.AssertTrue(t, strings.Contains(layers[2], h.LayerFileName(bp2v1)))
+					h.AssertTrue(t, strings.Contains(layers[3], h.LayerFileName(bp2v2)))
 				})
 
 				it("extensions are written ordered by buildpacks ID & Version", func() {
@@ -900,9 +900,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					layers := fakeLayerImage.AddedLayersOrder()
 					h.AssertEq(t, len(layers), 3)
-					h.AssertTrue(t, strings.Contains(layers[0], layerFileName(ext1v1)))
-					h.AssertTrue(t, strings.Contains(layers[1], layerFileName(ext1v2)))
-					h.AssertTrue(t, strings.Contains(layers[2], layerFileName(ext2v1)))
+					h.AssertTrue(t, strings.Contains(layers[0], h.LayerFileName(ext1v1)))
+					h.AssertTrue(t, strings.Contains(layers[1], h.LayerFileName(ext1v2)))
+					h.AssertTrue(t, strings.Contains(layers[2], h.LayerFileName(ext2v1)))
 				})
 			})
 		})
@@ -1768,22 +1768,4 @@ func assertImageHasOrderBpLayer(t *testing.T, image *fakes.Image, bp buildpack.B
 	h.AssertOnTarEntry(t, layerTar, path.Dir(dirPath),
 		h.IsDirectory(),
 	)
-}
-
-func layerFileName(bp buildpack.BuildModule) string {
-	return fmt.Sprintf("%s.%s.tar", bp.Descriptor().Info().ID, bp.Descriptor().Info().Version)
-}
-
-type fakeAddedLayerImage struct {
-	*fakes.Image
-	addedLayersOrder []string
-}
-
-func (f *fakeAddedLayerImage) AddedLayersOrder() []string {
-	return f.addedLayersOrder
-}
-
-func (f *fakeAddedLayerImage) AddLayerWithDiffID(path, diffID string) error {
-	f.addedLayersOrder = append(f.addedLayersOrder, path)
-	return f.Image.AddLayerWithDiffID(path, diffID)
 }
