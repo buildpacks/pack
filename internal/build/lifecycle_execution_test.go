@@ -171,6 +171,47 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("FindLatestSupported", func() {
+		it("chooses a shared version", func() {
+			version, err := build.FindLatestSupported([]*api.Version{api.MustParse("0.6"), api.MustParse("0.7"), api.MustParse("0.8")}, []string{"0.7"})
+			h.AssertNil(t, err)
+			h.AssertEq(t, version, api.MustParse("0.7"))
+		})
+
+		it("chooses a shared version, highest builder supported version", func() {
+			version, err := build.FindLatestSupported([]*api.Version{api.MustParse("0.4"), api.MustParse("0.5"), api.MustParse("0.7")}, []string{"0.7", "0.8"})
+			h.AssertNil(t, err)
+			h.AssertEq(t, version, api.MustParse("0.7"))
+		})
+
+		it("chooses a shared version, lowest builder supported version", func() {
+			version, err := build.FindLatestSupported([]*api.Version{api.MustParse("0.4"), api.MustParse("0.5"), api.MustParse("0.7")}, []string{"0.1", "0.2", "0.4"})
+			h.AssertNil(t, err)
+			h.AssertEq(t, version, api.MustParse("0.4"))
+		})
+
+		it("Interprets empty lifecycle versions list as lack of constraints", func() {
+			version, err := build.FindLatestSupported([]*api.Version{api.MustParse("0.6"), api.MustParse("0.7")}, []string{})
+			h.AssertNil(t, err)
+			h.AssertEq(t, version, api.MustParse("0.7"))
+		})
+
+		it("errors with no shared version, builder has no versions supported for some reason", func() {
+			_, err := build.FindLatestSupported([]*api.Version{}, []string{"0.7"})
+			h.AssertNotNil(t, err)
+		})
+
+		it("errors with no shared version, builder less than lifecycle", func() {
+			_, err := build.FindLatestSupported([]*api.Version{api.MustParse("0.4"), api.MustParse("0.5")}, []string{"0.7", "0.8"})
+			h.AssertNotNil(t, err)
+		})
+
+		it("errors with no shared version, builder greater than lifecycle", func() {
+			_, err := build.FindLatestSupported([]*api.Version{api.MustParse("0.8"), api.MustParse("0.9")}, []string{"0.6", "0.7"})
+			h.AssertNotNil(t, err)
+		})
+	})
+
 	when("Run", func() {
 		var (
 			imageName   name.Tag

@@ -38,10 +38,10 @@ type LifecycleExecution struct {
 }
 
 func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient, opts LifecycleOptions) (*LifecycleExecution, error) {
-	latestSupportedPlatformAPI, err := findLatestSupported(append(
+	latestSupportedPlatformAPI, err := FindLatestSupported(append(
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Deprecated,
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Supported...,
-	))
+	), opts.LifecycleApis)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,43 @@ func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient,
 	return exec, nil
 }
 
-func findLatestSupported(apis []*api.Version) (*api.Version, error) {
+// intersection of two sorted lists of api versions
+func apiIntersection(apisA, apisB []*api.Version) []*api.Version {
+	bind := 0
+	aind := 0
+	apis := []*api.Version{}
+	for ; aind < len(apisA); aind++ {
+		for ; bind < len(apisB) && apisA[aind].Compare(apisB[bind]) > 0; bind++ {
+		}
+		if bind == len(apisB) {
+			break
+		}
+		if apisA[aind].Equal(apisB[bind]) {
+			apis = append(apis, apisA[aind])
+		}
+	}
+	return apis
+}
+
+// public for unit test purposes but cmon you probably don't want to actually call this.
+func FindLatestSupported(builderapis []*api.Version, lifecycleapis []string) (*api.Version, error) {
+	var apis []*api.Version
+	// if a custom lifecycle image was used we need to take an intersection of its supported apis with the builder's supported apis.
+	// generally no custom lifecycle is used, which will be indicated by the lifecycleapis list being empty in the struct.
+	if len(lifecycleapis) > 0 {
+		lcapis := []*api.Version{}
+		for _, ver := range lifecycleapis {
+			v, err := api.NewVersion(ver)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse lifecycle api version %s (%v)", ver, err)
+			}
+			lcapis = append(lcapis, v)
+		}
+		apis = apiIntersection(lcapis, builderapis)
+	} else {
+		apis = builderapis
+	}
+
 	for i := len(SupportedPlatformAPIVersions) - 1; i >= 0; i-- {
 		for _, version := range apis {
 			if SupportedPlatformAPIVersions[i].Equal(version) {
