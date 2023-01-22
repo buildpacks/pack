@@ -57,7 +57,6 @@ func FilePathToURI(path, relativeTo string) (string, error) {
 // - windows drive: file:///C:/Documents%20and%20Settings/file.tgz
 //
 // - windows share: file://laptop/My%20Documents/file.tgz
-//
 func URIToFilePath(uri string) (string, error) {
 	var (
 		osPath string

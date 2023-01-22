@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -58,7 +57,7 @@ func (m PackFixtureManager) VersionedFixtureOrFallbackLocation(pattern, version,
 func (m PackFixtureManager) TemplateFixture(templateName string, templateData map[string]interface{}) string {
 	m.testObject.Helper()
 
-	outputTemplate, err := ioutil.ReadFile(m.FixtureLocation(templateName))
+	outputTemplate, err := os.ReadFile(m.FixtureLocation(templateName))
 	m.assert.Nil(err)
 
 	return m.fillTemplate(outputTemplate, templateData)
@@ -69,7 +68,7 @@ func (m PackFixtureManager) TemplateVersionedFixture(
 	templateData map[string]interface{},
 ) string {
 	m.testObject.Helper()
-	outputTemplate, err := ioutil.ReadFile(m.VersionedFixtureOrFallbackLocation(versionedPattern, version, fallback))
+	outputTemplate, err := os.ReadFile(m.VersionedFixtureOrFallbackLocation(versionedPattern, version, fallback))
 	m.assert.Nil(err)
 
 	return m.fillTemplate(outputTemplate, templateData)

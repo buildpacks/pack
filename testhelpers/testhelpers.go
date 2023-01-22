@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"os"
@@ -21,6 +20,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/buildpacks/imgutil/fakes"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -381,7 +382,7 @@ func CheckImageBuildResult(response dockertypes.ImageBuildResponse, err error) e
 }
 
 func checkResponse(responseBody io.Reader) error {
-	body, err := ioutil.ReadAll(responseBody)
+	body, err := io.ReadAll(responseBody)
 	if err != nil {
 		return errors.Wrap(err, "reading body")
 	}
@@ -469,7 +470,7 @@ func HTTPGetE(url string, headers map[string]string) (string, error) {
 	if resp.StatusCode >= 300 {
 		return "", fmt.Errorf("HTTP Status was bad: %s => %d", url, resp.StatusCode)
 	}
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "reading body")
 	}
@@ -528,7 +529,7 @@ func PullImageWithAuth(dockerCli client.CommonAPIClient, ref, registryAuth strin
 	if err != nil {
 		return err
 	}
-	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
+	if _, err := io.Copy(io.Discard, rc); err != nil {
 		return err
 	}
 	return rc.Close()
@@ -576,12 +577,16 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 }
 
 func RecursiveCopyE(src, dst string) error {
-	fis, err := ioutil.ReadDir(src)
+	fis, err := os.ReadDir(src)
 	if err != nil {
 		return err
 	}
 
-	for _, fi := range fis {
+	for _, entry := range fis {
+		fi, err := entry.Info()
+		if err != nil {
+			return err
+		}
 		if fi.Mode().IsRegular() {
 			err = CopyFileE(filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
 			if err != nil {
@@ -664,7 +669,7 @@ func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id stri
 func CreateTGZ(t *testing.T, srcDir, tarDir string, mode int64) string {
 	t.Helper()
 
-	fh, err := ioutil.TempFile("", "*.tgz")
+	fh, err := os.CreateTemp("", "*.tgz")
 	AssertNil(t, err)
 	defer fh.Close()
 
@@ -679,7 +684,7 @@ func CreateTGZ(t *testing.T, srcDir, tarDir string, mode int64) string {
 func CreateTAR(t *testing.T, srcDir, tarDir string, mode int64) string {
 	t.Helper()
 
-	fh, err := ioutil.TempFile("", "*.tgz")
+	fh, err := os.CreateTemp("", "*.tgz")
 	AssertNil(t, err)
 	defer fh.Close()
 
@@ -702,9 +707,11 @@ func RecursiveCopyNow(t *testing.T, src, dst string) {
 	err := os.MkdirAll(dst, 0750)
 	AssertNil(t, err)
 
-	fis, err := ioutil.ReadDir(src)
+	fis, err := os.ReadDir(src)
 	AssertNil(t, err)
-	for _, fi := range fis {
+	for _, entry := range fis {
+		fi, err := entry.Info()
+		AssertNil(t, err)
 		if fi.Mode().IsRegular() {
 			srcFile, err := os.Open(filepath.Join(filepath.Clean(src), fi.Name()))
 			AssertNil(t, err)
@@ -755,7 +762,7 @@ func tarFileContents(t *testing.T, tarfile, path string) (exist bool, contents s
 		AssertNil(t, err)
 
 		if header.Name == path {
-			buf, err := ioutil.ReadAll(tr)
+			buf, err := io.ReadAll(tr)
 			AssertNil(t, err)
 			return true, string(buf)
 		}
@@ -837,4 +844,22 @@ func MockWriterAndOutput() (*color.Console, func() string) {
 		_ = r.Close()
 		return b.String()
 	}
+}
+
+func LayerFileName(bp buildpack.BuildModule) string {
+	return fmt.Sprintf("%s.%s.tar", bp.Descriptor().Info().ID, bp.Descriptor().Info().Version)
+}
+
+type FakeAddedLayerImage struct {
+	*fakes.Image
+	addedLayersOrder []string
+}
+
+func (f *FakeAddedLayerImage) AddedLayersOrder() []string {
+	return f.addedLayersOrder
+}
+
+func (f *FakeAddedLayerImage) AddLayerWithDiffID(path, diffID string) error {
+	f.addedLayersOrder = append(f.addedLayersOrder, path)
+	return f.Image.AddLayerWithDiffID(path, diffID)
 }

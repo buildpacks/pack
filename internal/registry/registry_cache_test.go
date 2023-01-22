@@ -2,7 +2,6 @@ package registry
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -37,7 +36,7 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 
-		tmpDir, err = ioutil.TempDir("", "registry")
+		tmpDir, err = os.MkdirTemp("", "registry")
 		h.AssertNil(t, err)
 
 		registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("..", "..", "testdata", "registry"))

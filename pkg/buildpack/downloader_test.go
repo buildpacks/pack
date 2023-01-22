@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -113,7 +112,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			AnyTimes()
 
 		var err error
-		tmpDir, err = ioutil.TempDir("", "buildpack-downloader-test")
+		tmpDir, err = os.MkdirTemp("", "buildpack-downloader-test")
 		h.AssertNil(t, err)
 	})
 

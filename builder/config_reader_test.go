@@ -1,7 +1,6 @@
 package builder_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,7 +28,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
-			tmpDir, err = ioutil.TempDir("", "config-test")
+			tmpDir, err = os.MkdirTemp("", "config-test")
 			h.AssertNil(t, err)
 			builderConfigPath = filepath.Join(tmpDir, "builder.toml")
 		})
@@ -40,7 +39,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 
 		when("file is written properly", func() {
 			it.Before(func() {
-				h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
+				h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(`
 [[buildpacks]]
   id = "buildpack/1"
   version = "0.0.1"
@@ -90,7 +89,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 		when("detecting warnings", func() {
 			when("'groups' field is used", func() {
 				it.Before(func() {
-					h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
+					h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(`
 [[buildpacks]]
   id = "some.buildpack"
   version = "some.buildpack.version"
@@ -115,7 +114,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 
 			when("'order' is missing or empty", func() {
 				it.Before(func() {
-					h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
+					h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(`
 [[buildpacks]]
   id = "some.buildpack"
   version = "some.buildpack.version"
@@ -132,7 +131,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 
 			when("unknown buildpack key is present", func() {
 				it.Before(func() {
-					h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
+					h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(`
 [[buildpacks]]
 url = "noop-buildpack.tgz"
 `), 0666))
@@ -146,7 +145,7 @@ url = "noop-buildpack.tgz"
 
 			when("unknown array table is present", func() {
 				it.Before(func() {
-					h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
+					h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(`
 [[buidlpack]]
 uri = "noop-buildpack.tgz"
 `), 0666))

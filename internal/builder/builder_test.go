@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/buildpacks/imgutil"
@@ -48,6 +48,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		bp1v1          buildpack.BuildModule
 		bp1v2          buildpack.BuildModule
 		bp2v1          buildpack.BuildModule
+		bp2v2          buildpack.BuildModule
 		ext1v1         buildpack.BuildModule
 		ext1v2         buildpack.BuildModule
 		ext2v1         buildpack.BuildModule
@@ -66,7 +67,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			".", 0, 0, 0755, true, false, nil,
 		)
 
-		descriptorContents, err := ioutil.ReadFile(filepath.Join("testdata", "lifecycle", "platform-0.4", "lifecycle.toml"))
+		descriptorContents, err := os.ReadFile(filepath.Join("testdata", "lifecycle", "platform-0.4", "lifecycle.toml"))
 		h.AssertNil(t, err)
 
 		lifecycleDescriptor, err := builder.ParseDescriptor(string(descriptorContents))
@@ -427,7 +428,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("does not overwrite the order layer when SetOrder has not been called", func() {
-				tmpDir, err := ioutil.TempDir("", "")
+				tmpDir, err := os.MkdirTemp("", "")
 				h.AssertNil(t, err)
 				defer os.RemoveAll(tmpDir)
 
@@ -847,6 +848,61 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertError(t, err, "unable to open buildpack")
 					})
+				})
+			})
+
+			when("modules are added in random order", func() {
+				var fakeLayerImage *h.FakeAddedLayerImage
+
+				it.Before(func() {
+					var err error
+					fakeLayerImage = &h.FakeAddedLayerImage{Image: baseImage}
+					subject, err = builder.New(fakeLayerImage, "some/builder")
+					h.AssertNil(t, err)
+					subject.SetLifecycle(mockLifecycle)
+
+					bp2v2, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+						WithAPI: api.MustParse("0.2"),
+						WithInfo: dist.ModuleInfo{
+							ID:      "buildpack-2-id",
+							Version: "buildpack-2-version-2",
+						},
+						WithStacks: []dist.Stack{{
+							ID:     "some.stack.id",
+							Mixins: []string{"build:mixinA", "run:mixinB"},
+						}},
+					}, 0644)
+					h.AssertNil(t, err)
+				})
+
+				it("layers are written ordered by buildpacks ID & Version", func() {
+					// add buildpacks in a random order
+					subject.AddBuildpack(bp2v2)
+					subject.AddBuildpack(bp1v2)
+					subject.AddBuildpack(bp1v1)
+					subject.AddBuildpack(bp2v1)
+					h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+
+					layers := fakeLayerImage.AddedLayersOrder()
+					h.AssertEq(t, len(layers), 4)
+					h.AssertTrue(t, strings.Contains(layers[0], h.LayerFileName(bp1v1)))
+					h.AssertTrue(t, strings.Contains(layers[1], h.LayerFileName(bp1v2)))
+					h.AssertTrue(t, strings.Contains(layers[2], h.LayerFileName(bp2v1)))
+					h.AssertTrue(t, strings.Contains(layers[3], h.LayerFileName(bp2v2)))
+				})
+
+				it("extensions are written ordered by buildpacks ID & Version", func() {
+					// add buildpacks in a random order
+					subject.AddBuildpack(ext2v1)
+					subject.AddBuildpack(ext1v2)
+					subject.AddBuildpack(ext1v1)
+					h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+
+					layers := fakeLayerImage.AddedLayersOrder()
+					h.AssertEq(t, len(layers), 3)
+					h.AssertTrue(t, strings.Contains(layers[0], h.LayerFileName(ext1v1)))
+					h.AssertTrue(t, strings.Contains(layers[1], h.LayerFileName(ext1v2)))
+					h.AssertTrue(t, strings.Contains(layers[2], h.LayerFileName(ext2v1)))
 				})
 			})
 		})

@@ -3,7 +3,6 @@ package client_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -34,7 +33,7 @@ func testNewBuildpack(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 
-		tmpDir, err = ioutil.TempDir("", "new-buildpack-test")
+		tmpDir, err = os.MkdirTemp("", "new-buildpack-test")
 		h.AssertNil(t, err)
 
 		subject, err = client.NewClient()
@@ -82,11 +81,11 @@ func testNewBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 				err = os.MkdirAll(filepath.Join(tmpDir, "bin"), 0755)
 				h.AssertNil(t, err)
-				err = ioutil.WriteFile(filepath.Join(tmpDir, "buildpack.toml"), []byte("expected value"), 0655)
+				err = os.WriteFile(filepath.Join(tmpDir, "buildpack.toml"), []byte("expected value"), 0655)
 				h.AssertNil(t, err)
-				err = ioutil.WriteFile(filepath.Join(tmpDir, "bin", "build"), []byte("expected value"), 0755)
+				err = os.WriteFile(filepath.Join(tmpDir, "bin", "build"), []byte("expected value"), 0755)
 				h.AssertNil(t, err)
-				err = ioutil.WriteFile(filepath.Join(tmpDir, "bin", "detect"), []byte("expected value"), 0755)
+				err = os.WriteFile(filepath.Join(tmpDir, "bin", "detect"), []byte("expected value"), 0755)
 				h.AssertNil(t, err)
 			})
 
@@ -105,15 +104,15 @@ func testNewBuildpack(t *testing.T, when spec.G, it spec.S) {
 				})
 				h.AssertNil(t, err)
 
-				content, err := ioutil.ReadFile(filepath.Join(tmpDir, "buildpack.toml"))
+				content, err := os.ReadFile(filepath.Join(tmpDir, "buildpack.toml"))
 				h.AssertNil(t, err)
 				h.AssertEq(t, content, []byte("expected value"))
 
-				content, err = ioutil.ReadFile(filepath.Join(tmpDir, "bin", "build"))
+				content, err = os.ReadFile(filepath.Join(tmpDir, "bin", "build"))
 				h.AssertNil(t, err)
 				h.AssertEq(t, content, []byte("expected value"))
 
-				content, err = ioutil.ReadFile(filepath.Join(tmpDir, "bin", "detect"))
+				content, err = os.ReadFile(filepath.Join(tmpDir, "bin", "detect"))
 				h.AssertNil(t, err)
 				h.AssertEq(t, content, []byte("expected value"))
 			})

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -36,9 +35,9 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
-			cacheDir, err = ioutil.TempDir("", "cache")
+			cacheDir, err = os.MkdirTemp("", "cache")
 			h.AssertNil(t, err)
-			subject = blob.NewDownloader(&logger{ioutil.Discard}, cacheDir)
+			subject = blob.NewDownloader(&logger{io.Discard}, cacheDir)
 		})
 
 		it.After(func() {

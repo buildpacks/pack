@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -23,32 +22,33 @@ import (
 )
 
 type BuildFlags struct {
-	Publish            bool
-	ClearCache         bool
-	TrustBuilder       bool
-	Interactive        bool
-	DockerHost         string
-	CacheImage         string
-	Cache              cache.CacheOpts
-	AppPath            string
-	Builder            string
-	Registry           string
-	RunImage           string
-	Policy             string
-	Network            string
-	DescriptorPath     string
-	DefaultProcessType string
-	LifecycleImage     string
-	Env                []string
-	EnvFiles           []string
-	Buildpacks         []string
-	Volumes            []string
-	AdditionalTags     []string
-	Workspace          string
-	GID                int
-	PreviousImage      string
-	SBOMDestinationDir string
-	DateTime           string
+	Publish              bool
+	ClearCache           bool
+	TrustBuilder         bool
+	Interactive          bool
+	DockerHost           string
+	CacheImage           string
+	Cache                cache.CacheOpts
+	AppPath              string
+	Builder              string
+	Registry             string
+	RunImage             string
+	Policy               string
+	Network              string
+	DescriptorPath       string
+	DefaultProcessType   string
+	LifecycleImage       string
+	Env                  []string
+	EnvFiles             []string
+	Buildpacks           []string
+	Volumes              []string
+	AdditionalTags       []string
+	Workspace            string
+	GID                  int
+	PreviousImage        string
+	SBOMDestinationDir   string
+	ReportDestinationDir string
+	DateTime             string
 }
 
 // Build an image from source code
@@ -172,6 +172,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				PreviousImage:            flags.PreviousImage,
 				Interactive:              flags.Interactive,
 				SBOMDestinationDir:       flags.SBOMDestinationDir,
+				ReportDestinationDir:     flags.ReportDestinationDir,
 				CreationTime:             dateTime,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
@@ -239,6 +240,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().IntVar(&buildFlags.GID, "gid", 0, `Override GID of user's group in the stack's build and run images. The provided value must be a positive number`)
 	cmd.Flags().StringVar(&buildFlags.PreviousImage, "previous-image", "", "Set previous image to a particular tag reference, digest reference, or (when performing a daemon build) image ID")
 	cmd.Flags().StringVar(&buildFlags.SBOMDestinationDir, "sbom-output-dir", "", "Path to export SBoM contents.\nOmitting the flag will yield no SBoM content.")
+	cmd.Flags().StringVar(&buildFlags.ReportDestinationDir, "report-output-dir", "", "Path to export build report.toml.\nOmitting the flag yield no report file.")
 	cmd.Flags().BoolVar(&buildFlags.Interactive, "interactive", false, "Launch a terminal UI to depict the build process")
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("interactive")
@@ -298,7 +300,7 @@ func parseEnv(envFiles []string, envVars []string) (map[string]string, error) {
 
 func parseEnvFile(filename string) (map[string]string, error) {
 	out := make(map[string]string)
-	f, err := ioutil.ReadFile(filepath.Clean(filename))
+	f, err := os.ReadFile(filepath.Clean(filename))
 	if err != nil {
 		return nil, errors.Wrapf(err, "open %s", filename)
 	}

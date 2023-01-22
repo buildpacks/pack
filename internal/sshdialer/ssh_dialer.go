@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	urlPkg "net/url"
 	"os"
@@ -350,7 +349,7 @@ func signersToAuthMethods(signers []ssh.Signer) []ssh.AuthMethod {
 // reads key from given path
 // if necessary it will decrypt it
 func loadSignerFromFile(path string, passphrase []byte, passPhraseCallback SecretCallback) (ssh.Signer, error) {
-	key, err := ioutil.ReadFile(path)
+	key, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read key file: %w", err)
 	}

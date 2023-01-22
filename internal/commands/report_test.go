@@ -3,7 +3,6 @@ package commands_test
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -36,13 +35,13 @@ func testReportCommand(t *testing.T, when spec.G, it spec.S) {
 		var err error
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 
-		tempPackHome, err = ioutil.TempDir("", "pack-home")
+		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		h.AssertNil(t, err)
 
 		packConfigPath = filepath.Join(tempPackHome, "config.toml")
 		command = commands.Report(logger, testVersion, packConfigPath)
 		command.SetArgs([]string{})
-		h.AssertNil(t, ioutil.WriteFile(packConfigPath, []byte(`
+		h.AssertNil(t, os.WriteFile(packConfigPath, []byte(`
 default-builder-image = "some/image"
 experimental = true
 
@@ -59,7 +58,7 @@ experimental = true
   url = "https://github.com/super-secret-project/registry"
 `), 0666))
 
-		tempPackEmptyHome, err = ioutil.TempDir("", "")
+		tempPackEmptyHome, err = os.MkdirTemp("", "")
 		h.AssertNil(t, err)
 	})
 

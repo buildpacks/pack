@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -50,16 +49,15 @@ const (
 // Implementations of the Lifecycle must execute the following phases by calling the
 // phase-specific lifecycle binary in order:
 //
-//  Detection:         /cnb/lifecycle/detector
-//  Analysis:          /cnb/lifecycle/analyzer
-//  Cache Restoration: /cnb/lifecycle/restorer
-//  Build:             /cnb/lifecycle/builder
-//  Export:            /cnb/lifecycle/exporter
+//	Detection:         /cnb/lifecycle/detector
+//	Analysis:          /cnb/lifecycle/analyzer
+//	Cache Restoration: /cnb/lifecycle/restorer
+//	Build:             /cnb/lifecycle/builder
+//	Export:            /cnb/lifecycle/exporter
 //
 // or invoke the single creator binary:
 //
-//  Creator:            /cnb/lifecycle/creator
-//
+//	Creator:            /cnb/lifecycle/creator
 type LifecycleExecutor interface {
 	// Execute is responsible for invoking each of these binaries
 	// with the desired configuration.
@@ -176,6 +174,9 @@ type BuildOptions struct {
 
 	// Directory to output any SBOM artifacts
 	SBOMDestinationDir string
+
+	// Directory to output the report.toml metadata artifact
+	ReportDestinationDir string
 
 	// Desired create time in the output image config
 	CreationTime *time.Time
@@ -353,35 +354,36 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	lifecycleOpts := build.LifecycleOptions{
-		AppPath:            appPath,
-		Image:              imageRef,
-		Builder:            ephemeralBuilder,
-		BuilderImage:       builderRef.Name(),
-		LifecycleImage:     ephemeralBuilder.Name(),
-		RunImage:           runImageName,
-		ProjectMetadata:    projectMetadata,
-		ClearCache:         opts.ClearCache,
-		Publish:            opts.Publish,
-		TrustBuilder:       opts.TrustBuilder(opts.Builder),
-		UseCreator:         false,
-		DockerHost:         opts.DockerHost,
-		Cache:              opts.Cache,
-		CacheImage:         opts.CacheImage,
-		HTTPProxy:          proxyConfig.HTTPProxy,
-		HTTPSProxy:         proxyConfig.HTTPSProxy,
-		NoProxy:            proxyConfig.NoProxy,
-		Network:            opts.ContainerConfig.Network,
-		AdditionalTags:     opts.AdditionalTags,
-		Volumes:            processedVolumes,
-		DefaultProcessType: opts.DefaultProcessType,
-		FileFilter:         fileFilter,
-		Workspace:          opts.Workspace,
-		GID:                opts.GroupID,
-		PreviousImage:      opts.PreviousImage,
-		Interactive:        opts.Interactive,
-		Termui:             termui.NewTermui(imageRef.Name(), ephemeralBuilder, runImageName),
-		SBOMDestinationDir: opts.SBOMDestinationDir,
-		CreationTime:       opts.CreationTime,
+		AppPath:              appPath,
+		Image:                imageRef,
+		Builder:              ephemeralBuilder,
+		BuilderImage:         builderRef.Name(),
+		LifecycleImage:       ephemeralBuilder.Name(),
+		RunImage:             runImageName,
+		ProjectMetadata:      projectMetadata,
+		ClearCache:           opts.ClearCache,
+		Publish:              opts.Publish,
+		TrustBuilder:         opts.TrustBuilder(opts.Builder),
+		UseCreator:           false,
+		DockerHost:           opts.DockerHost,
+		Cache:                opts.Cache,
+		CacheImage:           opts.CacheImage,
+		HTTPProxy:            proxyConfig.HTTPProxy,
+		HTTPSProxy:           proxyConfig.HTTPSProxy,
+		NoProxy:              proxyConfig.NoProxy,
+		Network:              opts.ContainerConfig.Network,
+		AdditionalTags:       opts.AdditionalTags,
+		Volumes:              processedVolumes,
+		DefaultProcessType:   opts.DefaultProcessType,
+		FileFilter:           fileFilter,
+		Workspace:            opts.Workspace,
+		GID:                  opts.GroupID,
+		PreviousImage:        opts.PreviousImage,
+		Interactive:          opts.Interactive,
+		Termui:               termui.NewTermui(imageRef.Name(), ephemeralBuilder, runImageName),
+		ReportDestinationDir: opts.ReportDestinationDir,
+		SBOMDestinationDir:   opts.SBOMDestinationDir,
+		CreationTime:         opts.CreationTime,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
@@ -666,45 +668,45 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 //
 // Visual examples:
 //
-// 	BUILDER ORDER
-// 	----------
-//  - group:
-//		- A
-//		- B
-//  - group:
-//		- A
+//		BUILDER ORDER
+//		----------
+//	 - group:
+//			- A
+//			- B
+//	 - group:
+//			- A
 //
-//	WITH DECLARED: "from=builder", X
-// 	----------
-// 	- group:
-//		- A
-//		- B
-//		- X
-// 	 - group:
-//		- A
-//		- X
+//		WITH DECLARED: "from=builder", X
+//		----------
+//		- group:
+//			- A
+//			- B
+//			- X
+//		 - group:
+//			- A
+//			- X
 //
-//	WITH DECLARED: X, "from=builder", Y
-// 	----------
-// 	- group:
-//		- X
-//		- A
-//		- B
-//      - Y
-// 	- group:
-//		- X
-//		- A
-//      - Y
+//		WITH DECLARED: X, "from=builder", Y
+//		----------
+//		- group:
+//			- X
+//			- A
+//			- B
+//	     - Y
+//		- group:
+//			- X
+//			- A
+//	     - Y
 //
-//	WITH DECLARED: X
-// 	----------
-//	- group:
-//		- X
+//		WITH DECLARED: X
+//		----------
+//		- group:
+//			- X
 //
-//	WITH DECLARED: A
-// 	----------
-// 	- group:
-//		- A
+//		WITH DECLARED: A
+//		----------
+//		- group:
+//			- A
 func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedBPs []buildpack.BuildModule, order dist.Order, err error) {
 	pullPolicy := opts.PullPolicy
 	publish := opts.Publish
@@ -916,7 +918,7 @@ func parseDigestFromImageID(id imgutil.Identifier) string {
 }
 
 func createInlineBuildpack(bp projectTypes.Buildpack, stackID string) (string, error) {
-	pathToInlineBuilpack, err := ioutil.TempDir("", "inline-cnb")
+	pathToInlineBuilpack, err := os.MkdirTemp("", "inline-cnb")
 	if err != nil {
 		return pathToInlineBuilpack, err
 	}

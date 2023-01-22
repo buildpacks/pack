@@ -2,7 +2,6 @@ package commands_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,7 +38,7 @@ func testConfigLifecycleImageCommand(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
-		tempPackHome, err = ioutil.TempDir("", "pack-home")
+		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		h.AssertNil(t, err)
 		configFile = filepath.Join(tempPackHome, "config.toml")
 
@@ -115,7 +114,7 @@ func testConfigLifecycleImageCommand(t *testing.T, when spec.G, it spec.S) {
 					assert.Equal(readCfg.LifecycleImage, "custom-lifecycle/image:v1")
 				})
 				it("returns clear error if fails to write", func() {
-					assert.Nil(ioutil.WriteFile(configFile, []byte("something"), 0001))
+					assert.Nil(os.WriteFile(configFile, []byte("something"), 0001))
 					command := commands.ConfigLifecycleImage(logger, cfg, configFile)
 					command.SetArgs([]string{"custom-lifecycle/image:v1"})
 					assert.ErrorContains(command.Execute(), "failed to write to config at")
@@ -128,7 +127,7 @@ func testConfigLifecycleImageCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertError(t, err, `Invalid image name`)
 				})
 				it("returns clear error if fails to write", func() {
-					assert.Nil(ioutil.WriteFile(configFile, []byte("something"), 0001))
+					assert.Nil(os.WriteFile(configFile, []byte("something"), 0001))
 					command := commands.ConfigLifecycleImage(logger, cfg, configFile)
 					command.SetArgs([]string{"custom-lifecycle/image:v1"})
 					assert.ErrorContains(command.Execute(), "failed to write to config at")
@@ -155,7 +154,7 @@ func testConfigLifecycleImageCommand(t *testing.T, when spec.G, it spec.S) {
 					assert.Equal(readCfg.LifecycleImage, "")
 				})
 				it("returns clear error if fails to write", func() {
-					assert.Nil(ioutil.WriteFile(configFile, []byte("something"), 0001))
+					assert.Nil(os.WriteFile(configFile, []byte("something"), 0001))
 					command := commands.ConfigLifecycleImage(logger, config.Config{LifecycleImage: "custom-lifecycle/image:v1"}, configFile)
 					command.SetArgs([]string{"--unset"})
 					assert.ErrorContains(command.Execute(), "failed to write to config at")

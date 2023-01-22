@@ -63,6 +63,15 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
         - id: test.bp.three
           version: test.bp.three.version`
 
+		expectedExtensions = `    extensions:
+        - id: test.bp.one
+          version: test.bp.one.version
+          homepage: http://geocities.com/cool-bp
+        - id: test.bp.two
+          version: test.bp.two.version
+        - id: test.bp.three
+          version: test.bp.three.version`
+
 		expectedDetectionOrder = `    detection_order:
         - buildpacks:
             - id: test.top.nested
@@ -89,6 +98,19 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
             - id: test.bp.two
               version: test.bp.two.version
               optional: true
+        - id: test.bp.three
+          version: test.bp.three.version`
+
+		expectedOrderExtensions = `    order_extensions:
+        - id: test.top.nested
+          version: test.top.nested.version
+        - id: test.bp.one
+          version: test.bp.one.version
+          homepage: http://geocities.com/cool-bp
+          optional: true
+        - id: test.bp.two
+          version: test.bp.two.version
+          optional: true
         - id: test.bp.three
           version: test.bp.three.version`
 		expectedStackWithMixins = `    stack:
@@ -129,7 +151,9 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
                 - "4.5"
 %s
 %s
-%s`, expectedRemoteRunImages, expectedBuildpacks, expectedDetectionOrder)
+%s
+%s
+%s`, expectedRemoteRunImages, expectedBuildpacks, expectedDetectionOrder, expectedExtensions, expectedOrderExtensions)
 
 		expectedLocalInfo = fmt.Sprintf(`local_info:
     description: Some local description
@@ -153,7 +177,9 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
                 - "7.8"
 %s
 %s
-%s`, expectedLocalRunImages, expectedBuildpacks, expectedDetectionOrder)
+%s
+%s
+%s`, expectedLocalRunImages, expectedBuildpacks, expectedDetectionOrder, expectedExtensions, expectedOrderExtensions)
 
 		expectedPrettifiedYAML = fmt.Sprintf(`    builder_name: test-builder
     trusted: false
@@ -172,6 +198,8 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 				RunImageMirrors: []string{"first/default", "second/default"},
 				Buildpacks:      buildpacks,
 				Order:           order,
+				Extensions:      extensions,
+				OrderExtensions: orderExtensions,
 				BuildpackLayers: dist.ModuleLayers{},
 				Lifecycle: builder.LifecycleDescriptor{
 					Info: builder.LifecycleInfo{
@@ -204,6 +232,8 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 				RunImageMirrors: []string{"first/local-default", "second/local-default"},
 				Buildpacks:      buildpacks,
 				Order:           order,
+				Extensions:      extensions,
+				OrderExtensions: orderExtensions,
 				BuildpackLayers: dist.ModuleLayers{},
 				Lifecycle: builder.LifecycleDescriptor{
 					Info: builder.LifecycleInfo{

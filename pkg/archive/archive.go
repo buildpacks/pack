@@ -5,7 +5,6 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -152,7 +151,7 @@ func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 		}
 
 		if paths.CanonicalTarPath(header.Name) == canonicalEntryPath {
-			buf, err := ioutil.ReadAll(tr)
+			buf, err := io.ReadAll(tr)
 			if err != nil {
 				return nil, nil, errors.Wrapf(err, "failed to read contents of '%s'", entryPath)
 			}
@@ -279,7 +278,7 @@ func WriteZipToTar(tw TarWriter, srcZip, basePath string, uid, gid int, mode int
 				defer r.Close()
 
 				// contents is the target of the symlink
-				target, err := ioutil.ReadAll(r)
+				target, err := io.ReadAll(r)
 				if err != nil {
 					return "", err
 				}
@@ -353,11 +352,11 @@ func finalizeHeader(header *tar.Header, uid, gid int, mode int64, normalizeModTi
 // NormalizeHeader normalizes a tar.Header
 //
 // Normalizes the following:
-// 	- ModTime
-// 	- GID
-// 	- UID
-// 	- User Name
-// 	- Group Name
+//   - ModTime
+//   - GID
+//   - UID
+//   - User Name
+//   - Group Name
 func NormalizeHeader(header *tar.Header, normalizeModTime bool) {
 	if normalizeModTime {
 		header.ModTime = NormalizedDateTime
