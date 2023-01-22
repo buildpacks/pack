@@ -2,7 +2,6 @@ package v02
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -38,7 +37,7 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 
-		repoPath, err = ioutil.TempDir("", "test-repo")
+		repoPath, err = os.MkdirTemp("", "test-repo")
 		h.AssertNil(t, err)
 
 		repo, err = git.PlainInit(repoPath, false)
@@ -585,7 +584,7 @@ func createCommits(t *testing.T, repo *git.Repository, repoPath string, numberOf
 
 	var commitHashes []plumbing.Hash
 	for i := 0; i < numberOfCommits; i++ {
-		file, err := ioutil.TempFile(repoPath, h.RandString(10))
+		file, err := os.CreateTemp(repoPath, h.RandString(10))
 		h.AssertNil(t, err)
 		defer file.Close()
 

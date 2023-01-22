@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -171,7 +170,7 @@ func (r *Cache) Initialize() error {
 func (r *Cache) CreateCache() error {
 	r.logger.Debugf("Creating registry cache for %s/%s", r.url.Host, r.url.Path)
 
-	registryDir, err := ioutil.TempDir(filepath.Dir(r.Root), "registry")
+	registryDir, err := os.MkdirTemp(filepath.Dir(r.Root), "registry")
 	if err != nil {
 		return err
 	}

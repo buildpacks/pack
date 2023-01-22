@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -62,17 +61,17 @@ func testDownloadSBOM(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			tmpDir, err = ioutil.TempDir("", "pack.download.sbom.test.")
+			tmpDir, err = os.MkdirTemp("", "pack.download.sbom.test.")
 			h.AssertNil(t, err)
 
-			f, err := ioutil.TempFile("", "pack.download.sbom.test.")
+			f, err := os.CreateTemp("", "pack.download.sbom.test.")
 			h.AssertNil(t, err)
 			tmpFile = f.Name()
 
 			err = archive.CreateSingleFileTar(tmpFile, "sbom", "some-sbom-content")
 			h.AssertNil(t, err)
 
-			data, err := ioutil.ReadFile(tmpFile)
+			data, err := os.ReadFile(tmpFile)
 			h.AssertNil(t, err)
 
 			hsh := sha256.New()
@@ -102,7 +101,7 @@ func testDownloadSBOM(t *testing.T, when spec.G, it spec.S) {
 			err := subject.DownloadSBOM("some/image", DownloadSBOMOptions{Daemon: true, DestinationDir: tmpDir})
 			h.AssertNil(t, err)
 
-			contents, err := ioutil.ReadFile(filepath.Join(tmpDir, "sbom"))
+			contents, err := os.ReadFile(filepath.Join(tmpDir, "sbom"))
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, string(contents), "some-sbom-content")

@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bufio"
 	"io"
-	"io/ioutil"
 	"path"
 	"path/filepath"
 	"strings"
@@ -118,7 +117,7 @@ func (s *Termui) Handler() container.Handler {
 		go func() {
 			defer w.Close()
 
-			_, err := stdcopy.StdCopy(w, ioutil.Discard, reader)
+			_, err := stdcopy.StdCopy(w, io.Discard, reader)
 			if err != nil {
 				copyErr <- err
 			}

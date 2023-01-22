@@ -2,7 +2,6 @@ package commands_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -32,7 +31,7 @@ func testCompletionCommand(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		var err error
-		packHome, err = ioutil.TempDir("", "")
+		packHome, err = os.MkdirTemp("", "")
 		assert.Nil(err)
 
 		// the CompletionCommand calls a method on its Parent(), so it needs to have

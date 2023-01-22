@@ -2,7 +2,7 @@ package fakes
 
 import (
 	"io"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/buildpacks/pack/pkg/dist"
@@ -13,7 +13,7 @@ func CreateBuildpackTar(t *testing.T, tmpDir string, descriptor dist.BuildpackDe
 	buildpack, err := NewFakeBuildpackBlob(&descriptor, 0777)
 	h.AssertNil(t, err)
 
-	tempFile, err := ioutil.TempFile(tmpDir, "bp-*.tar")
+	tempFile, err := os.CreateTemp(tmpDir, "bp-*.tar")
 	h.AssertNil(t, err)
 	defer tempFile.Close()
 

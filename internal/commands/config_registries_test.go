@@ -2,7 +2,7 @@ package commands_test
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -39,7 +39,7 @@ func testConfigRegistries(t *testing.T, when spec.G, it spec.S) {
 		var err error
 
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
-		tempPackHome, err = ioutil.TempDir("", "pack-home")
+		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		assert.Nil(err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
 
@@ -210,7 +210,7 @@ func testConfigRegistries(t *testing.T, when spec.G, it spec.S) {
 
 		when("validation", func() {
 			it("fails with missing args", func() {
-				cmd.SetOut(ioutil.Discard)
+				cmd.SetOut(io.Discard)
 				cmd.SetArgs([]string{"add"})
 				err := cmd.Execute()
 				assert.ErrorContains(err, "accepts 2 arg")
@@ -253,7 +253,7 @@ func testConfigRegistries(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns clear error if fails to write", func() {
-				assert.Nil(ioutil.WriteFile(configPath, []byte("something"), 0001))
+				assert.Nil(os.WriteFile(configPath, []byte("something"), 0001))
 				cmd.SetArgs(args)
 				assert.ErrorContains(cmd.Execute(), "writing config to")
 			})
@@ -330,7 +330,7 @@ func testConfigRegistries(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("returns clear error if fails to write", func() {
-			assert.Nil(ioutil.WriteFile(configPath, []byte("something"), 0001))
+			assert.Nil(os.WriteFile(configPath, []byte("something"), 0001))
 			cmd.SetArgs([]string{"remove", "public registry"})
 			assert.ErrorContains(cmd.Execute(), "writing config to")
 		})

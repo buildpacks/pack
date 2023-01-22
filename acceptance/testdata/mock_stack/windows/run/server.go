@@ -6,9 +6,9 @@ package main
 
 import (
 	"flag"
-	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -28,7 +28,7 @@ func main() {
 		}
 
 		for _, path := range paths {
-			contents, err := ioutil.ReadFile(filepath.Clean(path))
+			contents, err := os.ReadFile(filepath.Clean(path))
 			if err != nil {
 				panic(err.Error())
 			}

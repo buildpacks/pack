@@ -3,7 +3,6 @@ package client_test
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -108,7 +107,7 @@ func testPullBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			tmpDir, err = ioutil.TempDir("", "registry")
+			tmpDir, err = os.MkdirTemp("", "registry")
 			h.AssertNil(t, err)
 
 			packHome = filepath.Join(tmpDir, ".pack")

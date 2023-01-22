@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/url"
 	"os"
@@ -254,10 +253,10 @@ func generateHtpasswd(t *testing.T, username string, password string) io.ReadClo
 }
 
 func setupDockerConfigWithAuth(t *testing.T, username string, password string, runRegistryHost string, runRegistryPort string) string {
-	dockerConfigDir, err := ioutil.TempDir("", "pack.test.docker.config.dir")
+	dockerConfigDir, err := os.MkdirTemp("", "pack.test.docker.config.dir")
 	AssertNil(t, err)
 
-	AssertNil(t, ioutil.WriteFile(filepath.Join(dockerConfigDir, "config.json"), []byte(fmt.Sprintf(`{
+	AssertNil(t, os.WriteFile(filepath.Join(dockerConfigDir, "config.json"), []byte(fmt.Sprintf(`{
 			  "auths": {
 			    "%s": {
 			      "auth": "%s"

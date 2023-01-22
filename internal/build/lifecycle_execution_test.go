@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -95,7 +94,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		// GGCR resolves the default keychain by inspecting DOCKER_CONFIG - this is used by the Analyze step
 		// when constructing the auth config (see `auth.BuildEnvVar` in phases.go).
 		var err error
-		dockerConfigDir, err = ioutil.TempDir("", "empty-docker-config-dir")
+		dockerConfigDir, err = os.MkdirTemp("", "empty-docker-config-dir")
 		h.AssertNil(t, err)
 		h.AssertNil(t, os.Setenv("DOCKER_CONFIG", dockerConfigDir))
 
@@ -996,6 +995,21 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		when("sbom destination directory is provided", func() {
 			lifecycleOps = append(lifecycleOps, func(opts *build.LifecycleOptions) {
 				opts.SBOMDestinationDir = "some-destination-dir"
+			})
+
+			it("provides copy-sbom-func as a post container operation", func() {
+				h.AssertEq(t, fakePhase.CleanupCallCount, 1)
+				h.AssertEq(t, fakePhase.RunCallCount, 1)
+
+				h.AssertEq(t, len(configProvider.PostContainerRunOps()), 2)
+				h.AssertFunctionName(t, configProvider.PostContainerRunOps()[0], "EnsureVolumeAccess")
+				h.AssertFunctionName(t, configProvider.PostContainerRunOps()[1], "CopyOut")
+			})
+		})
+
+		when("report destination directory is provided", func() {
+			lifecycleOps = append(lifecycleOps, func(opts *build.LifecycleOptions) {
+				opts.ReportDestinationDir = "a-destination-dir"
 			})
 
 			it("provides copy-sbom-func as a post container operation", func() {
@@ -1962,6 +1976,18 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		when("sbom destination directory is provided", func() {
 			lifecycleOps = append(lifecycleOps, func(opts *build.LifecycleOptions) {
 				opts.SBOMDestinationDir = "some-destination-dir"
+			})
+
+			it("provides copy-sbom-func as a post container operation", func() {
+				h.AssertEq(t, len(configProvider.PostContainerRunOps()), 2)
+				h.AssertFunctionName(t, configProvider.PostContainerRunOps()[0], "EnsureVolumeAccess")
+				h.AssertFunctionName(t, configProvider.PostContainerRunOps()[1], "CopyOut")
+			})
+		})
+
+		when("report destination directory is provided", func() {
+			lifecycleOps = append(lifecycleOps, func(opts *build.LifecycleOptions) {
+				opts.ReportDestinationDir = "a-destination-dir"
 			})
 
 			it("provides copy-sbom-func as a post container operation", func() {
