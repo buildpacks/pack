@@ -61,6 +61,7 @@ func writeImageInfo(
 		Parse(runImagesTemplate))
 	imgTpl = template.Must(imgTpl.New("buildpacks").
 		Parse(buildpacksTemplate))
+	imgTpl = template.Must(imgTpl.New("extensions").Parse(extensionsTemplate))
 	imgTpl = template.Must(imgTpl.New("processes").
 		Parse(processesTemplate))
 	imgTpl = template.Must(imgTpl.New("image").
@@ -127,6 +128,17 @@ Buildpacks:
   (buildpack metadata not present)
 {{- end }}`
 
+var extensionsTemplate = `
+Extensions:
+{{- if .Info.Extensions }}
+  ID	VERSION	HOMEPAGE
+{{- range $_, $b := .Info.Extensions }}
+  {{ $b.ID }}	{{ $b.Version }}	{{ StringsValueOrDefault $b.Homepage "-" }}
+{{- end }}
+{{- else }}
+  (extension metadata not present)
+{{- end }}`
+
 var processesTemplate = `
 {{- if .Info.Processes }}
 
@@ -150,4 +162,6 @@ Base Image:
 {{- end}}
   Top Layer: {{ .Info.Base.TopLayer }}
 {{ template "runImages" . }}
-{{ template "buildpacks" . }}{{ template "processes" . }}`
+{{ template "buildpacks" . }}
+{{ template "extensions" . }}
+{{ template "processes" . }}`
