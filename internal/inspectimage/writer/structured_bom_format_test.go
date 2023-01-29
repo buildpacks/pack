@@ -31,10 +31,12 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf *bytes.Buffer
 
-		remoteInfo  *client.ImageInfo
-		localInfo   *client.ImageInfo
-		generalInfo inspectimage.GeneralInfo
-		logger      *logging.LogWithWriters
+		remoteInfo              *client.ImageInfo
+		localInfo               *client.ImageInfo
+		remoteWithExtensionInfo *client.ImageWithExtensionInfo
+		localWithExtensionInfo  *client.ImageWithExtensionInfo
+		generalInfo             inspectimage.GeneralInfo
+		logger                  *logging.LogWithWriters
 	)
 
 	when("Print", func() {
@@ -75,6 +77,42 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			}
+
+			remoteWithExtensionInfo = &client.ImageWithExtensionInfo{
+				BOM: []buildpack.BOMEntry{
+					{
+						Require: buildpack.Require{
+							Name:    "remote-require",
+							Version: "1.2.3",
+							Metadata: map[string]interface{}{
+								"cool-remote": "beans",
+							},
+						},
+						Buildpack: buildpack.GroupElement{
+							ID:      "remote-buildpack",
+							Version: "remote-buildpack-version",
+						},
+					},
+				},
+			}
+			localWithExtensionInfo = &client.ImageWithExtensionInfo{
+				BOM: []buildpack.BOMEntry{
+					{
+						Require: buildpack.Require{
+							Name:    "local-require",
+							Version: "4.5.6",
+							Metadata: map[string]interface{}{
+								"cool-local": "beans",
+							},
+						},
+						Buildpack: buildpack.GroupElement{
+							ID:      "local-buildpack",
+							Version: "local-buildpack-version",
+						},
+					},
+				},
+			}
+
 			generalInfo = inspectimage.GeneralInfo{
 				Name: "some-image-name",
 				RunImageMirrors: []config.RunImage{
@@ -88,8 +126,10 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 
 		when("structured output", func() {
 			var (
-				localBomDisplay  []inspectimage.BOMEntryDisplay
-				remoteBomDisplay []inspectimage.BOMEntryDisplay
+				localBomDisplay               []inspectimage.BOMEntryDisplay
+				remoteBomDisplay              []inspectimage.BOMEntryDisplay
+				localBomWithExtensionDisplay  []inspectimage.BOMEntryWithExtensionDisplay
+				remoteBomWithExtensionDisplay []inspectimage.BOMEntryWithExtensionDisplay
 			)
 			it.Before(func() {
 				localBomDisplay = []inspectimage.BOMEntryDisplay{{
@@ -106,6 +146,33 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					},
 				}}
 				remoteBomDisplay = []inspectimage.BOMEntryDisplay{{
+					Name:    "remote-require",
+					Version: "1.2.3",
+					Metadata: map[string]interface{}{
+						"cool-remote": "beans",
+					},
+					Buildpack: dist.ModuleRef{
+						ModuleInfo: dist.ModuleInfo{
+							ID:      "remote-buildpack",
+							Version: "remote-buildpack-version",
+						},
+					},
+				}}
+
+				localBomWithExtensionDisplay = []inspectimage.BOMEntryWithExtensionDisplay{{
+					Name:    "local-require",
+					Version: "4.5.6",
+					Metadata: map[string]interface{}{
+						"cool-local": "beans",
+					},
+					Buildpack: dist.ModuleRef{
+						ModuleInfo: dist.ModuleInfo{
+							ID:      "local-buildpack",
+							Version: "local-buildpack-version",
+						},
+					},
+				}}
+				remoteBomWithExtensionDisplay = []inspectimage.BOMEntryWithExtensionDisplay{{
 					Name:    "remote-require",
 					Version: "1.2.3",
 					Metadata: map[string]interface{}{
@@ -137,6 +204,25 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					Local:  localBomDisplay,
 				})
 			})
+
+			it("passes correct info to structuredBOMWriter", func() {
+				var marshalInput interface{}
+
+				structuredBOMWriter := writer.StructuredBOMFormat{
+					MarshalFunc: func(i interface{}) ([]byte, error) {
+						marshalInput = i
+						return []byte("marshalled"), nil
+					},
+				}
+
+				err := structuredBOMWriter.Print(logger, generalInfo, nil, nil, localWithExtensionInfo, remoteWithExtensionInfo, nil, nil)
+				assert.Nil(err)
+
+				assert.Equal(marshalInput, inspectimage.BOMWithExtensionDisplay{
+					Remote: remoteBomWithExtensionDisplay,
+					Local:  localBomWithExtensionDisplay,
+				})
+			})
 			when("a localErr is passed to Print", func() {
 				it("still marshals remote information", func() {
 					var marshalInput interface{}
@@ -154,6 +240,29 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 
 					assert.Equal(marshalInput, inspectimage.BOMDisplay{
 						Remote:   remoteBomDisplay,
+						Local:    nil,
+						LocalErr: localErr.Error(),
+					})
+				})
+			})
+
+			when("a localErr is passed to Print", func() {
+				it("still marshals remote information", func() {
+					var marshalInput interface{}
+
+					localErr := errors.New("a local error occurred")
+					structuredBOMWriter := writer.StructuredBOMFormat{
+						MarshalFunc: func(i interface{}) ([]byte, error) {
+							marshalInput = i
+							return []byte("marshalled"), nil
+						},
+					}
+
+					err := structuredBOMWriter.Print(logger, generalInfo, nil, nil, nil, remoteWithExtensionInfo, localErr, nil)
+					assert.Nil(err)
+
+					assert.Equal(marshalInput, inspectimage.BOMWithExtensionDisplay{
+						Remote:   remoteBomWithExtensionDisplay,
 						Local:    nil,
 						LocalErr: localErr.Error(),
 					})
@@ -178,6 +287,29 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					assert.Equal(marshalInput, inspectimage.BOMDisplay{
 						Remote:    nil,
 						Local:     localBomDisplay,
+						RemoteErr: remoteErr.Error(),
+					})
+				})
+			})
+
+			when("a remoteErr is passed to Print", func() {
+				it("still marshals local information", func() {
+					var marshalInput interface{}
+
+					remoteErr := errors.New("a remote error occurred")
+					structuredBOMWriter := writer.StructuredBOMFormat{
+						MarshalFunc: func(i interface{}) ([]byte, error) {
+							marshalInput = i
+							return []byte("marshalled"), nil
+						},
+					}
+
+					err := structuredBOMWriter.Print(logger, generalInfo, nil, nil, localWithExtensionInfo, nil, nil, remoteErr)
+					assert.Nil(err)
+
+					assert.Equal(marshalInput, inspectimage.BOMWithExtensionDisplay{
+						Remote:    nil,
+						Local:     localBomWithExtensionDisplay,
 						RemoteErr: remoteErr.Error(),
 					})
 				})
@@ -207,6 +339,22 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					localErr := errors.New("a local error occurred")
 
 					err := structuredBOMWriter.Print(logger, generalInfo, localInfo, remoteInfo, nil, nil, localErr, remoteErr)
+					assert.ErrorContains(err, remoteErr.Error())
+					assert.ErrorContains(err, localErr.Error())
+				})
+			})
+
+			when("fetching local and remote info errors", func() {
+				it("returns an error", func() {
+					structuredBOMWriter := writer.StructuredBOMFormat{
+						MarshalFunc: func(i interface{}) ([]byte, error) {
+							return []byte("cool"), nil
+						},
+					}
+					remoteErr := errors.New("a remote error occurred")
+					localErr := errors.New("a local error occurred")
+
+					err := structuredBOMWriter.Print(logger, generalInfo, nil, nil, localWithExtensionInfo, remoteWithExtensionInfo, localErr, remoteErr)
 					assert.ErrorContains(err, remoteErr.Error())
 					assert.ErrorContains(err, localErr.Error())
 				})

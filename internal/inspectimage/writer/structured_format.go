@@ -48,17 +48,17 @@ func (w *StructuredFormat) Print(
 
 		_, err = logger.Writer().Write(out)
 		return err
-	}
+	} else {
+		out, err := w.MarshalFunc(inspectimage.InspectOutput{
+			ImageName: generalInfo.Name,
+			Remote:    remoteInfo,
+			Local:     localInfo,
+		})
+		if err != nil {
+			panic(err)
+		}
 
-	out, err := w.MarshalFunc(inspectimage.InspectOutput{
-		ImageName: generalInfo.Name,
-		Remote:    remoteInfo,
-		Local:     localInfo,
-	})
-	if err != nil {
-		panic(err)
+		_, err = logger.Writer().Write(out)
+		return err
 	}
-
-	_, err = logger.Writer().Write(out)
-	return err
 }
