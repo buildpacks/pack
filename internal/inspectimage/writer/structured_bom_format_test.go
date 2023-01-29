@@ -129,7 +129,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					},
 				}
 
-				err := structuredBOMWriter.Print(logger, generalInfo, localInfo, remoteInfo, nil, nil)
+				err := structuredBOMWriter.Print(logger, generalInfo, localInfo, remoteInfo, nil, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.Equal(marshalInput, inspectimage.BOMDisplay{
@@ -149,7 +149,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 						},
 					}
 
-					err := structuredBOMWriter.Print(logger, generalInfo, nil, remoteInfo, localErr, nil)
+					err := structuredBOMWriter.Print(logger, generalInfo, nil, remoteInfo, nil, nil, localErr, nil)
 					assert.Nil(err)
 
 					assert.Equal(marshalInput, inspectimage.BOMDisplay{
@@ -172,7 +172,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 						},
 					}
 
-					err := structuredBOMWriter.Print(logger, generalInfo, localInfo, nil, nil, remoteErr)
+					err := structuredBOMWriter.Print(logger, generalInfo, localInfo, nil, nil, nil, nil, remoteErr)
 					assert.Nil(err)
 
 					assert.Equal(marshalInput, inspectimage.BOMDisplay{
@@ -192,7 +192,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 						MarshalFunc: testMarshalFunc,
 					}
 
-					err := structuredBOMWriter.Print(logger, generalInfo, nil, nil, nil, nil)
+					err := structuredBOMWriter.Print(logger, generalInfo, nil, nil, nil, nil, nil, nil)
 					assert.ErrorWithMessage(err, fmt.Sprintf("unable to find image '%s' locally or remotely", "some-image-name"))
 				})
 			})
@@ -206,7 +206,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					remoteErr := errors.New("a remote error occurred")
 					localErr := errors.New("a local error occurred")
 
-					err := structuredBOMWriter.Print(logger, generalInfo, localInfo, remoteInfo, localErr, remoteErr)
+					err := structuredBOMWriter.Print(logger, generalInfo, localInfo, remoteInfo, nil, nil, localErr, remoteErr)
 					assert.ErrorContains(err, remoteErr.Error())
 					assert.ErrorContains(err, localErr.Error())
 				})

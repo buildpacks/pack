@@ -132,7 +132,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 				jsonBOMWriter := writer.NewJSONBOM()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := jsonBOMWriter.Print(logger, inspectimage.GeneralInfo{}, localInfo, remoteInfo, nil, nil)
+				err := jsonBOMWriter.Print(logger, inspectimage.GeneralInfo{}, localInfo, remoteInfo, nil, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.ContainsJSON(outBuf.String(), expectedLocalOutput)
@@ -145,7 +145,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 				jsonBOMWriter := writer.NewJSONBOM()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := jsonBOMWriter.Print(logger, inspectimage.GeneralInfo{}, localInfo, nil, nil, nil)
+				err := jsonBOMWriter.Print(logger, inspectimage.GeneralInfo{}, localInfo, nil, nil, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.ContainsJSON(outBuf.String(), expectedLocalOutput)
@@ -160,7 +160,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 				jsonBOMWriter := writer.NewJSONBOM()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := jsonBOMWriter.Print(logger, inspectimage.GeneralInfo{}, nil, remoteInfo, nil, nil)
+				err := jsonBOMWriter.Print(logger, inspectimage.GeneralInfo{}, nil, remoteInfo, nil, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.NotContains(outBuf.String(), "test.stack.id.local")

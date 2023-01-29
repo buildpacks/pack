@@ -131,13 +131,13 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns the stack ID", func() {
-					info, err := subject.InspectImage("some/image", useDaemon)
+					info, _, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.StackID, "test.stack.id")
 				})
 
 				it("returns the stack", func() {
-					info, err := subject.InspectImage("some/image", useDaemon)
+					info, _, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.Stack,
 						platform.StackMetadata{
@@ -153,7 +153,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns the base image", func() {
-					info, err := subject.InspectImage("some/image", useDaemon)
+					info, _, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.Base,
 						platform.RunImageMetadata{
@@ -164,7 +164,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns the BOM", func() {
-					info, err := subject.InspectImage("some/image", useDaemon)
+					info, _, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 
 					rawBOM, err := json.Marshal(info.BOM)
@@ -173,7 +173,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns the buildpacks", func() {
-					info, err := subject.InspectImage("some/image", useDaemon)
+					info, _, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, len(info.Buildpacks), 2)
@@ -184,7 +184,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns the processes setting the web process as default", func() {
-					info, err := subject.InspectImage("some/image", useDaemon)
+					info, _, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, info.Processes,
@@ -216,7 +216,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("returns processes setting the correct default process", func() {
-							info, err := subject.InspectImage("some/image", useDaemon)
+							info, _, err := subject.InspectImage("some/image", useDaemon)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, info.Processes,
@@ -248,7 +248,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("returns a nil default process", func() {
-							info, err := subject.InspectImage("some/image", useDaemon)
+							info, _, err := subject.InspectImage("some/image", useDaemon)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, info.Processes,
@@ -290,7 +290,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 }`,
 						))
 
-						info, err := subject.InspectImage("some/image", useDaemon)
+						info, _, err := subject.InspectImage("some/image", useDaemon)
 						h.AssertNil(t, err)
 
 						h.AssertEq(t, info.Processes,
@@ -318,7 +318,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					when("CNB_PLATFORM_API set to bad value", func() {
 						it("errors", func() {
 							h.AssertNil(t, mockImage.SetEnv("CNB_PLATFORM_API", "not-semver"))
-							_, err := subject.InspectImage("some/image", useDaemon)
+							_, _, err := subject.InspectImage("some/image", useDaemon)
 							h.AssertError(t, err, "parsing platform api version")
 						})
 					})
@@ -327,14 +327,14 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 						it("errors", func() {
 							mockImage.EntrypointCall.Returns.Error = errors.New("some-error")
 
-							_, err := subject.InspectImage("some/image", useDaemon)
+							_, _, err := subject.InspectImage("some/image", useDaemon)
 							h.AssertError(t, err, "reading entrypoint")
 						})
 					})
 
 					when("ENTRYPOINT is empty", func() {
 						it("sets nil default process", func() {
-							info, err := subject.InspectImage("some/image", useDaemon)
+							info, _, err := subject.InspectImage("some/image", useDaemon)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, info.Processes,
@@ -369,7 +369,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("ignores it and sets the correct default process", func() {
-							info, err := subject.InspectImage("some/image", useDaemon)
+							info, _, err := subject.InspectImage("some/image", useDaemon)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, info.Processes,
@@ -401,7 +401,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("returns nil default default process", func() {
-							info, err := subject.InspectImage("some/image", useDaemon)
+							info, _, err := subject.InspectImage("some/image", useDaemon)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, info.Processes,
@@ -446,7 +446,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					}`,
 							))
 
-							info, err := subject.InspectImage("some/image", useDaemon)
+							info, _, err := subject.InspectImage("some/image", useDaemon)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, info.Processes,
@@ -471,7 +471,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 							it("sets default process to nil", func() {
 								mockImage.EntrypointCall.Returns.StringArr = []string{`c:\cnb\lifecycle\launcher.exe`}
 
-								info, err := subject.InspectImage("some/image", useDaemon)
+								info, _, err := subject.InspectImage("some/image", useDaemon)
 								h.AssertNil(t, err)
 
 								h.AssertEq(t, info.Processes,
@@ -502,7 +502,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 							it("sets default process to nil", func() {
 								mockImage.EntrypointCall.Returns.StringArr = []string{`c:\cnb\process\unknown-process.exe`}
 
-								info, err := subject.InspectImage("some/image", useDaemon)
+								info, _, err := subject.InspectImage("some/image", useDaemon)
 								h.AssertNil(t, err)
 
 								h.AssertEq(t, info.Processes,
@@ -533,7 +533,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 							it("sets default process to defined process", func() {
 								mockImage.EntrypointCall.Returns.StringArr = []string{`c:\cnb\process\other-process.exe`}
 
-								info, err := subject.InspectImage("some/image", useDaemon)
+								info, _, err := subject.InspectImage("some/image", useDaemon)
 								h.AssertNil(t, err)
 
 								h.AssertEq(t, info.Processes,
@@ -579,7 +579,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					}`,
 							))
 
-							info, err := subject.InspectImage("some/image", useDaemon)
+							info, _, err := subject.InspectImage("some/image", useDaemon)
 							h.AssertNil(t, err)
 							fmt.Print(info)
 
@@ -602,7 +602,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 
 					when("working-dir is not set", func() {
 						it("returns process with working directory from image", func() {
-							info, err := subject.InspectImage("some/image", useDaemon)
+							info, _, err := subject.InspectImage("some/image", useDaemon)
 							h.AssertNil(t, err)
 
 							h.AssertEq(t, info.Processes,
@@ -636,7 +636,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 		it("returns nil", func() {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "not/some-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(nil, image.ErrNotFound)
 
-			info, err := subject.InspectImage("not/some-image", true)
+			info, _, err := subject.InspectImage("not/some-image", true)
 			h.AssertNil(t, err)
 			h.AssertNil(t, info)
 		})
@@ -646,7 +646,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 		it("returns the error", func() {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "not/some-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(nil, errors.New("some-error"))
 
-			_, err := subject.InspectImage("not/some-image", true)
+			_, _, err := subject.InspectImage("not/some-image", true)
 			h.AssertError(t, err, "some-error")
 		})
 	})
@@ -656,7 +656,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 			mockImageFetcher.EXPECT().
 				Fetch(gomock.Any(), "missing/labels", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).
 				Return(fakes.NewImage("missing/labels", "", nil), nil)
-			info, err := subject.InspectImage("missing/labels", true)
+			info, _, err := subject.InspectImage("missing/labels", true)
 			h.AssertNil(t, err)
 			h.AssertEq(t, info, &ImageInfo{}, ignorePlatformAPI...)
 		})
@@ -674,13 +674,13 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 
 		it("returns an error when layers md cannot parse", func() {
 			h.AssertNil(t, badImage.SetLabel("io.buildpacks.lifecycle.metadata", "not   ----  json"))
-			_, err := subject.InspectImage("bad/image", true)
+			_, _, err := subject.InspectImage("bad/image", true)
 			h.AssertError(t, err, "unmarshalling label 'io.buildpacks.lifecycle.metadata'")
 		})
 
 		it("returns an error when build md cannot parse", func() {
 			h.AssertNil(t, badImage.SetLabel("io.buildpacks.build.metadata", "not   ----  json"))
-			_, err := subject.InspectImage("bad/image", true)
+			_, _, err := subject.InspectImage("bad/image", true)
 			h.AssertError(t, err, "unmarshalling label 'io.buildpacks.build.metadata'")
 		})
 	})
@@ -708,7 +708,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 }`,
 			))
 
-			info, err := subject.InspectImage("old/image", true)
+			info, _, err := subject.InspectImage("old/image", true)
 			h.AssertNil(t, err)
 			h.AssertEq(t, info.Base,
 				platform.RunImageMetadata{

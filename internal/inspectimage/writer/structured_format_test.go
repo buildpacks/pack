@@ -54,7 +54,7 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-					err := structuredWriter.Print(logger, sharedImageInfo, nil, nil, nil, nil)
+					err := structuredWriter.Print(logger, sharedImageInfo, nil, nil, nil, nil, nil, nil)
 					assert.ErrorWithMessage(err, fmt.Sprintf("unable to find image '%s' locally or remotely", "missing-image"))
 				})
 			})
@@ -71,7 +71,7 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 					localErr := errors.New("a local error occurred")
 
 					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-					err := structuredWriter.Print(logger, sharedImageInfo, nil, remoteInfo, localErr, nil)
+					err := structuredWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil, localErr, nil)
 					assert.ErrorWithMessage(err, "preparing output for 'localErr-image': a local error occurred")
 				})
 			})
@@ -89,7 +89,7 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 					remoteErr := errors.New("a remote error occurred")
 
 					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-					err := structuredWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, remoteErr)
+					err := structuredWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil, nil, remoteErr)
 					assert.ErrorWithMessage(err, "preparing output for 'remoteErr-image': a remote error occurred")
 				})
 			})

@@ -300,7 +300,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				jsonWriter := writer.NewJSON()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := jsonWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, nil)
+				err := jsonWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.ContainsJSON(outBuf.String(), `{ "image_name": "test-image" }`)
@@ -332,7 +332,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				jsonWriter := writer.NewJSON()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := jsonWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil)
+				err := jsonWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.ContainsJSON(outBuf.String(), `{ "image_name": "test-image" }`)
@@ -366,7 +366,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				jsonWriter := writer.NewJSON()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := jsonWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil)
+				err := jsonWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.ContainsJSON(outBuf.String(), `{ "image_name": "test-image" }`)

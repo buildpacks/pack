@@ -18,6 +18,7 @@ type InspectImageWriter interface {
 		logger logging.Logger,
 		sharedInfo inspectimage.GeneralInfo,
 		local, remote *client.ImageInfo,
+		localWithExtension, remoteWithExtension *client.ImageWithExtensionInfo,
 		localErr, remoteErr error,
 	) error
 }

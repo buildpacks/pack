@@ -25,24 +25,25 @@ func (h *HumanReadable) Print(
 	logger logging.Logger,
 	generalInfo inspectimage.GeneralInfo,
 	local, remote *client.ImageInfo,
+	localWithExtension, remoteWithExtension *client.ImageWithExtensionInfo,
 	localErr, remoteErr error,
 ) error {
-	if local == nil && remote == nil {
+	if local == nil && remote == nil && localWithExtension == nil && remoteWithExtension == nil {
 		return fmt.Errorf("unable to find image '%s' locally or remotely", generalInfo.Name)
 	}
 
-	localDisplay := inspectimage.NewInfoDisplay(local, generalInfo)
-	remoteDisplay := inspectimage.NewInfoDisplay(remote, generalInfo)
+	localDisplay, localWithExtensionDisplay := inspectimage.NewInfoDisplay(local, localWithExtension, generalInfo)
+	remoteDisplay, remoteWithExtensionDisplay := inspectimage.NewInfoDisplay(remote, remoteWithExtension, generalInfo)
 
 	logger.Infof("Inspecting image: %s\n", style.Symbol(generalInfo.Name))
 
 	logger.Info("\nREMOTE:\n")
-	err := writeImageInfo(logger, remoteDisplay, remoteErr)
+	err := writeImageInfo(logger, remoteDisplay, remoteWithExtensionDisplay, remoteErr)
 	if err != nil {
 		return fmt.Errorf("writing remote builder info: %w", err)
 	}
 	logger.Info("\nLOCAL:\n")
-	err = writeImageInfo(logger, localDisplay, localErr)
+	err = writeImageInfo(logger, localDisplay, localWithExtensionDisplay, localErr)
 	if err != nil {
 		return fmt.Errorf("writing local builder info: %w", err)
 	}
@@ -53,6 +54,7 @@ func (h *HumanReadable) Print(
 func writeImageInfo(
 	logger logging.Logger,
 	info *inspectimage.InfoDisplay,
+	infoWithExtension *inspectimage.InfoWithExtensionDisplay,
 	err error,
 ) error {
 	imgTpl := template.Must(template.New("runImages").
@@ -61,21 +63,28 @@ func writeImageInfo(
 		Parse(runImagesTemplate))
 	imgTpl = template.Must(imgTpl.New("buildpacks").
 		Parse(buildpacksTemplate))
-	imgTpl = template.Must(imgTpl.New("extensions").Parse(extensionsTemplate))
+	if info == nil {
+		imgTpl = template.Must(imgTpl.New("extensions").Parse(extensionsTemplate))
+	}
 	imgTpl = template.Must(imgTpl.New("processes").
 		Parse(processesTemplate))
-	imgTpl = template.Must(imgTpl.New("image").
-		Parse(imageTemplate))
+	if info == nil {
+		imgTpl = template.Must(imgTpl.New("image").
+			Parse(imageWithExtensionTemplate))
+	} else {
+		imgTpl = template.Must(imgTpl.New("image").
+			Parse(imageTemplate))
+	}
 	if err != nil {
 		logger.Errorf("%s\n", err)
 		return nil
 	}
 
-	if info == nil {
+	if info == nil && infoWithExtension == nil {
 		logger.Info("(not present)\n")
 		return nil
 	}
-	remoteOutput, err := inspectImageOutput(info, imgTpl)
+	remoteOutput, err := inspectImageOutput(info, infoWithExtension, imgTpl)
 	if err != nil {
 		logger.Error(err.Error())
 	} else {
@@ -84,8 +93,8 @@ func writeImageInfo(
 	return nil
 }
 
-func inspectImageOutput(info *inspectimage.InfoDisplay, tpl *template.Template) (*bytes.Buffer, error) {
-	if info == nil {
+func inspectImageOutput(info *inspectimage.InfoDisplay, infoWithExtension *inspectimage.InfoWithExtensionDisplay, tpl *template.Template) (*bytes.Buffer, error) {
+	if info == nil && infoWithExtension == nil {
 		return bytes.NewBuffer([]byte("(not present)")), nil
 	}
 	buf := bytes.NewBuffer(nil)
@@ -93,12 +102,23 @@ func inspectImageOutput(info *inspectimage.InfoDisplay, tpl *template.Template) 
 	defer func() {
 		tw.Flush()
 	}()
-	if err := tpl.Execute(tw, &struct {
-		Info *inspectimage.InfoDisplay
-	}{
-		info,
-	}); err != nil {
-		return bytes.NewBuffer(nil), err
+
+	if info != nil {
+		if err := tpl.Execute(tw, &struct {
+			Info *inspectimage.InfoDisplay
+		}{
+			info,
+		}); err != nil {
+			return bytes.NewBuffer(nil), err
+		}
+	} else {
+		if err := tpl.Execute(tw, &struct {
+			Info *inspectimage.InfoWithExtensionDisplay
+		}{
+			infoWithExtension,
+		}); err != nil {
+			return bytes.NewBuffer(nil), err
+		}
 	}
 
 	return buf, nil
@@ -155,6 +175,17 @@ Processes:
 
 var imageTemplate = `
 Stack: {{ .Info.StackID }}
+
+Base Image:
+{{- if .Info.Base.Reference}}
+  Reference: {{ .Info.Base.Reference }}
+{{- end}}
+  Top Layer: {{ .Info.Base.TopLayer }}
+{{ template "runImages" . }}
+{{ template "buildpacks" . }}
+{{ template "processes" . }}`
+
+var imageWithExtensionTemplate = `Stack: {{ .Info.StackID }}
 
 Base Image:
 {{- if .Info.Base.Reference}}

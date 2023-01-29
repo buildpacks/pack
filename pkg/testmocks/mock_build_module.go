@@ -10,7 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
-	buildmodule "github.com/buildpacks/pack/pkg/buildpack"
+	buildpack "github.com/buildpacks/pack/pkg/buildpack"
 )
 
 // MockBuildModule is a mock of BuildModule interface.
@@ -37,10 +37,10 @@ func (m *MockBuildModule) EXPECT() *MockBuildModuleMockRecorder {
 }
 
 // Descriptor mocks base method.
-func (m *MockBuildModule) Descriptor() buildmodule.Descriptor {
+func (m *MockBuildModule) Descriptor() buildpack.Descriptor {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Descriptor")
-	ret0, _ := ret[0].(buildmodule.Descriptor)
+	ret0, _ := ret[0].(buildpack.Descriptor)
 	return ret0
 }
 

@@ -286,7 +286,7 @@ working-dir = "/other-test-work-dir"
 				tomlWriter := writer.NewTOML()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := tomlWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, nil)
+				err := tomlWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.ContainsTOML(outBuf.String(), `image_name = "test-image"`)
@@ -318,7 +318,7 @@ working-dir = "/other-test-work-dir"
 				tomlWriter := writer.NewTOML()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := tomlWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil)
+				err := tomlWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.ContainsTOML(outBuf.String(), `image_name = "test-image"`)
@@ -350,7 +350,7 @@ working-dir = "/other-test-work-dir"
 				tomlWriter := writer.NewTOML()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := tomlWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil)
+				err := tomlWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.ContainsTOML(outBuf.String(), `image_name = "test-image"`)

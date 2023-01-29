@@ -47,14 +47,14 @@ func InspectImage(
 				return err
 			}
 
-			remote, remoteErr := client.InspectImage(img, false)
-			local, localErr := client.InspectImage(img, true)
+			remote, remoteWithExtension, remoteErr := client.InspectImage(img, false)
+			local, localWithExtension, localErr := client.InspectImage(img, true)
 
 			if flags.BOM {
 				logger.Warn("Using the '--bom' flag with 'pack inspect-image <image-name>' is deprecated. Users are encouraged to use 'pack sbom download <image-name>'.")
 			}
 
-			if err := w.Print(logger, sharedImageInfo, local, remote, localErr, remoteErr); err != nil {
+			if err := w.Print(logger, sharedImageInfo, local, remote, localWithExtension, remoteWithExtension, localErr, remoteErr); err != nil {
 				return err
 			}
 			return nil

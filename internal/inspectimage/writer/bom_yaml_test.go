@@ -118,7 +118,7 @@ remote:
 				yamlBOMWriter := writer.NewYAMLBOM()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := yamlBOMWriter.Print(logger, inspectimage.GeneralInfo{}, localInfo, remoteInfo, nil, nil)
+				err := yamlBOMWriter.Print(logger, inspectimage.GeneralInfo{}, localInfo, remoteInfo, nil, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.ContainsYAML(outBuf.String(), expectedLocalOutput)
@@ -131,7 +131,7 @@ remote:
 				yamlBOMWriter := writer.NewYAMLBOM()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := yamlBOMWriter.Print(logger, inspectimage.GeneralInfo{}, localInfo, nil, nil, nil)
+				err := yamlBOMWriter.Print(logger, inspectimage.GeneralInfo{}, localInfo, nil, nil, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.ContainsYAML(outBuf.String(), expectedLocalOutput)
@@ -146,7 +146,7 @@ remote:
 				yamlBOMWriter := writer.NewYAMLBOM()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := yamlBOMWriter.Print(logger, inspectimage.GeneralInfo{}, nil, remoteInfo, nil, nil)
+				err := yamlBOMWriter.Print(logger, inspectimage.GeneralInfo{}, nil, remoteInfo, nil, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.NotContains(outBuf.String(), "test.stack.id.local")
