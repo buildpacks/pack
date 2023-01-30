@@ -33,8 +33,8 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 
 		remoteInfo              *client.ImageInfo
 		localInfo               *client.ImageInfo
-		remoteWithExtensionInfo *client.ImageWithExtensionInfo
-		localWithExtensionInfo  *client.ImageWithExtensionInfo
+		remoteWithExtensionInfo *client.ImageInfo
+		localWithExtensionInfo  *client.ImageInfo
 		generalInfo             inspectimage.GeneralInfo
 		logger                  *logging.LogWithWriters
 	)
@@ -78,7 +78,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 				},
 			}
 
-			remoteWithExtensionInfo = &client.ImageWithExtensionInfo{
+			remoteWithExtensionInfo = &client.ImageInfo{
 				BOM: []buildpack.BOMEntry{
 					{
 						Require: buildpack.Require{
@@ -95,7 +95,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			}
-			localWithExtensionInfo = &client.ImageWithExtensionInfo{
+			localWithExtensionInfo = &client.ImageInfo{
 				BOM: []buildpack.BOMEntry{
 					{
 						Require: buildpack.Require{
@@ -128,8 +128,8 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 			var (
 				localBomDisplay               []inspectimage.BOMEntryDisplay
 				remoteBomDisplay              []inspectimage.BOMEntryDisplay
-				localBomWithExtensionDisplay  []inspectimage.BOMEntryWithExtensionDisplay
-				remoteBomWithExtensionDisplay []inspectimage.BOMEntryWithExtensionDisplay
+				localBomWithExtensionDisplay  []inspectimage.BOMEntryDisplay
+				remoteBomWithExtensionDisplay []inspectimage.BOMEntryDisplay
 			)
 			it.Before(func() {
 				localBomDisplay = []inspectimage.BOMEntryDisplay{{
@@ -159,7 +159,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					},
 				}}
 
-				localBomWithExtensionDisplay = []inspectimage.BOMEntryWithExtensionDisplay{{
+				localBomWithExtensionDisplay = []inspectimage.BOMEntryDisplay{{
 					Name:    "local-require",
 					Version: "4.5.6",
 					Metadata: map[string]interface{}{
@@ -172,7 +172,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 				}}
-				remoteBomWithExtensionDisplay = []inspectimage.BOMEntryWithExtensionDisplay{{
+				remoteBomWithExtensionDisplay = []inspectimage.BOMEntryDisplay{{
 					Name:    "remote-require",
 					Version: "1.2.3",
 					Metadata: map[string]interface{}{
@@ -196,7 +196,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					},
 				}
 
-				err := structuredBOMWriter.Print(logger, generalInfo, localInfo, remoteInfo, nil, nil, nil, nil)
+				err := structuredBOMWriter.Print(logger, generalInfo, localInfo, remoteInfo, nil, nil)
 				assert.Nil(err)
 
 				assert.Equal(marshalInput, inspectimage.BOMDisplay{
@@ -215,10 +215,10 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					},
 				}
 
-				err := structuredBOMWriter.Print(logger, generalInfo, nil, nil, localWithExtensionInfo, remoteWithExtensionInfo, nil, nil)
+				err := structuredBOMWriter.Print(logger, generalInfo, localWithExtensionInfo, remoteWithExtensionInfo, nil, nil)
 				assert.Nil(err)
 
-				assert.Equal(marshalInput, inspectimage.BOMWithExtensionDisplay{
+				assert.Equal(marshalInput, inspectimage.BOMDisplay{
 					Remote: remoteBomWithExtensionDisplay,
 					Local:  localBomWithExtensionDisplay,
 				})
@@ -235,7 +235,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 						},
 					}
 
-					err := structuredBOMWriter.Print(logger, generalInfo, nil, remoteInfo, nil, nil, localErr, nil)
+					err := structuredBOMWriter.Print(logger, generalInfo, nil, remoteInfo, localErr, nil)
 					assert.Nil(err)
 
 					assert.Equal(marshalInput, inspectimage.BOMDisplay{
@@ -258,10 +258,10 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 						},
 					}
 
-					err := structuredBOMWriter.Print(logger, generalInfo, nil, nil, nil, remoteWithExtensionInfo, localErr, nil)
+					err := structuredBOMWriter.Print(logger, generalInfo, nil, remoteWithExtensionInfo, localErr, nil)
 					assert.Nil(err)
 
-					assert.Equal(marshalInput, inspectimage.BOMWithExtensionDisplay{
+					assert.Equal(marshalInput, inspectimage.BOMDisplay{
 						Remote:   remoteBomWithExtensionDisplay,
 						Local:    nil,
 						LocalErr: localErr.Error(),
@@ -281,7 +281,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 						},
 					}
 
-					err := structuredBOMWriter.Print(logger, generalInfo, localInfo, nil, nil, nil, nil, remoteErr)
+					err := structuredBOMWriter.Print(logger, generalInfo, localInfo, nil, nil, remoteErr)
 					assert.Nil(err)
 
 					assert.Equal(marshalInput, inspectimage.BOMDisplay{
@@ -304,10 +304,10 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 						},
 					}
 
-					err := structuredBOMWriter.Print(logger, generalInfo, nil, nil, localWithExtensionInfo, nil, nil, remoteErr)
+					err := structuredBOMWriter.Print(logger, generalInfo, localWithExtensionInfo, nil, nil, remoteErr)
 					assert.Nil(err)
 
-					assert.Equal(marshalInput, inspectimage.BOMWithExtensionDisplay{
+					assert.Equal(marshalInput, inspectimage.BOMDisplay{
 						Remote:    nil,
 						Local:     localBomWithExtensionDisplay,
 						RemoteErr: remoteErr.Error(),
@@ -324,7 +324,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 						MarshalFunc: testMarshalFunc,
 					}
 
-					err := structuredBOMWriter.Print(logger, generalInfo, nil, nil, nil, nil, nil, nil)
+					err := structuredBOMWriter.Print(logger, generalInfo, nil, nil, nil, nil)
 					assert.ErrorWithMessage(err, fmt.Sprintf("unable to find image '%s' locally or remotely", "some-image-name"))
 				})
 			})
@@ -338,7 +338,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					remoteErr := errors.New("a remote error occurred")
 					localErr := errors.New("a local error occurred")
 
-					err := structuredBOMWriter.Print(logger, generalInfo, localInfo, remoteInfo, nil, nil, localErr, remoteErr)
+					err := structuredBOMWriter.Print(logger, generalInfo, localInfo, remoteInfo, localErr, remoteErr)
 					assert.ErrorContains(err, remoteErr.Error())
 					assert.ErrorContains(err, localErr.Error())
 				})
@@ -354,7 +354,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					remoteErr := errors.New("a remote error occurred")
 					localErr := errors.New("a local error occurred")
 
-					err := structuredBOMWriter.Print(logger, generalInfo, nil, nil, localWithExtensionInfo, remoteWithExtensionInfo, localErr, remoteErr)
+					err := structuredBOMWriter.Print(logger, generalInfo, localWithExtensionInfo, remoteWithExtensionInfo, localErr, remoteErr)
 					assert.ErrorContains(err, remoteErr.Error())
 					assert.ErrorContains(err, localErr.Error())
 				})

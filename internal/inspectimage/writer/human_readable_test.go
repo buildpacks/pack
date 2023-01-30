@@ -35,8 +35,8 @@ func testHumanReadable(t *testing.T, when spec.G, it spec.S) {
 		remoteInfo *client.ImageInfo
 		localInfo  *client.ImageInfo
 
-		remoteWithExtensionInfo *client.ImageWithExtensionInfo
-		localWithExtensionInfo  *client.ImageWithExtensionInfo
+		remoteWithExtensionInfo *client.ImageInfo
+		localWithExtensionInfo  *client.ImageInfo
 
 		expectedRemoteOutput = `REMOTE:
 
@@ -268,7 +268,7 @@ Processes:
 				},
 			}
 
-			remoteWithExtensionInfo = &client.ImageWithExtensionInfo{
+			remoteWithExtensionInfo = &client.ImageInfo{
 				StackID: "test.stack.id.remote",
 				Buildpacks: []buildpack.GroupElement{
 					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
@@ -329,7 +329,7 @@ Processes:
 				},
 			}
 
-			localWithExtensionInfo = &client.ImageWithExtensionInfo{
+			localWithExtensionInfo = &client.ImageInfo{
 				StackID: "test.stack.id.local",
 				Buildpacks: []buildpack.GroupElement{
 					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
@@ -410,7 +410,7 @@ Processes:
 				humanReadableWriter := writer.NewHumanReadable()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, nil, nil, nil)
+				err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, nil)
 				assert.Nil(err)
 
 				assert.Contains(outBuf.String(), expectedLocalOutput)
@@ -441,7 +441,7 @@ Processes:
 				humanReadableWriter := writer.NewHumanReadable()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := humanReadableWriter.Print(logger, sharedImageInfo, nil, nil, localWithExtensionInfo, remoteWithExtensionInfo, nil, nil)
+				err := humanReadableWriter.Print(logger, sharedImageInfo, localWithExtensionInfo, remoteWithExtensionInfo, nil, nil)
 				assert.Nil(err)
 
 				assert.Contains(outBuf.String(), expectedLocalWithExtensionOutput)
@@ -472,7 +472,7 @@ Processes:
 				humanReadableWriter := writer.NewHumanReadable()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil, nil, nil)
+				err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.Contains(outBuf.String(), expectedLocalOutput)
@@ -503,7 +503,7 @@ Processes:
 				humanReadableWriter := writer.NewHumanReadable()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := humanReadableWriter.Print(logger, sharedImageInfo, nil, nil, localWithExtensionInfo, nil, nil, nil)
+				err := humanReadableWriter.Print(logger, sharedImageInfo, localWithExtensionInfo, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.Contains(outBuf.String(), expectedLocalWithExtensionOutput)
@@ -534,7 +534,7 @@ Processes:
 				humanReadableWriter := writer.NewHumanReadable()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil, nil, nil)
+				err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil)
 				assert.Nil(err)
 
 				assert.NotContains(outBuf.String(), expectedLocalOutput)
@@ -554,7 +554,7 @@ Processes:
 					humanReadableWriter := writer.NewHumanReadable()
 
 					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-					err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil, nil, nil)
+					err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil)
 					assert.Nil(err)
 
 					assert.Contains(outBuf.String(), "(buildpack metadata not present)")
@@ -574,7 +574,7 @@ Processes:
 					humanReadableWriter := writer.NewHumanReadable()
 
 					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-					err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil, nil, nil)
+					err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil)
 					assert.Nil(err)
 
 					assert.Contains(outBuf.String(), "Run Images:\n  (none)")
@@ -605,7 +605,7 @@ Processes:
 				humanReadableWriter := writer.NewHumanReadable()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := humanReadableWriter.Print(logger, sharedImageInfo, nil, nil, nil, remoteWithExtensionInfo, nil, nil)
+				err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteWithExtensionInfo, nil, nil)
 				assert.Nil(err)
 
 				assert.NotContains(outBuf.String(), expectedLocalWithExtensionOutput)
@@ -625,7 +625,7 @@ Processes:
 					humanReadableWriter := writer.NewHumanReadable()
 
 					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-					err := humanReadableWriter.Print(logger, sharedImageInfo, nil, nil, nil, remoteWithExtensionInfo, nil, nil)
+					err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteWithExtensionInfo, nil, nil)
 					assert.Nil(err)
 
 					assert.Contains(outBuf.String(), "(buildpack metadata not present)")
@@ -645,7 +645,7 @@ Processes:
 					humanReadableWriter := writer.NewHumanReadable()
 
 					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-					err := humanReadableWriter.Print(logger, sharedImageInfo, nil, nil, nil, remoteWithExtensionInfo, nil, nil)
+					err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteWithExtensionInfo, nil, nil)
 					assert.Nil(err)
 
 					assert.Contains(outBuf.String(), "Run Images:\n  (none)")
@@ -681,7 +681,7 @@ Processes:
 					humanReadableWriter := writer.NewHumanReadable()
 
 					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-					err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, nil, nil, remoteErr)
+					err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, remoteErr)
 					assert.Nil(err)
 
 					assert.Contains(outBuf.String(), expectedLocalOutput)
@@ -716,7 +716,7 @@ Processes:
 					humanReadableWriter := writer.NewHumanReadable()
 
 					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-					err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, nil, localErr, nil)
+					err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, localErr, nil)
 					assert.Nil(err)
 
 					assert.Contains(outBuf.String(), expectedRemoteOutput)
@@ -752,7 +752,7 @@ Processes:
 						humanReadableWriter := writer.NewHumanReadable()
 
 						logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-						err := humanReadableWriter.Print(logger, sharedImageInfo, nil, nil, localWithExtensionInfo, remoteWithExtensionInfo, nil, remoteErr)
+						err := humanReadableWriter.Print(logger, sharedImageInfo, localWithExtensionInfo, remoteWithExtensionInfo, nil, remoteErr)
 						assert.Nil(err)
 
 						assert.Contains(outBuf.String(), expectedLocalWithExtensionOutput)
@@ -787,7 +787,7 @@ Processes:
 						humanReadableWriter := writer.NewHumanReadable()
 
 						logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-						err := humanReadableWriter.Print(logger, sharedImageInfo, nil, nil, localWithExtensionInfo, remoteWithExtensionInfo, localErr, nil)
+						err := humanReadableWriter.Print(logger, sharedImageInfo, localWithExtensionInfo, remoteWithExtensionInfo, localErr, nil)
 						assert.Nil(err)
 
 						assert.Contains(outBuf.String(), expectedRemoteWithExtensionOutput)
@@ -802,7 +802,7 @@ Processes:
 						humanReadableWriter := writer.NewHumanReadable()
 
 						logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-						err := humanReadableWriter.Print(logger, inspectimage.GeneralInfo{Name: "missing-image"}, nil, nil, nil, nil, nil, nil)
+						err := humanReadableWriter.Print(logger, inspectimage.GeneralInfo{Name: "missing-image"}, nil, nil, nil, nil)
 						assert.ErrorWithMessage(err, fmt.Sprintf("unable to find image '%s' locally or remotely", "missing-image"))
 					})
 				})

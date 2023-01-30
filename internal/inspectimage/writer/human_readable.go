@@ -25,25 +25,23 @@ func (h *HumanReadable) Print(
 	logger logging.Logger,
 	generalInfo inspectimage.GeneralInfo,
 	local, remote *client.ImageInfo,
-	localWithExtension, remoteWithExtension *client.ImageWithExtensionInfo,
 	localErr, remoteErr error,
 ) error {
-	if local == nil && remote == nil && localWithExtension == nil && remoteWithExtension == nil {
+	if local == nil && remote == nil {
 		return fmt.Errorf("unable to find image '%s' locally or remotely", generalInfo.Name)
 	}
-
-	localDisplay, localWithExtensionDisplay := inspectimage.NewInfoDisplay(local, localWithExtension, generalInfo)
-	remoteDisplay, remoteWithExtensionDisplay := inspectimage.NewInfoDisplay(remote, remoteWithExtension, generalInfo)
+	localDisplay := inspectimage.NewInfoDisplay(local, generalInfo)
+	remoteDisplay := inspectimage.NewInfoDisplay(remote, generalInfo)
 
 	logger.Infof("Inspecting image: %s\n", style.Symbol(generalInfo.Name))
 
 	logger.Info("\nREMOTE:\n")
-	err := writeImageInfo(logger, remoteDisplay, remoteWithExtensionDisplay, remoteErr)
+	err := writeImageInfo(logger, remoteDisplay, remoteErr)
 	if err != nil {
 		return fmt.Errorf("writing remote builder info: %w", err)
 	}
 	logger.Info("\nLOCAL:\n")
-	err = writeImageInfo(logger, localDisplay, localWithExtensionDisplay, localErr)
+	err = writeImageInfo(logger, localDisplay, localErr)
 	if err != nil {
 		return fmt.Errorf("writing local builder info: %w", err)
 	}
@@ -54,7 +52,6 @@ func (h *HumanReadable) Print(
 func writeImageInfo(
 	logger logging.Logger,
 	info *inspectimage.InfoDisplay,
-	infoWithExtension *inspectimage.InfoWithExtensionDisplay,
 	err error,
 ) error {
 	imgTpl := template.Must(template.New("runImages").
@@ -63,12 +60,12 @@ func writeImageInfo(
 		Parse(runImagesTemplate))
 	imgTpl = template.Must(imgTpl.New("buildpacks").
 		Parse(buildpacksTemplate))
-	if info == nil {
+	if info != nil && info.Extensions != nil {
 		imgTpl = template.Must(imgTpl.New("extensions").Parse(extensionsTemplate))
 	}
 	imgTpl = template.Must(imgTpl.New("processes").
 		Parse(processesTemplate))
-	if info == nil {
+	if info != nil && info.Extensions != nil {
 		imgTpl = template.Must(imgTpl.New("image").
 			Parse(imageWithExtensionTemplate))
 	} else {
@@ -80,11 +77,11 @@ func writeImageInfo(
 		return nil
 	}
 
-	if info == nil && infoWithExtension == nil {
+	if info == nil {
 		logger.Info("(not present)\n")
 		return nil
 	}
-	remoteOutput, err := inspectImageOutput(info, infoWithExtension, imgTpl)
+	remoteOutput, err := inspectImageOutput(info, imgTpl)
 	if err != nil {
 		logger.Error(err.Error())
 	} else {
@@ -93,8 +90,8 @@ func writeImageInfo(
 	return nil
 }
 
-func inspectImageOutput(info *inspectimage.InfoDisplay, infoWithExtension *inspectimage.InfoWithExtensionDisplay, tpl *template.Template) (*bytes.Buffer, error) {
-	if info == nil && infoWithExtension == nil {
+func inspectImageOutput(info *inspectimage.InfoDisplay, tpl *template.Template) (*bytes.Buffer, error) {
+	if info == nil {
 		return bytes.NewBuffer([]byte("(not present)")), nil
 	}
 	buf := bytes.NewBuffer(nil)
@@ -102,25 +99,13 @@ func inspectImageOutput(info *inspectimage.InfoDisplay, infoWithExtension *inspe
 	defer func() {
 		tw.Flush()
 	}()
-
-	if info != nil {
-		if err := tpl.Execute(tw, &struct {
-			Info *inspectimage.InfoDisplay
-		}{
-			info,
-		}); err != nil {
-			return bytes.NewBuffer(nil), err
-		}
-	} else {
-		if err := tpl.Execute(tw, &struct {
-			Info *inspectimage.InfoWithExtensionDisplay
-		}{
-			infoWithExtension,
-		}); err != nil {
-			return bytes.NewBuffer(nil), err
-		}
+	if err := tpl.Execute(tw, &struct {
+		Info *inspectimage.InfoDisplay
+	}{
+		info,
+	}); err != nil {
+		return bytes.NewBuffer(nil), err
 	}
-
 	return buf, nil
 }
 

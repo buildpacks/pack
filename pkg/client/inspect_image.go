@@ -24,44 +24,6 @@ type ImageInfo struct {
 	// phases and made a contribution to this image.
 	Buildpacks []buildpack.GroupElement
 
-	// Base includes two references to the run image,
-	// - the Run Image ID,
-	// - the hash of the last layer in the app image that belongs to the run image.
-	// A way to visualize this is given an image with n layers:
-	//
-	// last layer in run image
-	//          v
-	// [1, ..., k, k+1, ..., n]
-	//              ^
-	//   first layer added by buildpacks
-	//
-	// the first 1 to k layers all belong to the run image,
-	// the last k+1 to n layers are added by buildpacks.
-	// the sum of all of these is our app image.
-	Base platform.RunImageMetadata
-
-	// BOM or Bill of materials, contains dependency and
-	// version information provided by each buildpack.
-	BOM []buildpack.BOMEntry
-
-	// Stack includes the run image name, and a list of image mirrors,
-	// where the run image is hosted.
-	Stack platform.StackMetadata
-
-	// Processes lists all processes contributed by buildpacks.
-	Processes ProcessDetails
-}
-
-// ImageWithExtensionInfo is a collection of metadata describing
-// an app image built with extensions using Cloud Native Buildpacks.
-type ImageWithExtensionInfo struct {
-	// Stack Identifier used when building this image
-	StackID string
-
-	// List of buildpacks that passed detection, ran their build
-	// phases and made a contribution to this image.
-	Buildpacks []buildpack.GroupElement
-
 	// List of extensions that passed detection, ran their generate
 	// phases and made a contribution to this image.
 	Extensions []buildpack.GroupElement
@@ -126,23 +88,23 @@ const (
 // using this metadata, and returns it.
 // If daemon is true, first the local registry will be searched for the image.
 // Otherwise it assumes the image is remote.
-func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, *ImageWithExtensionInfo, error) {
+func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 	img, err := c.imageFetcher.Fetch(context.Background(), name, image.FetchOptions{Daemon: daemon, PullPolicy: image.PullNever})
 	if err != nil {
 		if errors.Cause(err) == image.ErrNotFound {
-			return nil, nil, nil
+			return nil, nil
 		}
-		return nil, nil, err
+		return nil, err
 	}
 
 	var layersMd layersMetadata
 	if _, err := dist.GetLabel(img, platform.LayerMetadataLabel, &layersMd); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	var buildMD platform.BuildMetadata
 	if _, err := dist.GetLabel(img, platform.BuildMetadataLabel, &buildMD); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	minimumBaseImageReferenceVersion := semver.MustParse("0.5.0")
@@ -154,12 +116,12 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, *ImageWithE
 
 	stackID, err := img.Label(platform.StackIDLabel)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	platformAPI, err := img.Env(platformAPIEnv)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "reading platform api")
+		return nil, errors.Wrap(err, "reading platform api")
 	}
 
 	if platformAPI == "" {
@@ -168,7 +130,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, *ImageWithE
 
 	platformAPIVersion, err := semver.NewVersion(platformAPI)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "parsing platform api version")
+		return nil, errors.Wrap(err, "parsing platform api version")
 	}
 
 	var defaultProcessType string
@@ -180,7 +142,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, *ImageWithE
 	} else {
 		entrypoint, err := img.Entrypoint()
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "reading entrypoint")
+			return nil, errors.Wrap(err, "reading entrypoint")
 		}
 
 		if len(entrypoint) > 0 && entrypoint[0] != launcherEntrypoint && entrypoint[0] != windowsLauncherEntrypoint {
@@ -198,7 +160,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, *ImageWithE
 
 	workingDir, err := img.WorkingDir()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "reading WorkingDir")
+		return nil, errors.Wrap(err, "reading WorkingDir")
 	}
 
 	var processDetails ProcessDetails
@@ -214,7 +176,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, *ImageWithE
 		processDetails.OtherProcesses = append(processDetails.OtherProcesses, proc)
 	}
 	if buildMD.Extensions != nil {
-		return nil, &ImageWithExtensionInfo{
+		return &ImageInfo{
 			StackID:    stackID,
 			Stack:      layersMd.Stack,
 			Base:       layersMd.RunImage,
@@ -232,5 +194,5 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, *ImageWithE
 		BOM:        buildMD.BOM,
 		Buildpacks: buildMD.Buildpacks,
 		Processes:  processDetails,
-	}, nil, nil
+	}, nil
 }

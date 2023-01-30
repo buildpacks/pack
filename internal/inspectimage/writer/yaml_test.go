@@ -254,7 +254,7 @@ remote_info:
 				yamlWriter := writer.NewYAML()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := yamlWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, nil, nil, nil)
+				err := yamlWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, nil)
 				assert.Nil(err)
 
 				assert.ContainsYAML(outBuf.String(), `"image_name": "test-image"`)
@@ -286,7 +286,7 @@ remote_info:
 				yamlWriter := writer.NewYAML()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := yamlWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil, nil, nil)
+				err := yamlWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil)
 				assert.Nil(err)
 
 				assert.ContainsYAML(outBuf.String(), `"image_name": "test-image"`)
@@ -320,7 +320,7 @@ remote_info:
 				yamlWriter := writer.NewYAML()
 
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := yamlWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil, nil, nil)
+				err := yamlWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil)
 				assert.Nil(err)
 
 				assert.ContainsYAML(outBuf.String(), `"image_name": "test-image"`)

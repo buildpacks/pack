@@ -47,7 +47,7 @@ var (
 		Processes:  client.ProcessDetails{},
 	}
 
-	expectedLocalImageWithExtensionInfo = &client.ImageWithExtensionInfo{
+	expectedLocalImageWithExtensionInfo = &client.ImageInfo{
 		StackID:    "local.image.stack",
 		Buildpacks: nil,
 		Extensions: nil,
@@ -57,7 +57,7 @@ var (
 		Processes:  client.ProcessDetails{},
 	}
 
-	expectedRemoteImageWithExtensionInfo = &client.ImageWithExtensionInfo{
+	expectedRemoteImageWithExtensionInfo = &client.ImageInfo{
 		StackID:    "remote.image.stack",
 		Buildpacks: nil,
 		Extensions: nil,
@@ -130,8 +130,8 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 			err := command.Execute()
 			assert.Nil(err)
 
-			assert.Equal(inspectImageWriter.ReceivedInfoForLocalWithExtension, expectedLocalImageWithExtensionInfo)
-			assert.Equal(inspectImageWriter.ReceivedInfoForRemoteWithExtension, expectedRemoteImageWithExtensionInfo)
+			assert.Equal(inspectImageWriter.ReceivedInfoForLocal, expectedLocalImageWithExtensionInfo)
+			assert.Equal(inspectImageWriter.ReceivedInfoForRemote, expectedRemoteImageWithExtensionInfo)
 			assert.Equal(inspectImageWriter.RecievedGeneralInfo, expectedSharedInfo)
 			assert.Equal(inspectImageWriter.ReceivedErrorForLocal, nil)
 			assert.Equal(inspectImageWriter.ReceivedErrorForRemote, nil)

@@ -44,14 +44,6 @@ type InfoDisplay struct {
 	Base            BaseDisplay             `json:"base_image" yaml:"base_image" toml:"base_image"`
 	RunImageMirrors []RunImageMirrorDisplay `json:"run_images" yaml:"run_images" toml:"run_images"`
 	Buildpacks      []dist.ModuleInfo       `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
-	Processes       []ProcessDisplay        `json:"processes" yaml:"processes" toml:"processes"`
-}
-
-type InfoWithExtensionDisplay struct {
-	StackID         string                  `json:"stack" yaml:"stack" toml:"stack"`
-	Base            BaseDisplay             `json:"base_image" yaml:"base_image" toml:"base_image"`
-	RunImageMirrors []RunImageMirrorDisplay `json:"run_images" yaml:"run_images" toml:"run_images"`
-	Buildpacks      []dist.ModuleInfo       `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
 	Extensions      []dist.ModuleInfo       `json:"extensions" yaml:"extensions" toml:"extensions"`
 	Processes       []ProcessDisplay        `json:"processes" yaml:"processes" toml:"processes"`
 }
@@ -62,24 +54,18 @@ type InspectOutput struct {
 	Local     *InfoDisplay `json:"local_info" yaml:"local_info" toml:"local_info"`
 }
 
-type InspectWithExtensionOutput struct {
-	ImageName string                    `json:"image_name" yaml:"image_name" toml:"image_name"`
-	Remote    *InfoWithExtensionDisplay `json:"remote_info" yaml:"remote_info" toml:"remote_info"`
-	Local     *InfoWithExtensionDisplay `json:"local_info" yaml:"local_info" toml:"local_info"`
-}
-
-func NewInfoDisplay(info *client.ImageInfo, infoWithExtension *client.ImageWithExtensionInfo, generalInfo GeneralInfo) (*InfoDisplay, *InfoWithExtensionDisplay) {
-	if info == nil && infoWithExtension == nil {
-		return nil, nil
-	}
+func NewInfoDisplay(info *client.ImageInfo, generalInfo GeneralInfo) *InfoDisplay {
 	if info == nil {
-		return nil, &InfoWithExtensionDisplay{
-			StackID:         infoWithExtension.StackID,
-			Base:            displayBase(infoWithExtension.Base),
+		return nil
+	}
+	if info != nil && info.Extensions != nil {
+		return &InfoDisplay{
+			StackID:         info.StackID,
+			Base:            displayBase(info.Base),
 			RunImageMirrors: displayMirrors(nil, generalInfo),
-			Buildpacks:      displayBuildpacks(infoWithExtension.Buildpacks),
-			Extensions:      displayExtensions(infoWithExtension.Extensions),
-			Processes:       displayProcesses(infoWithExtension.Processes),
+			Buildpacks:      displayBuildpacks(info.Buildpacks),
+			Extensions:      displayExtensions(info.Extensions),
+			Processes:       displayProcesses(info.Processes),
 		}
 	}
 	return &InfoDisplay{
@@ -88,7 +74,7 @@ func NewInfoDisplay(info *client.ImageInfo, infoWithExtension *client.ImageWithE
 		RunImageMirrors: displayMirrors(info, generalInfo),
 		Buildpacks:      displayBuildpacks(info.Buildpacks),
 		Processes:       displayProcesses(info.Processes),
-	}, nil
+	}
 }
 
 //

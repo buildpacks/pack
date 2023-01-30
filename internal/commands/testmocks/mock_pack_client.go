@@ -114,13 +114,12 @@ func (mr *MockPackClientMockRecorder) InspectBuildpack(arg0 interface{}) *gomock
 }
 
 // InspectImage mocks base method.
-func (m *MockPackClient) InspectImage(arg0 string, arg1 bool) (*client.ImageInfo, *client.ImageWithExtensionInfo, error) {
+func (m *MockPackClient) InspectImage(arg0 string, arg1 bool) (*client.ImageInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InspectImage", arg0, arg1)
 	ret0, _ := ret[0].(*client.ImageInfo)
-	ret1, _ := ret[1].(*client.ImageWithExtensionInfo)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // InspectImage indicates an expected call of InspectImage.

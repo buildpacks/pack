@@ -19,32 +19,14 @@ func (w *StructuredBOMFormat) Print(
 	logger logging.Logger,
 	generalInfo inspectimage.GeneralInfo,
 	local, remote *client.ImageInfo,
-	localWithExtension, remoteWithExtension *client.ImageWithExtensionInfo,
 	localErr, remoteErr error,
 ) error {
-	if local == nil && remote == nil && localWithExtension == nil && remoteWithExtension == nil {
+	if local == nil && remote == nil {
 		return fmt.Errorf("unable to find image '%s' locally or remotely", generalInfo.Name)
 	}
 	if localErr != nil && remoteErr != nil {
 		return fmt.Errorf("preparing BOM output for %s: local :%s remote: %s", style.Symbol(generalInfo.Name), localErr, remoteErr)
 	}
-
-	if local == nil && remote == nil {
-		out, err := w.MarshalFunc(inspectimage.BOMWithExtensionDisplay{
-			Remote:    inspectimage.NewBOMWithExtensionDisplay(remoteWithExtension),
-			Local:     inspectimage.NewBOMWithExtensionDisplay(localWithExtension),
-			RemoteErr: errorString(remoteErr),
-			LocalErr:  errorString(localErr),
-		})
-
-		if err != nil {
-			return err
-		}
-
-		_, err = logger.Writer().Write(out)
-		return err
-	}
-
 	out, err := w.MarshalFunc(inspectimage.BOMDisplay{
 		Remote:    inspectimage.NewBOMDisplay(remote),
 		Local:     inspectimage.NewBOMDisplay(local),
