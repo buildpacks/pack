@@ -37,12 +37,13 @@ var ignorePlatformAPI = []cmp.Option{
 
 func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 	var (
-		subject          *Client
-		mockImageFetcher *testmocks.MockImageFetcher
-		mockDockerClient *testmocks.MockCommonAPIClient
-		mockController   *gomock.Controller
-		mockImage        *testmocks.MockImage
-		out              bytes.Buffer
+		subject                *Client
+		mockImageFetcher       *testmocks.MockImageFetcher
+		mockDockerClient       *testmocks.MockCommonAPIClient
+		mockController         *gomock.Controller
+		mockImage              *testmocks.MockImage
+		mockImageWithExtension *testmocks.MockImage
+		out                    bytes.Buffer
 	)
 
 	it.Before(func() {
@@ -112,6 +113,75 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
   }
 }`,
 		))
+
+		mockImageWithExtension = testmocks.NewImage("some/imageWithExtension", "", nil)
+		h.AssertNil(t, mockImageWithExtension.SetWorkingDir("/test-workdir"))
+		h.AssertNil(t, mockImageWithExtension.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
+		h.AssertNil(t, mockImageWithExtension.SetLabel(
+			"io.buildpacks.lifecycle.metadata",
+			`{
+  "stack": {
+    "runImage": {
+      "image": "some-run-image",
+      "mirrors": [
+        "some-mirror",
+        "other-mirror"
+      ]
+    }
+  },
+  "runImage": {
+    "topLayer": "some-top-layer",
+    "reference": "some-run-image-reference"
+  }
+}`,
+		))
+		h.AssertNil(t, mockImage.SetLabel(
+			"io.buildpacks.build.metadata",
+			`{
+  "bom": [
+    {
+      "name": "some-bom-element"
+    }
+  ],
+  "buildpacks": [
+    {
+      "id": "some-buildpack",
+      "version": "some-version"
+    },
+    {
+      "id": "other-buildpack",
+      "version": "other-version"
+    }
+  ],
+    "extensions": [
+    {
+      "id": "some-extension",
+      "version": "some-version"
+    },
+    {
+      "id": "other-extension",
+      "version": "other-version"
+    }
+  ],
+  "processes": [
+    {
+      "type": "other-process",
+      "command": "/other/process",
+      "args": ["opt", "1"],
+      "direct": true
+    },
+    {
+      "type": "web",
+      "command": "/start/web-process",
+      "args": ["-p", "1234"],
+      "direct": false
+    }
+  ],
+  "launcher": {
+    "version": "0.5.0"
+  }
+}`,
+		))
 	})
 
 	it.After(func() {
@@ -136,10 +206,32 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, info.StackID, "test.stack.id")
 				})
 
+				it("returns the stack ID", func() {
+					_, infoWithExtension, err := subject.InspectImage("some/imageWithExtension", useDaemon)
+					h.AssertNil(t, err)
+					h.AssertEq(t, infoWithExtension.StackID, "test.stack.id")
+				})
+
 				it("returns the stack", func() {
 					info, _, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.Stack,
+						platform.StackMetadata{
+							RunImage: platform.StackRunImageMetadata{
+								Image: "some-run-image",
+								Mirrors: []string{
+									"some-mirror",
+									"other-mirror",
+								},
+							},
+						},
+					)
+				})
+
+				it("returns the stack", func() {
+					_, infoWithExtension, err := subject.InspectImage("some/imageWithExtension", useDaemon)
+					h.AssertNil(t, err)
+					h.AssertEq(t, infoWithExtension.Stack,
 						platform.StackMetadata{
 							RunImage: platform.StackRunImageMetadata{
 								Image: "some-run-image",
@@ -163,11 +255,31 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					)
 				})
 
+				it("returns the base image", func() {
+					_, infoWithExtension, err := subject.InspectImage("some/imageWithExtension", useDaemon)
+					h.AssertNil(t, err)
+					h.AssertEq(t, infoWithExtension.Base,
+						platform.RunImageMetadata{
+							TopLayer:  "some-top-layer",
+							Reference: "some-run-image-reference",
+						},
+					)
+				})
+
 				it("returns the BOM", func() {
 					info, _, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 
 					rawBOM, err := json.Marshal(info.BOM)
+					h.AssertNil(t, err)
+					h.AssertContains(t, string(rawBOM), `[{"name":"some-bom-element"`)
+				})
+
+				it("returns the BOM", func() {
+					_, infoWithExtension, err := subject.InspectImage("some/imageWithExtension", useDaemon)
+					h.AssertNil(t, err)
+
+					rawBOM, err := json.Marshal(infoWithExtension.BOM)
 					h.AssertNil(t, err)
 					h.AssertContains(t, string(rawBOM), `[{"name":"some-bom-element"`)
 				})
@@ -181,6 +293,28 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, info.Buildpacks[0].Version, "some-version")
 					h.AssertEq(t, info.Buildpacks[1].ID, "other-buildpack")
 					h.AssertEq(t, info.Buildpacks[1].Version, "other-version")
+				})
+
+				it("returns the buildpacks", func() {
+					_, infoWithExtension, err := subject.InspectImage("some/imageWithExtension", useDaemon)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, len(infoWithExtension.Buildpacks), 2)
+					h.AssertEq(t, infoWithExtension.Buildpacks[0].ID, "some-buildpack")
+					h.AssertEq(t, infoWithExtension.Buildpacks[0].Version, "some-version")
+					h.AssertEq(t, infoWithExtension.Buildpacks[1].ID, "other-buildpack")
+					h.AssertEq(t, infoWithExtension.Buildpacks[1].Version, "other-version")
+				})
+
+				it("returns the extensions", func() {
+					_, infoWithExtension, err := subject.InspectImage("some/imageWithExtension", useDaemon)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, len(infoWithExtension.Extensions), 2)
+					h.AssertEq(t, infoWithExtension.Extensions[0].ID, "some-extension")
+					h.AssertEq(t, infoWithExtension.Extensions[0].Version, "some-version")
+					h.AssertEq(t, infoWithExtension.Extensions[1].ID, "other-extension")
+					h.AssertEq(t, infoWithExtension.Extensions[1].Version, "other-version")
 				})
 
 				it("returns the processes setting the web process as default", func() {
