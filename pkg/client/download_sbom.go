@@ -39,6 +39,7 @@ func (c *Client) DownloadSBOM(name string, options DownloadSBOMOptions) error {
 	img, err := c.imageFetcher.Fetch(context.Background(), name, image.FetchOptions{Daemon: options.Daemon, PullPolicy: image.PullNever})
 	if err != nil {
 		if errors.Cause(err) == image.ErrNotFound {
+			c.logger.Warnf("if image is saved on a registry run 'docker pull %s' before downloading the SBoM", name)
 			return errors.Wrapf(image.ErrNotFound, "image '%s' cannot be found", name)
 		}
 		return err
