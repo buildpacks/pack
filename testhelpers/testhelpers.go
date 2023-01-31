@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/imgutil/fakes"
+
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -842,4 +844,22 @@ func MockWriterAndOutput() (*color.Console, func() string) {
 		_ = r.Close()
 		return b.String()
 	}
+}
+
+func LayerFileName(bp buildpack.BuildModule) string {
+	return fmt.Sprintf("%s.%s.tar", bp.Descriptor().Info().ID, bp.Descriptor().Info().Version)
+}
+
+type FakeAddedLayerImage struct {
+	*fakes.Image
+	addedLayersOrder []string
+}
+
+func (f *FakeAddedLayerImage) AddedLayersOrder() []string {
+	return f.addedLayersOrder
+}
+
+func (f *FakeAddedLayerImage) AddLayerWithDiffID(path, diffID string) error {
+	f.addedLayersOrder = append(f.addedLayersOrder, path)
+	return f.Image.AddLayerWithDiffID(path, diffID)
 }

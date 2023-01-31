@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
@@ -744,6 +745,80 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{"0.2", "0.3"})
 				h.AssertNotContains(t, out.String(), "is using deprecated Buildpacks API version")
+			})
+
+			when("Buildpack dependencies are provided", func() {
+				var (
+					bp1v1          buildpack.BuildModule
+					bp1v2          buildpack.BuildModule
+					bp2v1          buildpack.BuildModule
+					bp2v2          buildpack.BuildModule
+					fakeLayerImage *h.FakeAddedLayerImage
+					err            error
+				)
+				it.Before(func() {
+					fakeLayerImage = &h.FakeAddedLayerImage{Image: fakeBuildImage}
+				})
+
+				var prepareBuildpackDependencies = func() []buildpack.BuildModule {
+					bp1v1Blob := blob.NewBlob(filepath.Join("testdata", "buildpack-non-deterministic", "buildpack-1-version-1"))
+					bp1v2Blob := blob.NewBlob(filepath.Join("testdata", "buildpack-non-deterministic", "buildpack-1-version-2"))
+					bp2v1Blob := blob.NewBlob(filepath.Join("testdata", "buildpack-non-deterministic", "buildpack-2-version-1"))
+					bp2v2Blob := blob.NewBlob(filepath.Join("testdata", "buildpack-non-deterministic", "buildpack-2-version-2"))
+
+					bp1v1, err = buildpack.FromBuildpackRootBlob(bp1v1Blob, archive.DefaultTarWriterFactory())
+					h.AssertNil(t, err)
+
+					bp1v2, err = buildpack.FromBuildpackRootBlob(bp1v2Blob, archive.DefaultTarWriterFactory())
+					h.AssertNil(t, err)
+
+					bp2v1, err = buildpack.FromBuildpackRootBlob(bp2v1Blob, archive.DefaultTarWriterFactory())
+					h.AssertNil(t, err)
+
+					bp2v2, err = buildpack.FromBuildpackRootBlob(bp2v2Blob, archive.DefaultTarWriterFactory())
+					h.AssertNil(t, err)
+
+					return []buildpack.BuildModule{bp2v2, bp2v1, bp1v1, bp1v2}
+				}
+
+				var successfullyCreateDeterministicBuilder = func() {
+					t.Helper()
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertNil(t, err)
+					h.AssertEq(t, fakeLayerImage.IsSaved(), true)
+				}
+
+				it("should add dependencies buildpacks layers order by ID and version", func() {
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any()).Return(fakeLayerImage, nil)
+					prepareFetcherWithRunImages()
+					opts.Config.Buildpacks[0].URI = "https://example.fake/bp-one-with-api-4.tgz"
+					opts.Config.Extensions[0].URI = "https://example.fake/ext-one-with-api-9.tgz"
+					bpDependencies := prepareBuildpackDependencies()
+
+					buildpackBlob := blob.NewBlob(filepath.Join("testdata", "buildpack-api-0.4"))
+					bp, err := buildpack.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
+					h.AssertNil(t, err)
+					mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz", gomock.Any()).Return(bp, bpDependencies, nil)
+
+					extensionBlob := blob.NewBlob(filepath.Join("testdata", "extension-api-0.9"))
+					extension, err := buildpack.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory())
+					h.AssertNil(t, err)
+					mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/ext-one-with-api-9.tgz", gomock.Any()).Return(extension, nil, nil)
+
+					successfullyCreateDeterministicBuilder()
+
+					layers := fakeLayerImage.AddedLayersOrder()
+					// Main buildpack + 4 dependencies + 1 extension
+					h.AssertEq(t, len(layers), 6)
+
+					// [0] bp.one.1.2.3.tar - main buildpack
+					h.AssertTrue(t, strings.Contains(layers[1], h.LayerFileName(bp1v1)))
+					h.AssertTrue(t, strings.Contains(layers[2], h.LayerFileName(bp1v2)))
+					h.AssertTrue(t, strings.Contains(layers[3], h.LayerFileName(bp2v1)))
+					h.AssertTrue(t, strings.Contains(layers[4], h.LayerFileName(bp2v2)))
+					// [5] ext.one.1.2.3.tar - extension
+				})
 			})
 		})
 
