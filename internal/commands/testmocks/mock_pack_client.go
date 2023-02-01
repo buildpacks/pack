@@ -8,9 +8,8 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-
 	client "github.com/buildpacks/pack/pkg/client"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockPackClient is a mock of PackClient interface.
@@ -111,6 +110,21 @@ func (m *MockPackClient) InspectBuildpack(arg0 client.InspectBuildpackOptions) (
 func (mr *MockPackClientMockRecorder) InspectBuildpack(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InspectBuildpack", reflect.TypeOf((*MockPackClient)(nil).InspectBuildpack), arg0)
+}
+
+// InspectExtension mocks base method.
+func (m *MockPackClient) InspectExtension(arg0 client.InspectExtensionOptions) (*client.ExtensionInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InspectExtension", arg0)
+	ret0, _ := ret[0].(*client.ExtensionInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InspectExtension indicates an expected call of InspectExtension.
+func (mr *MockPackClientMockRecorder) InspectExtension(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InspectExtension", reflect.TypeOf((*MockPackClient)(nil).InspectExtension), arg0)
 }
 
 // InspectImage mocks base method.

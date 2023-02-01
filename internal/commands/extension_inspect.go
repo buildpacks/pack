@@ -1,9 +1,13 @@
 package commands
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -24,18 +28,39 @@ func ExtensionInspect(logger logging.Logger, cfg config.Config, client PackClien
 			extensionName := args[0]
 			registry := flags.Registry
 			if registry == "" {
-				// fix registry for extension
+				registry = cfg.DefaultRegistryName
 			}
 
 			return extensionInspect(logger, extensionName, registry, flags, cfg, client)
 		}),
 	}
-	// flags will be added here
+	cmd.Flags().IntVarP(&flags.Depth, "depth", "d", -1, "Max depth to display for Detection Order.\nOmission of this flag or values < 0 will display the entire tree.")
+	cmd.Flags().StringVarP(&flags.Registry, "registry", "r", "", "buildpack registry that may be searched")
+	cmd.Flags().BoolVarP(&flags.Verbose, "verbose", "v", false, "show more output")
 	AddHelpFlag(cmd, "inspect")
 	return cmd
 }
 
-func extensionInspect(logger logging.Logger, extensionName, registry string, flags ExtensionInspectFlags, cfg config.Config, client PackClient) error {
-	// logic to inspect extension
+func extensionInspect(logger logging.Logger, extensionName, registryName string, flags ExtensionInspectFlags, cfg config.Config, pack PackClient) error {
+	logger.Infof("Inspecting extension: %s\n", style.Symbol(extensionName))
+
+	inspectedExtensionsOutput, err := inspectAllExtensions(
+		pack,
+		flags,
+		client.InspectExtensionOptions{
+			ExtensionName: extensionName,
+			Daemon:        true,
+			Registry:      registryName,
+		},
+		client.InspectExtensionOptions{
+			ExtensionName: extensionName,
+			Daemon:        false,
+			Registry:      registryName,
+		})
+	if err != nil {
+		return fmt.Errorf("error writing extension output: %q", err)
+	}
+
+	logger.Info(inspectedExtensionsOutput)
 	return nil
 }
