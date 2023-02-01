@@ -8,8 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	client "github.com/buildpacks/pack/pkg/client"
 	gomock "github.com/golang/mock/gomock"
+
+	client "github.com/buildpacks/pack/pkg/client"
 )
 
 // MockPackClient is a mock of PackClient interface.

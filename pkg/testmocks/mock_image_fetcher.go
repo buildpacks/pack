@@ -9,8 +9,9 @@ import (
 	reflect "reflect"
 
 	imgutil "github.com/buildpacks/imgutil"
-	image "github.com/buildpacks/pack/pkg/image"
 	gomock "github.com/golang/mock/gomock"
+
+	image "github.com/buildpacks/pack/pkg/image"
 )
 
 // MockImageFetcher is a mock of ImageFetcher interface.
