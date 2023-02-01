@@ -10,10 +10,13 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/lifecycle/buildpack"
+
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -29,14 +32,44 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf bytes.Buffer
 
-		remoteInfo *client.ImageInfo
-		localInfo  *client.ImageInfo
+		remoteInfo                    *client.ImageInfo
+		localInfo                     *client.ImageInfo
+		remoteWithExtensionInfo       *client.ImageInfo
+		localWithExtensionInfo        *client.ImageInfo
+		localInfoWithExtensionDisplay *inspectimage.InfoDisplay
 	)
 
 	when("Print", func() {
 		it.Before(func() {
 			remoteInfo = &client.ImageInfo{}
 			localInfo = &client.ImageInfo{}
+			remoteWithExtensionInfo = &client.ImageInfo{}
+			localWithExtensionInfo = &client.ImageInfo{
+				StackID: "test.stack.id.local",
+				Buildpacks: []buildpack.GroupElement{
+					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+				},
+				Extensions: []buildpack.GroupElement{
+					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+				},
+			}
+			localInfoWithExtensionDisplay = &inspectimage.InfoDisplay{
+				StackID: "test.stack.id.local",
+				Buildpacks: []dist.ModuleInfo{
+					{
+						ID:       "test.bp.one.local",
+						Version:  "1.0.0",
+						Homepage: "https://some-homepage-one",
+					},
+				},
+				Extensions: []dist.ModuleInfo{
+					{
+						ID:       "test.bp.one.local",
+						Version:  "1.0.0",
+						Homepage: "https://some-homepage-one",
+					},
+				},
+			}
 			outBuf = bytes.Buffer{}
 		})
 
@@ -76,6 +109,48 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("a localWithExtension is passed to Print", func() {
+				it("prints localWithExtension information", func() {
+					var marshalInput interface{}
+					sharedImageInfo := inspectimage.GeneralInfo{
+						Name:            "localExtension-image",
+						RunImageMirrors: []config.RunImage{},
+					}
+					structuredWriter := writer.StructuredFormat{
+						MarshalFunc: func(i interface{}) ([]byte, error) {
+							marshalInput = i
+							return []byte("marshalled"), nil
+						},
+					}
+
+					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
+					err := structuredWriter.Print(logger, sharedImageInfo, nil, localWithExtensionInfo, nil, nil)
+					assert.Nil(err)
+					assert.Equal(marshalInput, inspectimage.InspectOutput{
+						ImageName: "localExtension-image",
+						Local:     localInfoWithExtensionDisplay,
+					})
+				})
+			})
+
+			when("a localErr is passed to Print", func() {
+				it("still prints remote information", func() {
+					sharedImageInfo := inspectimage.GeneralInfo{
+						Name:            "localErr-image",
+						RunImageMirrors: []config.RunImage{},
+					}
+					structuredWriter := writer.StructuredFormat{
+						MarshalFunc: testMarshalFunc,
+					}
+
+					localErr := errors.New("a local error occurred")
+
+					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
+					err := structuredWriter.Print(logger, sharedImageInfo, nil, remoteWithExtensionInfo, localErr, nil)
+					assert.ErrorWithMessage(err, "preparing output for 'localErr-image': a local error occurred")
+				})
+			})
+
 			when("a remoteErr is passed to print", func() {
 				it("still prints local information", func() {
 					sharedImageInfo := inspectimage.GeneralInfo{
@@ -90,6 +165,24 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 
 					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 					err := structuredWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, remoteErr)
+					assert.ErrorWithMessage(err, "preparing output for 'remoteErr-image': a remote error occurred")
+				})
+			})
+
+			when("a remoteErr is passed to print", func() {
+				it("still prints local information", func() {
+					sharedImageInfo := inspectimage.GeneralInfo{
+						Name:            "remoteErr-image",
+						RunImageMirrors: []config.RunImage{},
+					}
+					structuredWriter := writer.StructuredFormat{
+						MarshalFunc: testMarshalFunc,
+					}
+
+					remoteErr := errors.New("a remote error occurred")
+
+					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
+					err := structuredWriter.Print(logger, sharedImageInfo, localWithExtensionInfo, nil, nil, remoteErr)
 					assert.ErrorWithMessage(err, "preparing output for 'remoteErr-image': a remote error occurred")
 				})
 			})
