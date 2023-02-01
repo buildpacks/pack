@@ -24,6 +24,10 @@ type ImageInfo struct {
 	// phases and made a contribution to this image.
 	Buildpacks []buildpack.GroupElement
 
+	// List of extensions that passed detection, ran their generate
+	// phases and made a contribution to this image.
+	Extensions []buildpack.GroupElement
+
 	// Base includes two references to the run image,
 	// - the Run Image ID,
 	// - the hash of the last layer in the app image that belongs to the run image.
@@ -170,6 +174,17 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 			continue
 		}
 		processDetails.OtherProcesses = append(processDetails.OtherProcesses, proc)
+	}
+	if buildMD.Extensions != nil {
+		return &ImageInfo{
+			StackID:    stackID,
+			Stack:      layersMd.Stack,
+			Base:       layersMd.RunImage,
+			BOM:        buildMD.BOM,
+			Buildpacks: buildMD.Buildpacks,
+			Extensions: buildMD.Extensions,
+			Processes:  processDetails,
+		}, nil
 	}
 
 	return &ImageInfo{
