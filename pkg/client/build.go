@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/volume/mounts"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -423,6 +425,15 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 			}
 
 			lifecycleOpts.LifecycleImage = lifecycleImage.Name()
+			labels, err := lifecycleImage.Labels()
+			if err != nil {
+				return errors.Wrap(err, "reading labels of lifecycle image")
+			}
+
+			lifecycleOpts.LifecycleApis, err = extractSupportedLifecycleApis(labels)
+			if err != nil {
+				return errors.Wrap(err, "reading api versions of lifecycle image")
+			}
 		} else {
 			return errors.Errorf("Lifecycle %s does not have an associated lifecycle image. Builder must be trusted.", lifecycleVersion.String())
 		}
@@ -433,6 +444,28 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
+}
+
+func extractSupportedLifecycleApis(labels map[string]string) ([]string, error) {
+	// sample contents of labels:
+	//    {io.buildpacks.builder.metadata:\"{\"lifecycle\":{\"version\":\"0.15.3\"},\"api\":{\"buildpack\":\"0.2\",\"platform\":\"0.3\"}}",
+	//     io.buildpacks.lifecycle.apis":"{\"buildpack\":{\"deprecated\":[],\"supported\":[\"0.2\",\"0.3\",\"0.4\",\"0.5\",\"0.6\",\"0.7\",\"0.8\",\"0.9\"]},\"platform\":{\"deprecated\":[],\"supported\":[\"0.3\",\"0.4\",\"0.5\",\"0.6\",\"0.7\",\"0.8\",\"0.9\",\"0.10\"]}}\",\"io.buildpacks.lifecycle.version\":\"0.15.3\"}")
+
+	// This struct is defined in lifecycle-repository/tools/image/main.go#Descriptor -- we could consider moving it from the main package to an importable location.
+	var bpPlatformApi struct {
+		Platform struct {
+			Deprecated []string
+			Supported  []string
+		}
+	}
+	if len(labels["io.buildpacks.lifecycle.apis"]) > 0 {
+		err := json.Unmarshal([]byte(labels["io.buildpacks.lifecycle.apis"]), &bpPlatformApi)
+		if err != nil {
+			return nil, err
+		}
+		return append(bpPlatformApi.Platform.Deprecated, bpPlatformApi.Platform.Supported...), nil
+	}
+	return []string{}, nil
 }
 
 func getFileFilter(descriptor projectTypes.Descriptor) (func(string) bool, error) {

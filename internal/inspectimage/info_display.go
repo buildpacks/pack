@@ -44,6 +44,7 @@ type InfoDisplay struct {
 	Base            BaseDisplay             `json:"base_image" yaml:"base_image" toml:"base_image"`
 	RunImageMirrors []RunImageMirrorDisplay `json:"run_images" yaml:"run_images" toml:"run_images"`
 	Buildpacks      []dist.ModuleInfo       `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
+	Extensions      []dist.ModuleInfo       `json:"extensions" yaml:"extensions" toml:"extensions"`
 	Processes       []ProcessDisplay        `json:"processes" yaml:"processes" toml:"processes"`
 }
 
@@ -56,6 +57,16 @@ type InspectOutput struct {
 func NewInfoDisplay(info *client.ImageInfo, generalInfo GeneralInfo) *InfoDisplay {
 	if info == nil {
 		return nil
+	}
+	if info != nil && info.Extensions != nil {
+		return &InfoDisplay{
+			StackID:         info.StackID,
+			Base:            displayBase(info.Base),
+			RunImageMirrors: displayMirrors(nil, generalInfo),
+			Buildpacks:      displayBuildpacks(info.Buildpacks),
+			Extensions:      displayExtensions(info.Extensions),
+			Processes:       displayProcesses(info.Processes),
+		}
 	}
 	return &InfoDisplay{
 		StackID:         info.StackID,
@@ -135,6 +146,18 @@ func displayBuildpacks(buildpacks []buildpack.GroupElement) []dist.ModuleInfo {
 			ID:       buildpack.ID,
 			Version:  buildpack.Version,
 			Homepage: buildpack.Homepage,
+		})
+	}
+	return result
+}
+
+func displayExtensions(extensions []buildpack.GroupElement) []dist.ModuleInfo {
+	var result []dist.ModuleInfo
+	for _, extension := range extensions {
+		result = append(result, dist.ModuleInfo{
+			ID:       extension.ID,
+			Version:  extension.Version,
+			Homepage: extension.Homepage,
 		})
 	}
 	return result

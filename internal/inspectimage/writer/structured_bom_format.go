@@ -27,7 +27,6 @@ func (w *StructuredBOMFormat) Print(
 	if localErr != nil && remoteErr != nil {
 		return fmt.Errorf("preparing BOM output for %s: local :%s remote: %s", style.Symbol(generalInfo.Name), localErr, remoteErr)
 	}
-
 	out, err := w.MarshalFunc(inspectimage.BOMDisplay{
 		Remote:    inspectimage.NewBOMDisplay(remote),
 		Local:     inspectimage.NewBOMDisplay(local),

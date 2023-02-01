@@ -19,11 +19,15 @@ type BOMEntryDisplay struct {
 	Version   string                 `toml:"version,omitempty" json:"version,omitempty" yaml:"version,omitempty"`
 	Metadata  map[string]interface{} `toml:"metadata" json:"metadata" yaml:"metadata"`
 	Buildpack dist.ModuleRef         `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
+	Extension dist.ModuleRef         `json:"extensions" yaml:"extensions" toml:"extensions"`
 }
 
 func NewBOMDisplay(info *client.ImageInfo) []BOMEntryDisplay {
 	if info == nil {
 		return nil
+	}
+	if info != nil && info.Extensions != nil {
+		return displayBOMWithExtension(info.BOM)
 	}
 	return displayBOM(info.BOM)
 }
@@ -37,6 +41,34 @@ func displayBOM(bom []buildpack.BOMEntry) []BOMEntryDisplay {
 			Metadata: entry.Metadata,
 
 			Buildpack: dist.ModuleRef{
+				ModuleInfo: dist.ModuleInfo{
+					ID:      entry.Buildpack.ID,
+					Version: entry.Buildpack.Version,
+				},
+				Optional: entry.Buildpack.Optional,
+			},
+		})
+	}
+
+	return result
+}
+
+func displayBOMWithExtension(bom []buildpack.BOMEntry) []BOMEntryDisplay {
+	var result []BOMEntryDisplay
+	for _, entry := range bom {
+		result = append(result, BOMEntryDisplay{
+			Name:     entry.Name,
+			Version:  entry.Version,
+			Metadata: entry.Metadata,
+
+			Buildpack: dist.ModuleRef{
+				ModuleInfo: dist.ModuleInfo{
+					ID:      entry.Buildpack.ID,
+					Version: entry.Buildpack.Version,
+				},
+				Optional: entry.Buildpack.Optional,
+			},
+			Extension: dist.ModuleRef{
 				ModuleInfo: dist.ModuleInfo{
 					ID:      entry.Buildpack.ID,
 					Version: entry.Buildpack.Version,
