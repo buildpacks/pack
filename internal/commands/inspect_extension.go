@@ -3,6 +3,7 @@ package commands
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/buildpacks/pack/pkg/buildpack"
@@ -82,23 +83,30 @@ func inspectExtensionOutput(info *client.ExtensionInfo, prefix string, flags Ext
 		return []byte{}, fmt.Errorf("error writing detection order output: %q", err)
 	}
 	buf := bytes.NewBuffer(nil)
+	if info.ExtensionMetadata.Stacks != nil && isExtension(info) {
+		err = tpl.Execute(buf, &struct {
+			Location   string
+			Metadata   buildpack.Metadata
+			ListMixins bool
+			Extensions string
+			Order      string
+		}{
+			Location:   prefix,
+			Metadata:   info.ExtensionMetadata,
+			ListMixins: flags.Verbose,
+			Extensions: exOutput,
+			Order:      orderOutput,
+		})
 
-	err = tpl.Execute(buf, &struct {
-		Location   string
-		Metadata   buildpack.Metadata
-		ListMixins bool
-		Extensions string
-		Order      string
-	}{
-		Location:   prefix,
-		Metadata:   info.ExtensionMetadata,
-		ListMixins: flags.Verbose,
-		Extensions: exOutput,
-		Order:      orderOutput,
-	})
-
-	if err != nil {
-		return []byte{}, fmt.Errorf("error templating buildpack output template: %q", err)
+		if err != nil {
+			return []byte{}, fmt.Errorf("error templating buildpack output template: %q", err)
+		}
+		return buf.Bytes(), nil
 	}
-	return buf.Bytes(), nil
+	return nil, fmt.Errorf("not an extension")
+}
+
+func isExtension(info *client.ExtensionInfo) bool {
+	substrings := strings.Split(info.ExtensionMetadata.Stacks[0].ID, ".")
+	return substrings[1] == "extensions"
 }
