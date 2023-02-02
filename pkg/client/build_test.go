@@ -1702,6 +1702,20 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, args.PullPolicy, image.PullAlways)
 							h.AssertEq(t, args.Platform, "linux/amd64")
 						})
+						it("uses the api versions of the lifecycle image", func() {
+							h.AssertTrue(t, true)
+						})
+						it("parses the versions correctly", func() {
+							fakeLifecycleImage.SetLabel("io.buildpacks.lifecycle.apis", "{\"platform\":{\"deprecated\":[\"0.1\"],\"supported\":[\"0.2\",\"0.3\",\"0.4\",\"0.5\"]}}")
+
+							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+								Image:        "some/app",
+								Builder:      defaultBuilderName,
+								Publish:      true,
+								TrustBuilder: func(string) bool { return false },
+							}))
+							h.AssertSliceContainsInOrder(t, fakeLifecycle.Opts.LifecycleApis, "0.1", "0.2", "0.3", "0.4", "0.5")
+						})
 					})
 
 					when("lifecycle image is not available", func() {

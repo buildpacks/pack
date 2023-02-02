@@ -30,7 +30,6 @@ func (h *HumanReadable) Print(
 	if local == nil && remote == nil {
 		return fmt.Errorf("unable to find image '%s' locally or remotely", generalInfo.Name)
 	}
-
 	localDisplay := inspectimage.NewInfoDisplay(local, generalInfo)
 	remoteDisplay := inspectimage.NewInfoDisplay(remote, generalInfo)
 
@@ -61,10 +60,18 @@ func writeImageInfo(
 		Parse(runImagesTemplate))
 	imgTpl = template.Must(imgTpl.New("buildpacks").
 		Parse(buildpacksTemplate))
+	if info != nil && info.Extensions != nil {
+		imgTpl = template.Must(imgTpl.New("extensions").Parse(extensionsTemplate))
+	}
 	imgTpl = template.Must(imgTpl.New("processes").
 		Parse(processesTemplate))
-	imgTpl = template.Must(imgTpl.New("image").
-		Parse(imageTemplate))
+	if info != nil && info.Extensions != nil {
+		imgTpl = template.Must(imgTpl.New("image").
+			Parse(imageWithExtensionTemplate))
+	} else {
+		imgTpl = template.Must(imgTpl.New("image").
+			Parse(imageTemplate))
+	}
 	if err != nil {
 		logger.Errorf("%s\n", err)
 		return nil
@@ -99,7 +106,6 @@ func inspectImageOutput(info *inspectimage.InfoDisplay, tpl *template.Template) 
 	}); err != nil {
 		return bytes.NewBuffer(nil), err
 	}
-
 	return buf, nil
 }
 
@@ -127,6 +133,17 @@ Buildpacks:
   (buildpack metadata not present)
 {{- end }}`
 
+var extensionsTemplate = `
+Extensions:
+{{- if .Info.Extensions }}
+  ID	VERSION	HOMEPAGE
+{{- range $_, $b := .Info.Extensions }}
+  {{ $b.ID }}	{{ $b.Version }}	{{ StringsValueOrDefault $b.Homepage "-" }}
+{{- end }}
+{{- else }}
+  (extension metadata not present)
+{{- end }}`
+
 var processesTemplate = `
 {{- if .Info.Processes }}
 
@@ -150,4 +167,17 @@ Base Image:
 {{- end}}
   Top Layer: {{ .Info.Base.TopLayer }}
 {{ template "runImages" . }}
-{{ template "buildpacks" . }}{{ template "processes" . }}`
+{{ template "buildpacks" . }}
+{{ template "processes" . }}`
+
+var imageWithExtensionTemplate = `Stack: {{ .Info.StackID }}
+
+Base Image:
+{{- if .Info.Base.Reference}}
+  Reference: {{ .Info.Base.Reference }}
+{{- end}}
+  Top Layer: {{ .Info.Base.TopLayer }}
+{{ template "runImages" . }}
+{{ template "buildpacks" . }}
+{{ template "extensions" . }}
+{{ template "processes" . }}`
