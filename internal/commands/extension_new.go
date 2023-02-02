@@ -20,7 +20,7 @@ type ExtensionNewFlags struct {
 func ExtensionNew(logger logging.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "new <id>",
-		Short:   "Creates basic scaffolding of an extension.",
+		Short:   "Creates basic scaffolding of an extension",
 		Args:    cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		Example: "pack extension new <example-extension>",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {

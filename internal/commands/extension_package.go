@@ -23,7 +23,7 @@ type ExtensionPackageFlags struct {
 func ExtensionPackage(logger logging.Logger, cfg config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "package <name> --config <config-path>",
-		Short: "Package an extension in OCI format.",
+		Short: "Package an extension in OCI format",
 		Args:  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			// logic will be added here
