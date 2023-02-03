@@ -40,22 +40,22 @@ Buildpacks:
   some/top-buildpack                 top         0.0.1          top-buildpack-homepage
 
 Detection Order:
- └ Buildpacks #1:
+ └ Group #1:
     └ some/top-buildpack@0.0.1
-       ├ Buildpacks #1:
+       ├ Group #1:
        │  ├ some/first-inner-buildpack@1.0.0
-       │  │  ├ Buildpacks #1:
+       │  │  ├ Group #1:
        │  │  │  ├ some/first-inner-buildpack@1.0.0    [cyclic]
        │  │  │  └ some/third-inner-buildpack@3.0.0
-       │  │  └ Buildpacks #2:
+       │  │  └ Group #2:
        │  │     └ some/third-inner-buildpack@3.0.0
        │  └ some/second-inner-buildpack@2.0.0
-       └ Buildpacks #2:
+       └ Group #2:
           └ some/first-inner-buildpack@1.0.0
-             ├ Buildpacks #1:
+             ├ Group #1:
              │  ├ some/first-inner-buildpack@1.0.0    [cyclic]
              │  └ some/third-inner-buildpack@3.0.0
-             └ Buildpacks #2:
+             └ Group #2:
                 └ some/third-inner-buildpack@3.0.0`
 
 const simpleOutputSection = `Stacks:
@@ -72,7 +72,7 @@ Buildpacks:
   some/buildpack-no-homepage        -           0.0.2          -
 
 Detection Order:
- └ Buildpacks #1:
+ └ Group #1:
     └ some/single-buildpack@0.0.1`
 
 const inspectOutputTemplate = `Inspecting buildpack: '%s'
@@ -84,12 +84,12 @@ const inspectOutputTemplate = `Inspecting buildpack: '%s'
 
 const depthOutputSection = `
 Detection Order:
- └ Buildpacks #1:
+ └ Group #1:
     └ some/top-buildpack@0.0.1
-       ├ Buildpacks #1:
+       ├ Group #1:
        │  ├ some/first-inner-buildpack@1.0.0
        │  └ some/second-inner-buildpack@2.0.0
-       └ Buildpacks #2:
+       └ Group #2:
           └ some/first-inner-buildpack@1.0.0`
 
 const simpleMixinOutputSection = `
