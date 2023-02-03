@@ -1213,7 +1213,7 @@ func fullImagePath(inputImageRef InputImageReference, create bool) (string, erro
 
 	if create {
 		if err := os.MkdirAll(imagePath, os.ModePerm); err != nil {
-			return "", errors.Wrapf(err, "creating %s layout application destination", fullImagePath)
+			return "", errors.Wrapf(err, "creating %s layout application destination", imagePath)
 		}
 	}
 
