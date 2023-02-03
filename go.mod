@@ -129,7 +129,6 @@ go 1.19
 // Ensure compatibility with lifecycle/kaniko; match dependencies configured in:
 // https://github.com/GoogleContainerTools/kaniko/blob/f9aaa9fca7bf4077778ed527c1a8a6e09e60c53c/go.mod (v1.9.1)
 replace (
-	github.com/buildpacks/imgutil => ../../buildpacks/imgutil
 	github.com/docker/docker => github.com/docker/docker v20.10.21+incompatible
 	github.com/moby/buildkit => github.com/moby/buildkit v0.8.3
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc95
