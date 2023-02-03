@@ -226,7 +226,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringArrayVarP(&buildFlags.Env, "env", "e", []string{}, "Build-time environment variable, in the form 'VAR=VALUE' or 'VAR'.\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed.\nThis flag may be specified multiple times and will override\n  individual values defined by --env-file."+stringArrayHelp("env")+"\nNOTE: These are NOT available at image runtime.")
 	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed\nNOTE: These are NOT available at image runtime.\"")
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
-	cmd.Flags().StringArrayVar(&buildFlags.PreBuildpacks, "pre-buildpack", []string{}, "Buildpacks to prepended to the groups in the builder's order")
+	cmd.Flags().StringArrayVar(&buildFlags.PreBuildpacks, "pre-buildpack", []string{}, "Buildpacks to prepend to the groups in the builder's order")
 	cmd.Flags().StringArrayVar(&buildFlags.PostBuildpacks, "post-buildpack", []string{}, "Buildpacks to appended to the groups in the builder's order")
 	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "Publish to registry")
 	cmd.Flags().StringVar(&buildFlags.DockerHost, "docker-host", "",
