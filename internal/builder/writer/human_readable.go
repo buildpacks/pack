@@ -519,7 +519,7 @@ func writeDetectionOrderGroup(writer io.Writer, order pubbldr.DetectionOrder, pr
 			}
 
 			groupNumber++
-			_, err = fmt.Fprintf(writer, "Buildpacks #%d:\n", groupNumber)
+			_, err = fmt.Fprintf(writer, "Group #%d:\n", groupNumber)
 			if err != nil {
 				return fmt.Errorf("writing to detection order group writer: %w", err)
 			}
