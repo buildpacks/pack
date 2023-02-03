@@ -114,6 +114,7 @@ func testDownloadSBOM(t *testing.T, when spec.G, it spec.S) {
 
 			err := subject.DownloadSBOM("some/non-existent-image", DownloadSBOMOptions{Daemon: true, DestinationDir: ""})
 			h.AssertError(t, err, "image 'some/non-existent-image' cannot be found")
+			h.AssertContains(t, out.String(), "if image is saved on a registry run 'docker pull some/non-existent-image' before downloading the SBoM\n")
 		})
 	})
 
