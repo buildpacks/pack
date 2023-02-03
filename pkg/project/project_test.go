@@ -38,6 +38,10 @@ type = "MIT"
 pipeline = "Lucerne"
 [io.buildpacks]
 exclude = [ "*.jar" ]
+[[io.buildpacks.pre.group]]
+uri = "https://example.com/buildpack/pre"
+[[io.buildpacks.post.group]]
+uri = "https://example.com/buildpack/post"
 [[io.buildpacks.group]]
 id = "example/lua"
 version = "1.0"
@@ -90,6 +94,18 @@ value = "this-should-get-overridden-because-its-deprecated"
 			if projectDescriptor.Build.Buildpacks[1].URI != expected {
 				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
 					expected, projectDescriptor.Build.Buildpacks[1].URI)
+			}
+
+			expected = "https://example.com/buildpack/pre"
+			if projectDescriptor.Build.Pre.Buildpacks[0].URI != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Build.Pre.Buildpacks[0].URI)
+			}
+
+			expected = "https://example.com/buildpack/post"
+			if projectDescriptor.Build.Post.Buildpacks[0].URI != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Build.Post.Buildpacks[0].URI)
 			}
 
 			expected = "JAVA_OPTS"

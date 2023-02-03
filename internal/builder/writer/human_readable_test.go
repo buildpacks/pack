@@ -74,15 +74,15 @@ Buildpacks:
   test.bp.three          -           test.bp.three.version          -
 
 Detection Order:
- ├ Group #1:
+ ├ Buildpacks #1:
  │  ├ test.top.nested@test.top.nested.version
- │  │  └ Group #1:
+ │  │  └ Buildpacks #1:
  │  │     ├ test.nested
- │  │     │  └ Group #1:
+ │  │     │  └ Buildpacks #1:
  │  │     │     └ test.bp.one@test.bp.one.version      (optional)
  │  │     ├ test.bp.three@test.bp.three.version        (optional)
  │  │     └ test.nested.two@test.nested.two.version
- │  │        └ Group #2:
+ │  │        └ Buildpacks #2:
  │  │           └ test.bp.one@test.bp.one.version    (optional)[cyclic]
  │  └ test.bp.two@test.bp.two.version                (optional)
  └ test.bp.three@test.bp.three.version
@@ -139,15 +139,15 @@ Buildpacks:
   test.bp.three          -           test.bp.three.version          -
 
 Detection Order:
- ├ Group #1:
+ ├ Buildpacks #1:
  │  ├ test.top.nested@test.top.nested.version
- │  │  └ Group #1:
+ │  │  └ Buildpacks #1:
  │  │     ├ test.nested
- │  │     │  └ Group #1:
+ │  │     │  └ Buildpacks #1:
  │  │     │     └ test.bp.one@test.bp.one.version      (optional)
  │  │     ├ test.bp.three@test.bp.three.version        (optional)
  │  │     └ test.nested.two@test.nested.two.version
- │  │        └ Group #2:
+ │  │        └ Buildpacks #2:
  │  │           └ test.bp.one@test.bp.one.version    (optional)[cyclic]
  │  └ test.bp.two@test.bp.two.version                (optional)
  └ test.bp.three@test.bp.three.version

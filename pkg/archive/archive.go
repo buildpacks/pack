@@ -356,7 +356,7 @@ func finalizeHeader(header *tar.Header, uid, gid int, mode int64, normalizeModTi
 //   - GID
 //   - UID
 //   - User Name
-//   - Group Name
+//   - Buildpacks Name
 func NormalizeHeader(header *tar.Header, normalizeModTime bool) {
 	if normalizeModTime {
 		header.ModTime = NormalizedDateTime
