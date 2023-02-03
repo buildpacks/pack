@@ -5,10 +5,10 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Microsoft/go-winio v0.6.0
 	github.com/apex/log v1.9.0
-	github.com/buildpacks/imgutil v0.0.0-20230117193450-b75b1d22c377
+	github.com/buildpacks/imgutil v0.0.0-20230203224758-32072eab009a
 	github.com/buildpacks/lifecycle v0.15.3
-	github.com/docker/cli v23.0.1+incompatible
-	github.com/docker/docker v20.10.22+incompatible
+	github.com/docker/cli v23.0.0+incompatible
+	github.com/docker/docker v20.10.23+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gdamore/tcell/v2 v2.5.4
