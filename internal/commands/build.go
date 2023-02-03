@@ -69,19 +69,12 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			"be provided directly to build using `--builder`, or can be set using the `set-default-builder` command. For more " +
 			"on how to use `pack build`, see: https://buildpacks.io/docs/app-developer-guide/build-an-app/.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			imageName := args[0]
-			previousImage := flags.PreviousImage
-			userProvidedLayoutPath := parseLayoutDestinationPath(imageName)
-			if err := validateBuildFlags(&flags, cfg, packClient, userProvidedLayoutPath, logger); err != nil {
+			inputImageName := client.ParseInputImageReference(args[0])
+			if err := validateBuildFlags(&flags, cfg, inputImageName, logger); err != nil {
 				return err
 			}
-			if userProvidedLayoutPath != "" {
-				imageName = userProvidedLayoutPath
-				logger.Debugf("Using layout repository directory at %s", cfg.LayoutRepositoryDir)
-				if previousImage != "" {
-					previousImage = parseLayoutDestinationPath(previousImage)
-				}
-			}
+
+			inputPreviousImage := client.ParseInputImageReference(flags.PreviousImage)
 
 			descriptor, actualDescriptorPath, err := parseProjectToml(flags.AppPath, flags.DescriptorPath)
 			if err != nil {
@@ -159,7 +152,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				AdditionalTags:    flags.AdditionalTags,
 				RunImage:          flags.RunImage,
 				Env:               env,
-				Image:             imageName,
+				Image:             inputImageName.Name(),
 				Publish:           flags.Publish,
 				DockerHost:        flags.DockerHost,
 				PullPolicy:        pullPolicy,
@@ -180,20 +173,23 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Workspace:                flags.Workspace,
 				LifecycleImage:           lifecycleImage,
 				GroupID:                  gid,
-				PreviousImage:            previousImage,
+				PreviousImage:            inputPreviousImage.Name(),
 				Interactive:              flags.Interactive,
 				SBOMDestinationDir:       flags.SBOMDestinationDir,
 				ReportDestinationDir:     flags.ReportDestinationDir,
 				CreationTime:             dateTime,
 				PreBuildpacks:            flags.PreBuildpacks,
 				PostBuildpacks:           flags.PostBuildpacks,
-				LayoutAppPath:            userProvidedLayoutPath,
-				LayoutRepoDir:            cfg.LayoutRepositoryDir,
-				Sparse:                   flags.Sparse,
+				LayoutConfig: client.LayoutConfig{
+					Sparse:             flags.Sparse,
+					InputImage:         inputImageName,
+					PreviousInputImage: inputPreviousImage,
+					LayoutRepoDir:      cfg.LayoutRepositoryDir,
+				},
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
-			logger.Infof("Successfully built image %s", style.Symbol(imageName))
+			logger.Infof("Successfully built image %s", style.Symbol(inputImageName.Name()))
 			return nil
 		}),
 	}
@@ -267,7 +263,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	}
 }
 
-func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, layoutPath string, logger logging.Logger) error {
+func validateBuildFlags(flags *BuildFlags, cfg config.Config, inputImageRef client.InputImageReference, logger logging.Logger) error {
 	if flags.Registry != "" && !cfg.Experimental {
 		return client.NewExperimentError("Support for buildpack registries is currently experimental.")
 	}
@@ -296,7 +292,7 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackCli
 		return client.NewExperimentError("Interactive mode is currently experimental.")
 	}
 
-	if layoutPath != "" && !cfg.Experimental {
+	if inputImageRef.Layout() && !cfg.Experimental {
 		return client.NewExperimentError("Exporting to OCI layout is currently experimental.")
 	}
 
@@ -365,12 +361,4 @@ func parseProjectToml(appPath, descriptorPath string) (projectTypes.Descriptor, 
 
 	descriptor, err := project.ReadProjectDescriptor(actualPath)
 	return descriptor, actualPath, err
-}
-
-func parseLayoutDestinationPath(imageName string) string {
-	if strings.HasPrefix(imageName, "oci:") {
-		imageNameParsed := strings.SplitN(imageName, ":", 2)
-		return imageNameParsed[1]
-	}
-	return ""
 }

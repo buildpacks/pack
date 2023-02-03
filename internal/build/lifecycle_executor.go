@@ -81,13 +81,13 @@ type LifecycleOptions struct {
 	TrustBuilder         bool
 	UseCreator           bool
 	Interactive          bool
+	Layout               bool
 	Termui               Termui
 	DockerHost           string
 	Cache                cache.CacheOpts
 	CacheImage           string
 	HTTPProxy            string
 	HTTPSProxy           string
-	LayoutPath           string
 	NoProxy              string
 	Network              string
 	AdditionalTags       []string
@@ -97,12 +97,9 @@ type LifecycleOptions struct {
 	Workspace            string
 	GID                  int
 	PreviousImage        string
-	PreviousImageDir     string
 	ReportDestinationDir string
 	SBOMDestinationDir   string
 	CreationTime         *time.Time
-	ImageDestinationDir  string
-	LayoutRepoDir        string
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker DockerClient) *LifecycleExecutor {

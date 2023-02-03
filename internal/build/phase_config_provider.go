@@ -59,12 +59,6 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 		}...),
 	)
 
-	if lifecycleExec.opts.ImageDestinationDir != "" {
-		ops = append(ops, WithBinds([]string{
-			fmt.Sprintf("%s:%s", lifecycleExec.layoutVolume, lifecycleExec.mountPaths.LayoutRepoDir()),
-		}...))
-	}
-
 	for _, op := range ops {
 		op(provider)
 	}

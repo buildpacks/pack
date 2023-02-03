@@ -4,11 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"os"
-	"path/filepath"
 	"strconv"
-
-	"github.com/buildpacks/imgutil/layout"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
@@ -34,7 +30,6 @@ type LifecycleExecution struct {
 	docker       DockerClient
 	platformAPI  *api.Version
 	layersVolume string
-	layoutVolume string
 	appVolume    string
 	os           string
 	mountPaths   mountPaths
@@ -60,7 +55,6 @@ func NewLifecycleExecution(logger logging.Logger, docker DockerClient, opts Life
 		docker:       docker,
 		layersVolume: paths.FilterReservedNames("pack-layers-" + randString(10)),
 		appVolume:    paths.FilterReservedNames("pack-app-" + randString(10)),
-		layoutVolume: paths.FilterReservedNames("pack-layout-" + randString(10)),
 		platformAPI:  latestSupportedPlatformAPI,
 		opts:         opts,
 		os:           osType,
@@ -258,11 +252,6 @@ func (l *LifecycleExecution) Cleanup() error {
 	if err := l.docker.VolumeRemove(context.Background(), l.appVolume, true); err != nil {
 		reterr = errors.Wrapf(err, "failed to clean up app volume %s", l.appVolume)
 	}
-	if l.opts.ImageDestinationDir != "" {
-		if err := l.docker.VolumeRemove(context.Background(), l.layoutVolume, true); err != nil {
-			reterr = errors.Wrapf(err, "failed to clean up app volume %s", l.layoutVolume)
-		}
-	}
 	return reterr
 }
 
@@ -344,7 +333,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, buildCache, launchCache
 		withEnv,
 	}
 
-	if l.opts.ImageDestinationDir != "" {
+	if l.opts.Layout {
 		var err error
 		opts, err = l.appendLayoutOperations(opts)
 		if err != nil {
@@ -352,7 +341,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, buildCache, launchCache
 		}
 	}
 
-	if l.opts.Publish || l.opts.ImageDestinationDir != "" {
+	if l.opts.Publish || l.opts.Layout {
 		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
@@ -757,37 +746,7 @@ func (l *LifecycleExecution) hasExtensions() bool {
 }
 
 func (l *LifecycleExecution) appendLayoutOperations(opts []PhaseConfigProviderOperation) ([]PhaseConfigProviderOperation, error) {
-	runImageRef, err := layout.ParseRefToPath(l.opts.RunImage)
-	if err != nil {
-		return nil, fmt.Errorf("invalid run image name: %s", err)
-	}
-
-	outputImageRef, err := layout.ParseRefToPath(l.opts.Image.Name())
-	if err != nil {
-		return nil, fmt.Errorf("invalid image name: %s", err)
-	}
-
-	prevImage := l.opts.Image.Name()
-	if l.opts.PreviousImage != "" {
-		prevImage = l.opts.PreviousImage
-	}
-
-	prevImageRef, err := layout.ParseRefToPath(prevImage)
-	if err != nil {
-		return nil, fmt.Errorf("invalid previous name: %s", err)
-	}
-
-	containerOutputImagePath := filepath.Join(l.mountPaths.LayoutRepoDir(), outputImageRef)
-	localRunImagePath := filepath.Join(l.opts.LayoutRepoDir, runImageRef)
-	containerRunImagePath := filepath.Join(l.mountPaths.LayoutRepoDir(), runImageRef)
-	containerPreviousImagePath := filepath.Join(l.mountPaths.LayoutRepoDir(), prevImageRef)
-
-	opts = append(opts, WithEnv("CNB_USE_LAYOUT=true", "CNB_EXPERIMENTAL_MODE=warn"),
-		WithContainerOperations(CopyDir(localRunImagePath, containerRunImagePath, l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, nil)),
-		If(exists(l.opts.PreviousImageDir),
-			WithContainerOperations(CopyDir(l.opts.PreviousImageDir, containerPreviousImagePath, l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, nil))),
-		WithPostContainerRunOperations(CopyOutTo(containerOutputImagePath, l.opts.ImageDestinationDir)))
-
+	opts = append(opts, WithEnv("CNB_USE_LAYOUT=true", "CNB_EXPERIMENTAL_MODE=warn"))
 	return opts, nil
 }
 
@@ -800,9 +759,4 @@ func addTags(flags, additionalTags []string) []string {
 		flags = append(flags, "-tag", tag)
 	}
 	return flags
-}
-
-func exists(path string) bool {
-	_, err := os.Stat(path)
-	return !os.IsNotExist(err)
 }

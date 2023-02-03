@@ -269,14 +269,6 @@ github.com/bugsnag/osext v0.0.0-20130617224835-0dd3f918b21b/go.mod h1:obH5gd0Bsq
 github.com/bugsnag/panicwrap v0.0.0-20151223152923-e2c28503fcd0/go.mod h1:D/8v3kj0zr8ZAKg1AQ6crr+5VwKN5eIywRkfhyM/+dE=
 github.com/buildpacks/lifecycle v0.15.3 h1:jjYc0sclsxyCpBQoMkAQKynRrhuRbXXCj9eH7ApUOYQ=
 github.com/buildpacks/lifecycle v0.15.3/go.mod h1:vNhpm82BD9JlzZbFP9JXYt2tMBlIf9EA20VtZ0PkyRE=
-github.com/buildpacks/imgutil v0.0.0-20221109161319-3252b1f13dfa h1:g72s4SWu3zI2FY/0Vu4IAoc9UPbGmy5/IR+pJT3SRB4=
-github.com/buildpacks/imgutil v0.0.0-20221109161319-3252b1f13dfa/go.mod h1:/aefwfzb14yQfd4KauUS5B0UVJpi+Fno25mh/Us81Ak=
-github.com/buildpacks/imgutil v0.0.0-20230111234127-22d7d62c19c1 h1:FLpmSOrnV8IpUaxWx8auEuth3y32NlrZXYlVMYgBjAI=
-github.com/buildpacks/imgutil v0.0.0-20230111234127-22d7d62c19c1/go.mod h1:7XJyKf8MwQfHcsjjA9et24BWN3gE1FztxnN8de54mL0=
-github.com/buildpacks/imgutil v0.0.0-20230117181026-e48cccced975 h1:g3rQ/EvRGsdP1NJ84Cu3gZuscDbMGXIpa7q1VEdSIOk=
-github.com/buildpacks/imgutil v0.0.0-20230117181026-e48cccced975/go.mod h1:7XJyKf8MwQfHcsjjA9et24BWN3gE1FztxnN8de54mL0=
-github.com/buildpacks/imgutil v0.0.0-20230117193450-b75b1d22c377 h1:8vefwU3GGCtD/B87ybEF03BwjNq6ZfuMe7qIBjXT5Fk=
-github.com/buildpacks/imgutil v0.0.0-20230117193450-b75b1d22c377/go.mod h1:7XJyKf8MwQfHcsjjA9et24BWN3gE1FztxnN8de54mL0=
 github.com/bwesterb/go-ristretto v1.2.0/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7NFEuV9ekS419A0=
 github.com/caarlos0/ctrlc v1.0.0/go.mod h1:CdXpj4rmq0q/1Eb44M9zi2nKB0QraNKuRGYGrrHhcQw=
 github.com/campoy/unique v0.0.0-20180121183637-88950e537e7e/go.mod h1:9IOqJGCPMSc6E5ydlp5NIonxObaeu/Iub/X03EKPVYo=
