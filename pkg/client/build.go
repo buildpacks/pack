@@ -155,6 +155,14 @@ type BuildOptions struct {
 	// ProjectDescriptor describes the project and any configuration specific to the project
 	ProjectDescriptor projectTypes.Descriptor
 
+	// List of buildpack images or archives to add to a builder.
+	// these buildpacks will be prepended to the builder's order
+	PreBuildpacks []string
+
+	// List of buildpack images or archives to add to a builder.
+	// these buildpacks will be appended to the builder's order
+	PostBuildpacks []string
+
 	// The lifecycle image that will be used for the analysis, restore and export phases
 	// when using an untrusted builder.
 	LifecycleImage string
@@ -741,9 +749,6 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 //		- group:
 //			- A
 func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedBPs []buildpack.BuildModule, order dist.Order, err error) {
-	pullPolicy := opts.PullPolicy
-	publish := opts.Publish
-	registry := opts.Registry
 	relativeBaseDir := opts.RelativeBaseDir
 	declaredBPs := opts.Buildpacks
 
@@ -752,24 +757,11 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 		relativeBaseDir = opts.ProjectDescriptorBaseDir
 
 		for _, bp := range opts.ProjectDescriptor.Build.Buildpacks {
-			switch {
-			case bp.ID != "" && bp.Script.Inline != "" && bp.URI == "":
-				if bp.Script.API == "" {
-					return nil, nil, errors.New("Missing API version for inline buildpack")
-				}
-
-				pathToInlineBuildpack, err := createInlineBuildpack(bp, stackID)
-				if err != nil {
-					return nil, nil, errors.Wrap(err, "Could not create temporary inline buildpack")
-				}
-				declaredBPs = append(declaredBPs, pathToInlineBuildpack)
-			case bp.URI != "":
-				declaredBPs = append(declaredBPs, bp.URI)
-			case bp.ID != "" && bp.Version != "":
-				declaredBPs = append(declaredBPs, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
-			default:
-				return nil, nil, errors.New("Invalid buildpack defined in project descriptor")
+			buildpackLocator, err := getBuildpackLocator(bp, stackID)
+			if err != nil {
+				return nil, nil, err
 			}
+			declaredBPs = append(declaredBPs, buildpackLocator)
 		}
 	}
 
@@ -798,33 +790,123 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 
 				order = newOrder
 			}
-		case buildpack.IDLocator:
-			id, version := buildpack.ParseIDLocator(bp)
-			order = appendBuildpackToOrder(order, dist.ModuleInfo{
-				ID:      id,
-				Version: version,
-			})
 		default:
-			imageOS, err := builderImage.OS()
+			newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderImage, builderBPs, opts)
 			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "getting OS from %s", style.Symbol(builderImage.Name()))
+				return fetchedBPs, order, err
 			}
-			mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, bp, buildpack.DownloadOptions{
-				RegistryName:    registry,
-				ImageOS:         imageOS,
-				RelativeBaseDir: relativeBaseDir,
-				Daemon:          !publish,
-				PullPolicy:      pullPolicy,
-			})
-			if err != nil {
-				return fetchedBPs, order, errors.Wrap(err, "downloading buildpack")
+			fetchedBPs = append(fetchedBPs, newFetchedBPs...)
+			order = appendBuildpackToOrder(order, *moduleInfo)
+		}
+	}
+
+	if (len(order) == 0 || len(order[0].Group) == 0) && len(builderOrder) > 0 {
+		preBuildpacks := opts.PreBuildpacks
+		postBuildpacks := opts.PostBuildpacks
+		if len(preBuildpacks) == 0 && len(opts.ProjectDescriptor.Build.Pre.Buildpacks) > 0 {
+			for _, bp := range opts.ProjectDescriptor.Build.Pre.Buildpacks {
+				buildpackLocator, err := getBuildpackLocator(bp, stackID)
+				if err != nil {
+					return nil, nil, errors.Wrap(err, "get pre-buildpack locator")
+				}
+				preBuildpacks = append(preBuildpacks, buildpackLocator)
 			}
-			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
-			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info())
+		}
+		if len(postBuildpacks) == 0 && len(opts.ProjectDescriptor.Build.Post.Buildpacks) > 0 {
+			for _, bp := range opts.ProjectDescriptor.Build.Post.Buildpacks {
+				buildpackLocator, err := getBuildpackLocator(bp, stackID)
+				if err != nil {
+					return nil, nil, errors.Wrap(err, "get post-buildpack locator")
+				}
+				postBuildpacks = append(postBuildpacks, buildpackLocator)
+			}
+		}
+
+		if len(preBuildpacks) > 0 || len(postBuildpacks) > 0 {
+			order = builderOrder
+			for _, bp := range preBuildpacks {
+				newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderImage, builderBPs, opts)
+				if err != nil {
+					return fetchedBPs, order, err
+				}
+				fetchedBPs = append(fetchedBPs, newFetchedBPs...)
+				order = prependBuildpackToOrder(order, *moduleInfo)
+			}
+
+			for _, bp := range postBuildpacks {
+				newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderImage, builderBPs, opts)
+				if err != nil {
+					return fetchedBPs, order, err
+				}
+				fetchedBPs = append(fetchedBPs, newFetchedBPs...)
+				order = appendBuildpackToOrder(order, *moduleInfo)
+			}
 		}
 	}
 
 	return fetchedBPs, order, nil
+}
+
+func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir string, builderImage imgutil.Image, builderBPs []dist.ModuleInfo, opts BuildOptions) ([]buildpack.BuildModule, *dist.ModuleInfo, error) {
+	pullPolicy := opts.PullPolicy
+	publish := opts.Publish
+	registry := opts.Registry
+
+	locatorType, err := buildpack.GetLocatorType(bp, relativeBaseDir, builderBPs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	fetchedBPs := []buildpack.BuildModule{}
+	var moduleInfo *dist.ModuleInfo
+	switch locatorType {
+	case buildpack.IDLocator:
+		id, version := buildpack.ParseIDLocator(bp)
+		moduleInfo = &dist.ModuleInfo{
+			ID:      id,
+			Version: version,
+		}
+	default:
+		imageOS, err := builderImage.OS()
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "getting OS from %s", style.Symbol(builderImage.Name()))
+		}
+		mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, bp, buildpack.DownloadOptions{
+			RegistryName:    registry,
+			ImageOS:         imageOS,
+			RelativeBaseDir: relativeBaseDir,
+			Daemon:          !publish,
+			PullPolicy:      pullPolicy,
+		})
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "downloading buildpack")
+		}
+		fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
+		mainBPInfo := mainBP.Descriptor().Info()
+		moduleInfo = &mainBPInfo
+	}
+	return fetchedBPs, moduleInfo, nil
+}
+
+func getBuildpackLocator(bp projectTypes.Buildpack, stackID string) (string, error) {
+	switch {
+	case bp.ID != "" && bp.Script.Inline != "" && bp.URI == "":
+		if bp.Script.API == "" {
+			return "", errors.New("Missing API version for inline buildpack")
+		}
+
+		pathToInlineBuildpack, err := createInlineBuildpack(bp, stackID)
+		if err != nil {
+			return "", errors.Wrap(err, "Could not create temporary inline buildpack")
+		}
+		return pathToInlineBuildpack, nil
+	case bp.URI != "":
+		return bp.URI, nil
+	case bp.ID != "" && bp.Version != "":
+		return fmt.Sprintf("%s@%s", bp.ID, bp.Version), nil
+	default:
+		return "", errors.New("Invalid buildpack defined in project descriptor")
+	}
 }
 
 func appendBuildpackToOrder(order dist.Order, bpInfo dist.ModuleInfo) (newOrder dist.Order) {
@@ -834,6 +916,23 @@ func appendBuildpackToOrder(order dist.Order, bpInfo dist.ModuleInfo) (newOrder 
 			ModuleInfo: bpInfo,
 			Optional:   false,
 		})
+		newOrder = append(newOrder, newEntry)
+	}
+
+	return newOrder
+}
+
+func prependBuildpackToOrder(order dist.Order, bpInfo dist.ModuleInfo) (newOrder dist.Order) {
+	for _, orderEntry := range order {
+		newEntry := orderEntry
+		newGroup := []dist.ModuleRef{{
+			ModuleInfo: bpInfo,
+			Optional:   false,
+		}}
+		for _, g := range newEntry.Group {
+			newGroup = append(newGroup, g)
+		}
+		newEntry.Group = newGroup
 		newOrder = append(newOrder, newEntry)
 	}
 
