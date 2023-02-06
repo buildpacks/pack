@@ -8,7 +8,6 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
-	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -28,7 +27,7 @@ const (
 
 type LifecycleExecution struct {
 	logger       logging.Logger
-	docker       client.CommonAPIClient
+	docker       DockerClient
 	platformAPI  *api.Version
 	layersVolume string
 	appVolume    string
@@ -37,7 +36,7 @@ type LifecycleExecution struct {
 	opts         LifecycleOptions
 }
 
-func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient, opts LifecycleOptions) (*LifecycleExecution, error) {
+func NewLifecycleExecution(logger logging.Logger, docker DockerClient, opts LifecycleOptions) (*LifecycleExecution, error) {
 	latestSupportedPlatformAPI, err := FindLatestSupported(append(
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Deprecated,
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Supported...,

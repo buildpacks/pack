@@ -9,7 +9,6 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform"
-	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/builder"
@@ -45,7 +44,7 @@ type Builder interface {
 
 type LifecycleExecutor struct {
 	logger logging.Logger
-	docker client.CommonAPIClient
+	docker DockerClient
 }
 
 type Cache interface {
@@ -100,7 +99,7 @@ type LifecycleOptions struct {
 	CreationTime         *time.Time
 }
 
-func NewLifecycleExecutor(logger logging.Logger, docker client.CommonAPIClient) *LifecycleExecutor {
+func NewLifecycleExecutor(logger logging.Logger, docker DockerClient) *LifecycleExecutor {
 	return &LifecycleExecutor{logger: logger, docker: docker}
 }
 
