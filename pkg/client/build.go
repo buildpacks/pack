@@ -286,6 +286,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 			return errors.Wrapf(err, "invalid layout paths image name '%s' or previous-image name '%s'", opts.LayoutConfig.InputImage.Name(),
 				opts.LayoutConfig.PreviousInputImage.Name())
 		}
+		opts.AdditionalTags = append([]string{imageRef.Identifier()}, opts.AdditionalTags...)
 	}
 
 	appPath, err := c.processAppPath(opts.AppPath)
