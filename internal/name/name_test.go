@@ -66,5 +66,17 @@ func testTranslateRegistry(t *testing.T, when spec.G, it spec.S) {
 			assert.Nil(err)
 			assert.Equal(output, expected)
 		})
+
+		it("translate a buildpack referenced by a digest", func() {
+			input := "buildpack/bp@sha256:7f48a442c056cd19ea48462e05faa2837ac3a13732c47616d20f11f8c847a8c4"
+			expected := "myregistry.com/buildpack/bp@sha256:7f48a442c056cd19ea48462e05faa2837ac3a13732c47616d20f11f8c847a8c4"
+			registryMirrors := map[string]string{
+				"index.docker.io": "myregistry.com",
+			}
+
+			output, err := name.TranslateRegistry(input, registryMirrors, logger)
+			assert.Nil(err)
+			assert.Equal(output, expected)
+		})
 	})
 }
