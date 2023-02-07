@@ -40,8 +40,13 @@ func WithKeychain(keychain authn.Keychain) FetcherOption {
 	}
 }
 
+type DockerClient interface {
+	local.DockerClient
+	ImagePull(ctx context.Context, ref string, options types.ImagePullOptions) (io.ReadCloser, error)
+}
+
 type Fetcher struct {
-	docker          client.CommonAPIClient
+	docker          DockerClient
 	logger          logging.Logger
 	registryMirrors map[string]string
 	keychain        authn.Keychain
@@ -53,7 +58,7 @@ type FetchOptions struct {
 	PullPolicy PullPolicy
 }
 
-func NewFetcher(logger logging.Logger, docker client.CommonAPIClient, opts ...FetcherOption) *Fetcher {
+func NewFetcher(logger logging.Logger, docker DockerClient, opts ...FetcherOption) *Fetcher {
 	fetcher := &Fetcher{
 		logger:   logger,
 		docker:   docker,

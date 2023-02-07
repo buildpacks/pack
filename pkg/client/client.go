@@ -85,7 +85,7 @@ type BuildpackDownloader interface {
 // All settings on this object should be changed through ClientOption functions.
 type Client struct {
 	logger logging.Logger
-	docker dockerClient.CommonAPIClient
+	docker DockerClient
 
 	keychain            authn.Keychain
 	imageFactory        ImageFactory
@@ -151,7 +151,7 @@ func WithCacheDir(path string) Option {
 }
 
 // WithDockerClient supply your own docker client.
-func WithDockerClient(docker dockerClient.CommonAPIClient) Option {
+func WithDockerClient(docker DockerClient) Option {
 	return func(c *Client) {
 		c.docker = docker
 	}
@@ -260,7 +260,7 @@ func (r *registryResolver) Resolve(registryName, bpName string) (string, error) 
 }
 
 type imageFactory struct {
-	dockerClient dockerClient.CommonAPIClient
+	dockerClient local.DockerClient
 	keychain     authn.Keychain
 }
 

@@ -3,16 +3,14 @@ package cache
 import (
 	"context"
 	"os"
-
-	"github.com/docker/docker/client"
 )
 
 type BindCache struct {
-	docker client.CommonAPIClient
+	docker DockerClient
 	bind   string
 }
 
-func NewBindCache(cacheType CacheInfo, dockerClient client.CommonAPIClient) *BindCache {
+func NewBindCache(cacheType CacheInfo, dockerClient DockerClient) *BindCache {
 	return &BindCache{
 		bind:   cacheType.Source,
 		docker: dockerClient,
