@@ -19,7 +19,6 @@ type Logger interface {
 }
 
 func TranslateRegistry(name string, registryMirrors map[string]string, logger Logger) (string, error) {
-	logger.Infof("input %s", name)
 	if registryMirrors == nil {
 		return name, nil
 	}
