@@ -2,10 +2,16 @@ package name
 
 import (
 	"fmt"
+	"strings"
 
 	gname "github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/style"
+)
+
+const (
+	defaultRefFormat = "%s/%s:%s"
+	digestRefFormat  = "%s/%s@%s"
 )
 
 type Logger interface {
@@ -13,6 +19,7 @@ type Logger interface {
 }
 
 func TranslateRegistry(name string, registryMirrors map[string]string, logger Logger) (string, error) {
+	logger.Infof("input %s", name)
 	if registryMirrors == nil {
 		return name, nil
 	}
@@ -28,7 +35,12 @@ func TranslateRegistry(name string, registryMirrors map[string]string, logger Lo
 		return name, nil
 	}
 
-	refName := fmt.Sprintf("%s/%s:%s", registryMirror, srcContext.RepositoryStr(), srcRef.Identifier())
+	refFormat := defaultRefFormat
+	if strings.Contains(srcRef.Identifier(), ":") {
+		refFormat = digestRefFormat
+	}
+
+	refName := fmt.Sprintf(refFormat, registryMirror, srcContext.RepositoryStr(), srcRef.Identifier())
 	_, err = gname.ParseReference(refName, gname.WeakValidation)
 	if err != nil {
 		return "", err
