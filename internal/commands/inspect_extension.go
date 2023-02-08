@@ -4,44 +4,23 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"text/tabwriter"
 	"text/template"
 
+	strs "github.com/buildpacks/pack/internal/strings"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 const inspectExtensionTemplate = `
 {{ .Location -}}:
 
-Stacks:
-{{- range $stackIndex, $stack := .Metadata.Stacks }}
-  ID: {{ $stack.ID }}
-    Mixins:
-  {{- if $.ListMixins }}
-    {{- if eq (len $stack.Mixins) 0 }}
-      (none)
-    {{- else }}
-      {{- range $mixinIndex, $mixin := $stack.Mixins }}
-      {{ $mixin }}
-      {{- end }}
-    {{- end }}
-  {{- else }}
-      (omitted)
-  {{- end }}
-{{- end }}
-
-Extensions:
-{{ .Extensions }}
-
-Detection Order:
-{{- if ne .Order "" }}
-{{ .Order }}
-{{- else }}
-  (none)
-{{ end }}
+Extension:
+{{ .Extension }}
 `
 
-func inspectAllExtensions(client PackClient, flags ExtensionInspectFlags, options ...client.InspectExtensionOptions) (string, error) {
+func inspectAllExtensions(client PackClient, options ...client.InspectExtensionOptions) (string, error) {
 	buf := bytes.NewBuffer(nil)
 	errArray := []error{}
 	for _, option := range options {
@@ -53,7 +32,7 @@ func inspectAllExtensions(client PackClient, flags ExtensionInspectFlags, option
 
 		prefix := determinePrefix(option.ExtensionName, nextResult.Location, option.Daemon)
 
-		output, err := inspectExtensionOutput(nextResult, prefix, flags)
+		output, err := inspectExtensionOutput(nextResult, prefix)
 		if err != nil {
 			return "", err
 		}
@@ -72,41 +51,43 @@ func inspectAllExtensions(client PackClient, flags ExtensionInspectFlags, option
 	return buf.String(), nil
 }
 
-func inspectExtensionOutput(info *client.ExtensionInfo, prefix string, flags ExtensionInspectFlags) (output []byte, err error) {
+func inspectExtensionOutput(info *client.ExtensionInfo, prefix string) (output []byte, err error) {
 	tpl := template.Must(template.New("inspect-extension").Parse(inspectExtensionTemplate))
-	exOutput, err := buildpacksOutput(info.Extensions)
+	exOutput, err := extensionsOutput(info.Extension)
 	if err != nil {
-		return []byte{}, fmt.Errorf("error writing buildpack output: %q", err)
+		return []byte{}, fmt.Errorf("error writing extension output: %q", err)
 	}
-	orderOutput, err := detectionOrderOutput(info.Order, info.ExtensionLayers, flags.Depth)
-	if err != nil {
-		return []byte{}, fmt.Errorf("error writing detection order output: %q", err)
-	}
-	buf := bytes.NewBuffer(nil)
-	if info.ExtensionMetadata.Stacks != nil && isExtension(info) {
-		err = tpl.Execute(buf, &struct {
-			Location   string
-			Metadata   buildpack.Metadata
-			ListMixins bool
-			Extensions string
-			Order      string
-		}{
-			Location:   prefix,
-			Metadata:   info.ExtensionMetadata,
-			ListMixins: flags.Verbose,
-			Extensions: exOutput,
-			Order:      orderOutput,
-		})
 
-		if err != nil {
-			return []byte{}, fmt.Errorf("error templating buildpack output template: %q", err)
-		}
-		return buf.Bytes(), nil
+	buf := bytes.NewBuffer(nil)
+	err = tpl.Execute(buf, &struct {
+		Location  string
+		Extension string
+	}{
+		Location:  prefix,
+		Extension: exOutput,
+	})
+
+	if err != nil {
+		return []byte{}, fmt.Errorf("error templating extension output template: %q", err)
 	}
-	return nil, fmt.Errorf("not an extension")
+	return buf.Bytes(), nil
 }
 
-func isExtension(info *client.ExtensionInfo) bool {
-	substrings := strings.Split(info.ExtensionMetadata.Stacks[0].ID, ".")
-	return substrings[1] == "extensions"
+func extensionsOutput(ex dist.ModuleInfo) (string, error) {
+	buf := &bytes.Buffer{}
+
+	tabWriter := new(tabwriter.Writer).Init(buf, writerMinWidth, writerPadChar, buildpacksTabWidth, writerPadChar, writerFlags)
+	if _, err := fmt.Fprint(tabWriter, "  ID\tNAME\tVERSION\tHOMEPAGE\n"); err != nil {
+		return "", err
+	}
+
+	if _, err := fmt.Fprintf(tabWriter, "  %s\t%s\t%s\t%s\n", ex.ID, strs.ValueOrDefault(ex.Name, "-"), ex.Version, strs.ValueOrDefault(ex.Homepage, "-")); err != nil {
+		return "", err
+	}
+
+	if err := tabWriter.Flush(); err != nil {
+		return "", err
+	}
+
+	return strings.TrimSuffix(buf.String(), "\n"), nil
 }

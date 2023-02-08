@@ -1,25 +1,22 @@
 package client
 
 import (
+	"context"
 	"fmt"
-	"sort"
 
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/image"
 )
 
 type ExtensionInfo struct {
-	ExtensionMetadata buildpack.Metadata
-	Extensions        []dist.ModuleInfo
-	Order             dist.Order
-	ExtensionLayers   dist.ModuleLayers
-	Location          buildpack.LocatorType
+	Extension dist.ModuleInfo
+	Location  buildpack.LocatorType
 }
 
 type InspectExtensionOptions struct {
 	ExtensionName string
 	Daemon        bool
-	Registry      string
 }
 
 func (c *Client) InspectExtension(opts InspectExtensionOptions) (*ExtensionInfo, error) {
@@ -27,37 +24,39 @@ func (c *Client) InspectExtension(opts InspectExtensionOptions) (*ExtensionInfo,
 	if err != nil {
 		return nil, err
 	}
-	var layersMd dist.ModuleLayers
-	var extensionMd buildpack.Metadata
+	var layerMd dist.ModuleLayers
 
-	switch locatorType {
-	case buildpack.RegistryLocator:
-		extensionMd, layersMd, err = metadataFromRegistry(c, opts.ExtensionName, opts.Registry)
-	case buildpack.PackageLocator:
-		extensionMd, layersMd, err = metadataFromImage(c, opts.ExtensionName, opts.Daemon)
-	case buildpack.URILocator:
-		extensionMd, layersMd, err = metadataFromArchive(c.downloader, opts.ExtensionName)
-	default:
-		return nil, fmt.Errorf("unable to handle locator %q: for extension %q", locatorType, opts.ExtensionName)
-	}
+	layerMd, err = metadataOfExtensionFromImage(c, opts.ExtensionName, opts.Daemon)
+
 	if err != nil {
 		return nil, err
 	}
 
 	return &ExtensionInfo{
-		ExtensionMetadata: extensionMd,
-		ExtensionLayers:   layersMd,
-		Order:             extractOrder(extensionMd),
-		Extensions:        extractExtension(layersMd),
-		Location:          locatorType,
+		Extension: extractExtension(layerMd),
+		Location:  locatorType,
 	}, nil
 }
 
-func extractExtension(layersMd dist.ModuleLayers) []dist.ModuleInfo {
-	result := []dist.ModuleInfo{}
+func metadataOfExtensionFromImage(client *Client, name string, daemon bool) (layerMd dist.ModuleLayers, err error) {
+	imageName := buildpack.ParsePackageLocator(name)
+	img, err := client.imageFetcher.Fetch(context.Background(), imageName, image.FetchOptions{Daemon: daemon, PullPolicy: image.PullNever})
+	if err != nil {
+		return dist.ModuleLayers{}, err
+	}
+
+	if _, err := dist.GetLabel(img, dist.ExtensionLayersLabel, &layerMd); err != nil {
+		return dist.ModuleLayers{}, fmt.Errorf("unable to get image label %s: %q", dist.BuildpackLayersLabel, err)
+	}
+
+	return layerMd, nil
+}
+
+func extractExtension(layerMd dist.ModuleLayers) dist.ModuleInfo {
+	result := dist.ModuleInfo{}
 	extensionSet := map[*dist.ModuleInfo]bool{}
 
-	for extensionID, extensionMap := range layersMd {
+	for extensionID, extensionMap := range layerMd {
 		for version, layerInfo := range extensionMap {
 			ex := dist.ModuleInfo{
 				ID:       extensionID,
@@ -70,18 +69,7 @@ func extractExtension(layersMd dist.ModuleLayers) []dist.ModuleInfo {
 	}
 
 	for currentExtension := range extensionSet {
-		result = append(result, *currentExtension)
+		result = *currentExtension
 	}
-
-	sort.Slice(result, func(i int, j int) bool {
-		switch {
-		case result[i].ID < result[j].ID:
-			return true
-		case result[i].ID == result[j].ID:
-			return result[i].Version < result[j].Version
-		default:
-			return false
-		}
-	})
 	return result
 }

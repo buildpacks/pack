@@ -47,11 +47,6 @@ type Entry struct {
 	Buildpacks []Buildpack `json:"buildpacks"`
 }
 
-// ExtensionEntry is a list of extensions stored in a registry
-type ExtensionEntry struct {
-	Extensions []Buildpack `json:"extensions"`
-}
-
 // NewDefaultRegistryCache creates a new registry cache with default options
 func NewDefaultRegistryCache(logger logging.Logger, home string) (Cache, error) {
 	return NewRegistryCache(logger, home, DefaultRegistryURL)
@@ -118,47 +113,6 @@ func (r *Cache) LocateBuildpack(bp string) (Buildpack, error) {
 	}
 
 	return Buildpack{}, fmt.Errorf("no entries for buildpack: %s", bp)
-}
-
-// LocateBuildpack stored in registry
-func (r *Cache) LocateExtension(ex string) (Buildpack, error) {
-	err := r.Refresh()
-	if err != nil {
-		return Buildpack{}, errors.Wrap(err, "refreshing cache")
-	}
-
-	ns, name, version, err := buildpack.ParseRegistryID(ex)
-	if err != nil {
-		return Buildpack{}, errors.Wrap(err, "parsing extensions registry id")
-	}
-
-	entry, err := r.readExtensionEntry(ns, name)
-	if err != nil {
-		return Buildpack{}, errors.Wrap(err, "reading entry")
-	}
-
-	if len(entry.Extensions) > 0 {
-		if version == "" {
-			highestVersion := entry.Extensions[0]
-			if len(entry.Extensions) > 1 {
-				for _, bp := range entry.Extensions[1:] {
-					if semver.Compare(fmt.Sprintf("v%s", bp.Version), fmt.Sprintf("v%s", highestVersion.Version)) > 0 {
-						highestVersion = bp
-					}
-				}
-			}
-			return highestVersion, Validate(highestVersion)
-		}
-
-		for _, bpIndex := range entry.Extensions {
-			if bpIndex.Version == version {
-				return bpIndex, Validate(bpIndex)
-			}
-		}
-		return Buildpack{}, fmt.Errorf("could not find version for extension: %s", ex)
-	}
-
-	return Buildpack{}, fmt.Errorf("no entries for extension: %s", ex)
 }
 
 // Refresh local Registry Cache
@@ -396,41 +350,6 @@ func (r *Cache) readEntry(ns, name string) (Entry, error) {
 
 	if err := scanner.Err(); err != nil {
 		return entry, errors.Wrapf(err, "reading index for buildpack: %s/%s", ns, name)
-	}
-
-	return entry, nil
-}
-
-func (r *Cache) readExtensionEntry(ns, name string) (ExtensionEntry, error) {
-	index, err := IndexPath(r.Root, ns, name)
-	if err != nil {
-		return ExtensionEntry{}, err
-	}
-
-	if _, err := os.Stat(index); err != nil {
-		return ExtensionEntry{}, errors.Wrapf(err, "finding extension: %s/%s", ns, name)
-	}
-
-	file, err := os.Open(filepath.Clean(index))
-	if err != nil {
-		return ExtensionEntry{}, errors.Wrapf(err, "opening index for extension: %s/%s", ns, name)
-	}
-	defer file.Close()
-
-	entry := ExtensionEntry{}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		var bp Buildpack
-		err = json.Unmarshal([]byte(scanner.Text()), &bp)
-		if err != nil {
-			return ExtensionEntry{}, errors.Wrapf(err, "parsing index for extensions: %s/%s", ns, name)
-		}
-
-		entry.Extensions = append(entry.Extensions, bp)
-	}
-
-	if err := scanner.Err(); err != nil {
-		return entry, errors.Wrapf(err, "reading index for extensions: %s/%s", ns, name)
 	}
 
 	return entry, nil

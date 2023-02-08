@@ -24,56 +24,9 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-const complexExtensionOutputSection = `Stacks:
-  ID: io.extensions.stacks.first-stack
-    Mixins:
-      (omitted)
-  ID: io.extensions.stacks.second-stack
-    Mixins:
-      (omitted)
-
-Extensions:
-  ID                                 NAME        VERSION        HOMEPAGE
-  some/first-inner-extension         -           1.0.0          first-inner-extension-homepage
-  some/second-inner-extension        -           2.0.0          second-inner-extension-homepage
-  some/third-inner-extension         -           3.0.0          third-inner-extension-homepage
-  some/top-extension                 top         0.0.1          top-extension-homepage
-
-Detection Order:
- └ Group #1:
-    └ some/top-extension@0.0.1
-       ├ Group #1:
-       │  ├ some/first-inner-extension@1.0.0
-       │  │  ├ Group #1:
-       │  │  │  ├ some/first-inner-extension@1.0.0    [cyclic]
-       │  │  │  └ some/third-inner-extension@3.0.0
-       │  │  └ Group #2:
-       │  │     └ some/third-inner-extension@3.0.0
-       │  └ some/second-inner-extension@2.0.0
-       └ Group #2:
-          └ some/first-inner-extension@1.0.0
-             ├ Group #1:
-             │  ├ some/first-inner-extension@1.0.0    [cyclic]
-             │  └ some/third-inner-extension@3.0.0
-             └ Group #2:
-                └ some/third-inner-extension@3.0.0`
-
-const simpleExtensionOutputSection = `Stacks:
-  ID: io.extensions.stacks.first-stack
-    Mixins:
-      (omitted)
-  ID: io.extensions.stacks.second-stack
-    Mixins:
-      (omitted)
-
-Extensions:
+const simpleExtensionOutputSection = `Extensions:
   ID                                NAME        VERSION        HOMEPAGE
-  some/single-extension             some        0.0.1          single-extension-homepage
-  some/extension-no-homepage        -           0.0.2          -
-
-Detection Order:
- └ Group #1:
-    └ some/single-extension@0.0.1`
+  some/single-extension             some        0.0.1          single-extension-homepage`
 
 const inspectExtensionOutputTemplate = `Inspecting extension: '%s'
 
