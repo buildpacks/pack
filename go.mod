@@ -30,7 +30,7 @@ require (
 	github.com/sclevine/spec v1.4.0
 	github.com/spf13/cobra v1.6.1
 	golang.org/x/crypto v0.5.0
-	golang.org/x/mod v0.7.0
+	golang.org/x/mod v0.8.0
 	golang.org/x/oauth2 v0.4.0
 	golang.org/x/term v0.5.0
 	golang.org/x/text v0.6.0
