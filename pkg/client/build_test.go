@@ -1273,6 +1273,154 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
 						})
 					})
+					it("adds the pre buildpack from the project descriptor", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							ProjectDescriptor: projectTypes.Descriptor{
+								Build: projectTypes.Build{
+									Pre: projectTypes.GroupAddition{
+										Buildpacks: []projectTypes.Buildpack{{
+											URI: server.URL(),
+										}},
+									},
+								},
+							},
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+						bldr, err := builder.FromImage(defaultBuilderImage)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bldr.Order(), dist.Order{
+							{Group: []dist.ModuleRef{
+								{ModuleInfo: dist.ModuleInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
+								{ModuleInfo: dist.ModuleInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}},
+							}},
+							{Group: []dist.ModuleRef{
+								{ModuleInfo: dist.ModuleInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
+								{ModuleInfo: dist.ModuleInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}},
+							}},
+						})
+						h.AssertEq(t, bldr.Buildpacks(), []dist.ModuleInfo{
+							{ID: "buildpack.1.id", Version: "buildpack.1.version"},
+							{ID: "buildpack.2.id", Version: "buildpack.2.version"},
+							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
+						})
+					})
+
+					it("adds the post buildpack from the project descriptor", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							ProjectDescriptor: projectTypes.Descriptor{
+								Build: projectTypes.Build{
+									Post: projectTypes.GroupAddition{
+										Buildpacks: []projectTypes.Buildpack{{
+											URI: server.URL(),
+										}},
+									},
+								},
+							},
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+						bldr, err := builder.FromImage(defaultBuilderImage)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bldr.Order(), dist.Order{
+							{Group: []dist.ModuleRef{
+								{ModuleInfo: dist.ModuleInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}},
+								{ModuleInfo: dist.ModuleInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
+							}},
+							{Group: []dist.ModuleRef{
+								{ModuleInfo: dist.ModuleInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}},
+								{ModuleInfo: dist.ModuleInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
+							}},
+						})
+						h.AssertEq(t, bldr.Buildpacks(), []dist.ModuleInfo{
+							{ID: "buildpack.1.id", Version: "buildpack.1.version"},
+							{ID: "buildpack.2.id", Version: "buildpack.2.version"},
+							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
+						})
+					})
+				})
+
+				when("pre and post buildpacks", func() {
+					it("added from the project descriptor", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							ProjectDescriptor: projectTypes.Descriptor{
+								Build: projectTypes.Build{
+									Pre: projectTypes.GroupAddition{
+										Buildpacks: []projectTypes.Buildpack{{ID: "buildpack.2.id", Version: "buildpack.2.version"}},
+									},
+									Post: projectTypes.GroupAddition{
+										Buildpacks: []projectTypes.Buildpack{{ID: "buildpack.2.id", Version: "buildpack.2.version"}},
+									},
+								},
+							},
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+						bldr, err := builder.FromImage(defaultBuilderImage)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bldr.Order(), dist.Order{
+							{Group: []dist.ModuleRef{
+								{ModuleInfo: dist.ModuleInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}},
+								{ModuleInfo: dist.ModuleInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}},
+								{ModuleInfo: dist.ModuleInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}},
+							}},
+							{Group: []dist.ModuleRef{
+								{ModuleInfo: dist.ModuleInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}},
+								{ModuleInfo: dist.ModuleInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}},
+								{ModuleInfo: dist.ModuleInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}},
+							}},
+						})
+						h.AssertEq(t, bldr.Buildpacks(), []dist.ModuleInfo{
+							{ID: "buildpack.1.id", Version: "buildpack.1.version"},
+							{ID: "buildpack.2.id", Version: "buildpack.2.version"},
+						})
+					})
+					it("not added from the project descriptor", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							Buildpacks: []string{
+								"buildpack.1.id@buildpack.1.version",
+							},
+							ProjectDescriptor: projectTypes.Descriptor{
+								Build: projectTypes.Build{
+									Pre: projectTypes.GroupAddition{
+										Buildpacks: []projectTypes.Buildpack{{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
+									},
+									Post: projectTypes.GroupAddition{
+										Buildpacks: []projectTypes.Buildpack{{ID: "yet-other-buildpack-id", Version: "yet-other-buildpack-version"}},
+									},
+								},
+							},
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+						bldr, err := builder.FromImage(defaultBuilderImage)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bldr.Order(), dist.Order{
+							{Group: []dist.ModuleRef{
+								{ModuleInfo: dist.ModuleInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}},
+							}},
+						})
+						h.AssertEq(t, bldr.Buildpacks(), []dist.ModuleInfo{
+							{ID: "buildpack.1.id", Version: "buildpack.1.version"},
+							{ID: "buildpack.2.id", Version: "buildpack.2.version"},
+						})
+					})
 				})
 
 				when("added buildpack's mixins are not satisfied", func() {

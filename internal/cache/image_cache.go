@@ -9,11 +9,16 @@ import (
 )
 
 type ImageCache struct {
-	docker client.CommonAPIClient
+	docker DockerClient
 	image  string
 }
 
-func NewImageCache(imageRef name.Reference, dockerClient client.CommonAPIClient) *ImageCache {
+type DockerClient interface {
+	ImageRemove(ctx context.Context, image string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
+	VolumeRemove(ctx context.Context, volumeID string, force bool) error
+}
+
+func NewImageCache(imageRef name.Reference, dockerClient DockerClient) *ImageCache {
 	return &ImageCache{
 		image:  imageRef.Name(),
 		docker: dockerClient,

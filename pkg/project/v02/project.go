@@ -8,12 +8,14 @@ import (
 )
 
 type Buildpacks struct {
-	Include []string          `toml:"include"`
-	Exclude []string          `toml:"exclude"`
-	Group   []types.Buildpack `toml:"group"`
-	Env     Env               `toml:"env"`
-	Build   Build             `toml:"build"`
-	Builder string            `toml:"builder"`
+	Include []string            `toml:"include"`
+	Exclude []string            `toml:"exclude"`
+	Group   []types.Buildpack   `toml:"group"`
+	Env     Env                 `toml:"env"`
+	Build   Build               `toml:"build"`
+	Builder string              `toml:"builder"`
+	Pre     types.GroupAddition `toml:"pre"`
+	Post    types.GroupAddition `toml:"post"`
 }
 
 type Build struct {
@@ -65,6 +67,8 @@ func NewDescriptor(projectTomlContents string) (types.Descriptor, error) {
 			Buildpacks: versionedDescriptor.IO.Buildpacks.Group,
 			Env:        env,
 			Builder:    versionedDescriptor.IO.Buildpacks.Builder,
+			Pre:        versionedDescriptor.IO.Buildpacks.Pre,
+			Post:       versionedDescriptor.IO.Buildpacks.Post,
 		},
 		Metadata:      versionedDescriptor.Project.Metadata,
 		SchemaVersion: api.MustParse("0.2"),

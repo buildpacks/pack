@@ -13,11 +13,11 @@ import (
 )
 
 type VolumeCache struct {
-	docker client.CommonAPIClient
+	docker DockerClient
 	volume string
 }
 
-func NewVolumeCache(imageRef name.Reference, cacheType CacheInfo, suffix string, dockerClient client.CommonAPIClient) *VolumeCache {
+func NewVolumeCache(imageRef name.Reference, cacheType CacheInfo, suffix string, dockerClient DockerClient) *VolumeCache {
 	var volumeName string
 	if cacheType.Source == "" {
 		sum := sha256.Sum256([]byte(imageRef.Name()))
