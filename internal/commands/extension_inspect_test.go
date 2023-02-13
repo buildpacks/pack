@@ -144,7 +144,7 @@ func testExtensionInspectCommand(t *testing.T, when spec.G, it spec.S) {
 					mockClient.EXPECT().InspectExtension(client.InspectExtensionOptions{
 						ExtensionName: "only-remote-test/extension",
 						Daemon:        true,
-					}).Return(nil, errors.Wrap(image.ErrNotFound, "remote image not found!"))
+					}).Return(nil, errors.Wrap(image.ErrNotFound, "local image not found!"))
 				})
 
 				it("displays output for remote image", func() {
