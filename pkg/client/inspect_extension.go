@@ -46,7 +46,7 @@ func metadataOfExtensionFromImage(client *Client, name string, daemon bool) (lay
 	}
 
 	if _, err := dist.GetLabel(img, dist.ExtensionLayersLabel, &layerMd); err != nil {
-		return dist.ModuleLayers{}, fmt.Errorf("unable to get image label %s: %q", dist.BuildpackLayersLabel, err)
+		return dist.ModuleLayers{}, fmt.Errorf("unable to get image label %s: %q", dist.ExtensionLayersLabel, err)
 	}
 
 	return layerMd, nil
