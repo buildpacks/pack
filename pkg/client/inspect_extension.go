@@ -32,6 +32,10 @@ func (c *Client) InspectExtension(opts InspectExtensionOptions) (*ExtensionInfo,
 		return nil, err
 	}
 
+	if len(layerMd) != 1 {
+		return nil, fmt.Errorf("expected 1 extension, got %d", len(layerMd))
+	}
+
 	return &ExtensionInfo{
 		Extension: extractExtension(layerMd),
 		Location:  locatorType,
@@ -54,8 +58,6 @@ func metadataOfExtensionFromImage(client *Client, name string, daemon bool) (lay
 
 func extractExtension(layerMd dist.ModuleLayers) dist.ModuleInfo {
 	result := dist.ModuleInfo{}
-	extensionSet := map[*dist.ModuleInfo]bool{}
-
 	for extensionID, extensionMap := range layerMd {
 		for version, layerInfo := range extensionMap {
 			ex := dist.ModuleInfo{
@@ -64,12 +66,8 @@ func extractExtension(layerMd dist.ModuleLayers) dist.ModuleInfo {
 				Version:  version,
 				Homepage: layerInfo.Homepage,
 			}
-			extensionSet[&ex] = true
+			result = ex
 		}
-	}
-
-	for currentExtension := range extensionSet {
-		result = *currentExtension
 	}
 	return result
 }
