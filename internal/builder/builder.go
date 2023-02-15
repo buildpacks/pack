@@ -16,6 +16,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/builder"
@@ -447,29 +448,57 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.ModuleLayers) error {
 	collectionToAdd := map[string]toAdd{}
+
+	type modInfo struct {
+		info     dist.ModuleInfo
+		layerTar string
+		diffID   v1.Hash
+		err      error
+	}
+
+	lids := make([]chan modInfo, len(additionalModules))
+	for i := range lids {
+		lids[i] = make(chan modInfo, 1)
+	}
+
 	for i, module := range additionalModules {
-		// create directory
-		modTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s", kind, strconv.Itoa(i)))
-		if err := os.MkdirAll(modTmpDir, os.ModePerm); err != nil {
-			return errors.Wrapf(err, "creating %s temp dir", kind)
-		}
+		go func(i int, module buildpack.BuildModule) {
+			// create directory
+			modTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s", kind, strconv.Itoa(i)))
+			if err := os.MkdirAll(modTmpDir, os.ModePerm); err != nil {
+				lids[i] <- modInfo{err: errors.Wrapf(err, "creating %s temp dir", kind)}
+			}
 
-		// create tar file
-		layerTar, err := buildpack.ToLayerTar(modTmpDir, module)
-		if err != nil {
-			return err
-		}
+			// create tar file
+			layerTar, err := buildpack.ToLayerTar(modTmpDir, module)
+			if err != nil {
+				lids[i] <- modInfo{err: err}
+			}
 
-		// generate diff id
-		diffID, err := dist.LayerDiffID(layerTar)
-		info := module.Descriptor().Info()
-		if err != nil {
-			return errors.Wrapf(err,
-				"getting content hashes for %s %s",
-				kind,
-				style.Symbol(info.FullName()),
-			)
+			// generate diff id
+			diffID, err := dist.LayerDiffID(layerTar)
+			info := module.Descriptor().Info()
+			if err != nil {
+				lids[i] <- modInfo{err: errors.Wrapf(err,
+					"getting content hashes for %s %s",
+					kind,
+					style.Symbol(info.FullName()),
+				)}
+			}
+			lids[i] <- modInfo{
+				info:     info,
+				layerTar: layerTar,
+				diffID:   diffID,
+			}
+		}(i, module)
+	}
+
+	for i, module := range additionalModules {
+		mi := <-lids[i]
+		if mi.err != nil {
+			return mi.err
 		}
+		info, diffID, layerTar := mi.info, mi.diffID, mi.layerTar
 
 		// check against builder layers
 		if existingInfo, ok := layers[info.ID][info.Version]; ok {
