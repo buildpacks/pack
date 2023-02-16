@@ -161,8 +161,6 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 
 			mockClient.EXPECT().InspectImage("some/image", true).Return(expectedLocalImageInfo, nil)
 			mockClient.EXPECT().InspectImage("some/image", false).Return(expectedRemoteImageInfo, nil)
-			mockClient.EXPECT().InspectImage("some/image", true).Return(expectedLocalImageWithExtensionInfo, nil)
-			mockClient.EXPECT().InspectImage("some/image", false).Return(expectedRemoteImageWithExtensionInfo, nil)
 
 			command := commands.InspectImage(logger, inspectImageWriterFactory, cfg, mockClient)
 			command.SetArgs([]string{"some/image"})
@@ -248,8 +246,6 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 
 					mockClient.EXPECT().InspectImage("some/image", true).Return(expectedLocalImageInfo, nil)
 					mockClient.EXPECT().InspectImage("some/image", false).Return(expectedRemoteImageInfo, nil)
-					mockClient.EXPECT().InspectImage("some/image", true).Return(expectedLocalImageWithExtensionInfo, nil)
-					mockClient.EXPECT().InspectImage("some/image", false).Return(expectedRemoteImageWithExtensionInfo, nil)
 
 					command := commands.InspectImage(logger, inspectImageWriterFactory, cfg, mockClient)
 					command.SetArgs([]string{"some/image"})
