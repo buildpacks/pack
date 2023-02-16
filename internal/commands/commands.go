@@ -28,6 +28,7 @@ type PackClient interface {
 	RegisterBuildpack(context.Context, client.RegisterBuildpackOptions) error
 	YankBuildpack(client.YankBuildpackOptions) error
 	InspectBuildpack(client.InspectBuildpackOptions) (*client.BuildpackInfo, error)
+	InspectExtension(client.InspectExtensionOptions) (*client.ExtensionInfo, error)
 	PullBuildpack(context.Context, client.PullBuildpackOptions) error
 	DownloadSBOM(name string, options client.DownloadSBOMOptions) error
 }
