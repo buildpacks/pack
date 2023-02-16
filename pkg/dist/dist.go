@@ -5,8 +5,9 @@ import (
 )
 
 const (
-	BuildpackLayersLabel = "io.buildpacks.buildpack.layers"
-	ExtensionLayersLabel = "io.buildpacks.extension.layers"
+	BuildpackLayersLabel   = "io.buildpacks.buildpack.layers"
+	ExtensionLayersLabel   = "io.buildpacks.extension.layers"
+	ExtensionMetadataLabel = "io.buildpacks.extension.metadata"
 )
 
 type BuildpackURI struct {
