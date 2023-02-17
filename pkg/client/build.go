@@ -18,6 +18,8 @@ import (
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/platform"
 
+	"github.com/buildpacks/pack/internal/paths"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/volume/mounts"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -320,6 +322,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 			return err
 		}
 		hostRunImagePath := filepath.Join(opts.LayoutConfig.LayoutRepoDir, targetRunImagePath)
+		targetRunImagePath = filepath.Join(paths.RootDir, "layout-repo", targetRunImagePath)
 		fetchOptions.LayoutOption = image.LayoutOption{
 			Path:   hostRunImagePath,
 			Sparse: opts.LayoutConfig.Sparse,
@@ -766,6 +769,7 @@ func (c *Client) processLayoutPath(inputImageRef, previousImageRef InputImageRef
 	if err != nil {
 		return layoutPathConfig{}, err
 	}
+	targetImagePath = filepath.Join(paths.RootDir, "layout-repo", targetImagePath)
 	c.logger.Debugf("local image path %s will be mounted into the container at path %s", hostImagePath, targetImagePath)
 
 	if previousImageRef.Name() != "" {
@@ -777,6 +781,7 @@ func (c *Client) processLayoutPath(inputImageRef, previousImageRef InputImageRef
 		if err != nil {
 			return layoutPathConfig{}, err
 		}
+		targetPreviousImagePath = filepath.Join(paths.RootDir, "layout-repo", targetPreviousImagePath)
 		c.logger.Debugf("local previous image path %s will be mounted into the container at path %s", hostPreviousImagePath, targetPreviousImagePath)
 	}
 	return layoutPathConfig{
@@ -1228,12 +1233,12 @@ func fullImagePath(inputImageRef InputImageReference, create bool) (string, erro
 // - The run-image path
 func appendLayoutVolumes(volumes []string, config layoutPathConfig) []string {
 	if config.hostPreviousImagePath != "" {
-		volumes = append(volumes, writableVolume(config.hostImagePath, config.targetImagePath),
-			readOnlyVolume(config.hostPreviousImagePath, config.targetPreviousImagePath),
-			readOnlyVolume(config.hostRunImagePath, config.targetRunImagePath))
+		volumes = append(volumes, readOnlyVolume(config.hostPreviousImagePath, config.targetPreviousImagePath),
+			readOnlyVolume(config.hostRunImagePath, config.targetRunImagePath),
+			writableVolume(config.hostImagePath, config.targetImagePath))
 	} else {
-		volumes = append(volumes, writableVolume(config.hostImagePath, config.targetImagePath),
-			readOnlyVolume(config.hostRunImagePath, config.targetRunImagePath))
+		volumes = append(volumes, readOnlyVolume(config.hostRunImagePath, config.targetRunImagePath),
+			writableVolume(config.hostImagePath, config.targetImagePath))
 	}
 	return volumes
 }
