@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"path/filepath"
 	"strconv"
 
 	"github.com/buildpacks/lifecycle/api"
@@ -746,7 +747,8 @@ func (l *LifecycleExecution) hasExtensions() bool {
 }
 
 func (l *LifecycleExecution) appendLayoutOperations(opts []PhaseConfigProviderOperation) ([]PhaseConfigProviderOperation, error) {
-	opts = append(opts, WithEnv("CNB_USE_LAYOUT=true", "CNB_EXPERIMENTAL_MODE=warn"))
+	layoutDir := filepath.Join(paths.RootDir, "layout-repo")
+	opts = append(opts, WithEnv("CNB_USE_LAYOUT=true", "CNB_LAYOUT_DIR="+layoutDir, "CNB_EXPERIMENTAL_MODE=warn"))
 	return opts, nil
 }
 
