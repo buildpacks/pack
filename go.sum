@@ -264,8 +264,8 @@ github.com/buger/jsonparser v0.0.0-20180808090653-f4dd9f5a6b44/go.mod h1:bbYlZJ7
 github.com/bugsnag/bugsnag-go v0.0.0-20141110184014-b1d153021fcd/go.mod h1:2oa8nejYd4cQ/b0hMIopN0lCRxU0bueqREvZLWFrtK8=
 github.com/bugsnag/osext v0.0.0-20130617224835-0dd3f918b21b/go.mod h1:obH5gd0BsqsP2LwDJ9aOkm/6J86V6lyAXCoQWGw3K50=
 github.com/bugsnag/panicwrap v0.0.0-20151223152923-e2c28503fcd0/go.mod h1:D/8v3kj0zr8ZAKg1AQ6crr+5VwKN5eIywRkfhyM/+dE=
-github.com/buildpacks/imgutil v0.0.0-20230203224758-32072eab009a h1:UguoluLb7QovRRbT40f57CxIwlkAOO5UpmLbXjYID+c=
-github.com/buildpacks/imgutil v0.0.0-20230203224758-32072eab009a/go.mod h1:zL5lZzgFuv9l36n52FjomVrUHpyuZf6r1UHKaZ4LeSQ=
+github.com/buildpacks/imgutil v0.0.0-20230217231607-8def05088e09 h1:AUsqZMZid6ZFVjJDe0MTQX0e4Rxme88NmfgiZd/CW+w=
+github.com/buildpacks/imgutil v0.0.0-20230217231607-8def05088e09/go.mod h1:zL5lZzgFuv9l36n52FjomVrUHpyuZf6r1UHKaZ4LeSQ=
 github.com/buildpacks/lifecycle v0.16.0 h1:Q80RNP1JImJbkOXY/z/rWD9spqgEkTe/5/JypkOxJZ8=
 github.com/buildpacks/lifecycle v0.16.0/go.mod h1:fiM5EwiDImyWA5kZ2fTNy0+bC4izwiCMR9rNsXbQnFc=
 github.com/bwesterb/go-ristretto v1.2.0/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7NFEuV9ekS419A0=
