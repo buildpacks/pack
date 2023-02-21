@@ -48,6 +48,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		providedClearCache     bool
 		providedPublish        bool
 		providedUseCreator     bool
+		providedLayout         bool
 		providedDockerHost     string
 		providedNetworkMode    = "some-network-mode"
 		providedRunImage       = "some-run-image"
@@ -81,6 +82,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		opts.RunImage = providedRunImage
 		opts.UseCreator = providedUseCreator
 		opts.Volumes = providedVolumes
+		opts.Layout = providedLayout
 
 		targetImageRef, err := name.ParseReference(providedTargetImage)
 		h.AssertNil(t, err)
@@ -1104,6 +1106,17 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						// no-op
 					})
 				})
+			})
+		})
+
+		when("layout", func() {
+			providedLayout = true
+			platformAPI = api.MustParse("0.12")
+
+			it("configures the phase with oci layout environment variables", func() {
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_USE_LAYOUT=true")
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_LAYOUT_DIR=/layout-repo")
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
 			})
 		})
 	})
