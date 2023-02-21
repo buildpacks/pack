@@ -17,6 +17,8 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/pack/internal/paths"
+
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
@@ -866,6 +868,73 @@ builder = "my-builder"
 				})
 			})
 		})
+
+		when("export to OCI layout is expected but experimental isn't set in the config", func() {
+			it("errors with a descriptive message", func() {
+				command.SetArgs([]string{"oci:image", "--builder", "my-builder"})
+				err := command.Execute()
+				h.AssertNotNil(t, err)
+				h.AssertError(t, err, "Exporting to OCI layout is currently experimental.")
+			})
+		})
+	})
+
+	when("export to OCI layout is expected", func() {
+		var (
+			sparse        bool
+			previousImage string
+			layoutDir     string
+		)
+
+		it.Before(func() {
+			layoutDir = filepath.Join(paths.RootDir, "local", "repo")
+			previousImage = ""
+			cfg = config.Config{
+				Experimental:        true,
+				LayoutRepositoryDir: layoutDir,
+			}
+			command = commands.Build(logger, cfg, mockClient)
+		})
+
+		when("path to save the image is provided", func() {
+			it("build is called with oci layout configuration", func() {
+				sparse = false
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithLayoutConfig("image", previousImage, sparse, layoutDir)).
+					Return(nil)
+
+				command.SetArgs([]string{"oci:image", "--builder", "my-builder"})
+				err := command.Execute()
+				h.AssertNil(t, err)
+			})
+		})
+
+		when("previous-image flag is provided", func() {
+			it("build is called with oci layout configuration", func() {
+				sparse = false
+				previousImage = "my-previous-imagegit "
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithLayoutConfig("image", previousImage, sparse, layoutDir)).
+					Return(nil)
+
+				command.SetArgs([]string{"oci:image", "--previous-image", "oci:my-previous-image", "--builder", "my-builder"})
+				err := command.Execute()
+				h.AssertNil(t, err)
+			})
+		})
+
+		when("-sparse flag is provided", func() {
+			it("build is called with oci layout configuration and sparse true", func() {
+				sparse = true
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithLayoutConfig("image", previousImage, sparse, layoutDir)).
+					Return(nil)
+
+				command.SetArgs([]string{"oci:image", "--sparse", "--builder", "my-builder"})
+				err := command.Execute()
+				h.AssertNil(t, err)
+			})
+		})
 	})
 }
 
@@ -1031,6 +1100,22 @@ func EqBuildOptionsWithDateTime(t *time.Time) interface{} {
 				return o.CreationTime == nil
 			}
 			return o.CreationTime.Sub(*t) < 5*time.Second && t.Sub(*o.CreationTime) < 5*time.Second
+		},
+	}
+}
+
+func EqBuildOptionsWithLayoutConfig(image, previousImage string, sparse bool, layoutDir string) interface{} {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("image=%s, previous-image=%s, sparse=%t, layout-dir=%s", image, previousImage, sparse, layoutDir),
+		equals: func(o client.BuildOptions) bool {
+			if o.Layout() {
+				result := o.Image == image
+				if previousImage != "" {
+					result = result && previousImage == o.PreviousImage
+				}
+				return result && o.LayoutConfig.Sparse == sparse && o.LayoutConfig.LayoutRepoDir == layoutDir
+			}
+			return false
 		},
 	}
 }
