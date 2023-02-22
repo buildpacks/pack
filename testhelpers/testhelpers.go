@@ -834,6 +834,13 @@ func AssertGitHeadEq(t *testing.T, path1, path2 string) {
 	AssertEq(t, h1.Hash().String(), h2.Hash().String())
 }
 
+func AssertBlobsLen(t *testing.T, path string, expected int) {
+	t.Helper()
+	fis, err := os.ReadDir(filepath.Join(path, "blobs", "sha256"))
+	AssertNil(t, err)
+	AssertEq(t, len(fis), expected)
+}
+
 func MockWriterAndOutput() (*color.Console, func() string) {
 	r, w, _ := os.Pipe()
 	console := color.NewConsole(w)

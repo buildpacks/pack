@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -322,6 +323,66 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfNotPresent, Platform: "some-unsupported-platform"})
 						h.AssertError(t, err, "unknown operating system or architecture")
 					})
+				})
+			})
+		})
+
+		when("layout option is provided", func() {
+			var (
+				layoutOption image.LayoutOption
+				imagePath    string
+				tmpDir       string
+				err          error
+			)
+
+			it.Before(func() {
+				// set up local layout repo
+				tmpDir, err = os.MkdirTemp("", "pack.fetcher.test")
+				h.AssertNil(t, err)
+
+				// dummy layer to validate sparse behavior
+				tarDir := filepath.Join(tmpDir, "layer")
+				err = os.MkdirAll(tarDir, os.ModePerm)
+				h.AssertNil(t, err)
+				layerPath := h.CreateTAR(t, tarDir, ".", -1)
+
+				// set up the remote image to be used
+				img, err := remote.NewImage(repoName, authn.DefaultKeychain)
+				img.AddLayer(layerPath)
+				h.AssertNil(t, err)
+				h.AssertNil(t, img.Save())
+
+				// set up layout options for the tests
+				imagePath = filepath.Join(tmpDir, repo)
+				layoutOption = image.LayoutOption{
+					Path:   imagePath,
+					Sparse: false,
+				}
+			})
+
+			it.After(func() {
+				err = os.RemoveAll(tmpDir)
+				h.AssertNil(t, err)
+			})
+
+			when("sparse is false", func() {
+				it("returns and layout image on disk", func() {
+					_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{LayoutOption: layoutOption})
+					h.AssertNil(t, err)
+
+					// all layers were written
+					h.AssertBlobsLen(t, imagePath, 3)
+				})
+			})
+
+			when("sparse is true", func() {
+				it("returns and layout image on disk", func() {
+					layoutOption.Sparse = true
+					_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{LayoutOption: layoutOption})
+					h.AssertNil(t, err)
+
+					// only manifest and config was written
+					h.AssertBlobsLen(t, imagePath, 2)
 				})
 			})
 		})
