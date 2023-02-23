@@ -776,7 +776,7 @@ func (c *Client) processLayoutPath(inputImageRef, previousImageRef InputImageRef
 	targetImagePath = filepath.Join(paths.RootDir, "layout-repo", targetImagePath)
 	c.logger.Debugf("local image path %s will be mounted into the container at path %s", hostImagePath, targetImagePath)
 
-	if previousImageRef != nil {
+	if previousImageRef != nil && previousImageRef.Name() != "" {
 		hostPreviousImagePath, err = fullImagePath(previousImageRef, false)
 		if err != nil {
 			return layoutPathConfig{}, err
