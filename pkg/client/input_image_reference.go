@@ -47,7 +47,7 @@ func (d *defaultInputImageReference) FullName() (string, error) {
 }
 
 func (l *layoutInputImageReference) Name() string {
-	return l.name
+	return filepath.Base(l.name)
 }
 
 func (l *layoutInputImageReference) Layout() bool {

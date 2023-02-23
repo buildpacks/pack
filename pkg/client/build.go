@@ -195,11 +195,14 @@ type BuildOptions struct {
 	CreationTime *time.Time
 
 	// Configuration to export to OCI layout format
-	LayoutConfig LayoutConfig
+	LayoutConfig *LayoutConfig
 }
 
 func (b *BuildOptions) Layout() bool {
-	return b.LayoutConfig.Enable()
+	if b.LayoutConfig != nil {
+		return b.LayoutConfig.Enable()
+	}
+	return false
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -274,7 +277,7 @@ var IsSuggestedBuilderFunc = func(b string) bool {
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	var pathsConfig layoutPathConfig
 
-	imageRef, err := c.parseTagReference(opts.Image)
+	imageRef, err := c.parseReference(opts)
 	if err != nil {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.Image)
 	}
@@ -282,13 +285,14 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	imageName := imageRef.Name()
 
 	if opts.Layout() {
-		imgRegistry = ""
 		pathsConfig, err = c.processLayoutPath(opts.LayoutConfig.InputImage, opts.LayoutConfig.PreviousInputImage)
 		if err != nil {
-			return errors.Wrapf(err, "invalid layout paths image name '%s' or previous-image name '%s'", opts.LayoutConfig.InputImage.Name(),
-				opts.LayoutConfig.PreviousInputImage.Name())
+			if opts.LayoutConfig.PreviousInputImage != nil {
+				return errors.Wrapf(err, "invalid layout paths image name '%s' or previous-image name '%s'", opts.LayoutConfig.InputImage.Name(),
+					opts.LayoutConfig.PreviousInputImage.Name())
+			}
+			return errors.Wrapf(err, "invalid layout paths image name '%s'", opts.LayoutConfig.InputImage.Name())
 		}
-		opts.AdditionalTags = append([]string{imageRef.Identifier()}, opts.AdditionalTags...)
 	}
 
 	appPath, err := c.processAppPath(opts.AppPath)
@@ -772,7 +776,7 @@ func (c *Client) processLayoutPath(inputImageRef, previousImageRef InputImageRef
 	targetImagePath = filepath.Join(paths.RootDir, "layout-repo", targetImagePath)
 	c.logger.Debugf("local image path %s will be mounted into the container at path %s", hostImagePath, targetImagePath)
 
-	if previousImageRef.Name() != "" {
+	if previousImageRef != nil {
 		hostPreviousImagePath, err = fullImagePath(previousImageRef, false)
 		if err != nil {
 			return layoutPathConfig{}, err
@@ -790,6 +794,14 @@ func (c *Client) processLayoutPath(inputImageRef, previousImageRef InputImageRef
 		hostPreviousImagePath:   hostPreviousImagePath,
 		targetPreviousImagePath: targetPreviousImagePath,
 	}, nil
+}
+
+func (c *Client) parseReference(opts BuildOptions) (name.Reference, error) {
+	if !opts.Layout() {
+		return c.parseTagReference(opts.Image)
+	}
+	base := filepath.Base(opts.Image)
+	return c.parseTagReference(base)
 }
 
 func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {

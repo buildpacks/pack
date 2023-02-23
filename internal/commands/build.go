@@ -180,7 +180,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				CreationTime:             dateTime,
 				PreBuildpacks:            flags.PreBuildpacks,
 				PostBuildpacks:           flags.PostBuildpacks,
-				LayoutConfig: client.LayoutConfig{
+				LayoutConfig: &client.LayoutConfig{
 					Sparse:             flags.Sparse,
 					InputImage:         inputImageName,
 					PreviousInputImage: inputPreviousImage,
