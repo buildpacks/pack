@@ -617,11 +617,11 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	return bldr, nil
 }
 
-func (c *Client) validateRunImage(context context.Context, imageName string, opts image.FetchOptions, expectedStack string) (imgutil.Image, error) {
-	if imageName == "" {
+func (c *Client) validateRunImage(context context.Context, name string, opts image.FetchOptions, expectedStack string) (imgutil.Image, error) {
+	if name == "" {
 		return nil, errors.New("run image must be specified")
 	}
-	img, err := c.imageFetcher.Fetch(context, imageName, opts)
+	img, err := c.imageFetcher.Fetch(context, name, opts)
 	if err != nil {
 		return nil, err
 	}
