@@ -41,6 +41,7 @@ type BuildFlags struct {
 	Env                  []string
 	EnvFiles             []string
 	Buildpacks           []string
+	Extensions			 []string
 	Volumes              []string
 	AdditionalTags       []string
 	Workspace            string
@@ -96,6 +97,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			}
 
 			buildpacks := flags.Buildpacks
+			extensions := flags.Extensions
 
 			env, err := parseEnv(flags.EnvFiles, flags.Env)
 			if err != nil {
@@ -159,6 +161,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 					return trustBuilder
 				},
 				Buildpacks: buildpacks,
+				Extensions: extensions,
 				ContainerConfig: client.ContainerConfig{
 					Network: flags.Network,
 					Volumes: flags.Volumes,
@@ -210,6 +213,7 @@ func parseTime(providedTime string) (*time.Time, error) {
 func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Config) {
 	cmd.Flags().StringVarP(&buildFlags.AppPath, "path", "p", "", "Path to app dir or zip-formatted file (defaults to current working directory)")
 	cmd.Flags().StringSliceVarP(&buildFlags.Buildpacks, "buildpack", "b", nil, "Buildpack to use. One of:\n  a buildpack by id and version in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows),\n  path/URL to a buildpack .tar or .tgz file, or\n  a packaged buildpack image name in the form of '<hostname>/<repo>[:<tag>]'"+stringSliceHelp("buildpack"))
+	cmd.Flags().StringSliceVarP(&buildFlags.Extensions, "extension", "", nil, "Extension to use. One of:\n  a extension by id and version in the form of '<extension>@<version>',\n  path to a extension directory (not supported on Windows),\n  path/URL to a extension .tar or .tgz file, or\n  a packaged extension image name in the form of '<hostname>/<repo>[:<tag>]'"+stringSliceHelp("extension"))
 	cmd.Flags().StringVarP(&buildFlags.Builder, "builder", "B", cfg.DefaultBuilder, "Builder image")
 	cmd.Flags().Var(&buildFlags.Cache, "cache",
 		`Cache options used to define cache techniques for build process.
