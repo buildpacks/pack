@@ -30,6 +30,7 @@ func (h *HumanReadable) Print(
 	if local == nil && remote == nil {
 		return fmt.Errorf("unable to find image '%s' locally or remotely", generalInfo.Name)
 	}
+
 	localDisplay := inspectimage.NewInfoDisplay(local, generalInfo)
 	remoteDisplay := inspectimage.NewInfoDisplay(remote, generalInfo)
 
@@ -106,6 +107,7 @@ func inspectImageOutput(info *inspectimage.InfoDisplay, tpl *template.Template) 
 	}); err != nil {
 		return bytes.NewBuffer(nil), err
 	}
+
 	return buf, nil
 }
 
@@ -167,10 +169,10 @@ Base Image:
 {{- end}}
   Top Layer: {{ .Info.Base.TopLayer }}
 {{ template "runImages" . }}
-{{ template "buildpacks" . }}
-{{ template "processes" . }}`
+{{ template "buildpacks" . }}{{ template "processes" . }}`
 
-var imageWithExtensionTemplate = `Stack: {{ .Info.StackID }}
+var imageWithExtensionTemplate = `
+Stack: {{ .Info.StackID }}
 
 Base Image:
 {{- if .Info.Base.Reference}}

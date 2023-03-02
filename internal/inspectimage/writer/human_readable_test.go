@@ -109,10 +109,11 @@ Buildpacks:
   test.bp.three.remote        3.0.0          -
 
 Extensions:
-  ID                         VERSION        HOMEPAGE
+  ID                          VERSION        HOMEPAGE
   test.bp.one.remote          1.0.0          https://some-homepage-one
   test.bp.two.remote          2.0.0          https://some-homepage-two
   test.bp.three.remote        3.0.0          -
+
 
 Processes:
   TYPE                              SHELL        COMMAND                      ARGS                     WORK DIR
@@ -144,6 +145,7 @@ Extensions:
   test.bp.one.local          1.0.0          https://some-homepage-one
   test.bp.two.local          2.0.0          https://some-homepage-two
   test.bp.three.local        3.0.0          -
+
 
 Processes:
   TYPE                             SHELL        COMMAND                     ARGS                    WORK DIR
@@ -614,7 +616,7 @@ Processes:
 
 			when("buildpack metadata is missing", func() {
 				it.Before(func() {
-					remoteInfo.Buildpacks = []buildpack.GroupElement{}
+					remoteWithExtensionInfo.Buildpacks = []buildpack.GroupElement{}
 				})
 				it("displays a message indicating missing metadata", func() {
 					sharedImageInfo := inspectimage.GeneralInfo{
@@ -634,7 +636,7 @@ Processes:
 
 			when("there are no run images", func() {
 				it.Before(func() {
-					remoteInfo.Stack = platform.StackMetadata{}
+					remoteWithExtensionInfo.Stack = platform.StackMetadata{}
 				})
 				it("displays a message indicating missing run images", func() {
 					sharedImageInfo := inspectimage.GeneralInfo{
