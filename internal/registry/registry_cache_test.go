@@ -204,6 +204,10 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 		})
 
+		it.After(func() {
+			h.AssertNil(t, os.RemoveAll(registryCache.RegistryDir))
+		})
+
 		when("root is empty string", func() {
 			it.Before(func() {
 				registryCache.Root = ""
@@ -213,18 +217,14 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 				err = registryCache.Initialize()
 				h.AssertError(t, err, "creating registry cache")
 			})
+		})
 
-			it.After(func() {
-				h.AssertNil(t, os.RemoveAll(registryCache.RegistryDir))
-			})
+		when("url is empty string", func() {
+			it("fails to clone cache", func() {
+				registryCache.url = &url.URL{}
 
-			when("url is empty string", func() {
-				it("fails to clone cache", func() {
-					registryCache.url = &url.URL{}
-
-					err = registryCache.Initialize()
-					h.AssertError(t, err, "cloning remote registry")
-				})
+				err = registryCache.Initialize()
+				h.AssertError(t, err, "cloning remote registry")
 			})
 		})
 	})
