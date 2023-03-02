@@ -47,7 +47,6 @@ endif
 
 export GOFLAGS:=$(GOFLAGS)
 export CGO_ENABLED=0
-export SHELLOPTS:=pipefail
 
 BINDIR:=/usr/bin/
 
@@ -106,16 +105,16 @@ unit: GOTESTFLAGS:=$(GOTESTFLAGS) --tags=example
 endif
 unit: out
 	@echo "> Running unit/integration tests..."
-	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(UNIT_TIMEOUT) ./... | tee out/unit
+	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(UNIT_TIMEOUT) ./...
 
 acceptance: out
 	@echo "> Running acceptance tests..."
-	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(ACCEPTANCE_TIMEOUT) -tags=acceptance ./acceptance | tee out/acceptance
+	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(ACCEPTANCE_TIMEOUT) -tags=acceptance ./acceptance
 
 acceptance-all: export ACCEPTANCE_SUITE_CONFIG:=$(shell $(CAT) .$/acceptance$/testconfig$/all.json)
 acceptance-all:
 	@echo "> Running acceptance tests..."
-	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(ACCEPTANCE_TIMEOUT) -tags=acceptance ./acceptance | tee out/acceptance
+	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(ACCEPTANCE_TIMEOUT) -tags=acceptance ./acceptance
 
 clean:
 	@echo "> Cleaning workspace..."
