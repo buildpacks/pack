@@ -30,7 +30,6 @@ func (h *HumanReadable) Print(
 	if local == nil && remote == nil {
 		return fmt.Errorf("unable to find image '%s' locally or remotely", generalInfo.Name)
 	}
-
 	localDisplay := inspectimage.NewInfoDisplay(local, generalInfo)
 	remoteDisplay := inspectimage.NewInfoDisplay(remote, generalInfo)
 
@@ -107,7 +106,6 @@ func inspectImageOutput(info *inspectimage.InfoDisplay, tpl *template.Template) 
 	}); err != nil {
 		return bytes.NewBuffer(nil), err
 	}
-
 	return buf, nil
 }
 
