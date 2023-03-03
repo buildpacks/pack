@@ -114,7 +114,7 @@ func testDownloadSBOM(t *testing.T, when spec.G, it spec.S) {
 
 			err := subject.DownloadSBOM("some/non-existent-image", DownloadSBOMOptions{Daemon: true, DestinationDir: ""})
 			h.AssertError(t, err, "image 'some/non-existent-image' cannot be found")
-			h.AssertContains(t, out.String(), "if image is saved on a registry run with the flag '--remote', for example: 'pack sbom download --remote %s' before downloading the SBoM\n")
+			h.AssertContains(t, out.String(), "if the image is saved on a registry run with the flag '--remote', for example: 'pack sbom download --remote %s'\n")
 		})
 	})
 
