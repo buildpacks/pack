@@ -41,6 +41,7 @@ local:
       int: 456
       nested:
         string: ''
+  extensions: {}
   buildpacks:
     id: test.bp.one.remote
     version: 1.0.0
@@ -56,6 +57,7 @@ remote:
       int: 123
       nested:
         string: anotherString
+  extensions: {}
   buildpacks:
     id: test.bp.one.remote
     version: 1.0.0
