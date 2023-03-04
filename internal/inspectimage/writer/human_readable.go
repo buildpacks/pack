@@ -167,10 +167,10 @@ Base Image:
 {{- end}}
   Top Layer: {{ .Info.Base.TopLayer }}
 {{ template "runImages" . }}
-{{ template "buildpacks" . }}
-{{ template "processes" . }}`
+{{ template "buildpacks" . }}{{ template "processes" . }}`
 
-var imageWithExtensionTemplate = `Stack: {{ .Info.StackID }}
+var imageWithExtensionTemplate = `
+Stack: {{ .Info.StackID }}
 
 Base Image:
 {{- if .Info.Base.Reference}}

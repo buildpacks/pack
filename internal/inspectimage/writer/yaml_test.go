@@ -52,6 +52,7 @@ local_info:
   - homepage: https://some-homepage-two
     id: test.bp.two.local
     version: 2.0.0
+  extensions: []
   processes:
   - type: some-local-type
     shell: bash
@@ -91,6 +92,7 @@ remote_info:
   - homepage: https://some-homepage-two
     id: test.bp.two.remote
     version: 2.0.0
+  extensions: []
   processes:
   - type: some-remote-type
     shell: bash

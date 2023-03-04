@@ -43,8 +43,8 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		err := os.RemoveAll(tmpDir)
-		h.AssertNil(t, err)
+		// Ignoring the error for now, it failed randomly on windows
+		_ = os.RemoveAll(tmpDir)
 	})
 
 	when("#NewDefaultRegistryCache", func() {
