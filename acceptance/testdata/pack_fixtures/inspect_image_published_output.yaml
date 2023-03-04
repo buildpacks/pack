@@ -12,6 +12,7 @@ remote_info:
   buildpacks:
     - id: simple/layers
       version: simple-layers-version
+  extensions: []
   processes:
     - type: web
       shell: bash
