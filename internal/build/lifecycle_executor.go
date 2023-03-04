@@ -38,6 +38,7 @@ type Builder interface {
 	GID() int
 	LifecycleDescriptor() builder.LifecycleDescriptor
 	Stack() builder.StackMetadata
+	RunImages() []builder.RunImageMetadata
 	Image() imgutil.Image
 	OrderExtensions() dist.Order
 }

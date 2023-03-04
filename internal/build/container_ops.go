@@ -228,6 +228,37 @@ func WriteStackToml(dstPath string, stack builder.StackMetadata, os string) Cont
 	}
 }
 
+// WriteRunToml writes a `run.toml` based on the RunConfig provided to the destination path.
+func WriteRunToml(dstPath string, runImages []builder.RunImageMetadata, os string) ContainerOperation {
+	return func(ctrClient DockerClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
+		buf := &bytes.Buffer{}
+		err := toml.NewEncoder(buf).Encode(builder.RunImages{
+			Images: runImages,
+		})
+		if err != nil {
+			return errors.Wrap(err, "marshaling stack metadata")
+		}
+
+		tarBuilder := archive.TarBuilder{}
+
+		tarPath := dstPath
+		if os == "windows" {
+			tarPath = paths.WindowsToSlash(dstPath)
+		}
+
+		tarBuilder.AddFile(tarPath, 0755, archive.NormalizedDateTime, buf.Bytes())
+		reader := tarBuilder.Reader(archive.DefaultTarWriterFactory())
+		defer reader.Close()
+
+		if os == "windows" {
+			dirName := paths.WindowsDir(dstPath)
+			return copyDirWindows(ctx, ctrClient, containerID, reader, dirName, stdout, stderr)
+		}
+
+		return ctrClient.CopyToContainer(ctx, containerID, "/", reader, types.CopyToContainerOptions{})
+	}
+}
+
 func createReader(src, dst string, uid, gid int, includeRoot bool, fileFilter func(string) bool) (io.ReadCloser, error) {
 	fi, err := os.Stat(src)
 	if err != nil {

@@ -38,6 +38,7 @@ const (
 
 	orderPath          = "/cnb/order.toml"
 	stackPath          = "/cnb/stack.toml"
+	runPath            = "/cnb/run.toml"
 	platformDir        = "/platform"
 	lifecycleDir       = "/cnb/lifecycle"
 	compatLifecycleDir = "/lifecycle"
@@ -160,9 +161,6 @@ func addImgLabelsToBuildr(bldr *Builder) error {
 	if err != nil {
 		return errors.Wrapf(err, "get label %s from image %s", style.Symbol(stackLabel), style.Symbol(bldr.image.Name()))
 	}
-	if bldr.StackID == "" {
-		return fmt.Errorf("image %s missing label %s", style.Symbol(bldr.image.Name()), style.Symbol(stackLabel))
-	}
 
 	if _, err = dist.GetLabel(bldr.image, stack.MixinsLabel, &bldr.mixins); err != nil {
 		return errors.Wrapf(err, "getting label %s", stack.MixinsLabel)
@@ -234,6 +232,11 @@ func (b *Builder) Image() imgutil.Image {
 // Stack returns the stack metadata
 func (b *Builder) Stack() StackMetadata {
 	return b.metadata.Stack
+}
+
+// RunImages returns the run image metadata
+func (b *Builder) RunImages() []RunImageMetadata {
+	return b.metadata.RunImages
 }
 
 // Mixins returns the mixins of the builder
@@ -308,6 +311,18 @@ func (b *Builder) SetStack(stackConfig builder.StackConfig) {
 			Mirrors: stackConfig.RunImageMirrors,
 		},
 	}
+}
+
+// SetRunImage sets the run image of the builder
+func (b *Builder) SetRunImage(runConfig builder.RunConfig) {
+	var runImages []RunImageMetadata
+	for _, i := range runConfig.Images {
+		runImages = append(runImages, RunImageMetadata{
+			Image:   i.Image,
+			Mirrors: i.Mirrors,
+		})
+	}
+	b.metadata.RunImages = runImages
 }
 
 // Save saves the builder
@@ -408,6 +423,14 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	}
 	if err := b.image.AddLayer(stackTar); err != nil {
 		return errors.Wrap(err, "adding stack.tar layer")
+	}
+
+	runImageTar, err := b.runImageLayer(tmpDir)
+	if err != nil {
+		return err
+	}
+	if err := b.image.AddLayer(runImageTar); err != nil {
+		return errors.Wrap(err, "adding run.tar layer")
 	}
 
 	if len(b.env) > 0 {
@@ -890,6 +913,24 @@ func (b *Builder) stackLayer(dest string) (string, error) {
 	err = layer.CreateSingleFileTar(layerTar, stackPath, buf.String(), b.layerWriterFactory)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create stack.toml layer tar")
+	}
+
+	return layerTar, nil
+}
+
+func (b *Builder) runImageLayer(dest string) (string, error) {
+	buf := &bytes.Buffer{}
+	err := toml.NewEncoder(buf).Encode(RunImages{
+		Images: b.metadata.RunImages,
+	})
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to marshal run.toml")
+	}
+
+	layerTar := filepath.Join(dest, "run.tar")
+	err = layer.CreateSingleFileTar(layerTar, runPath, buf.String(), b.layerWriterFactory)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to create run.toml layer tar")
 	}
 
 	return layerTar, nil

@@ -1822,9 +1822,10 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				expectedBinds := []string{"some-cache:/cache"}
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 
-				h.AssertEq(t, len(configProvider.ContainerOps()), 2)
+				h.AssertEq(t, len(configProvider.ContainerOps()), 3)
 				h.AssertFunctionName(t, configProvider.ContainerOps()[0], "WriteStackToml")
-				h.AssertFunctionName(t, configProvider.ContainerOps()[1], "WriteProjectMetadata")
+				h.AssertFunctionName(t, configProvider.ContainerOps()[1], "WriteRunToml")
+				h.AssertFunctionName(t, configProvider.ContainerOps()[2], "WriteProjectMetadata")
 			})
 
 			when("default process type", func() {
@@ -1929,9 +1930,10 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				expectedBinds := []string{"some-cache:/cache", "some-launch-cache:/launch-cache"}
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 
-				h.AssertEq(t, len(configProvider.ContainerOps()), 2)
+				h.AssertEq(t, len(configProvider.ContainerOps()), 3)
 				h.AssertFunctionName(t, configProvider.ContainerOps()[0], "WriteStackToml")
-				h.AssertFunctionName(t, configProvider.ContainerOps()[1], "WriteProjectMetadata")
+				h.AssertFunctionName(t, configProvider.ContainerOps()[1], "WriteRunToml")
+				h.AssertFunctionName(t, configProvider.ContainerOps()[2], "WriteProjectMetadata")
 			})
 
 			when("default process type", func() {

@@ -240,15 +240,15 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("missing stack id label", func() {
+			when("missing stack id label and run image", func() {
 				it.Before(func() {
 					h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
 					h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
 				})
 
-				it("returns an error", func() {
+				it("does not return an error", func() {
 					_, err := builder.New(baseImage, "some/builder")
-					h.AssertError(t, err, "image 'base/image' missing label 'io.buildpacks.stack.id'")
+					h.AssertNilE(t, err)
 				})
 			})
 
@@ -685,7 +685,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					//  - 2 from buildpacks
 					//  - 1 from orderLayer
 					//  - 1 from stackLayer
-					h.AssertEq(t, baseImage.NumberOfAddedLayers(), 6)
+					//  - 1 from runImageLayer
+					h.AssertEq(t, baseImage.NumberOfAddedLayers(), 7)
 				})
 
 				when("duplicated buildpack, has different contents", func() {
@@ -763,7 +764,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						//  - 1 from buildpacks
 						//  - 1 from orderLayer
 						//  - 1 from stackLayer
-						h.AssertEq(t, baseImage.NumberOfAddedLayers(), 5)
+						//  - 1 from runImageLayer
+						h.AssertEq(t, baseImage.NumberOfAddedLayers(), 6)
 						oldSha256 := "4dc0072c61fc2bd7118bbc93a432eae0012082de094455cf0a9fed20e3c44789"
 						newSha256 := "29cb2bce4c2350f0e86f3dd30fa3810beb409b910126a18651de750f457fedfb"
 						if runtime.GOOS == "windows" {
@@ -1556,6 +1558,40 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, metadata.Stack.RunImage.Image, "some/run")
 				h.AssertEq(t, metadata.Stack.RunImage.Mirrors[0], "some/mirror")
 				h.AssertEq(t, metadata.Stack.RunImage.Mirrors[1], "other/mirror")
+			})
+		})
+
+		when("#SetRunImage", func() {
+			it.Before(func() {
+				subject.SetRunImage(pubbldr.RunConfig{[]pubbldr.RunImageConfig{{
+					Image:   "some/run",
+					Mirrors: []string{"some/mirror", "other/mirror"},
+				}}})
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+				h.AssertEq(t, baseImage.IsSaved(), true)
+			})
+
+			it("adds the run.toml to the image", func() {
+				layerTar, err := baseImage.FindLayerWithPath("/cnb/run.toml")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, "/cnb/run.toml",
+					h.ContentEquals(`[[images]]
+  image = "some/run"
+  mirrors = ["some/mirror", "other/mirror"]
+`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
+			})
+
+			it("adds the run image to the metadata", func() {
+				label, err := baseImage.Label("io.buildpacks.builder.metadata")
+				h.AssertNil(t, err)
+
+				var metadata builder.Metadata
+				h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
+				h.AssertEq(t, metadata.RunImages[0].Image, "some/run")
+				h.AssertEq(t, metadata.RunImages[0].Mirrors[0], "some/mirror")
+				h.AssertEq(t, metadata.RunImages[0].Mirrors[1], "other/mirror")
 			})
 		})
 
