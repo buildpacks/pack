@@ -21,6 +21,7 @@
         "version": "simple-layers-version"
       }
     ],
+    "extensions": null,
     "processes": [
       {
         "type": "web",
