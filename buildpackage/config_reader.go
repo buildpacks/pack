@@ -17,7 +17,7 @@ const defaultOS = "linux"
 // Config encapsulates the possible configuration options for buildpackage creation.
 type Config struct {
 	Buildpack    dist.BuildpackURI `toml:"buildpack"`
-	Extension  	 dist.BuildpackURI `toml:"extension"`
+	Extension    dist.BuildpackURI `toml:"extension"`
 	Dependencies []dist.ImageOrURI `toml:"dependencies"`
 	Platform     dist.Platform     `toml:"platform"`
 }

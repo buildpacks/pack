@@ -3,22 +3,24 @@ package commands
 import (
 	"context"
 	"path/filepath"
-	"github.com/spf13/cobra"
+
 	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+
+	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/config"
-		"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/image"
-		"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/logging"
-		pubbldpkg "github.com/buildpacks/pack/buildpackage"
 )
 
 // ExtensionPackageFlags define flags provided to the ExtensionPackage command
 type ExtensionPackageFlags struct {
-	PackageTomlPath   string
-	Format            string
-	Publish           bool
-	Policy            string
+	PackageTomlPath string
+	Format          string
+	Publish         bool
+	Policy          string
 }
 
 // ExtensionPackager packages extensions
@@ -26,20 +28,19 @@ type ExtensionPackager interface {
 	PackageExtension(ctx context.Context, options client.PackageBuildpackOptions) error
 }
 
-
 // ExtensionPackage packages (a) extension(s) into OCI format, based on a package config
-func ExtensionPackage(logger logging.Logger, cfg config.Config,packager ExtensionPackager, packageConfigReader PackageConfigReader) *cobra.Command {
+func ExtensionPackage(logger logging.Logger, cfg config.Config, packager ExtensionPackager, packageConfigReader PackageConfigReader) *cobra.Command {
 	var flags ExtensionPackageFlags
 	cmd := &cobra.Command{
 		Use:   "package <name> --config <config-path>",
 		Short: "Package an extension in OCI format",
 		Args:  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-				if err := validateExtensionPackageFlags(&flags); err != nil {
+			if err := validateExtensionPackageFlags(&flags); err != nil {
 				return err
 			}
 
-				stringPolicy := flags.Policy
+			stringPolicy := flags.Policy
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
@@ -50,7 +51,7 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config,packager Extensio
 			}
 
 			exPackageCfg := pubbldpkg.DefaultExtensionConfig()
-			
+
 			relativeBaseDir := ""
 			if flags.PackageTomlPath != "" {
 				exPackageCfg, err = packageConfigReader.Read(flags.PackageTomlPath)
@@ -88,7 +89,7 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config,packager Extensio
 			if flags.Publish {
 				action = "published"
 			}
-			
+
 			logger.Infof("Successfully %s package %s", action, style.Symbol(name))
 			logger.Infof("Successfully %s package %s", action, style.Symbol(name))
 			return nil

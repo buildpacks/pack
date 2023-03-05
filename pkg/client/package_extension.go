@@ -2,10 +2,12 @@ package client
 
 import (
 	"context"
-		"github.com/buildpacks/pack/pkg/buildpack"
-		"github.com/pkg/errors"
-			"github.com/buildpacks/pack/internal/style"
-		"github.com/buildpacks/pack/internal/layer"
+
+	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/layer"
+	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/buildpack"
 )
 
 // PackageExtension packages extension(s) into either an image or file.
@@ -46,7 +48,7 @@ func (c *Client) PackageExtension(ctx context.Context, opts PackageBuildpackOpti
 	}
 
 	packageBuilder.SetExtension(ex)
-	
+
 	switch opts.Format {
 	case FormatFile:
 		return packageBuilder.SaveAsFile(opts.Name, opts.Config.Platform.OS)
