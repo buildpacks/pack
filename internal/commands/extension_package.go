@@ -51,7 +51,6 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 			}
 
 			exPackageCfg := pubbldpkg.DefaultExtensionConfig()
-
 			relativeBaseDir := ""
 			if flags.PackageTomlPath != "" {
 				exPackageCfg, err = packageConfigReader.Read(flags.PackageTomlPath)

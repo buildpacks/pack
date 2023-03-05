@@ -73,8 +73,11 @@ func (r *ConfigReader) Read(path string) (Config, error) {
 		)
 	}
 
-	if packageConfig.Buildpack.URI == "" {
-		return packageConfig, errors.Errorf("missing %s configuration", style.Symbol("buildpack.uri"))
+	if packageConfig.Buildpack.URI == "" && packageConfig.Extension.URI == "" {
+		if packageConfig.Buildpack.URI == "" {
+			return packageConfig, errors.Errorf("missing %s configuration", style.Symbol("buildpack.uri"))
+		}
+		return packageConfig, errors.Errorf("missing %s configuration", style.Symbol("extension.uri"))
 	}
 
 	if packageConfig.Platform.OS == "" {
