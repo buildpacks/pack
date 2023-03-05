@@ -63,6 +63,7 @@ func (i *layoutImage) AddLayerWithDiffID(path, _ string) error {
 
 type PackageBuilder struct {
 	buildpack    BuildModule
+	extension    BuildModule
 	dependencies []BuildModule
 	imageFactory ImageFactory
 }
@@ -76,6 +77,9 @@ func NewBuilder(imageFactory ImageFactory) *PackageBuilder {
 
 func (b *PackageBuilder) SetBuildpack(buildpack BuildModule) {
 	b.buildpack = buildpack
+}
+func (b *PackageBuilder) SetExtension(extension BuildModule) {
+	b.extension = extension
 }
 
 func (b *PackageBuilder) AddDependency(buildpack BuildModule) {
