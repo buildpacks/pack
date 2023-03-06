@@ -90,7 +90,6 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 			}
 
 			logger.Infof("Successfully %s package %s", action, style.Symbol(name))
-			logger.Infof("Successfully %s package %s", action, style.Symbol(name))
 			return nil
 		}),
 	}

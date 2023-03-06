@@ -3,7 +3,6 @@ package buildpack
 import (
 	"archive/tar"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"os"
 
@@ -151,7 +150,7 @@ func (b *PackageBuilder) finalizeExtensionImage(image WorkableImage, tmpDir stri
 
 	dist.AddToLayersMD(exLayers, b.extension.Descriptor(), diffID.String())
 
-	if err := dist.SetLabel(image, dist.BuildpackLayersLabel, exLayers); err != nil {
+	if err := dist.SetLabel(image, dist.ExtensionLayersLabel, exLayers); err != nil {
 		return err
 	}
 
@@ -279,8 +278,14 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS stri
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating image")
 	}
+	tempDirName := ""
+	if b.buildpack != nil {
+		tempDirName = "package-buildpack"
+	} else {
+		tempDirName = "extension-buildpack"
+	}
 
-	tmpDir, err := os.MkdirTemp("", "package-buildpack")
+	tmpDir, err := os.MkdirTemp("", tempDirName)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +299,6 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS stri
 			return nil, err
 		}
 	}
-	fmt.Println("Successfully created package", image)
 
 	if err := image.Save(); err != nil {
 		return nil, err
