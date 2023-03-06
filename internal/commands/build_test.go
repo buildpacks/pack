@@ -912,7 +912,7 @@ builder = "my-builder"
 		when("previous-image flag is provided", func() {
 			it("build is called with oci layout configuration", func() {
 				sparse = false
-				previousImage = "my-previous-imagegit "
+				previousImage = "my-previous-image"
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsWithLayoutConfig("image", previousImage, sparse, layoutDir)).
 					Return(nil)

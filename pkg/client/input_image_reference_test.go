@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/heroku/color"
@@ -71,7 +72,7 @@ func testInputImageReference(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					tmpDir, err = os.MkdirTemp("", "pack.input.image.reference.test")
 					h.AssertNil(t, err)
-
+					expectedFullPath = filepath.Join(tmpDir, "my-app")
 					layoutImageReference = ParseInputImageReference(fmt.Sprintf("oci:%s", expectedFullPath))
 				})
 
