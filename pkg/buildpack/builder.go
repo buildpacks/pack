@@ -188,8 +188,10 @@ func (b *PackageBuilder) resolvedStacks() []dist.Stack {
 }
 
 func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
-	if err := b.validate(); err != nil {
-		return err
+	if b.buildpack != nil {
+		if err := b.validate(); err != nil {
+			return err
+		}
 	}
 
 	layoutImage, err := newLayoutImage(imageOS)
@@ -197,16 +199,28 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 		return errors.Wrap(err, "creating layout image")
 	}
 
-	tmpDir, err := os.MkdirTemp("", "package-buildpack")
+	tempDirName := ""
+	if b.buildpack != nil {
+		tempDirName = "package-buildpack"
+	} else {
+		tempDirName = "extension-buildpack"
+	}
+
+	tmpDir, err := os.MkdirTemp("", tempDirName)
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpDir)
 
-	if err := b.finalizeImage(layoutImage, tmpDir); err != nil {
-		return err
+	if b.buildpack != nil {
+		if err := b.finalizeImage(layoutImage, tmpDir); err != nil {
+			return err
+		}
+	} else {
+		if err := b.finalizeExtensionImage(layoutImage, tmpDir); err != nil {
+			return err
+		}
 	}
-
 	layoutDir, err := os.MkdirTemp(tmpDir, "oci-layout")
 	if err != nil {
 		return errors.Wrap(err, "creating oci-layout temp dir")
