@@ -3,6 +3,7 @@ package buildpack
 import (
 	"archive/tar"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"os"
 
@@ -123,11 +124,44 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 	return nil
 }
 
+func (b *PackageBuilder) finalizeExtensionImage(image WorkableImage, tmpDir string) error {
+	if err := dist.SetLabel(image, MetadataLabel, &Metadata{
+		ModuleInfo: b.extension.Descriptor().Info(),
+	}); err != nil {
+		return err
+	}
+
+	exLayers := dist.ModuleLayers{}
+	exLayerTar, err := ToLayerTar(tmpDir, b.extension)
+	if err != nil {
+		return err
+	}
+
+	diffID, err := dist.LayerDiffID(exLayerTar)
+	if err != nil {
+		return errors.Wrapf(err,
+			"getting content hashes for extension %s",
+			style.Symbol(b.extension.Descriptor().Info().FullName()),
+		)
+	}
+
+	if err := image.AddLayerWithDiffID(exLayerTar, diffID.String()); err != nil {
+		return errors.Wrapf(err, "adding layer tar for extension %s", style.Symbol(b.extension.Descriptor().Info().FullName()))
+	}
+
+	dist.AddToLayersMD(exLayers, b.extension.Descriptor(), diffID.String())
+
+	if err := dist.SetLabel(image, dist.BuildpackLayersLabel, exLayers); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (b *PackageBuilder) validate() error {
 	if b.buildpack == nil {
 		return errors.New("buildpack must be set")
 	}
-
 	if err := validateBuildpacks(b.buildpack, b.dependencies); err != nil {
 		return err
 	}
@@ -235,8 +269,10 @@ func newLayoutImage(imageOS string) (*layoutImage, error) {
 }
 
 func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS string) (imgutil.Image, error) {
-	if err := b.validate(); err != nil {
-		return nil, err
+	if b.buildpack != nil {
+		if err := b.validate(); err != nil {
+			return nil, err
+		}
 	}
 
 	image, err := b.imageFactory.NewImage(repoName, !publish, imageOS)
@@ -249,10 +285,16 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS stri
 		return nil, err
 	}
 	defer os.RemoveAll(tmpDir)
-
-	if err := b.finalizeImage(image, tmpDir); err != nil {
-		return nil, err
+	if b.buildpack != nil {
+		if err := b.finalizeImage(image, tmpDir); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := b.finalizeExtensionImage(image, tmpDir); err != nil {
+			return nil, err
+		}
 	}
+	fmt.Println("Successfully created package", image)
 
 	if err := image.Save(); err != nil {
 		return nil, err
