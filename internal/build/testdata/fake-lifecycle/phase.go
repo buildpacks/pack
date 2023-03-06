@@ -192,7 +192,12 @@ func readDir(dir string) {
 	}
 	for _, fi := range fis {
 		absPath := filepath.Join(dir, fi.Name())
-		stat := fi.Sys().(*syscall.Stat_t)
+		info, err := fi.Info()
+		if err != nil {
+			fmt.Printf("failed to dir info %s err: %s\n", fi.Name(), err)
+			os.Exit(1)
+		}
+		stat := info.Sys().(*syscall.Stat_t)
 		fmt.Printf("%s %d/%d \n", absPath, stat.Uid, stat.Gid)
 		if fi.IsDir() {
 			readDir(absPath)
