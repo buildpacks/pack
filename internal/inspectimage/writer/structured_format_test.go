@@ -124,7 +124,7 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-					err := structuredWriter.Print(logger, sharedImageInfo, nil, localWithExtensionInfo, nil, nil)
+					err := structuredWriter.Print(logger, sharedImageInfo, localWithExtensionInfo, nil, nil, nil)
 					assert.Nil(err)
 					assert.Equal(marshalInput, inspectimage.InspectOutput{
 						ImageName: "localExtension-image",

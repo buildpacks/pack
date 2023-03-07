@@ -67,6 +67,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
         "version": "2.0.0"
       }
     ],
+	"extensions": null,
     "processes": [
       {
         "type": "some-local-type",
@@ -129,6 +130,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
         "homepage": "https://some-homepage-two"
       }
     ],
+	"extensions": null,
     "processes": [
       {
         "type": "some-remote-type",
