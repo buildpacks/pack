@@ -188,7 +188,7 @@ func (b *PackageBuilder) resolvedStacks() []dist.Stack {
 }
 
 func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
-	if b.buildpack != nil {
+	if b.extension == nil {
 		if err := b.validate(); err != nil {
 			return err
 		}
@@ -202,7 +202,7 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 	tempDirName := ""
 	if b.buildpack != nil {
 		tempDirName = "package-buildpack"
-	} else {
+	} else if b.extension != nil {
 		tempDirName = "extension-buildpack"
 	}
 
@@ -216,7 +216,7 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 		if err := b.finalizeImage(layoutImage, tmpDir); err != nil {
 			return err
 		}
-	} else {
+	} else if b.extension != nil {
 		if err := b.finalizeExtensionImage(layoutImage, tmpDir); err != nil {
 			return err
 		}
@@ -282,7 +282,7 @@ func newLayoutImage(imageOS string) (*layoutImage, error) {
 }
 
 func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS string) (imgutil.Image, error) {
-	if b.buildpack != nil {
+	if b.extension == nil {
 		if err := b.validate(); err != nil {
 			return nil, err
 		}
@@ -295,7 +295,7 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS stri
 	tempDirName := ""
 	if b.buildpack != nil {
 		tempDirName = "package-buildpack"
-	} else {
+	} else if b.extension != nil {
 		tempDirName = "extension-buildpack"
 	}
 
@@ -308,7 +308,7 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS stri
 		if err := b.finalizeImage(image, tmpDir); err != nil {
 			return nil, err
 		}
-	} else {
+	} else if b.extension != nil {
 		if err := b.finalizeExtensionImage(image, tmpDir); err != nil {
 			return nil, err
 		}
