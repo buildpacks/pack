@@ -15,6 +15,7 @@ import (
 	"github.com/apex/log"
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/pack/internal/paths"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -1111,11 +1112,12 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		when("layout", func() {
 			providedLayout = true
+			layoutRepo := filepath.Join(paths.RootDir, "layout-repo")
 			platformAPI = api.MustParse("0.12")
 
 			it("configures the phase with oci layout environment variables", func() {
 				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_USE_LAYOUT=true")
-				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_LAYOUT_DIR=/layout-repo")
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, fmt.Sprintf("CNB_LAYOUT_DIR=%s", layoutRepo))
 				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
 			})
 		})
