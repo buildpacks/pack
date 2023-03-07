@@ -140,6 +140,10 @@ func (i *PackInvoker) StartWithWriter(combinedOutput *bytes.Buffer, name string,
 	}
 }
 
+func (i *PackInvoker) Home() string {
+	return i.home
+}
+
 type InterruptCmd struct {
 	testObject     *testing.T
 	assert         h.AssertionManager

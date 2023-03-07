@@ -579,8 +579,8 @@ func testWithoutSpecificBuilderRequirement(
 				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder:base")
 
 				output := pack.RunSuccessfully("report")
-
 				version := pack.Version()
+				layoutRepoDir := filepath.Join(pack.Home(), "layout-repo")
 
 				expectedOutput := pack.FixtureManager().TemplateFixture(
 					"report_output.txt",
@@ -589,6 +589,7 @@ func testWithoutSpecificBuilderRequirement(
 						"Version":        version,
 						"OS":             runtime.GOOS,
 						"Arch":           runtime.GOARCH,
+						"LayoutRepoDir":  layoutRepoDir,
 					},
 				)
 				assert.Equal(output, expectedOutput)
@@ -598,8 +599,8 @@ func testWithoutSpecificBuilderRequirement(
 				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder:base")
 
 				output := pack.RunSuccessfully("report", "--explicit")
-
 				version := pack.Version()
+				layoutRepoDir := filepath.Join(pack.Home(), "layout-repo")
 
 				expectedOutput := pack.FixtureManager().TemplateFixture(
 					"report_output.txt",
@@ -608,6 +609,7 @@ func testWithoutSpecificBuilderRequirement(
 						"Version":        version,
 						"OS":             runtime.GOOS,
 						"Arch":           runtime.GOARCH,
+						"LayoutRepoDir":  layoutRepoDir,
 					},
 				)
 				assert.Equal(output, expectedOutput)
