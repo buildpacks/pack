@@ -99,7 +99,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							it("returns error", func() {
 								builder := buildpack.NewBuilder(mockImageFactory(expectedImageOS))
 								err := testFn(builder)
-								h.AssertError(t, err, "buildpack must be set")
+								h.AssertError(t, err, "buildpack or extension must be set")
 							})
 						})
 

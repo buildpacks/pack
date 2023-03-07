@@ -158,15 +158,17 @@ func (b *PackageBuilder) finalizeExtensionImage(image WorkableImage, tmpDir stri
 }
 
 func (b *PackageBuilder) validate() error {
-	if b.buildpack == nil {
-		return errors.New("buildpack must be set")
+	if b.buildpack == nil && b.extension == nil {
+		return errors.New("buildpack or extension must be set")
 	}
-	if err := validateBuildpacks(b.buildpack, b.dependencies); err != nil {
-		return err
-	}
+	if b.buildpack != nil && b.extension == nil {
+		if err := validateBuildpacks(b.buildpack, b.dependencies); err != nil {
+			return err
+		}
 
-	if len(b.resolvedStacks()) == 0 {
-		return errors.Errorf("no compatible stacks among provided buildpacks")
+		if len(b.resolvedStacks()) == 0 {
+			return errors.Errorf("no compatible stacks among provided buildpacks")
+		}
 	}
 
 	return nil
@@ -188,10 +190,8 @@ func (b *PackageBuilder) resolvedStacks() []dist.Stack {
 }
 
 func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
-	if b.extension == nil {
-		if err := b.validate(); err != nil {
-			return err
-		}
+	if err := b.validate(); err != nil {
+		return err
 	}
 
 	layoutImage, err := newLayoutImage(imageOS)
@@ -282,10 +282,8 @@ func newLayoutImage(imageOS string) (*layoutImage, error) {
 }
 
 func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS string) (imgutil.Image, error) {
-	if b.extension == nil {
-		if err := b.validate(); err != nil {
-			return nil, err
-		}
+	if err := b.validate(); err != nil {
+		return nil, err
 	}
 
 	image, err := b.imageFactory.NewImage(repoName, !publish, imageOS)
