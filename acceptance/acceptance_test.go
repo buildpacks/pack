@@ -580,7 +580,11 @@ func testWithoutSpecificBuilderRequirement(
 
 				output := pack.RunSuccessfully("report")
 				version := pack.Version()
+
 				layoutRepoDir := filepath.Join(pack.Home(), "layout-repo")
+				if runtime.GOOS == "windows" {
+					layoutRepoDir = strings.ReplaceAll(layoutRepoDir, `\`, `\\`)
+				}
 
 				expectedOutput := pack.FixtureManager().TemplateFixture(
 					"report_output.txt",
@@ -600,7 +604,11 @@ func testWithoutSpecificBuilderRequirement(
 
 				output := pack.RunSuccessfully("report", "--explicit")
 				version := pack.Version()
+
 				layoutRepoDir := filepath.Join(pack.Home(), "layout-repo")
+				if runtime.GOOS == "windows" {
+					layoutRepoDir = strings.ReplaceAll(layoutRepoDir, `\`, `\\`)
+				}
 
 				expectedOutput := pack.FixtureManager().TemplateFixture(
 					"report_output.txt",
