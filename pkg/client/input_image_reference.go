@@ -3,6 +3,7 @@ package client
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -60,14 +61,7 @@ func (l *layoutInputImageReference) FullName() (string, error) {
 		err           error
 	)
 
-	path := l.name
-
-	// path/to/save/image:tag was provided
-	if strings.Contains(path, ":") {
-		split := strings.SplitN(path, ":", 2)
-		// do not include the tag in the path
-		path = split[0]
-	}
+	path := parsePath(l.name)
 
 	if fullImagePath, err = filepath.EvalSymlinks(path); err != nil {
 		if !os.IsNotExist(err) {
@@ -82,4 +76,26 @@ func (l *layoutInputImageReference) FullName() (string, error) {
 	}
 
 	return fullImagePath, nil
+}
+
+func parsePath(path string) string {
+	var result string
+	if filepath.IsAbs(path) && runtime.GOOS == "windows" {
+		dir, fileWithTag := filepath.Split(path)
+		file := removeTag(fileWithTag)
+		result = filepath.Join(dir, file)
+	} else {
+		result = removeTag(path)
+	}
+	return result
+}
+
+func removeTag(path string) string {
+	result := path
+	if strings.Contains(path, ":") {
+		split := strings.SplitN(path, ":", 2)
+		// do not include the tag in the path
+		result = split[0]
+	}
+	return result
 }

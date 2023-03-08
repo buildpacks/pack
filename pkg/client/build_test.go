@@ -2794,6 +2794,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			)
 
 			it.Before(func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "skip on windows")
+
 				remoteRunImage := fakes.NewImage("default/run", "", nil)
 				h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 				h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))

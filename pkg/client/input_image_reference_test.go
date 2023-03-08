@@ -3,7 +3,6 @@ package client
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"testing"
 
@@ -58,7 +57,7 @@ func testInputImageReference(t *testing.T, when spec.G, it spec.S) {
 					currentWorkingDir, err := os.Getwd()
 					h.AssertNil(t, err)
 
-					expectedPath := path.Join(currentWorkingDir, layoutImageReference.Name())
+					expectedPath := filepath.Join(currentWorkingDir, layoutImageReference.Name())
 					h.AssertEq(t, fullPath, expectedPath)
 				})
 			})

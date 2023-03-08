@@ -1256,9 +1256,17 @@ func appendLayoutVolumes(volumes []string, config layoutPathConfig) []string {
 }
 
 func writableVolume(hostPath, targetPath string) string {
-	return fmt.Sprintf("%s:%s:rw", hostPath, filepath.Join(string(filepath.Separator), targetPath))
+	tp := targetPath
+	if !filepath.IsAbs(targetPath) {
+		tp = filepath.Join(string(filepath.Separator), targetPath)
+	}
+	return fmt.Sprintf("%s:%s:rw", hostPath, tp)
 }
 
 func readOnlyVolume(hostPath, targetPath string) string {
-	return fmt.Sprintf("%s:%s", hostPath, filepath.Join(string(filepath.Separator), targetPath))
+	tp := targetPath
+	if !filepath.IsAbs(targetPath) {
+		tp = filepath.Join(string(filepath.Separator), targetPath)
+	}
+	return fmt.Sprintf("%s:%s", hostPath, tp)
 }
