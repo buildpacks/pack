@@ -26,6 +26,7 @@ type BuildFlags struct {
 	ClearCache           bool
 	TrustBuilder         bool
 	Interactive          bool
+	Sparse               bool
 	DockerHost           string
 	CacheImage           string
 	Cache                cache.CacheOpts
@@ -68,11 +69,12 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			"be provided directly to build using `--builder`, or can be set using the `set-default-builder` command. For more " +
 			"on how to use `pack build`, see: https://buildpacks.io/docs/app-developer-guide/build-an-app/.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := validateBuildFlags(&flags, cfg, packClient, logger); err != nil {
+			inputImageName := client.ParseInputImageReference(args[0])
+			if err := validateBuildFlags(&flags, cfg, inputImageName, logger); err != nil {
 				return err
 			}
 
-			imageName := args[0]
+			inputPreviousImage := client.ParseInputImageReference(flags.PreviousImage)
 
 			descriptor, actualDescriptorPath, err := parseProjectToml(flags.AppPath, flags.DescriptorPath)
 			if err != nil {
@@ -150,7 +152,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				AdditionalTags:    flags.AdditionalTags,
 				RunImage:          flags.RunImage,
 				Env:               env,
-				Image:             imageName,
+				Image:             inputImageName.Name(),
 				Publish:           flags.Publish,
 				DockerHost:        flags.DockerHost,
 				PullPolicy:        pullPolicy,
@@ -171,17 +173,23 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Workspace:                flags.Workspace,
 				LifecycleImage:           lifecycleImage,
 				GroupID:                  gid,
-				PreviousImage:            flags.PreviousImage,
+				PreviousImage:            inputPreviousImage.Name(),
 				Interactive:              flags.Interactive,
 				SBOMDestinationDir:       flags.SBOMDestinationDir,
 				ReportDestinationDir:     flags.ReportDestinationDir,
 				CreationTime:             dateTime,
 				PreBuildpacks:            flags.PreBuildpacks,
 				PostBuildpacks:           flags.PostBuildpacks,
+				LayoutConfig: &client.LayoutConfig{
+					Sparse:             flags.Sparse,
+					InputImage:         inputImageName,
+					PreviousInputImage: inputPreviousImage,
+					LayoutRepoDir:      cfg.LayoutRepositoryDir,
+				},
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
-			logger.Infof("Successfully built image %s", style.Symbol(imageName))
+			logger.Infof("Successfully built image %s", style.Symbol(inputImageName.Name()))
 			return nil
 		}),
 	}
@@ -248,12 +256,14 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().StringVar(&buildFlags.SBOMDestinationDir, "sbom-output-dir", "", "Path to export SBoM contents.\nOmitting the flag will yield no SBoM content.")
 	cmd.Flags().StringVar(&buildFlags.ReportDestinationDir, "report-output-dir", "", "Path to export build report.toml.\nOmitting the flag yield no report file.")
 	cmd.Flags().BoolVar(&buildFlags.Interactive, "interactive", false, "Launch a terminal UI to depict the build process")
+	cmd.Flags().BoolVar(&buildFlags.Sparse, "sparse", false, "Use this flag to avoid saving on disk the run-image layers when the application image is exported to OCI layout format")
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("interactive")
+		cmd.Flags().MarkHidden("sparse")
 	}
 }
 
-func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
+func validateBuildFlags(flags *BuildFlags, cfg config.Config, inputImageRef client.InputImageReference, logger logging.Logger) error {
 	if flags.Registry != "" && !cfg.Experimental {
 		return client.NewExperimentError("Support for buildpack registries is currently experimental.")
 	}
@@ -280,6 +290,10 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackCli
 
 	if flags.Interactive && !cfg.Experimental {
 		return client.NewExperimentError("Interactive mode is currently experimental.")
+	}
+
+	if inputImageRef.Layout() && !cfg.Experimental {
+		return client.NewExperimentError("Exporting to OCI layout is currently experimental.")
 	}
 
 	return nil

@@ -2785,6 +2785,93 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("export to OCI layout", func() {
+			var (
+				inputImageReference, inputPreviousImageReference       InputImageReference
+				layoutConfig                                           *LayoutConfig
+				hostImagePath, hostPreviousImagePath, hostRunImagePath string
+			)
+
+			it.Before(func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "skip on windows")
+
+				remoteRunImage := fakes.NewImage("default/run", "", nil)
+				h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
+				h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
+				fakeImageFetcher.RemoteImages[remoteRunImage.Name()] = remoteRunImage
+
+				hostImagePath = filepath.Join(tmpDir, "my-app")
+				inputImageReference = ParseInputImageReference(fmt.Sprintf("oci:%s", hostImagePath))
+				layoutConfig = &LayoutConfig{
+					InputImage:    inputImageReference,
+					LayoutRepoDir: filepath.Join(tmpDir, "local-repo"),
+				}
+			})
+
+			when("previous image is not provided", func() {
+				when("sparse is false", func() {
+					it("saves run-image locally in oci layout and mount volumes", func() {
+						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+							Image:        inputImageReference.Name(),
+							Builder:      defaultBuilderName,
+							LayoutConfig: layoutConfig,
+						}))
+
+						args := fakeImageFetcher.FetchCalls["default/run"]
+						h.AssertEq(t, args.LayoutOption.Sparse, false)
+						h.AssertContains(t, args.LayoutOption.Path, layoutConfig.LayoutRepoDir)
+
+						h.AssertEq(t, fakeLifecycle.Opts.Layout, true)
+						// verify the host path are mounted as volumes
+						h.AssertSliceContainsMatch(t, fakeLifecycle.Opts.Volumes, hostImagePath, hostRunImagePath)
+					})
+				})
+
+				when("sparse is true", func() {
+					it.Before(func() {
+						layoutConfig.Sparse = true
+					})
+
+					it("saves run-image locally (no layers) in oci layout and mount volumes", func() {
+						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+							Image:        inputImageReference.Name(),
+							Builder:      defaultBuilderName,
+							LayoutConfig: layoutConfig,
+						}))
+
+						args := fakeImageFetcher.FetchCalls["default/run"]
+						h.AssertEq(t, args.LayoutOption.Sparse, true)
+						h.AssertContains(t, args.LayoutOption.Path, layoutConfig.LayoutRepoDir)
+
+						h.AssertEq(t, fakeLifecycle.Opts.Layout, true)
+						// verify the host path are mounted as volumes
+						h.AssertSliceContainsMatch(t, fakeLifecycle.Opts.Volumes, hostImagePath, hostRunImagePath)
+					})
+				})
+			})
+
+			when("previous image is provided", func() {
+				it.Before(func() {
+					hostPreviousImagePath = filepath.Join(tmpDir, "my-previous-app")
+					inputPreviousImageReference = ParseInputImageReference(fmt.Sprintf("oci:%s", hostPreviousImagePath))
+					layoutConfig.PreviousInputImage = inputPreviousImageReference
+				})
+
+				it("mount previous image volume", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:         inputImageReference.Name(),
+						PreviousImage: inputPreviousImageReference.Name(),
+						Builder:       defaultBuilderName,
+						LayoutConfig:  layoutConfig,
+					}))
+
+					h.AssertEq(t, fakeLifecycle.Opts.Layout, true)
+					// verify the host path are mounted as volumes
+					h.AssertSliceContainsMatch(t, fakeLifecycle.Opts.Volumes, hostImagePath, hostPreviousImagePath, hostRunImagePath)
+				})
+			})
+		})
 	})
 }
 
