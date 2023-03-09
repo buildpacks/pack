@@ -1101,11 +1101,13 @@ func randString(n int) string {
 }
 
 func processVolumes(imgOS string, volumes []string) (processed []string, warnings []string, err error) {
-	parserOS := mounts.OSLinux
+	var parser mounts.Parser
 	if imgOS == "windows" {
-		parserOS = mounts.OSWindows
+		parser = mounts.NewWindowsParser()
+	} else {
+		parser = mounts.NewLinuxParser()
 	}
-	parser := mounts.NewParser(parserOS)
+
 	for _, v := range volumes {
 		volume, err := parser.ParseMountRaw(v, "")
 		if err != nil {
