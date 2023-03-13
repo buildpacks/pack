@@ -161,6 +161,8 @@ func (b *PackageBuilder) validate() error {
 	if b.buildpack == nil && b.extension == nil {
 		return errors.New("buildpack or extension must be set")
 	}
+
+	// we don't need to validate extensions because there are no order or stacks in extensions
 	if b.buildpack != nil && b.extension == nil {
 		if err := validateBuildpacks(b.buildpack, b.dependencies); err != nil {
 			return err

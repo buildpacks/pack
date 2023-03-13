@@ -105,7 +105,7 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 
 func validateExtensionPackageFlags(p *ExtensionPackageFlags) error {
 	if p.Publish && p.Policy == image.PullNever.String() {
-		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
+		return errors.Errorf("--publish and --pull-policy=never cannot be used together. The --publish flag requires the use of remote images.")
 	}
 	return nil
 }
