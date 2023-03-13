@@ -18,7 +18,7 @@ import (
 
 type FakeImageCreator func(name string, topLayerSha string, identifier imgutil.Identifier) *fakes.Image
 
-func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid string, metadata builder.Metadata, bpLayers dist.ModuleLayers, order dist.Order, creator FakeImageCreator) *fakes.Image {
+func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid string, metadata builder.Metadata, bpLayers dist.ModuleLayers, order dist.Order, exLayers dist.ModuleLayers, orderExtensions dist.Order, creator FakeImageCreator) *fakes.Image {
 	fakeBuilderImage := creator(name, "", nil)
 
 	h.AssertNil(t, fakeBuilderImage.SetLabel("io.buildpacks.stack.id", stackID))
@@ -48,11 +48,30 @@ func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid st
 		}
 	}
 
+	for exID, v := range exLayers {
+		for exVersion, exLayerInfo := range v {
+			exInfo := dist.ModuleInfo{
+				ID:      exID,
+				Version: exVersion,
+			}
+
+			extensionDescriptor := dist.ExtensionDescriptor{
+				WithAPI:    exLayerInfo.API,
+				WithInfo:   exInfo,
+			}
+
+			extensionTar := CreateExtensionTar(t, tmpDir, extensionDescriptor)
+			err := fakeBuilderImage.AddLayer(extensionTar)
+			h.AssertNil(t, err)
+		}
+	}
+
 	h.AssertNil(t, dist.SetLabel(fakeBuilderImage, "io.buildpacks.buildpack.order", order))
+	h.AssertNil(t, dist.SetLabel(fakeBuilderImage, "io.buildpacks.extension.order", orderExtensions))
 
 	tarBuilder := archive.TarBuilder{}
 	orderTomlBytes := &bytes.Buffer{}
-	h.AssertNil(t, toml.NewEncoder(orderTomlBytes).Encode(orderTOML{Order: order}))
+	h.AssertNil(t, toml.NewEncoder(orderTomlBytes).Encode(orderTOML{Order: order, OrderExtensions: orderExtensions}))
 	tarBuilder.AddFile("/cnb/order.toml", 0777, archive.NormalizedDateTime, orderTomlBytes.Bytes())
 
 	orderTar := filepath.Join(tmpDir, fmt.Sprintf("order.%s.toml", h.RandString(8)))
@@ -64,4 +83,5 @@ func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid st
 
 type orderTOML struct {
 	Order dist.Order `toml:"order"`
+	OrderExtensions dist.Order `toml:"orderExtensions"`
 }
