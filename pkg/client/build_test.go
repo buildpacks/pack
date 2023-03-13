@@ -1794,6 +1794,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		//TODO: "all buildpacks are added to ephemeral builder" test after extractPackaged() is completed.
+
 		when("ProjectDescriptor", func() {
 			when("project metadata", func() {
 				when("not experimental", func() {
