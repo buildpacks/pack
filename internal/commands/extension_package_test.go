@@ -206,7 +206,7 @@ func testExtensionPackageCommand(t *testing.T, when spec.G, it spec.S) {
 
 				err := cmd.Execute()
 				h.AssertNotNil(t, err)
-				h.AssertError(t, err, "--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
+				h.AssertError(t, err, "--publish and --pull-policy=never cannot be used together. The --publish flag requires the use of remote images.")
 			})
 		})
 
