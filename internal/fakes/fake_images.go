@@ -56,8 +56,8 @@ func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid st
 			}
 
 			extensionDescriptor := dist.ExtensionDescriptor{
-				WithAPI:    exLayerInfo.API,
-				WithInfo:   exInfo,
+				WithAPI:  exLayerInfo.API,
+				WithInfo: exInfo,
 			}
 
 			extensionTar := CreateExtensionTar(t, tmpDir, extensionDescriptor)
@@ -82,6 +82,6 @@ func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid st
 }
 
 type orderTOML struct {
-	Order dist.Order `toml:"order"`
+	Order           dist.Order `toml:"order"`
 	OrderExtensions dist.Order `toml:"orderExtensions"`
 }
