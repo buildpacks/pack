@@ -46,6 +46,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, len(subject.RunImages), 0)
 				h.AssertEq(t, subject.Experimental, false)
 				h.AssertEq(t, len(subject.RegistryMirrors), 0)
+				h.AssertEq(t, subject.LayoutRepositoryDir, "")
 			})
 		})
 	})

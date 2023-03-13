@@ -13,9 +13,12 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/platform"
+
+	"github.com/buildpacks/pack/internal/paths"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/volume/mounts"
@@ -195,6 +198,16 @@ type BuildOptions struct {
 
 	// Desired create time in the output image config
 	CreationTime *time.Time
+
+	// Configuration to export to OCI layout format
+	LayoutConfig *LayoutConfig
+}
+
+func (b *BuildOptions) Layout() bool {
+	if b.LayoutConfig != nil {
+		return b.LayoutConfig.Enable()
+	}
+	return false
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -226,6 +239,33 @@ type ContainerConfig struct {
 	Volumes []string
 }
 
+type LayoutConfig struct {
+	// Application image reference provided by the user
+	InputImage InputImageReference
+
+	// Previous image reference provided by the user
+	PreviousInputImage InputImageReference
+
+	// Local root path to save the run-image in OCI layout format
+	LayoutRepoDir string
+
+	// Configure the OCI layout fetch mode to avoid saving layers on disk
+	Sparse bool
+}
+
+func (l *LayoutConfig) Enable() bool {
+	return l.InputImage.Layout()
+}
+
+type layoutPathConfig struct {
+	hostImagePath           string
+	hostPreviousImagePath   string
+	hostRunImagePath        string
+	targetImagePath         string
+	targetPreviousImagePath string
+	targetRunImagePath      string
+}
+
 var IsSuggestedBuilderFunc = func(b string) bool {
 	for _, suggestedBuilder := range builder.SuggestedBuilders {
 		if b == suggestedBuilder.Image {
@@ -240,9 +280,24 @@ var IsSuggestedBuilderFunc = func(b string) bool {
 // If any configuration is deemed invalid, or if any lifecycle phases fail,
 // an error will be returned and no image produced.
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
-	imageRef, err := c.parseTagReference(opts.Image)
+	var pathsConfig layoutPathConfig
+
+	imageRef, err := c.parseReference(opts)
 	if err != nil {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.Image)
+	}
+	imgRegistry := imageRef.Context().RegistryStr()
+	imageName := imageRef.Name()
+
+	if opts.Layout() {
+		pathsConfig, err = c.processLayoutPath(opts.LayoutConfig.InputImage, opts.LayoutConfig.PreviousInputImage)
+		if err != nil {
+			if opts.LayoutConfig.PreviousInputImage != nil {
+				return errors.Wrapf(err, "invalid layout paths image name '%s' or previous-image name '%s'", opts.LayoutConfig.InputImage.Name(),
+					opts.LayoutConfig.PreviousInputImage.Name())
+			}
+			return errors.Wrapf(err, "invalid layout paths image name '%s'", opts.LayoutConfig.InputImage.Name())
+		}
 	}
 
 	appPath, err := c.processAppPath(opts.AppPath)
@@ -267,8 +322,25 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
 
-	runImageName := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), builderRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors, opts.Publish)
-	runImage, err := c.validateRunImage(ctx, runImageName, opts.PullPolicy, opts.Publish, bldr.StackID)
+	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors, opts.Publish)
+
+	fetchOptions := image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy}
+	if opts.Layout() {
+		targetRunImagePath, err := layout.ParseRefToPath(runImageName)
+		if err != nil {
+			return err
+		}
+		hostRunImagePath := filepath.Join(opts.LayoutConfig.LayoutRepoDir, targetRunImagePath)
+		targetRunImagePath = filepath.Join(paths.RootDir, "layout-repo", targetRunImagePath)
+		fetchOptions.LayoutOption = image.LayoutOption{
+			Path:   hostRunImagePath,
+			Sparse: opts.LayoutConfig.Sparse,
+		}
+		fetchOptions.Daemon = false
+		pathsConfig.targetRunImagePath = targetRunImagePath
+		pathsConfig.hostRunImagePath = hostRunImagePath
+	}
+	runImage, err := c.validateRunImage(ctx, runImageName, fetchOptions, bldr.StackID)
 	if err != nil {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
 	}
@@ -332,6 +404,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		if !(opts.PullPolicy == image.PullAlways) {
 			return fmt.Errorf("pull policy must be 'always' when builder contains image extensions")
 		}
+	}
+
+	if opts.Layout() {
+		opts.ContainerConfig.Volumes = appendLayoutVolumes(opts.ContainerConfig.Volumes, pathsConfig)
 	}
 
 	processedVolumes, warnings, err := processVolumes(imgOS, opts.ContainerConfig.Volumes)
@@ -400,10 +476,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		GID:                  opts.GroupID,
 		PreviousImage:        opts.PreviousImage,
 		Interactive:          opts.Interactive,
-		Termui:               termui.NewTermui(imageRef.Name(), ephemeralBuilder, runImageName),
+		Termui:               termui.NewTermui(imageName, ephemeralBuilder, runImageName),
 		ReportDestinationDir: opts.ReportDestinationDir,
 		SBOMDestinationDir:   opts.SBOMDestinationDir,
 		CreationTime:         opts.CreationTime,
+		Layout:               opts.Layout(),
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
@@ -550,11 +627,11 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	return bldr, nil
 }
 
-func (c *Client) validateRunImage(context context.Context, name string, pullPolicy image.PullPolicy, publish bool, expectedStack string) (imgutil.Image, error) {
+func (c *Client) validateRunImage(context context.Context, name string, opts image.FetchOptions, expectedStack string) (imgutil.Image, error) {
 	if name == "" {
 		return nil, errors.New("run image must be specified")
 	}
-	img, err := c.imageFetcher.Fetch(context, name, image.FetchOptions{Daemon: !publish, PullPolicy: pullPolicy})
+	img, err := c.imageFetcher.Fetch(context, name, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -688,6 +765,53 @@ func (c *Client) processAppPath(appPath string) (string, error) {
 	}
 
 	return resolvedAppPath, nil
+}
+
+// processLayoutPath given an image reference and a previous image reference this method calculates the
+// local full path and the expected path in the lifecycle container for both images provides. Those values
+// can be used to mount the correct volumes
+func (c *Client) processLayoutPath(inputImageRef, previousImageRef InputImageReference) (layoutPathConfig, error) {
+	var (
+		hostImagePath, hostPreviousImagePath, targetImagePath, targetPreviousImagePath string
+		err                                                                            error
+	)
+	hostImagePath, err = fullImagePath(inputImageRef, true)
+	if err != nil {
+		return layoutPathConfig{}, err
+	}
+	targetImagePath, err = layout.ParseRefToPath(inputImageRef.Name())
+	if err != nil {
+		return layoutPathConfig{}, err
+	}
+	targetImagePath = filepath.Join(paths.RootDir, "layout-repo", targetImagePath)
+	c.logger.Debugf("local image path %s will be mounted into the container at path %s", hostImagePath, targetImagePath)
+
+	if previousImageRef != nil && previousImageRef.Name() != "" {
+		hostPreviousImagePath, err = fullImagePath(previousImageRef, false)
+		if err != nil {
+			return layoutPathConfig{}, err
+		}
+		targetPreviousImagePath, err = layout.ParseRefToPath(previousImageRef.Name())
+		if err != nil {
+			return layoutPathConfig{}, err
+		}
+		targetPreviousImagePath = filepath.Join(paths.RootDir, "layout-repo", targetPreviousImagePath)
+		c.logger.Debugf("local previous image path %s will be mounted into the container at path %s", hostPreviousImagePath, targetPreviousImagePath)
+	}
+	return layoutPathConfig{
+		hostImagePath:           hostImagePath,
+		targetImagePath:         targetImagePath,
+		hostPreviousImagePath:   hostPreviousImagePath,
+		targetPreviousImagePath: targetPreviousImagePath,
+	}, nil
+}
+
+func (c *Client) parseReference(opts BuildOptions) (name.Reference, error) {
+	if !opts.Layout() {
+		return c.parseTagReference(opts.Image)
+	}
+	base := filepath.Base(opts.Image)
+	return c.parseTagReference(base)
 }
 
 func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
@@ -1146,4 +1270,54 @@ exit 0
 	}
 
 	return pathToInlineBuilpack, nil
+}
+
+// fullImagePath parses the inputImageReference provided by the user and creates the directory
+// structure if create value is true
+func fullImagePath(inputImageRef InputImageReference, create bool) (string, error) {
+	imagePath, err := inputImageRef.FullName()
+	if err != nil {
+		return "", errors.Wrapf(err, "evaluating image %s destination path", inputImageRef.Name())
+	}
+
+	if create {
+		if err := os.MkdirAll(imagePath, os.ModePerm); err != nil {
+			return "", errors.Wrapf(err, "creating %s layout application destination", imagePath)
+		}
+	}
+
+	return imagePath, nil
+}
+
+// appendLayoutVolumes mount host volume into the build container, in the form '<host path>:<target path>[:<options>]'
+// the volumes mounted are:
+// - The path where the user wants the image to be exported in OCI layout format
+// - The previous image path if it exits
+// - The run-image path
+func appendLayoutVolumes(volumes []string, config layoutPathConfig) []string {
+	if config.hostPreviousImagePath != "" {
+		volumes = append(volumes, readOnlyVolume(config.hostPreviousImagePath, config.targetPreviousImagePath),
+			readOnlyVolume(config.hostRunImagePath, config.targetRunImagePath),
+			writableVolume(config.hostImagePath, config.targetImagePath))
+	} else {
+		volumes = append(volumes, readOnlyVolume(config.hostRunImagePath, config.targetRunImagePath),
+			writableVolume(config.hostImagePath, config.targetImagePath))
+	}
+	return volumes
+}
+
+func writableVolume(hostPath, targetPath string) string {
+	tp := targetPath
+	if !filepath.IsAbs(targetPath) {
+		tp = filepath.Join(string(filepath.Separator), targetPath)
+	}
+	return fmt.Sprintf("%s:%s:rw", hostPath, tp)
+}
+
+func readOnlyVolume(hostPath, targetPath string) string {
+	tp := targetPath
+	if !filepath.IsAbs(targetPath) {
+		tp = filepath.Join(string(filepath.Separator), targetPath)
+	}
+	return fmt.Sprintf("%s:%s", hostPath, tp)
 }
