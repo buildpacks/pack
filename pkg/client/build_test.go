@@ -1708,6 +1708,112 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("Extensions option", func() {
+			it.Before(func() {
+				subject.experimental = true
+			})
+
+			assertOrderEquals := func(content string) {
+				t.Helper()
+
+				orderLayer, err := defaultBuilderImage.FindLayerWithPath("/cnb/order.toml")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, orderLayer, "/cnb/order.toml", h.ContentEquals(content))
+			}
+
+			it("builder order-extensions is overwritten", func() {
+				additionalEx := ifakes.CreateExtensionTar(t, tmpDir, dist.ExtensionDescriptor {
+					WithAPI: api.MustParse("0.3"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "extension.add.1.id",
+						Version: "extension.add.1.version",
+					},
+				})
+
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:      "some/app",
+					Builder:    defaultBuilderName,
+					ClearCache: true,
+					Extensions: []string{additionalEx},
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+
+				assertOrderEquals(`[[order]]
+
+  [[order.group]]
+    id = "buildpack.1.id"
+    version = "buildpack.1.version"
+
+[[order]]
+
+  [[order.group]]
+    id = "buildpack.2.id"
+    version = "buildpack.2.version"
+
+[[order-extensions]]
+
+  [[order-extensions.group]]
+    id = "extension.add.1.id"
+    version = "extension.add.1.version"
+`)
+			})
+
+			when("id - no version is provided", func() {
+				it("resolves version", func() {
+					additionalEx1 := ifakes.CreateExtensionTar(t, tmpDir, dist.ExtensionDescriptor {
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
+							ID:      "extension.add.1.id",
+							Version: "extension.add.1.version",
+						},
+					})
+
+					additionalEx2 := ifakes.CreateExtensionTar(t, tmpDir, dist.ExtensionDescriptor {
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
+							ID:      "extension.add.2.id",
+							Version: "extension.add.2.version",
+						},
+					})
+	
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    defaultBuilderName,
+						ClearCache: true,
+						Extensions: []string{additionalEx1, additionalEx2},
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    defaultBuilderName,
+						ClearCache: true,
+						Extensions: []string{"extension.add.1.id"},
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+
+					assertOrderEquals(`[[order]]
+
+  [[order.group]]
+    id = "buildpack.1.id"
+    version = "buildpack.1.version"
+
+[[order]]
+
+  [[order.group]]
+    id = "buildpack.2.id"
+    version = "buildpack.2.version"
+
+[[order-extensions]]
+
+  [[order-extensions.group]]
+    id = "extension.add.1.id"
+    version = "extension.add.1.version"
+`)
+				})
+			})
+		})
+
 		when("ProjectDescriptor", func() {
 			when("project metadata", func() {
 				when("not experimental", func() {
