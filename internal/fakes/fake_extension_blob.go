@@ -19,12 +19,12 @@ type fakeExtensionBlob struct {
 
 // NewFakeExtensionBlob creates a fake blob with contents:
 //
-//		\_ extension.toml
-//		\_ bin
-//		\_ bin/build
-//	 	build-contents
-//		\_ bin/detect
-//	 	detect-contents
+//	\_ extension.toml
+//	\_ bin
+//	\_ bin/build
+//	build-contents
+//	\_ bin/detect
+//	detect-contents
 func NewFakeExtensionBlob(descriptor buildpack.Descriptor, chmod int64) (blob.Blob, error) {
 	return &fakeExtensionBlob{
 		descriptor: descriptor,

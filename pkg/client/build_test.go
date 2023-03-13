@@ -1722,7 +1722,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			it("builder order-extensions is overwritten", func() {
-				additionalEx := ifakes.CreateExtensionTar(t, tmpDir, dist.ExtensionDescriptor {
+				additionalEx := ifakes.CreateExtensionTar(t, tmpDir, dist.ExtensionDescriptor{
 					WithAPI: api.MustParse("0.3"),
 					WithInfo: dist.ModuleInfo{
 						ID:      "extension.add.1.id",
@@ -1760,7 +1760,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			when("id - no version is provided", func() {
 				it("resolves version", func() {
-					additionalEx1 := ifakes.CreateExtensionTar(t, tmpDir, dist.ExtensionDescriptor {
+					additionalEx1 := ifakes.CreateExtensionTar(t, tmpDir, dist.ExtensionDescriptor{
 						WithAPI: api.MustParse("0.3"),
 						WithInfo: dist.ModuleInfo{
 							ID:      "extension.add.1.id",
@@ -1768,14 +1768,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 					})
 
-					additionalEx2 := ifakes.CreateExtensionTar(t, tmpDir, dist.ExtensionDescriptor {
+					additionalEx2 := ifakes.CreateExtensionTar(t, tmpDir, dist.ExtensionDescriptor{
 						WithAPI: api.MustParse("0.3"),
 						WithInfo: dist.ModuleInfo{
 							ID:      "extension.add.2.id",
 							Version: "extension.add.2.version",
 						},
 					})
-	
+
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:      "some/app",
 						Builder:    defaultBuilderName,
