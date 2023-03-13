@@ -62,7 +62,7 @@ func NewInfoDisplay(info *client.ImageInfo, generalInfo GeneralInfo) *InfoDispla
 		return &InfoDisplay{
 			StackID:         info.StackID,
 			Base:            displayBase(info.Base),
-			RunImageMirrors: displayMirrors(nil, generalInfo),
+			RunImageMirrors: displayMirrors(info, generalInfo),
 			Buildpacks:      displayBuildpacks(info.Buildpacks),
 			Extensions:      displayExtensions(info.Extensions),
 			Processes:       displayProcesses(info.Processes),

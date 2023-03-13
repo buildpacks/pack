@@ -2,6 +2,7 @@ package buildpack
 
 import (
 	"io"
+	"sync"
 
 	"github.com/pkg/errors"
 
@@ -14,7 +15,25 @@ type Package interface {
 	GetLayer(diffID string) (io.ReadCloser, error)
 }
 
+type syncPkg struct {
+	mu  sync.Mutex
+	pkg Package
+}
+
+func (s *syncPkg) Label(name string) (value string, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.pkg.Label(name)
+}
+
+func (s *syncPkg) GetLayer(diffID string) (io.ReadCloser, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.pkg.GetLayer(diffID)
+}
+
 func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, err error) {
+	pkg = &syncPkg{pkg: pkg}
 	md := &Metadata{}
 	if found, err := dist.GetLabel(pkg, MetadataLabel, md); err != nil {
 		return nil, nil, err

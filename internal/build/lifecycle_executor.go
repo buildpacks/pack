@@ -29,6 +29,8 @@ var (
 		api.MustParse("0.8"),
 		api.MustParse("0.9"),
 		api.MustParse("0.10"),
+		api.MustParse("0.11"),
+		api.MustParse("0.12"),
 	}
 )
 
@@ -79,6 +81,7 @@ type LifecycleOptions struct {
 	TrustBuilder         bool
 	UseCreator           bool
 	Interactive          bool
+	Layout               bool
 	Termui               Termui
 	DockerHost           string
 	Cache                cache.CacheOpts

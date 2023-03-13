@@ -127,6 +127,7 @@ jobs:
       - name: Upload Coverage
         uses: codecov/codecov-action@v3
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           file: ./out/tests/coverage-unit.txt
           flags: unit,os_${{ matrix.os }}
           fail_ci_if_error: true

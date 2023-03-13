@@ -7,6 +7,9 @@ import (
 	"io"
 	"strings"
 
+	"github.com/buildpacks/imgutil/layout"
+	"github.com/buildpacks/imgutil/layout/sparse"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
@@ -26,6 +29,11 @@ import (
 // FetcherOption is a type of function that mutate settings on the client.
 // Values in these functions are set through currying.
 type FetcherOption func(c *Fetcher)
+
+type LayoutOption struct {
+	Path   string
+	Sparse bool
+}
 
 // WithRegistryMirrors supply your own mirrors for registry.
 func WithRegistryMirrors(registryMirrors map[string]string) FetcherOption {
@@ -53,9 +61,10 @@ type Fetcher struct {
 }
 
 type FetchOptions struct {
-	Daemon     bool
-	Platform   string
-	PullPolicy PullPolicy
+	Daemon       bool
+	Platform     string
+	PullPolicy   PullPolicy
+	LayoutOption LayoutOption
 }
 
 func NewFetcher(logger logging.Logger, docker DockerClient, opts ...FetcherOption) *Fetcher {
@@ -78,6 +87,10 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 	name, err := pname.TranslateRegistry(name, f.registryMirrors, f.logger)
 	if err != nil {
 		return nil, err
+	}
+
+	if (options.LayoutOption != LayoutOption{}) {
+		return f.fetchLayoutImage(name, options.LayoutOption)
 	}
 
 	if !options.Daemon {
@@ -125,6 +138,35 @@ func (f *Fetcher) fetchRemoteImage(name string) (imgutil.Image, error) {
 
 	if !image.Found() {
 		return nil, errors.Wrapf(ErrNotFound, "image %s does not exist in registry", style.Symbol(name))
+	}
+
+	return image, nil
+}
+
+func (f *Fetcher) fetchLayoutImage(name string, options LayoutOption) (imgutil.Image, error) {
+	var (
+		image imgutil.Image
+		err   error
+	)
+
+	v1Image, err := remote.NewV1Image(name, f.keychain)
+	if err != nil {
+		return nil, err
+	}
+
+	if options.Sparse {
+		image, err = sparse.NewImage(options.Path, v1Image)
+	} else {
+		image, err = layout.NewImage(options.Path, layout.FromBaseImage(v1Image))
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = image.Save()
+	if err != nil {
+		return nil, err
 	}
 
 	return image, nil

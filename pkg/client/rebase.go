@@ -86,7 +86,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 
 	c.logger.Infof("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
 	rebaser := &lifecycle.Rebaser{Logger: c.logger, PlatformAPI: build.SupportedPlatformAPIVersions.Latest()}
-	report, err := rebaser.Rebase(appImage, baseImage, nil)
+	report, err := rebaser.Rebase(appImage, baseImage, appImage.Name(), nil)
 	if err != nil {
 		return err
 	}
