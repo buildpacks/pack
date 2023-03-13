@@ -1788,7 +1788,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						Image:      "some/app",
 						Builder:    defaultBuilderName,
 						ClearCache: true,
-						Extensions: []string{"extension.add.1.id"},
+						Extensions: []string{"extension.add.2.id"},
 					}))
 					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
 
@@ -1807,8 +1807,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 [[order-extensions]]
 
   [[order-extensions.group]]
-    id = "extension.add.1.id"
-    version = "extension.add.1.version"
+    id = "extension.add.2.id"
+    version = "extension.add.2.version"
 `)
 				})
 			})
