@@ -111,13 +111,15 @@ func testDownloadSBOM(t *testing.T, when spec.G, it spec.S) {
 	when("the image doesn't exist", func() {
 		it("returns nil", func() {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/non-existent-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(nil, image.ErrNotFound)
-
+	
 			err := subject.DownloadSBOM("some/non-existent-image", DownloadSBOMOptions{Daemon: true, DestinationDir: ""})
-			h.AssertError(t, err, "image 'some/non-existent-image' cannot be found")
-			h.AssertContains(t, out.String(), "if image is saved on a registry run with the flag '--remote', for example: 'pack sbom download --remote %s' before downloading the SBoM\n")
+			expectedError := fmt.Sprintf("image '%s' cannot be found", "some/non-existent-image")
+			h.AssertError(t, err, expectedError)
+	
+			expectedMessage := fmt.Sprintf("Warning: if the image is saved on a registry run with the flag '--remote', for example: 'pack sbom download --remote %s'", "some/non-existent-image")
+			h.AssertContains(t, out.String(), expectedMessage)
 		})
 	})
-
 	when("there is an error fetching the image", func() {
 		it("returns the error", func() {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/image", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(nil, errors.New("some-error"))
