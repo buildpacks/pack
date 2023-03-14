@@ -21,7 +21,7 @@ func DownloadSBOM(
 		Use:     "download <image-name>",
 		Args:    cobra.ExactArgs(1),
 		Short:   "Download SBoM from specified image",
-		Long:    "Download layer containing Structured Bill of Materials (SBoM) from specified image",
+		Long:    "Download layer containing structured Software Bill of Materials (SBoM) from specified image",
 		Example: "pack sbom download buildpacksio/pack",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			img := args[0]

@@ -135,7 +135,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
   }
 }`,
 		))
-		h.AssertNil(t, mockImage.SetLabel(
+		h.AssertNil(t, mockImageWithExtension.SetLabel(
 			"io.buildpacks.build.metadata",
 			`{
   "bom": [
@@ -194,9 +194,11 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 			when(fmt.Sprintf("daemon is %t", useDaemon), func() {
 				it.Before(func() {
 					if useDaemon {
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/image", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(mockImage, nil)
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/image", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(mockImage, nil).AnyTimes()
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/imageWithExtension", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(mockImageWithExtension, nil).AnyTimes()
 					} else {
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/image", image.FetchOptions{Daemon: false, PullPolicy: image.PullNever}).Return(mockImage, nil)
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/image", image.FetchOptions{Daemon: false, PullPolicy: image.PullNever}).Return(mockImage, nil).AnyTimes()
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/imageWithExtension", image.FetchOptions{Daemon: false, PullPolicy: image.PullNever}).Return(mockImageWithExtension, nil).AnyTimes()
 					}
 				})
 
