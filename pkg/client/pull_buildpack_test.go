@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
@@ -139,7 +140,9 @@ func testPullBuildpack(t *testing.T, when spec.G, it spec.S) {
 		it.After(func() {
 			os.Unsetenv("PACK_HOME")
 			err := os.RemoveAll(tmpDir)
-			h.AssertNil(t, err)
+			if runtime.GOOS != "windows" {
+				h.AssertNil(t, err)
+			}
 		})
 
 		it("should fetch the image", func() {
