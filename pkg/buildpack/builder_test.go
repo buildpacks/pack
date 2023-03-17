@@ -584,6 +584,48 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, osVal, "linux")
 		})
 
+		it("sets extension metadata", func() {
+			extension1, err := ifakes.NewFakeExtension(dist.ExtensionDescriptor{
+				WithAPI: api.MustParse("0.2"),
+				WithInfo: dist.ModuleInfo{
+					ID:          "ex.1.id",
+					Version:     "ex.1.version",
+					Name:        "One",
+					Description: "some description",
+					Homepage:    "https://example.com/homepage",
+					Keywords:    []string{"some-keyword"},
+					Licenses: []dist.License{
+						{
+							Type: "MIT",
+							URI:  "https://example.com/license",
+						},
+					},
+				},
+			}, 0644)
+			h.AssertNil(t, err)
+			builder := buildpack.NewBuilder(mockImageFactory("linux"))
+			builder.SetExtension(extension1)
+			packageImage, err := builder.SaveAsImage("some/package", false, "linux")
+			h.AssertNil(t, err)
+			labelData, err := packageImage.Label("io.buildpacks.buildpackage.metadata")
+			h.AssertNil(t, err)
+			var md buildpack.Metadata
+			h.AssertNil(t, json.Unmarshal([]byte(labelData), &md))
+
+			h.AssertEq(t, md.ID, "ex.1.id")
+			h.AssertEq(t, md.Version, "ex.1.version")
+			h.AssertEq(t, md.Keywords[0], "some-keyword")
+			h.AssertEq(t, md.Homepage, "https://example.com/homepage")
+			h.AssertEq(t, md.Name, "One")
+			h.AssertEq(t, md.Description, "some description")
+			h.AssertEq(t, md.Licenses[0].Type, "MIT")
+			h.AssertEq(t, md.Licenses[0].URI, "https://example.com/license")
+
+			osVal, err := packageImage.OS()
+			h.AssertNil(t, err)
+			h.AssertEq(t, osVal, "linux")
+		})
+
 		it("sets buildpack layers label", func() {
 			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				WithAPI:    api.MustParse("0.2"),
