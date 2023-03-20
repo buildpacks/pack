@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"path/filepath"
 	"strconv"
 
 	"github.com/buildpacks/lifecycle/api"
@@ -333,7 +334,15 @@ func (l *LifecycleExecution) Create(ctx context.Context, buildCache, launchCache
 		withEnv,
 	}
 
-	if l.opts.Publish {
+	if l.opts.Layout {
+		var err error
+		opts, err = l.appendLayoutOperations(opts)
+		if err != nil {
+			return err
+		}
+	}
+
+	if l.opts.Publish || l.opts.Layout {
 		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
@@ -740,6 +749,12 @@ func (l *LifecycleExecution) withLogLevel(args ...string) []string {
 
 func (l *LifecycleExecution) hasExtensions() bool {
 	return len(l.opts.Builder.OrderExtensions()) > 0
+}
+
+func (l *LifecycleExecution) appendLayoutOperations(opts []PhaseConfigProviderOperation) ([]PhaseConfigProviderOperation, error) {
+	layoutDir := filepath.Join(paths.RootDir, "layout-repo")
+	opts = append(opts, WithEnv("CNB_USE_LAYOUT=true", "CNB_LAYOUT_DIR="+layoutDir, "CNB_EXPERIMENTAL_MODE=warn"))
+	return opts, nil
 }
 
 func prependArg(arg string, args []string) []string {

@@ -22,6 +22,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/internal/paths"
+
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
 	"github.com/buildpacks/pack/internal/cache"
@@ -48,6 +50,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		providedClearCache     bool
 		providedPublish        bool
 		providedUseCreator     bool
+		providedLayout         bool
 		providedDockerHost     string
 		providedNetworkMode    = "some-network-mode"
 		providedRunImage       = "some-run-image"
@@ -81,6 +84,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		opts.RunImage = providedRunImage
 		opts.UseCreator = providedUseCreator
 		opts.Volumes = providedVolumes
+		opts.Layout = providedLayout
 
 		targetImageRef, err := name.ParseReference(providedTargetImage)
 		h.AssertNil(t, err)
@@ -1104,6 +1108,18 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						// no-op
 					})
 				})
+			})
+		})
+
+		when("layout", func() {
+			providedLayout = true
+			layoutRepo := filepath.Join(paths.RootDir, "layout-repo")
+			platformAPI = api.MustParse("0.12")
+
+			it("configures the phase with oci layout environment variables", func() {
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_USE_LAYOUT=true")
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, fmt.Sprintf("CNB_LAYOUT_DIR=%s", layoutRepo))
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
 			})
 		})
 	})
