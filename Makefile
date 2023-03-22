@@ -1,7 +1,7 @@
 ifeq ($(OS),Windows_NT)
 SHELL:=cmd.exe
 
-# Need BLANK due to makefile parsing of `\\`
+# Need BLANK due to makefile parsing of `\`
 # (see: <https://stackoverflow.com/questions/54733231/how-to-escape-a-backslash-in-the-end-to-mean-literal-backslash-in-makefile/54733416#54733416>)
 BLANK:=
 
@@ -52,9 +52,10 @@ export CGO_ENABLED=0
 BINDIR:=/usr/bin/
 
 .DEFAULT_GOAL := build
-.PHONY: clean build format imports lint test unit acceptance prepare-for-pr verify verify-format benchmark 
 
-## bUild: Build the program
+# this target must be listed first in order for it to be a default target,
+# so that ubuntu_ppa's may be constructed using default build tools.
+## build: Build the program
 build: out
 	@echo "=====> Building..."
 	$(GOCMD) build -ldflags "-s -w -X 'github.com/buildpacks/pack.Version=${PACK_VERSION}' -extldflags ${LDFLAGS}" -trimpath -o ./out/$(PACK_BIN) -a ./cmd/pack
@@ -87,8 +88,14 @@ lint: install-golangci-lint
 test: unit acceptance
 
 ## unit: Run unit tests
+ifeq ($(TEST_COVERAGE), 1)
+unit: GOTESTFLAGS:=$(GOTESTFLAGS) -coverprofile=./out/tests/coverage-unit.txt -covermode=atomic
+endif
+ifeq ($(NO_DOCKER),)
+unit: GOTESTFLAGS:=$(GOTESTFLAGS) --tags=example
+endif
 unit: out
-	@echo "=====> Running unit/integration tests..."
+	@echo "> Running unit/integration tests..."
 	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(UNIT_TIMEOUT) ./...
 
 ## acceptance: Run acceptance tests
@@ -104,14 +111,14 @@ acceptance-all:
 
 ## prepare-for-pr: Run clean, verify, and test operations and check for uncommitted changes
 prepare-for-pr: tidy verify test
-	@git diff-index --quiet HEAD -- ||\\
-	(echo "-----------------" &&\\
-	echo "NOTICE: There are some files that have not been committed." &&\\
-	echo "-----------------\\n" &&\\
-	git status &&\\
-	echo "\\n-----------------" &&\\
-	echo "NOTICE: There are some files that have not been committed." &&\\
-	echo "-----------------\\n"  &&\\
+	@git diff-index --quiet HEAD -- ||\
+	(echo "-----------------" &&\
+	echo "NOTICE: There are some files that have not been committed." &&\
+	echo "-----------------\n" &&\
+	git status &&\
+	echo "\n-----------------" &&\
+	echo "NOTICE: There are some files that have not been committed." &&\
+	echo "-----------------\n"  &&\
 	exit 0)
 
 ## verify: Run format and lint checks
@@ -126,6 +133,10 @@ verify-format: install-goimports
 benchmark: out
 	@echo "=====> Running benchmarks"
 	$(GOCMD) test -run=^$  -bench=. -benchtime=1s -benchmem -memprofile=./out/bench_mem.out -cpuprofile=./out/bench_cpu.out -tags=benchmarks ./benchmarks/ -v
+# NOTE: You can analyze the results, using go tool pprof. For instance, you can start a server to see a graph of the cpu usage by running
+# go tool pprof -http=":8082" out/bench_cpu.out. Alternatively, you can run go tool pprof, and in the ensuing cli, run
+# commands like top10 or web to dig down into the cpu and memory usage
+# For more, see https://blog.golang.org/pprof
 
 ## package: Package the program
 package: out
@@ -159,12 +170,13 @@ mod-tidy:
 ## tidy: Tidy modules and format the code
 tidy: mod-tidy format
 
+# NOTE: Windows doesn't support `-p`
 ## out: Make a directory for output
 out:
 	@mkdir out || (exit 0)
 	mkdir out$/tests || (exit 0)
 
-# Display help information
+## help: Display help information
 help: Makefile
 	@echo ""
 	@echo "Usage:"
@@ -175,3 +187,5 @@ help: Makefile
 	@echo ""
 	@awk -F ':|##' '/^[^\.%\t][^\t]*:.*##/{printf "  \033[36m%-20s\033[0m %s\n", $$1, $$NF}' $(MAKEFILE_LIST) | sort
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' |  sed -e 's/^/ /'
+
+.PHONY: clean build format imports lint test unit acceptance prepare-for-pr verify verify-format benchmark 
