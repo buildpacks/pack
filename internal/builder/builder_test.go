@@ -1563,7 +1563,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("#SetRunImage", func() {
 			it.Before(func() {
-				subject.SetRunImage(pubbldr.RunConfig{[]pubbldr.RunImageConfig{{
+				subject.SetRunImage(pubbldr.RunConfig{Images: []pubbldr.RunImageConfig{{
 					Image:   "some/run",
 					Mirrors: []string{"some/mirror", "other/mirror"},
 				}}})
