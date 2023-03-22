@@ -2,7 +2,7 @@ ifeq ($(OS),Windows_NT)
 SHELL:=cmd.exe
 
 # Need BLANK due to makefile parsing of `\`
-# (see: <https://stackoverflow.com/questions/54733231/how-to-escape-a-backslash-in-the-end-to-mean-literal-backslash-in-makefile/54733416#54733416>)
+# (see: https://stackoverflow.com/questions/54733231/how-to-escape-a-backslash-in-the-end-to-mean-literal-backslash-in-makefile/54733416#54733416)
 BLANK:=
 
 # Define variable named `/` to represent OS path separator (usable as `$/` in this file)
@@ -87,7 +87,7 @@ lint: install-golangci-lint
 ## test: Run unit and acceptance tests
 test: unit acceptance
 
-## unit: Run unit tests
+## unit: Append coverage arguments
 ifeq ($(TEST_COVERAGE), 1)
 unit: GOTESTFLAGS:=$(GOTESTFLAGS) -coverprofile=./out/tests/coverage-unit.txt -covermode=atomic
 endif
