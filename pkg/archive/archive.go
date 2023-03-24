@@ -5,6 +5,7 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -16,6 +17,7 @@ import (
 )
 
 var NormalizedDateTime time.Time
+var Umask fs.FileMode
 
 func init() {
 	NormalizedDateTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
@@ -171,6 +173,9 @@ func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int
 			Typeflag: tar.TypeDir,
 			Name:     basePath,
 			Mode:     mode,
+		}
+		if rootHeader.Mode == -1 {
+			rootHeader.Mode = int64(fs.ModePerm &^ Umask)
 		}
 		finalizeHeader(rootHeader, uid, gid, mode, normalizeModTime)
 		if err := tw.WriteHeader(rootHeader); err != nil {
