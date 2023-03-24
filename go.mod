@@ -13,7 +13,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gdamore/tcell/v2 v2.6.0
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-git/go-git/v5 v5.6.0
+	github.com/go-git/go-git/v5 v5.6.1
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.13.0
@@ -49,8 +49,8 @@ require (
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/Microsoft/hcsshim v0.9.6 // indirect
-	github.com/ProtonMail/go-crypto v0.0.0-20221026131551-cf6655e29de4 // indirect
-	github.com/acomagu/bufpipe v1.0.3 // indirect
+	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
+	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.17.3 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.18.9 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.9 // indirect
@@ -79,7 +79,7 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
-	github.com/go-git/go-billy/v5 v5.4.0 // indirect
+	github.com/go-git/go-billy/v5 v5.4.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.3 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
