@@ -236,7 +236,7 @@ func WriteRunToml(dstPath string, runImages []builder.RunImageMetadata, os strin
 			Images: runImages,
 		})
 		if err != nil {
-			return errors.Wrap(err, "marshaling stack metadata")
+			return errors.Wrap(err, "marshaling run metadata")
 		}
 
 		tarBuilder := archive.TarBuilder{}
