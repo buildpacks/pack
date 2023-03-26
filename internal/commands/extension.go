@@ -19,7 +19,7 @@ func NewExtensionCommand(logger logging.Logger, cfg config.Config, client PackCl
 	// client and packageConfigReader to be passed later on
 	cmd.AddCommand(ExtensionPackage(logger, cfg))
 	// client to be passed later on
-	cmd.AddCommand(ExtensionNew(logger))
+	cmd.AddCommand(ExtensionNew(logger, client))
 	cmd.AddCommand(ExtensionPull(logger, cfg, client))
 	cmd.AddCommand(ExtensionRegister(logger, cfg, client))
 	cmd.AddCommand(ExtensionYank(logger, cfg, client))

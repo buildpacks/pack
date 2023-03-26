@@ -31,6 +31,7 @@ type PackClient interface {
 	InspectExtension(client.InspectExtensionOptions) (*client.ExtensionInfo, error)
 	PullBuildpack(context.Context, client.PullBuildpackOptions) error
 	DownloadSBOM(name string, options client.DownloadSBOMOptions) error
+	CreateExtension(context.Context, client.CreateExtensionOptions) error
 }
 
 func AddHelpFlag(cmd *cobra.Command, commandName string) {
