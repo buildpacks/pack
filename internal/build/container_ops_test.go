@@ -181,7 +181,7 @@ drwxrwxrwx    2 123      456 (.*) some-vol
 					} else {
 						// Expected results
 						h.AssertContainsMatch(t, outBuf.String(), `
-drwsrwsrwt    2 123      456 (.*) some-vol
+drwxr-xr-x    2 123      456 (.*) some-vol
 `)
 					}
 				}
