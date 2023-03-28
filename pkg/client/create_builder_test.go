@@ -167,10 +167,16 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						}},
 					},
 					Stack: pubbldr.StackConfig{
-						ID:              "some.stack.id",
-						BuildImage:      "some/build-image",
-						RunImage:        "some/run-image",
-						RunImageMirrors: []string{"localhost:5000/some/run-image"},
+						ID: "some.stack.id",
+					},
+					Run: pubbldr.RunConfig{
+						Images: []pubbldr.RunImageConfig{{
+							Image:   "some/run-image",
+							Mirrors: []string{"localhost:5000/some/run-image"},
+						}},
+					},
+					Build: pubbldr.BuildConfig{
+						Image: "some/build-image",
 					},
 					Lifecycle: pubbldr.LifecycleConfig{URI: "file:///some-lifecycle"},
 				},
@@ -201,12 +207,14 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		when("validating the builder config", func() {
-			it("should fail when the stack ID is empty", func() {
+			it("should not fail when the stack ID is empty", func() {
 				opts.Config.Stack.ID = ""
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
 
 				err := subject.CreateBuilder(context.TODO(), opts)
 
-				h.AssertError(t, err, "stack.id is required")
+				h.AssertNil(t, err)
 			})
 
 			it("should fail when the stack ID from the builder config does not match the stack ID from the build image", func() {
@@ -219,20 +227,56 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertError(t, err, "stack 'some.stack.id' from builder config is incompatible with stack 'other.stack.id' from build image")
 			})
 
-			it("should fail when the build image is empty", func() {
+			it("should not fail when the stack is empty", func() {
+				opts.Config.Stack.ID = ""
 				opts.Config.Stack.BuildImage = ""
+				opts.Config.Stack.RunImage = ""
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
 
 				err := subject.CreateBuilder(context.TODO(), opts)
 
-				h.AssertError(t, err, "stack.build-image is required")
+				h.AssertNil(t, err)
 			})
 
-			it("should fail when the run image is empty", func() {
+			it("should fail when the run images and stack are empty", func() {
+				opts.Config.Stack.BuildImage = ""
 				opts.Config.Stack.RunImage = ""
+
+				opts.Config.Run = pubbldr.RunConfig{}
 
 				err := subject.CreateBuilder(context.TODO(), opts)
 
-				h.AssertError(t, err, "stack.run-image is required")
+				h.AssertError(t, err, "run.images are required")
+			})
+
+			it("should fail when the run images image and stack are empty", func() {
+				opts.Config.Stack.BuildImage = ""
+				opts.Config.Stack.RunImage = ""
+
+				opts.Config.Run = pubbldr.RunConfig{
+					Images: []pubbldr.RunImageConfig{{}},
+				}
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+
+				h.AssertError(t, err, "run.images.image is required")
+			})
+
+			it("should fail if stack and run image are different", func() {
+				opts.Config.Stack.RunImage = "some-other-stack-run-image"
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+
+				h.AssertError(t, err, "run.images and stack.run-image do not match")
+			})
+
+			it("should fail if stack and build image are different", func() {
+				opts.Config.Stack.BuildImage = "some-other-stack-build-image"
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+
+				h.AssertError(t, err, "build.image and stack.build-image do not match")
 			})
 
 			it("should fail when lifecycle version is not a semver", func() {

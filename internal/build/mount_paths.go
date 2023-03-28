@@ -38,6 +38,10 @@ func (m mountPaths) stackPath() string {
 	return m.join(m.layersDir(), "stack.toml")
 }
 
+func (m mountPaths) runPath() string {
+	return m.join(m.layersDir(), "run.toml")
+}
+
 func (m mountPaths) projectPath() string {
 	return m.join(m.layersDir(), "project-metadata.toml")
 }
