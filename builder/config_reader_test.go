@@ -166,13 +166,13 @@ uri = "noop-buildpack.tgz"
 			testBuildImage = "test-build-image"
 		)
 
-		it("returns error if no id", func() {
+		it("returns error if no stack id and no run images", func() {
 			config := builder.Config{
 				Stack: builder.StackConfig{
 					BuildImage: testBuildImage,
 					RunImage:   testRunImage,
 				}}
-			h.AssertError(t, builder.ValidateConfig(config), "stack.id is required")
+			h.AssertError(t, builder.ValidateConfig(config), "run.images are required")
 		})
 
 		it("returns error if no build image", func() {
@@ -181,7 +181,7 @@ uri = "noop-buildpack.tgz"
 					ID:       testID,
 					RunImage: testRunImage,
 				}}
-			h.AssertError(t, builder.ValidateConfig(config), "stack.build-image is required")
+			h.AssertError(t, builder.ValidateConfig(config), "build.image is required")
 		})
 
 		it("returns error if no run image", func() {
@@ -190,7 +190,43 @@ uri = "noop-buildpack.tgz"
 					ID:         testID,
 					BuildImage: testBuildImage,
 				}}
-			h.AssertError(t, builder.ValidateConfig(config), "stack.run-image is required")
+			h.AssertError(t, builder.ValidateConfig(config), "run.images are required")
+		})
+
+		it("returns error if no run images image", func() {
+			config := builder.Config{
+				Build: builder.BuildConfig{
+					Image: testBuildImage,
+				},
+				Run: builder.RunConfig{
+					Images: []builder.RunImageConfig{{
+						Image: "",
+					}},
+				}}
+			h.AssertError(t, builder.ValidateConfig(config), "run.images.image is required")
+		})
+
+		it("returns error if no stack or run image", func() {
+			config := builder.Config{
+				Build: builder.BuildConfig{
+					Image: testBuildImage,
+				}}
+			h.AssertError(t, builder.ValidateConfig(config), "run.images are required")
+		})
+
+		it("returns error if no stack and no build image", func() {
+			config := builder.Config{
+				Run: builder.RunConfig{
+					Images: []builder.RunImageConfig{{
+						Image: testBuildImage,
+					}},
+				}}
+			h.AssertError(t, builder.ValidateConfig(config), "build.image is required")
+		})
+
+		it("returns error if no stack, run, or build image", func() {
+			config := builder.Config{}
+			h.AssertError(t, builder.ValidateConfig(config), "build.image is required")
 		})
 	})
 }
