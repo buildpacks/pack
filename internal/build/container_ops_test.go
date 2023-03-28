@@ -404,6 +404,102 @@ drwxr-xr-x    2 123      456 (.*) some-vol
 		})
 	})
 
+	when("#WriteRunToml", func() {
+		it("writes file", func() {
+			containerDir := "/layers-vol"
+			containerPath := "/layers-vol/run.toml"
+			if osType == "windows" {
+				containerDir = `c:\layers-vol`
+				containerPath = `c:\layers-vol\run.toml`
+			}
+
+			ctrCmd := []string{"ls", "-al", "/layers-vol/run.toml"}
+			if osType == "windows" {
+				ctrCmd = []string{"cmd", "/c", `dir /q /n c:\layers-vol\run.toml`}
+			}
+			ctx := context.Background()
+			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
+			h.AssertNil(t, err)
+			defer cleanupContainer(ctx, ctr.ID)
+
+			writeOp := build.WriteRunToml(containerPath, []builder.RunImageMetadata{builder.RunImageMetadata{
+				Image: "image-1",
+				Mirrors: []string{
+					"mirror-1",
+					"mirror-2",
+				},
+			},
+			}, osType)
+
+			var outBuf, errBuf bytes.Buffer
+			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
+			h.AssertNil(t, err)
+
+			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(&outBuf, &errBuf))
+			h.AssertNil(t, err)
+
+			h.AssertEq(t, errBuf.String(), "")
+			if osType == "windows" {
+				h.AssertContains(t, outBuf.String(), `01/01/1980  12:00 AM                68 ...                    run.toml`)
+			} else {
+				h.AssertContains(t, outBuf.String(), `-rwxr-xr-x    1 root     root            68 Jan  1  1980 /layers-vol/run.toml`)
+			}
+		})
+
+		it("has expected contents", func() {
+			containerDir := "/layers-vol"
+			containerPath := "/layers-vol/run.toml"
+			if osType == "windows" {
+				containerDir = `c:\layers-vol`
+				containerPath = `c:\layers-vol\run.toml`
+			}
+
+			ctrCmd := []string{"cat", "/layers-vol/run.toml"}
+			if osType == "windows" {
+				ctrCmd = []string{"cmd", "/c", `type c:\layers-vol\run.toml`}
+			}
+
+			ctx := context.Background()
+			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
+			h.AssertNil(t, err)
+			defer cleanupContainer(ctx, ctr.ID)
+
+			writeOp := build.WriteRunToml(containerPath, []builder.RunImageMetadata{
+				{
+					Image: "image-1",
+					Mirrors: []string{
+						"mirror-1",
+						"mirror-2",
+					},
+				},
+				{
+					Image: "image-2",
+					Mirrors: []string{
+						"mirror-3",
+						"mirror-4",
+					},
+				},
+			}, osType)
+
+			var outBuf, errBuf bytes.Buffer
+			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
+			h.AssertNil(t, err)
+
+			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(&outBuf, &errBuf))
+			h.AssertNil(t, err)
+
+			h.AssertEq(t, errBuf.String(), "")
+			h.AssertContains(t, outBuf.String(), `[[images]]
+  image = "image-1"
+  mirrors = ["mirror-1", "mirror-2"]
+
+[[images]]
+  image = "image-2"
+  mirrors = ["mirror-3", "mirror-4"]
+`)
+		})
+	})
+
 	when("#WriteProjectMetadata", func() {
 		it("writes file", func() {
 			containerDir := "/layers-vol"

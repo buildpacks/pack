@@ -527,6 +527,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 	}
 
 	stackOp := NullOp()
+	runOp := NullOp()
 	if !platformAPILessThan07 {
 		for _, tag := range l.opts.AdditionalTags {
 			args = append([]string{"-tag", tag}, args...)
@@ -536,6 +537,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 		}
 		args = append([]string{"-stack", l.mountPaths.stackPath()}, args...)
 		stackOp = WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os))
+		runOp = WithContainerOperations(WriteRunToml(l.mountPaths.runPath(), l.opts.Builder.RunImages(), l.os))
 	}
 
 	flagsOp := WithFlags(flags...)
@@ -560,6 +562,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 			flagsOp,
 			cacheBindOp,
 			stackOp,
+			runOp,
 		)
 
 		analyze = phaseFactory.New(configProvider)
@@ -581,6 +584,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 			WithNetwork(l.opts.Network),
 			cacheBindOp,
 			stackOp,
+			runOp,
 		)
 
 		analyze = phaseFactory.New(configProvider)
@@ -695,6 +699,7 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		WithNetwork(l.opts.Network),
 		cacheBindOp,
 		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os)),
+		WithContainerOperations(WriteRunToml(l.mountPaths.runPath(), l.opts.Builder.RunImages(), l.os)),
 		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
 		If(l.opts.SBOMDestinationDir != "", WithPostContainerRunOperations(
 			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
