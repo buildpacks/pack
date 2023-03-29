@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/go-git/go-git/v5"
@@ -168,6 +170,7 @@ func (r *Cache) Initialize() error {
 
 // CreateCache creates the cache on the filesystem
 func (r *Cache) CreateCache() error {
+	var repository *git.Repository
 	r.logger.Debugf("Creating registry cache for %s/%s", r.url.Host, r.url.Path)
 
 	registryDir, err := os.MkdirTemp(filepath.Dir(r.Root), "registry")
@@ -177,11 +180,23 @@ func (r *Cache) CreateCache() error {
 
 	r.RegistryDir = registryDir
 
-	repository, err := git.PlainClone(r.RegistryDir, false, &git.CloneOptions{
-		URL: r.url.String(),
-	})
-	if err != nil {
-		return errors.Wrap(err, "cloning remote registry")
+	if strings.Contains(r.url.String(), "dev.azure.com/") {
+		err = exec.Command("git", "clone", r.url.String(), r.RegistryDir).Run()
+		if err != nil {
+			return errors.Wrap(err, "cloning remote registry")
+		}
+
+		repository, err = git.PlainOpen(r.RegistryDir)
+		if err != nil {
+			return errors.Wrap(err, "opening remote registry clone")
+		}
+	} else {
+		repository, err = git.PlainClone(r.RegistryDir, false, &git.CloneOptions{
+			URL: r.url.String(),
+		})
+		if err != nil {
+			return errors.Wrap(err, "cloning remote registry")
+		}
 	}
 
 	w, err := repository.Worktree()
