@@ -518,7 +518,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.ModuleLayers) error {
 	collectionToAdd := map[string]toAdd{}
-
+	var err error
 	type modInfo struct {
 		info     dist.ModuleInfo
 		layerTar string
@@ -535,7 +535,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 		go func(i int, module buildpack.BuildModule) {
 			// create directory
 			modTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s", kind, strconv.Itoa(i)))
-			if err := os.MkdirAll(modTmpDir, os.ModePerm); err != nil {
+			if err = os.MkdirAll(modTmpDir, os.ModePerm); err != nil {
 				lids[i] <- modInfo{err: errors.Wrapf(err, "creating %s temp dir", kind)}
 			}
 
@@ -610,7 +610,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 	// Let's squash build modules
 	for i, flattenModules := range b.FlattenModules(kind) {
 		modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-flatten-%s", kind, strconv.Itoa(i)))
-		if err := os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
+		if err = os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
 			return errors.Wrap(err, "creating flatten temp dir")
 		}
 		flattenTarFilePath := filepath.Join(modFlattenTmpDir, fmt.Sprintf("%s-flatten-%s.tar", kind, strconv.Itoa(i)))
@@ -621,12 +621,15 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 			tarsPath = append(tarsPath, m.tarPath)
 		}
 
-		err := flatten.MergeTars(flattenTarFilePath, tarsPath)
+		err = flatten.MergeTars(flattenTarFilePath, tarsPath)
 		if err != nil {
 			return errors.Wrap(err, "merging modules tar files")
 		}
 
 		diffID, err := dist.LayerDiffID(flattenTarFilePath)
+		if err != nil {
+			return errors.Wrapf(err, "adding layer %s", flattenTarFilePath)
+		}
 
 		// Update the diffId and tar path for each module squashed
 		for _, module := range flattenModules {
@@ -653,7 +656,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 		}
 		if addLayer {
 			logger.Debugf("Adding %s %s (diffID=%s)", kind, style.Symbol(module.module.Descriptor().Info().FullName()), module.diffID)
-			if err := image.AddLayerWithDiffID(module.tarPath, module.diffID); err != nil {
+			if err = image.AddLayerWithDiffID(module.tarPath, module.diffID); err != nil {
 				return errors.Wrapf(err,
 					"adding layer tar for %s %s",
 					kind,

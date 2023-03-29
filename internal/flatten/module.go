@@ -11,7 +11,7 @@ func (f *Modules) GetFlattenModules() [][]buildpack.BuildModule {
 }
 
 func (f *Modules) AddFlattenModules(modules []buildpack.BuildModule) {
-	f.flatten = append(f.flatten, modules[:])
+	f.flatten = append(f.flatten, modules)
 }
 
 func (f *Modules) Flatten(module buildpack.BuildModule) bool {
