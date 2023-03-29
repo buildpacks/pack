@@ -17,8 +17,9 @@ import (
 
 // BuilderCreateFlags define flags provided to the CreateBuilder command
 type BuilderCreateFlags struct {
-	BuilderTomlPath string
+	FlattenLayers   bool
 	Publish         bool
+	BuilderTomlPath string
 	Registry        string
 	Policy          string
 }
@@ -79,6 +80,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				Publish:         flags.Publish,
 				Registry:        flags.Registry,
 				PullPolicy:      pullPolicy,
+				FlattenLayers:   flags.FlattenLayers,
 			}); err != nil {
 				return err
 			}
@@ -95,6 +97,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
+	cmd.Flags().BoolVar(&flags.FlattenLayers, "flatten-layers", false, "Flatten every meta-buildpacks and its dependencies into one layer")
 
 	AddHelpFlag(cmd, "create")
 	return cmd

@@ -34,6 +34,9 @@ type CreateBuilderOptions struct {
 	// Requires BuilderName to be a valid registry location.
 	Publish bool
 
+	// Flatten meta-buildpacks and its dependencies into one layer
+	FlattenLayers bool
+
 	// Buildpack registry name. Defines where all registry buildpacks will be pulled from.
 	Registry string
 
@@ -176,6 +179,10 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 
 	bldr.SetLifecycle(lifecycle)
 
+	if opts.FlattenLayers {
+		bldr.FlattenLayers()
+	}
+
 	return bldr, nil
 }
 
@@ -285,7 +292,12 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 		return compareId < 0
 	})
 
-	for _, module := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
+	modules := append([]buildpack.BuildModule{mainBP}, depBPs...)
+	if kind == buildpack.KindBuildpack && len(depBPs) > 0 {
+		bldr.AddFlattenModules(kind, modules)
+	}
+
+	for _, module := range modules {
 		switch kind {
 		case buildpack.KindBuildpack:
 			bldr.AddBuildpack(module)

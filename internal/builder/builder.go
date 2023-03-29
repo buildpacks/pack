@@ -19,6 +19,8 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/internal/flatten"
+
 	"github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/stack"
@@ -77,6 +79,9 @@ type Builder struct {
 	uid, gid             int
 	StackID              string
 	replaceOrder         bool
+	flattenLayers        bool
+	flattenBuildpacks    flatten.Modules
+	flattenExtensions    flatten.Modules
 	order                dist.Order
 	orderExtensions      dist.Order
 }
@@ -263,6 +268,23 @@ func (b *Builder) GID() int {
 	return b.gid
 }
 
+func (b *Builder) FlattenModules(kind string) [][]buildpack.BuildModule {
+	if !b.flattenLayers {
+		return nil
+	}
+	switch kind {
+	case buildpack.KindBuildpack:
+		return b.flattenBuildpacks.GetFlattenModules()
+	case buildpack.KindExtension:
+		return b.flattenExtensions.GetFlattenModules()
+	}
+	return nil
+}
+
+func (b *Builder) MustBeFlatten(module buildpack.BuildModule) bool {
+	return b.flattenLayers && b.flattenBuildpacks.Flatten(module)
+}
+
 // Setters
 
 // AddBuildpack adds a buildpack to the builder
@@ -271,10 +293,26 @@ func (b *Builder) AddBuildpack(bp buildpack.BuildModule) {
 	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().Info())
 }
 
+// AddFlattenModules adds a group of buildpacks that could be compressed in the same layer into the builder
+func (b *Builder) AddFlattenModules(kind string, modules []buildpack.BuildModule) {
+	if b.flattenLayers {
+		switch kind {
+		case buildpack.KindBuildpack:
+			b.flattenBuildpacks.AddFlattenModules(modules)
+		case buildpack.KindExtension:
+			b.flattenExtensions.AddFlattenModules(modules)
+		}
+	}
+}
+
 // AddExtension adds an extension to the builder
 func (b *Builder) AddExtension(bp buildpack.BuildModule) {
 	b.additionalExtensions = append(b.additionalExtensions, bp)
 	b.metadata.Extensions = append(b.metadata.Extensions, bp.Descriptor().Info())
+}
+
+func (b *Builder) FlattenLayers() {
+	b.flattenLayers = true
 }
 
 // SetLifecycle sets the lifecycle of the builder
@@ -569,19 +607,60 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 		}
 	}
 
-	// Fixes 1453
-	keys := sortKeys(collectionToAdd)
-	for _, k := range keys {
-		module := collectionToAdd[k]
-		logger.Debugf("Adding %s %s (diffID=%s)", kind, style.Symbol(module.module.Descriptor().Info().FullName()), module.diffID)
-		if err := image.AddLayerWithDiffID(module.tarPath, module.diffID); err != nil {
-			return errors.Wrapf(err,
-				"adding layer tar for %s %s",
-				kind,
-				style.Symbol(module.module.Descriptor().Info().FullName()),
-			)
+	// Let's squash build modules
+	for i, flattenModules := range b.FlattenModules(kind) {
+		modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-flatten-%s", kind, strconv.Itoa(i)))
+		if err := os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
+			return errors.Wrap(err, "creating flatten temp dir")
+		}
+		flattenTarFilePath := filepath.Join(modFlattenTmpDir, fmt.Sprintf("%s-flatten-%s.tar", kind, strconv.Itoa(i)))
+
+		var tarsPath []string
+		for _, module := range flattenModules {
+			m := collectionToAdd[module.Descriptor().Info().FullName()]
+			tarsPath = append(tarsPath, m.tarPath)
 		}
 
+		err := flatten.MergeTars(flattenTarFilePath, tarsPath)
+		if err != nil {
+			return errors.Wrap(err, "merging modules tar files")
+		}
+
+		diffID, err := dist.LayerDiffID(flattenTarFilePath)
+
+		// Update the diffId and tar path for each module squashed
+		for _, module := range flattenModules {
+			addModule := collectionToAdd[module.Descriptor().Info().FullName()]
+			addModule.tarPath = flattenTarFilePath
+			addModule.diffID = diffID.String()
+			collectionToAdd[module.Descriptor().Info().FullName()] = addModule
+		}
+	}
+
+	// Fixes 1453
+	keys := sortKeys(collectionToAdd)
+	diffIdAdded := map[string]string{}
+	for _, k := range keys {
+		module := collectionToAdd[k]
+		addLayer := true
+		if b.MustBeFlatten(module.module) {
+			if _, ok := diffIdAdded[module.diffID]; !ok {
+				diffIdAdded[module.diffID] = module.tarPath
+			} else {
+				addLayer = false
+				logger.Debugf("Squashing %s %s (diffID=%s)", kind, style.Symbol(module.module.Descriptor().Info().FullName()), module.diffID)
+			}
+		}
+		if addLayer {
+			logger.Debugf("Adding %s %s (diffID=%s)", kind, style.Symbol(module.module.Descriptor().Info().FullName()), module.diffID)
+			if err := image.AddLayerWithDiffID(module.tarPath, module.diffID); err != nil {
+				return errors.Wrapf(err,
+					"adding layer tar for %s %s",
+					kind,
+					style.Symbol(module.module.Descriptor().Info().FullName()),
+				)
+			}
+		}
 		dist.AddToLayersMD(layers, module.module.Descriptor(), module.diffID)
 	}
 
