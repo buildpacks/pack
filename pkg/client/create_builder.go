@@ -293,7 +293,7 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 	})
 
 	modules := append([]buildpack.BuildModule{mainBP}, depBPs...)
-	if kind == buildpack.KindBuildpack && len(depBPs) > 0 {
+	if len(depBPs) > 0 {
 		bldr.AddFlattenModules(kind, modules)
 	}
 
