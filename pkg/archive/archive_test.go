@@ -2,6 +2,7 @@ package archive_test
 
 import (
 	"archive/tar"
+	"io/fs"
 	"math/rand"
 	"net"
 	"os"
@@ -246,7 +247,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1, true, false, nil)
+				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1, true, true, nil)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -258,6 +259,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				tr := tar.NewReader(file)
 
 				verify := h.NewTarVerifier(t, tr, 1234, 2345)
+				verify.NextDirectory("/nested/dir/dir-in-archive", int64(fs.ModePerm&^archive.Umask))
 				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", fileMode(t, filepath.Join(src, "some-file.txt")))
 				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", fileMode(t, filepath.Join(src, "sub-dir")))
 				if runtime.GOOS != "windows" {

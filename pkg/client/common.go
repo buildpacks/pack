@@ -18,7 +18,7 @@ func (c *Client) parseTagReference(imageName string) (name.Reference, error) {
 		return nil, errors.New("image is a required parameter")
 	}
 	if _, err := name.ParseReference(imageName, name.WeakValidation); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("'%s' is not a valid tag reference: %s", imageName, err)
 	}
 	ref, err := name.NewTag(imageName, name.WeakValidation)
 	if err != nil {
@@ -108,17 +108,13 @@ func contains(slc []string, v string) bool {
 }
 
 func getBestRunMirror(registry string, runImage string, mirrors []string, preferredMirrors []string) string {
-	var runImageList []string
-	runImageList = append(runImageList, preferredMirrors...)
-	runImageList = append(runImageList, runImage)
-	runImageList = append(runImageList, mirrors...)
-
+	runImageList := append(append(append([]string{}, preferredMirrors...), runImage), mirrors...)
 	for _, img := range runImageList {
 		ref, err := name.ParseReference(img, name.WeakValidation)
 		if err != nil {
 			continue
 		}
-		if ref.Context().RegistryStr() == registry {
+		if reg := ref.Context().RegistryStr(); reg == registry {
 			return img
 		}
 	}
