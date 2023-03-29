@@ -17,6 +17,7 @@ type FakeBuilder struct {
 	ReturnForGID                 int
 	ReturnForLifecycleDescriptor builder.LifecycleDescriptor
 	ReturnForStack               builder.StackMetadata
+	ReturnForRunImages           []builder.RunImageMetadata
 	ReturnForOrderExtensions     dist.Order
 }
 
@@ -110,6 +111,10 @@ func (b *FakeBuilder) OrderExtensions() dist.Order {
 
 func (b *FakeBuilder) Stack() builder.StackMetadata {
 	return b.ReturnForStack
+}
+
+func (b *FakeBuilder) RunImages() []builder.RunImageMetadata {
+	return b.ReturnForRunImages
 }
 
 func WithBuilder(builder *FakeBuilder) func(*build.LifecycleOptions) {
