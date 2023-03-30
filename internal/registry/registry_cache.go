@@ -183,7 +183,7 @@ func (r *Cache) CreateCache() error {
 	if r.url.Host == "dev.azure.com" {
 		err = exec.Command("git", "clone", r.url.String(), r.RegistryDir).Run()
 		if err != nil {
-			return errors.Wrap(err, "cloning remote registry")
+			return errors.Wrap(err, "cloning remote registry using native git")
 		}
 
 		repository, err = git.PlainOpen(r.RegistryDir)
