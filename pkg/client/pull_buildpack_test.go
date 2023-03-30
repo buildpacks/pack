@@ -141,7 +141,7 @@ func testPullBuildpack(t *testing.T, when spec.G, it spec.S) {
 		it.After(func() {
 			os.Unsetenv("PACK_HOME")
 			err := os.RemoveAll(tmpDir)
-			if runtime.GOOS != "windows" && strings.Contains(err.Error(), "The process cannot access the file because it is being used by another process.") {
+			if runtime.GOOS != "windows" && err != nil && strings.Contains(err.Error(), "The process cannot access the file because it is being used by another process.") {
 				h.AssertNil(t, err)
 			}
 		})
