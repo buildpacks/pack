@@ -252,14 +252,13 @@ jobs:
           echo "version=$LIFECYCLE_VERSION" >> $GITHUB_OUTPUT
       - name: Extract pack help
         id: pack_help
-        # Replacements have to do with multiline output.
-        # See https://github.community/t5/GitHub-Actions/set-output-Truncates-Multiline-Strings/m-p/38372/highlight/true#M3322
+        # Multiline output use a syntax similar to heredocs.
+        # see https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
         run: |
-          PACK_HELP=$(./pack-linux/pack --help)
-          PACK_HELP="${PACK_HELP//'%'/'%25'}"
-          PACK_HELP="${PACK_HELP//$'\n'/'%0A'}"
-          PACK_HELP="${PACK_HELP//$'\r'/'%0D'}"
-          echo "help=$PACK_HELP" >> $GITHUB_OUTPUT
+          DELIMITER="$(uuidgen)"
+          echo "help<<${DELIMITER}" >> $GITHUB_OUTPUT
+          ./pack-linux/pack --help >> $GITHUB_OUTPUT
+          echo "${DELIMITER}" >> $GITHUB_OUTPUT
       - name: Generate changelog
         uses: ./.github/workflows/actions/release-notes
         id: changelog
