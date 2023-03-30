@@ -621,7 +621,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 			tarsPath = append(tarsPath, m.tarPath)
 		}
 
-		err = flatten.MergeTars(flattenTarFilePath, tarsPath)
+		err = archive.MergeTars(flattenTarFilePath, tarsPath...)
 		if err != nil {
 			return errors.Wrap(err, "merging modules tar files")
 		}

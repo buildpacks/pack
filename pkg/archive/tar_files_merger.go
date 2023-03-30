@@ -1,8 +1,7 @@
-package flatten
+package archive
 
 import (
 	"archive/tar"
-	"fmt"
 	"io"
 	"os"
 
@@ -10,7 +9,7 @@ import (
 )
 
 // MergeTars merge the given tars into one single tar
-func MergeTars(path string, tarsPath []string) error {
+func MergeTars(path string, tarsPath ...string) error {
 	tarFile, err := os.Create(path)
 	if err != nil {
 		return errors.Wrap(err, "creating flatten tar")
@@ -29,58 +28,45 @@ func MergeTars(path string, tarsPath []string) error {
 	return nil
 }
 
+// addTar writes the content of the given tar file into the writer
 func addTar(tw *tar.Writer, path string) error {
 	var (
-		tr  *tar.Reader
-		rc  io.ReadCloser
-		hdr *tar.Header
-		err error
+		reader *tar.Reader
+		rc     io.ReadCloser
+		header *tar.Header
+		err    error
 	)
 
-	if tr, rc, err = openTarFile(path); err != nil {
+	if reader, rc, err = openTarFile(path); err != nil {
 		return err
 	}
 	defer rc.Close()
 
 	for {
-		if hdr, err = tr.Next(); err != nil {
+		if header, err = reader.Next(); err != nil {
 			if err == io.EOF {
 				err = nil
 			}
 			break
 		}
-		if err = tw.WriteHeader(hdr); err != nil {
+		if err = tw.WriteHeader(header); err != nil {
 			break
-		} else if _, err = io.Copy(tw, tr); err != nil {
+		} else if _, err = io.Copy(tw, reader); err != nil {
 			break
 		}
 	}
 	return err
 }
 
+// openTarFile opens the given tar file and returns a reader and a closer
 func openTarFile(path string) (*tar.Reader, io.ReadCloser, error) {
 	var (
-		file  *os.File
-		bytes int
-		err   error
+		rc  io.ReadCloser
+		err error
 	)
 
-	buff := make([]byte, 1024)
-	if file, err = os.Open(path); err != nil {
+	if rc, err = os.Open(path); err != nil {
 		return nil, nil, err
 	}
-	if bytes, err = file.Read(buff); err != nil {
-		file.Close()
-		return nil, nil, err
-	} else if bytes == 0 {
-		file.Close()
-		err = fmt.Errorf("file at path %s is empty", path)
-		return nil, nil, err
-	}
-	if _, err = file.Seek(0, 0); err != nil {
-		file.Close()
-		return nil, nil, err
-	}
-	tr := tar.NewReader(file)
-	return tr, file, nil
+	return tar.NewReader(rc), rc, nil
 }
