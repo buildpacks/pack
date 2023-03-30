@@ -180,7 +180,7 @@ func (r *Cache) CreateCache() error {
 
 	r.RegistryDir = registryDir
 
-	if strings.Contains(r.url.String(), "dev.azure.com/") {
+	if r.url.Host == "dev.azure.com" {
 		err = exec.Command("git", "clone", r.url.String(), r.RegistryDir).Run()
 		if err != nil {
 			return errors.Wrap(err, "cloning remote registry")
