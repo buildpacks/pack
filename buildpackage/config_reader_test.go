@@ -10,6 +10,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/buildpackage"
+	"github.com/buildpacks/pack/pkg/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -31,6 +32,34 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 
 		it.After(func() {
 			os.RemoveAll(tmpDir)
+		})
+
+		it("returns default buildpack config", func() {
+			expected := buildpackage.Config{
+				Buildpack: dist.BuildpackURI{
+					URI: ".",
+				},
+				Platform: dist.Platform{
+					OS: "linux",
+				},
+			}
+			actual := buildpackage.DefaultConfig()
+
+			h.AssertEq(t, actual, expected)
+		})
+
+		it("returns default extension config", func() {
+			expected := buildpackage.Config{
+				Extension: dist.BuildpackURI{
+					URI: ".",
+				},
+				Platform: dist.Platform{
+					OS: "linux",
+				},
+			}
+			actual := buildpackage.DefaultExtensionConfig()
+
+			h.AssertEq(t, actual, expected)
 		})
 
 		it("returns correct config when provided toml file is valid", func() {
