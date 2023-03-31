@@ -63,6 +63,7 @@ func (i *layoutImage) AddLayerWithDiffID(path, _ string) error {
 
 type PackageBuilder struct {
 	buildpack    BuildModule
+	extension    BuildModule
 	dependencies []BuildModule
 	imageFactory ImageFactory
 }
@@ -76,6 +77,9 @@ func NewBuilder(imageFactory ImageFactory) *PackageBuilder {
 
 func (b *PackageBuilder) SetBuildpack(buildpack BuildModule) {
 	b.buildpack = buildpack
+}
+func (b *PackageBuilder) SetExtension(extension BuildModule) {
+	b.extension = extension
 }
 
 func (b *PackageBuilder) AddDependency(buildpack BuildModule) {
@@ -119,17 +123,54 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 	return nil
 }
 
-func (b *PackageBuilder) validate() error {
-	if b.buildpack == nil {
-		return errors.New("buildpack must be set")
-	}
-
-	if err := validateBuildpacks(b.buildpack, b.dependencies); err != nil {
+func (b *PackageBuilder) finalizeExtensionImage(image WorkableImage, tmpDir string) error {
+	if err := dist.SetLabel(image, MetadataLabel, &Metadata{
+		ModuleInfo: b.extension.Descriptor().Info(),
+	}); err != nil {
 		return err
 	}
 
-	if len(b.resolvedStacks()) == 0 {
-		return errors.Errorf("no compatible stacks among provided buildpacks")
+	exLayers := dist.ModuleLayers{}
+	exLayerTar, err := ToLayerTar(tmpDir, b.extension)
+	if err != nil {
+		return err
+	}
+
+	diffID, err := dist.LayerDiffID(exLayerTar)
+	if err != nil {
+		return errors.Wrapf(err,
+			"getting content hashes for extension %s",
+			style.Symbol(b.extension.Descriptor().Info().FullName()),
+		)
+	}
+
+	if err := image.AddLayerWithDiffID(exLayerTar, diffID.String()); err != nil {
+		return errors.Wrapf(err, "adding layer tar for extension %s", style.Symbol(b.extension.Descriptor().Info().FullName()))
+	}
+
+	dist.AddToLayersMD(exLayers, b.extension.Descriptor(), diffID.String())
+
+	if err := dist.SetLabel(image, dist.ExtensionLayersLabel, exLayers); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *PackageBuilder) validate() error {
+	if b.buildpack == nil && b.extension == nil {
+		return errors.New("buildpack or extension must be set")
+	}
+
+	// we don't need to validate extensions because there are no order or stacks in extensions
+	if b.buildpack != nil && b.extension == nil {
+		if err := validateBuildpacks(b.buildpack, b.dependencies); err != nil {
+			return err
+		}
+
+		if len(b.resolvedStacks()) == 0 {
+			return errors.Errorf("no compatible stacks among provided buildpacks")
+		}
 	}
 
 	return nil
@@ -160,16 +201,28 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 		return errors.Wrap(err, "creating layout image")
 	}
 
-	tmpDir, err := os.MkdirTemp("", "package-buildpack")
+	tempDirName := ""
+	if b.buildpack != nil {
+		tempDirName = "package-buildpack"
+	} else if b.extension != nil {
+		tempDirName = "extension-buildpack"
+	}
+
+	tmpDir, err := os.MkdirTemp("", tempDirName)
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpDir)
 
-	if err := b.finalizeImage(layoutImage, tmpDir); err != nil {
-		return err
+	if b.buildpack != nil {
+		if err := b.finalizeImage(layoutImage, tmpDir); err != nil {
+			return err
+		}
+	} else if b.extension != nil {
+		if err := b.finalizeExtensionImage(layoutImage, tmpDir); err != nil {
+			return err
+		}
 	}
-
 	layoutDir, err := os.MkdirTemp(tmpDir, "oci-layout")
 	if err != nil {
 		return errors.Wrap(err, "creating oci-layout temp dir")
@@ -239,15 +292,26 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS stri
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating image")
 	}
+	tempDirName := ""
+	if b.buildpack != nil {
+		tempDirName = "package-buildpack"
+	} else if b.extension != nil {
+		tempDirName = "extension-buildpack"
+	}
 
-	tmpDir, err := os.MkdirTemp("", "package-buildpack")
+	tmpDir, err := os.MkdirTemp("", tempDirName)
 	if err != nil {
 		return nil, err
 	}
 	defer os.RemoveAll(tmpDir)
-
-	if err := b.finalizeImage(image, tmpDir); err != nil {
-		return nil, err
+	if b.buildpack != nil {
+		if err := b.finalizeImage(image, tmpDir); err != nil {
+			return nil, err
+		}
+	} else if b.extension != nil {
+		if err := b.finalizeExtensionImage(image, tmpDir); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := image.Save(); err != nil {
