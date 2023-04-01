@@ -1,7 +1,9 @@
 package commands
 
 import (
-	v2 "github.com/buildpacks/imgutil/remote"
+	"fmt"
+
+	"github.com/pkg/errors"
 
 	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -52,25 +54,25 @@ func ManifestCreate(logger logging.Logger) *cobra.Command {
 					panic(err)
 				}
 
-				// ##################################################
+				cfg, err := img.ConfigFile()
 
-				img2, err := v2.NewImage(
-					"registry-1.docker.io",
-					authn.DefaultKeychain,
-					v2.FromBaseImage(j),
-				)
+				if err != nil {
+					return errors.Wrapf(err, "getting config file for image %q", j)
+				}
+				if cfg == nil {
+					return fmt.Errorf("missing config for image %q", j)
+				}
+				if cfg.OS == "" {
+					return fmt.Errorf("missing OS for image %q", j)
+				}
 
-				os, _ := img2.OS()
-				arch, _ := img2.Architecture()
+				// desc.Descriptor.Platform
 
 				platform := v1.Platform{}
-				platform.Architecture = arch
-				platform.OS = os
+				platform.Architecture = cfg.Architecture
+				platform.OS = cfg.OS
 
 				desc.Descriptor.Platform = &platform
-				logger.Infof(desc.Descriptor.Platform.OS + "-" + desc.Descriptor.Platform.Architecture)
-
-				// ##################################################
 
 				adds = append(adds, mutate.IndexAddendum{Add: img, Descriptor: desc.Descriptor})
 
