@@ -17,12 +17,14 @@ import (
 
 // BuildpackPackageFlags define flags provided to the BuildpackPackage command
 type BuildpackPackageFlags struct {
-	PackageTomlPath   string
-	Format            string
-	Publish           bool
-	Policy            string
-	BuildpackRegistry string
-	Path              string
+	PackageTomlPath       string
+	Format                string
+	Publish               bool
+	Policy                string
+	BuildpackRegistry     string
+	Path                  string
+	FlattenAll            bool
+	FlattenMetaBuildpacks bool
 }
 
 // BuildpackPackager packages buildpacks
@@ -92,14 +94,20 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 					logger.Warnf("%s is not a valid extension for a packaged buildpack. Packaged buildpacks must have a %s extension", style.Symbol(ext), style.Symbol(client.CNBExtension))
 				}
 			}
+			if err := validateFlattenFlags(&flags); err != nil {
+				return err
+			}
+
 			if err := packager.PackageBuildpack(cmd.Context(), client.PackageBuildpackOptions{
-				RelativeBaseDir: relativeBaseDir,
-				Name:            name,
-				Format:          flags.Format,
-				Config:          bpPackageCfg,
-				Publish:         flags.Publish,
-				PullPolicy:      pullPolicy,
-				Registry:        flags.BuildpackRegistry,
+				RelativeBaseDir:       relativeBaseDir,
+				Name:                  name,
+				Format:                flags.Format,
+				Config:                bpPackageCfg,
+				Publish:               flags.Publish,
+				PullPolicy:            pullPolicy,
+				Registry:              flags.BuildpackRegistry,
+				FlattenMetaBuildpacks: flags.FlattenMetaBuildpacks,
+				FlattenAll:            flags.FlattenAll,
 			}); err != nil {
 				return err
 			}
@@ -124,6 +132,8 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to the Buildpack that needs to be packaged")
 	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")
+	cmd.Flags().BoolVar(&flags.FlattenAll, "flatten-all", false, "Flatten all everything into one layer")
+	cmd.Flags().BoolVar(&flags.FlattenMetaBuildpacks, "flatten-meta-buildpacks", false, "Flatten every meta-buildpacks and its dependencies into one layer")
 
 	AddHelpFlag(cmd, "package")
 	return cmd
@@ -135,6 +145,14 @@ func validateBuildpackPackageFlags(p *BuildpackPackageFlags) error {
 	}
 	if p.PackageTomlPath != "" && p.Path != "" {
 		return errors.Errorf("--config and --path cannot be used together. Please specify the relative path to the Buildpack directory in the package config file.")
+	}
+
+	return nil
+}
+
+func validateFlattenFlags(p *BuildpackPackageFlags) error {
+	if p.FlattenMetaBuildpacks && p.FlattenAll {
+		return errors.Errorf("--flatten-meta-buildpacks and --flatten-all cannot be used together. Please specify only one flag.")
 	}
 
 	return nil

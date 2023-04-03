@@ -19,8 +19,6 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/flatten"
-
 	"github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/stack"
@@ -80,8 +78,8 @@ type Builder struct {
 	StackID              string
 	replaceOrder         bool
 	flattenLayers        bool
-	flattenBuildpacks    flatten.Modules
-	flattenExtensions    flatten.Modules
+	flattenBuildpacks    buildpack.FlattenModules
+	flattenExtensions    buildpack.FlattenModules
 	order                dist.Order
 	orderExtensions      dist.Order
 }

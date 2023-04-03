@@ -40,6 +40,12 @@ type PackageBuildpackOptions struct {
 	// Defines the Buildpacks configuration.
 	Config pubbldpkg.Config
 
+	// Flatten meta-buildpacks and its dependencies into one layer
+	FlattenMetaBuildpacks bool
+
+	// Flatten all into one layer
+	FlattenAll bool
+
 	// Push resulting builder image up to a registry
 	// specified in the Name variable.
 	Publish bool
@@ -72,7 +78,16 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return errors.Wrap(err, "creating layer writer factory")
 	}
 
-	packageBuilder := buildpack.NewBuilder(c.imageFactory)
+	packageBuilder := buildpack.NewBuilder(c.imageFactory, c.logger)
+	if opts.FlattenMetaBuildpacks {
+		c.logger.Debug("flatten meta buildpacks: enabled")
+		packageBuilder.FlattenMetaBuildpacks()
+	}
+
+	if opts.FlattenAll {
+		c.logger.Debug("flatten all buildpacks: enabled")
+		packageBuilder.FlattenAllBuildpacks()
+	}
 
 	bpURI := opts.Config.Buildpack.URI
 	if bpURI == "" {
@@ -107,6 +122,11 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		}
 
 		depBPs = append([]buildpack.BuildModule{mainBP}, deps...)
+		if len(deps) > 0 {
+			c.logger.Debugf("Buildpack %s has dependencies, adding them to flatten modules", style.Symbol(mainBP.Descriptor().Info().FullName()))
+			packageBuilder.AddFlattenModules(depBPs)
+		}
+
 		for _, depBP := range depBPs {
 			packageBuilder.AddDependency(depBP)
 		}
