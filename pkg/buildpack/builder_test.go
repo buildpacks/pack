@@ -15,13 +15,14 @@ import (
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/imgutil/layer"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/v1/stream"
 	"github.com/heroku/color"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/pack/pkg/logging"
 
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/pkg/buildpack"
