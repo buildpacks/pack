@@ -134,7 +134,6 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 	}
 
 	collectionToAdd := map[string]toAdd{}
-
 	// Let's create the tarball for each module
 	for _, bp := range append(b.dependencies, b.buildpack) {
 		bpLayerTar, err := ToLayerTar(tmpDir, bp)

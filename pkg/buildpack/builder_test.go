@@ -609,7 +609,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				},
 			}, 0644)
 			h.AssertNil(t, err)
-			builder := buildpack.NewBuilder(mockImageFactory("linux"))
+			builder := buildpack.NewBuilder(mockImageFactory("linux"), logger)
 			builder.SetExtension(extension1)
 			packageImage, err := builder.SaveAsImage("some/package", false, "linux")
 			h.AssertNil(t, err)
