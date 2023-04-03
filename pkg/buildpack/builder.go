@@ -186,7 +186,6 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 			addModule.diffID = diffID.String()
 			collectionToAdd[key] = addModule
 		}
-
 	} else if b.flattenMetaBuildpacks {
 		// Let's squash build modules
 		for i, flattenModules := range b.FlattenModules() {
