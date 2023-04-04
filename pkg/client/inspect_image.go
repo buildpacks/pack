@@ -42,7 +42,7 @@ type ImageInfo struct {
 	// the first 1 to k layers all belong to the run image,
 	// the last k+1 to n layers are added by buildpacks.
 	// the sum of all of these is our app image.
-	Base platform.RunImageMetadata
+	Base platform.RunImageForRebase //platform.RunImageMetadata
 
 	// BOM or Bill of materials, contains dependency and
 	// version information provided by each buildpack.
@@ -68,8 +68,8 @@ type ProcessDetails struct {
 
 // Deserialize just the subset of fields we need to avoid breaking changes
 type layersMetadata struct {
-	RunImage platform.RunImageMetadata `json:"runImage" toml:"run-image"`
-	Stack    platform.StackMetadata    `json:"stack" toml:"stack"`
+	RunImage platform.RunImageForRebase `json:"runImage" toml:"run-image"`
+	Stack    platform.StackMetadata     `json:"stack" toml:"stack"`
 }
 
 const (
