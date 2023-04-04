@@ -42,7 +42,7 @@ type ImageInfo struct {
 	// the first 1 to k layers all belong to the run image,
 	// the last k+1 to n layers are added by buildpacks.
 	// the sum of all of these is our app image.
-	Base platform.RunImageForRebase //platform.RunImageMetadata
+	Base platform.RunImageForRebase
 
 	// BOM or Bill of materials, contains dependency and
 	// version information provided by each buildpack.
