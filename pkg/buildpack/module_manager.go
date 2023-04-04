@@ -3,12 +3,12 @@ package buildpack
 type ModuleManager struct {
 	modules        []BuildModule
 	flattenModules [][]BuildModule
-	Flatten        bool
+	flatten        bool
 }
 
 func NewModuleManager(flatten bool) *ModuleManager {
 	return &ModuleManager{
-		Flatten: flatten,
+		flatten: flatten,
 	}
 }
 
@@ -21,16 +21,15 @@ func (f *ModuleManager) Modules() []BuildModule {
 }
 
 func (f *ModuleManager) GetFlattenModules() [][]BuildModule {
-	return f.flattenModules
-}
-
-func (f *ModuleManager) AddFlattenModules(modules []BuildModule) {
-	f.flattenModules = append(f.flattenModules, modules)
+	if f.flatten {
+		return f.flattenModules
+	}
+	return nil
 }
 
 func (f *ModuleManager) AddModules(main BuildModule, deps ...BuildModule) {
 	modules := append([]BuildModule{main}, deps...)
-	if f.Flatten && len(deps) > 0 {
+	if f.flatten && len(deps) > 0 {
 		f.flattenModules = append(f.flattenModules, modules)
 	} else {
 		f.modules = append(f.modules, modules...)
@@ -38,7 +37,7 @@ func (f *ModuleManager) AddModules(main BuildModule, deps ...BuildModule) {
 }
 
 func (f *ModuleManager) IsFlatten(module BuildModule) bool {
-	if f.Flatten {
+	if f.flatten {
 		for _, modules := range f.flattenModules {
 			for _, v := range modules {
 				if v == module {

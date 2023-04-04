@@ -311,7 +311,7 @@ func (b *Builder) AddExtensions(main buildpack.BuildModule, dependencies []build
 	b.additionalExtensions.AddModules(main, dependencies...)
 	b.metadata.Extensions = append(b.metadata.Extensions, main.Descriptor().Info())
 	for _, dep := range dependencies {
-		b.metadata.Extensions = append(b.metadata.Buildpacks, dep.Descriptor().Info())
+		b.metadata.Extensions = append(b.metadata.Extensions, dep.Descriptor().Info())
 	}
 }
 
