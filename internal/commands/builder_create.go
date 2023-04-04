@@ -17,11 +17,11 @@ import (
 
 // BuilderCreateFlags define flags provided to the CreateBuilder command
 type BuilderCreateFlags struct {
-	FlattenLayers   bool
-	Publish         bool
-	BuilderTomlPath string
-	Registry        string
-	Policy          string
+	FlattenMetaBuildpacks bool
+	Publish               bool
+	BuilderTomlPath       string
+	Registry              string
+	Policy                string
 }
 
 // CreateBuilder creates a builder image, based on a builder config
@@ -74,13 +74,13 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 
 			imageName := args[0]
 			if err := pack.CreateBuilder(cmd.Context(), client.CreateBuilderOptions{
-				RelativeBaseDir: relativeBaseDir,
-				BuilderName:     imageName,
-				Config:          builderConfig,
-				Publish:         flags.Publish,
-				Registry:        flags.Registry,
-				PullPolicy:      pullPolicy,
-				FlattenLayers:   flags.FlattenLayers,
+				RelativeBaseDir:       relativeBaseDir,
+				BuilderName:           imageName,
+				Config:                builderConfig,
+				Publish:               flags.Publish,
+				Registry:              flags.Registry,
+				PullPolicy:            pullPolicy,
+				FlattenMetaBuildpacks: flags.FlattenMetaBuildpacks,
 			}); err != nil {
 				return err
 			}
@@ -97,7 +97,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
-	cmd.Flags().BoolVar(&flags.FlattenLayers, "flatten-layers", false, "Flatten every meta-buildpacks and its dependencies into one layer")
+	cmd.Flags().BoolVar(&flags.FlattenMetaBuildpacks, "flatten-meta-buildpacks", false, "Flatten every meta-buildpack and its dependencies into one layer")
 
 	AddHelpFlag(cmd, "create")
 	return cmd

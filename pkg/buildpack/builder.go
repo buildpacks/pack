@@ -70,21 +70,24 @@ func (i *layoutImage) AddLayerWithDiffID(path, _ string) error {
 }
 
 type PackageBuilder struct {
-	buildpack             BuildModule
-	extension             BuildModule
-	dependencies          []BuildModule
-	imageFactory          ImageFactory
-	logger                Logger
-	flattenMetaBuildpacks bool
-	flattenAllBuildpacks  bool
-	flattenBuildpacks     FlattenModules
+	buildpack            BuildModule
+	extension            BuildModule
+	dependencies         ModuleManager
+	imageFactory         ImageFactory
+	flattenAllBuildpacks bool
 }
 
 // TODO: Rename to PackageBuilder
-func NewBuilder(imageFactory ImageFactory, logger Logger) *PackageBuilder {
+func NewBuilder(imageFactory ImageFactory) *PackageBuilder {
+	return NewPackageBuilder(imageFactory, false, false)
+}
+
+func NewPackageBuilder(imageFactory ImageFactory, flatten bool, flattenAll bool) *PackageBuilder {
+	moduleManager := NewModuleManager(flatten)
 	return &PackageBuilder{
-		imageFactory: imageFactory,
-		logger:       logger,
+		imageFactory:         imageFactory,
+		dependencies:         *moduleManager,
+		flattenAllBuildpacks: flattenAll,
 	}
 }
 
@@ -96,33 +99,19 @@ func (b *PackageBuilder) SetExtension(extension BuildModule) {
 }
 
 func (b *PackageBuilder) AddDependency(buildpack BuildModule) {
-	b.dependencies = append(b.dependencies, buildpack)
+	b.dependencies.AddModules(buildpack)
 }
 
-// AddFlattenModules adds a group of buildpacks that could be compressed in the same layer into the builder
-func (b *PackageBuilder) AddFlattenModules(modules []BuildModule) {
-	if b.flattenMetaBuildpacks {
-		b.flattenBuildpacks.AddFlattenModules(modules)
-	}
-}
-
-func (b *PackageBuilder) FlattenMetaBuildpacks() {
-	b.flattenMetaBuildpacks = true
-}
-
-func (b *PackageBuilder) FlattenAllBuildpacks() {
-	b.flattenAllBuildpacks = true
+func (b *PackageBuilder) AddDependencies(main BuildModule, dependencies []BuildModule) {
+	b.dependencies.AddModules(main, dependencies...)
 }
 
 func (b *PackageBuilder) MustBeFlatten(module BuildModule) bool {
-	return b.flattenMetaBuildpacks && b.flattenBuildpacks.Flatten(module)
+	return b.flattenAllBuildpacks || (b.dependencies.IsFlatten(module))
 }
 
 func (b *PackageBuilder) FlattenModules() [][]BuildModule {
-	if !b.flattenMetaBuildpacks {
-		return nil
-	}
-	return b.flattenBuildpacks.GetFlattenModules()
+	return b.dependencies.GetFlattenModules()
 }
 
 func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error {
@@ -135,7 +124,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 
 	collectionToAdd := map[string]toAdd{}
 	// Let's create the tarball for each module
-	for _, bp := range append(b.dependencies, b.buildpack) {
+	for _, bp := range append(b.dependencies.Modules(), b.buildpack) {
 		bpLayerTar, err := ToLayerTar(tmpDir, bp)
 		if err != nil {
 			return err
@@ -186,7 +175,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 			addModule.diffID = diffID.String()
 			collectionToAdd[key] = addModule
 		}
-	} else if b.flattenMetaBuildpacks {
+	} else {
 		// Let's squash build modules
 		for i, flattenModules := range b.FlattenModules() {
 			modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-flatten-%s", "buildpack", strconv.Itoa(i)))
@@ -228,7 +217,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 		module := collectionToAdd[key]
 		bp := module.module
 		addLayer := true
-		if b.MustBeFlatten(bp) || b.flattenAllBuildpacks {
+		if b.MustBeFlatten(bp) {
 			if _, ok := diffIdAdded[module.diffID]; !ok {
 				diffIdAdded[module.diffID] = module.tarPath
 			} else {
@@ -236,11 +225,11 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 			}
 		}
 		if addLayer {
-			b.logger.Debugf("Adding layer %s with diffID %s", module.tarPath, module.diffID)
 			if err := image.AddLayerWithDiffID(module.tarPath, module.diffID); err != nil {
 				return errors.Wrapf(err, "adding layer tar for buildpack %s", style.Symbol(bp.Descriptor().Info().FullName()))
 			}
 		}
+
 		dist.AddToLayersMD(bpLayers, bp.Descriptor(), module.diffID)
 	}
 
@@ -292,7 +281,7 @@ func (b *PackageBuilder) validate() error {
 
 	// we don't need to validate extensions because there are no order or stacks in extensions
 	if b.buildpack != nil && b.extension == nil {
-		if err := validateBuildpacks(b.buildpack, b.dependencies); err != nil {
+		if err := validateBuildpacks(b.buildpack, b.dependencies.Modules()); err != nil {
 			return err
 		}
 
@@ -306,7 +295,7 @@ func (b *PackageBuilder) validate() error {
 
 func (b *PackageBuilder) resolvedStacks() []dist.Stack {
 	stacks := b.buildpack.Descriptor().Stacks()
-	for _, bp := range b.dependencies {
+	for _, bp := range b.dependencies.modules {
 		bpd := bp.Descriptor()
 
 		if len(stacks) == 0 {

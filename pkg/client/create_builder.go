@@ -35,7 +35,7 @@ type CreateBuilderOptions struct {
 	Publish bool
 
 	// Flatten meta-buildpacks and its dependencies into one layer
-	FlattenLayers bool
+	FlattenMetaBuildpacks bool
 
 	// Buildpack registry name. Defines where all registry buildpacks will be pulled from.
 	Registry string
@@ -143,7 +143,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	}
 
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
-	bldr, err := builder.New(baseImage, opts.BuilderName)
+	bldr, err := builder.NewBuilder(baseImage, opts.BuilderName, opts.FlattenMetaBuildpacks)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid build-image")
 	}
@@ -178,10 +178,6 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	}
 
 	bldr.SetLifecycle(lifecycle)
-
-	if opts.FlattenLayers {
-		bldr.FlattenLayers()
-	}
 
 	return bldr, nil
 }
@@ -292,20 +288,13 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 		return compareId < 0
 	})
 
-	modules := append([]buildpack.BuildModule{mainBP}, depBPs...)
-	if len(depBPs) > 0 {
-		bldr.AddFlattenModules(kind, modules)
-	}
-
-	for _, module := range modules {
-		switch kind {
-		case buildpack.KindBuildpack:
-			bldr.AddBuildpack(module)
-		case buildpack.KindExtension:
-			bldr.AddExtension(module)
-		default:
-			return fmt.Errorf("unknown module kind: %s", kind)
-		}
+	switch kind {
+	case buildpack.KindBuildpack:
+		bldr.AddBuildpacks(mainBP, depBPs)
+	case buildpack.KindExtension:
+		bldr.AddExtensions(mainBP, depBPs)
+	default:
+		return fmt.Errorf("unknown module kind: %s", kind)
 	}
 	return nil
 }

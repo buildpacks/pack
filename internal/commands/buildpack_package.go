@@ -132,8 +132,8 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to the Buildpack that needs to be packaged")
 	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")
-	cmd.Flags().BoolVar(&flags.FlattenAll, "flatten-all", false, "Flatten all everything into one layer")
-	cmd.Flags().BoolVar(&flags.FlattenMetaBuildpacks, "flatten-meta-buildpacks", false, "Flatten every meta-buildpacks and its dependencies into one layer")
+	cmd.Flags().BoolVar(&flags.FlattenAll, "flatten-all", false, "Flatten all the buildpacks into one layer")
+	cmd.Flags().BoolVar(&flags.FlattenMetaBuildpacks, "flatten-meta-buildpacks", false, "Flatten every meta-buildpack and its dependencies into one layer")
 
 	AddHelpFlag(cmd, "package")
 	return cmd

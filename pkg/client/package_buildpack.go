@@ -78,16 +78,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return errors.Wrap(err, "creating layer writer factory")
 	}
 
-	packageBuilder := buildpack.NewBuilder(c.imageFactory, c.logger)
-	if opts.FlattenMetaBuildpacks {
-		c.logger.Debug("flatten meta buildpacks: enabled")
-		packageBuilder.FlattenMetaBuildpacks()
-	}
-
-	if opts.FlattenAll {
-		c.logger.Debug("flatten all buildpacks: enabled")
-		packageBuilder.FlattenAllBuildpacks()
-	}
+	packageBuilder := buildpack.NewPackageBuilder(c.imageFactory, opts.FlattenMetaBuildpacks, opts.FlattenAll)
 
 	bpURI := opts.Config.Buildpack.URI
 	if bpURI == "" {
@@ -107,7 +98,6 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 	packageBuilder.SetBuildpack(bp)
 
 	for _, dep := range opts.Config.Dependencies {
-		var depBPs []buildpack.BuildModule
 		mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
 			RegistryName:    opts.Registry,
 			RelativeBaseDir: opts.RelativeBaseDir,
@@ -121,15 +111,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 			return errors.Wrapf(err, "packaging dependencies (uri=%s,image=%s)", style.Symbol(dep.URI), style.Symbol(dep.ImageName))
 		}
 
-		depBPs = append([]buildpack.BuildModule{mainBP}, deps...)
-		if len(deps) > 0 {
-			c.logger.Debugf("Buildpack %s has dependencies, adding them to flatten modules", style.Symbol(mainBP.Descriptor().Info().FullName()))
-			packageBuilder.AddFlattenModules(depBPs)
-		}
-
-		for _, depBP := range depBPs {
-			packageBuilder.AddDependency(depBP)
-		}
+		packageBuilder.AddDependencies(mainBP, deps)
 	}
 
 	switch opts.Format {
