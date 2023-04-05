@@ -611,7 +611,7 @@ func (l *LifecycleExecution) Build(ctx context.Context, phaseFactory PhaseFactor
 	return build.Run(ctx)
 }
 
-func (l *LifecycleExecution) Extend(ctx context.Context, buildCache Cache, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) ExtendBuild(ctx context.Context, buildCache Cache, phaseFactory PhaseFactory) error {
 	flags := []string{"-app", l.mountPaths.appDir()}
 
 	// set kaniko cache opt
@@ -623,10 +623,42 @@ func (l *LifecycleExecution) Extend(ctx context.Context, buildCache Cache, phase
 		return fmt.Errorf("build cache must be volume cache when building with extensions")
 	}
 
+	extender := "extender (build)"
 	configProvider := NewPhaseConfigProvider(
-		"extender",
+		extender,
 		l,
-		WithLogPrefix("extender"),
+		WithLogPrefix(extender),
+		WithArgs(l.withLogLevel()...),
+		WithBinds(l.opts.Volumes...),
+		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
+		WithFlags(flags...),
+		WithNetwork(l.opts.Network),
+		WithRoot(),
+		kanikoCacheBindOp,
+	)
+
+	extend := phaseFactory.New(configProvider)
+	defer extend.Cleanup()
+	return extend.Run(ctx)
+}
+
+func (l *LifecycleExecution) ExtendRun(ctx context.Context, buildCache Cache, phaseFactory PhaseFactory) error {
+	flags := []string{"-app", l.mountPaths.appDir(), "-kind", "run"}
+
+	// set kaniko cache opt
+	var kanikoCacheBindOp PhaseConfigProviderOperation
+	switch buildCache.Type() {
+	case cache.Volume:
+		kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.kanikoCacheDir()))
+	default:
+		return fmt.Errorf("build cache must be volume cache when building with extensions")
+	}
+
+	extender := "extender (run)"
+	configProvider := NewPhaseConfigProvider(
+		extender,
+		l,
+		WithLogPrefix(extender),
 		WithArgs(l.withLogLevel()...),
 		WithBinds(l.opts.Volumes...),
 		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
@@ -655,7 +687,7 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 	flags := []string{
 		"-app", l.mountPaths.appDir(),
 		"-cache-dir", l.mountPaths.cacheDir(),
-		"-stack", l.mountPaths.stackPath(),
+		// "-stack", l.mountPaths.stackPath(), // TODO: remove, replace with "-run" as part of https://github.com/buildpacks/pack/issues/1301
 	}
 
 	if l.platformAPI.LessThan("0.7") {

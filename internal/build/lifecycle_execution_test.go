@@ -555,7 +555,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							var foundExtender bool
 							for _, entry := range fakePhaseFactory.NewCalledWithProvider {
 								switch entry.Name() {
-								case "extender":
+								case "extender (build)":
 									foundExtender = true
 								case "exporter":
 									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
@@ -564,17 +564,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 								}
 							}
 							h.AssertEq(t, foundExtender, true)
-						})
-
-						when("windows", func() {
-							withOS = "windows"
-
-							it("errors", func() {
-								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
-									return fakePhaseFactory
-								})
-								h.AssertNotNil(t, err)
-							})
 						})
 					})
 				})
@@ -1691,16 +1680,16 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("#Extend", func() {
+	when("#ExtendBuild", func() {
 		it.Before(func() {
-			err := lifecycle.Extend(context.Background(), fakeBuildCache, fakePhaseFactory)
+			err := lifecycle.ExtendBuild(context.Background(), fakeBuildCache, fakePhaseFactory)
 			h.AssertNil(t, err)
 
 			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
 			h.AssertNotEq(t, lastCallIndex, -1)
 
 			configProvider = fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
-			h.AssertEq(t, configProvider.Name(), "extender")
+			h.AssertEq(t, configProvider.Name(), "extender (build)")
 		})
 
 		it("creates a phase and then runs it", func() {
@@ -1711,6 +1700,49 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		it("configures the phase with the expected arguments", func() {
 			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-log-level", "debug")
 			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-app", "/workspace")
+		})
+
+		it("configures the phase with binds", func() {
+			expectedBinds := providedVolumes
+			expectedBinds = append(expectedBinds, "some-cache:/kaniko")
+
+			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
+		})
+
+		it("sets CNB_EXPERIMENTAL_MODE=warn in the environment", func() {
+			h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
+		})
+
+		it("configures the phase with the expected network mode", func() {
+			h.AssertEq(t, configProvider.HostConfig().NetworkMode, container.NetworkMode(providedNetworkMode))
+		})
+
+		it("configures the phase with root", func() {
+			h.AssertEq(t, configProvider.ContainerConfig().User, "root")
+		})
+	})
+
+	when("#ExtendRun", func() {
+		it.Before(func() {
+			err := lifecycle.ExtendRun(context.Background(), fakeBuildCache, fakePhaseFactory)
+			h.AssertNil(t, err)
+
+			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+			h.AssertNotEq(t, lastCallIndex, -1)
+
+			configProvider = fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+			h.AssertEq(t, configProvider.Name(), "extender (run)")
+		})
+
+		it("creates a phase and then runs it", func() {
+			h.AssertEq(t, fakePhase.CleanupCallCount, 1)
+			h.AssertEq(t, fakePhase.RunCallCount, 1)
+		})
+
+		it("configures the phase with the expected arguments", func() {
+			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-log-level", "debug")
+			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-app", "/workspace")
+			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-kind", "run")
 		})
 
 		it("configures the phase with binds", func() {
