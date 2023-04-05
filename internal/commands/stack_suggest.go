@@ -20,6 +20,11 @@ type suggestedStack struct {
 
 var suggestedStacks = []suggestedStack{
 	{
+		ID:          "Deprecation Notice",
+		Description: "Stacks will continue to be supported through at least 2024 but are deprecated in favor of using BuildImages and RunImages directly. Please see our docs for more details- https://buildpacks.io/docs/concepts/components/stack",
+		Maintainer:  "CNB",
+	},
+	{
 		ID:          "heroku-20",
 		Description: "The official Heroku stack based on Ubuntu 20.04",
 		Maintainer:  "Heroku",
@@ -53,7 +58,7 @@ func stackSuggest(logger logging.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "suggest",
 		Args:    cobra.NoArgs,
-		Short:   "List the recommended stacks",
+		Short:   "(deprecated) List the recommended stacks",
 		Example: "pack stack suggest",
 		RunE: logError(logger, func(*cobra.Command, []string) error {
 			Suggest(logger)
