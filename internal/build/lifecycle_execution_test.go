@@ -72,6 +72,8 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		fakePhase        *fakes.FakePhase
 		fakePhaseFactory *fakes.FakePhaseFactory
 		configProvider   *build.PhaseConfigProvider
+
+		extensionsForBuild bool
 	)
 
 	var configureDefaultTestLifecycle = func(opts *build.LifecycleOptions) {
@@ -117,6 +119,16 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		lifecycle = newTestLifecycleExec(t, true, lifecycleOps...)
 
+		// set working directory to be a directory that we control so that we can put fixtures into it
+		if extensionsForBuild {
+			lifecycle.WorkingDir, err = os.MkdirTemp("", "pack.unit")
+			h.AssertNil(t, err)
+			err = os.MkdirAll(filepath.Join(lifecycle.WorkingDir, "generated", "build"), 0755)
+			h.AssertNil(t, err)
+			_, err = os.Create(filepath.Join(lifecycle.WorkingDir, "generated", "build", "some-dockerfile"))
+			h.AssertNil(t, err)
+		}
+
 		fakeLaunchCache = fakes.NewFakeCache()
 		fakeLaunchCache.ReturnForType = cache.Volume
 		fakeLaunchCache.ReturnForName = "some-launch-cache"
@@ -126,6 +138,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
+		h.AssertNil(t, lifecycle.Cleanup())
 		h.AssertNil(t, os.Unsetenv("DOCKER_CONFIG"))
 		h.AssertNil(t, os.RemoveAll(dockerConfigDir))
 	})
@@ -511,9 +524,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("extensions", func() {
-				when("present in the order", func() {
+				when("present <layers>/generated/build", func() {
 					providedUseCreator = false
-					providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+					extensionsForBuild = true
 
 					when("platform < 0.10", func() {
 						platformAPI = api.MustParse("0.9")
@@ -568,7 +581,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
-				when("not present in the order", func() {
+				when("not present in <layers>/generated/build", func() {
 					providedUseCreator = false
 					platformAPI = api.MustParse("0.10")
 
@@ -1613,8 +1626,8 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("extensions", func() {
-			when("present in the order", func() {
-				providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+			when("present in <layers>/generated/build", func() {
+				extensionsForBuild = true
 
 				when("platform < 0.10", func() {
 					platformAPI = api.MustParse("0.9")
@@ -1636,7 +1649,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("not present in the order", func() {
+			when("not present in <layers>/generated/build", func() {
 				platformAPI = api.MustParse("0.10")
 
 				it("does not provide -build-image or /kaniko bind", func() {

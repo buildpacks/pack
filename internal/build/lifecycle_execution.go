@@ -4,14 +4,17 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"strconv"
 
+	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/cache"
@@ -35,6 +38,7 @@ type LifecycleExecution struct {
 	os           string
 	mountPaths   mountPaths
 	opts         LifecycleOptions
+	WorkingDir   string
 }
 
 func NewLifecycleExecution(logger logging.Logger, docker DockerClient, opts LifecycleOptions) (*LifecycleExecution, error) {
@@ -51,6 +55,11 @@ func NewLifecycleExecution(logger logging.Logger, docker DockerClient, opts Life
 		return nil, err
 	}
 
+	workingDir, err := os.MkdirTemp("", "pack.tmp")
+	if err != nil {
+		return nil, err
+	}
+
 	exec := &LifecycleExecution{
 		logger:       logger,
 		docker:       docker,
@@ -60,6 +69,7 @@ func NewLifecycleExecution(logger logging.Logger, docker DockerClient, opts Life
 		opts:         opts,
 		os:           osType,
 		mountPaths:   mountPathsForOS(osType, opts.Workspace),
+		WorkingDir:   workingDir,
 	}
 
 	if opts.Interactive {
@@ -220,19 +230,28 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			return err
 		}
 
-		if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
-			if l.os == "windows" {
-				return fmt.Errorf("builder has an order for extensions which is not supported for Windows builds")
-			}
-			l.logger.Info(style.Step("EXTENDING"))
-			if err := l.Extend(ctx, buildCache, phaseFactory); err != nil {
-				return err
-			}
+		group, _ := errgroup.WithContext(context.TODO())
+		if l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild() {
+			group.Go(func() error {
+				l.logger.Info(style.Step("EXTENDING (BUILD)"))
+				return l.ExtendBuild(ctx, buildCache, phaseFactory)
+			})
 		} else {
-			l.logger.Info(style.Step("BUILDING"))
-			if err := l.Build(ctx, phaseFactory); err != nil {
-				return err
-			}
+			group.Go(func() error {
+				l.logger.Info(style.Step("BUILDING"))
+				return l.Build(ctx, phaseFactory)
+			})
+		}
+
+		//if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {
+		//	group.Go(func() error {
+		//		l.logger.Info(style.Step("EXTENDING (RUN)"))
+		//		return l.ExtendRun(ctx, buildCache, phaseFactory)
+		//	})
+		//}
+
+		if err := group.Wait(); err != nil {
+			return err
 		}
 
 		l.logger.Info(style.Step("EXPORTING"))
@@ -252,6 +271,9 @@ func (l *LifecycleExecution) Cleanup() error {
 	}
 	if err := l.docker.VolumeRemove(context.Background(), l.appVolume, true); err != nil {
 		reterr = errors.Wrapf(err, "failed to clean up app volume %s", l.appVolume)
+	}
+	if err := os.RemoveAll(l.WorkingDir); err != nil {
+		reterr = errors.Wrapf(err, "failed to clean up working directory %s", l.WorkingDir)
 	}
 	return reterr
 }
@@ -366,7 +388,7 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 	flags := []string{"-app", l.mountPaths.appDir()}
 
 	envOp := NullOp()
-	if l.hasExtensions() && l.platformAPI.AtLeast("0.10") {
+	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
 		envOp = WithEnv("CNB_EXPERIMENTAL_MODE=warn")
 	}
 
@@ -384,6 +406,10 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 			CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter),
 		),
 		WithFlags(flags...),
+		If(l.hasExtensions(), WithPostContainerRunOperations(
+			CopyOutTo(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.WorkingDir))),
+		If(l.hasExtensions(), WithPostContainerRunOperations(
+			CopyOutTo(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.WorkingDir))),
 		envOp,
 	)
 
@@ -418,7 +444,7 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, phas
 
 	// for kaniko
 	kanikoCacheBindOp := NullOp()
-	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
+	if l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild() {
 		flags = append(flags, "-build-image", l.opts.BuilderImage)
 		registryImages = append(registryImages, l.opts.BuilderImage)
 
@@ -781,6 +807,31 @@ func (l *LifecycleExecution) withLogLevel(args ...string) []string {
 
 func (l *LifecycleExecution) hasExtensions() bool {
 	return len(l.opts.Builder.OrderExtensions()) > 0
+}
+
+func (l *LifecycleExecution) hasExtensionsForBuild() bool {
+	fis, err := os.ReadDir(filepath.Join(l.WorkingDir, "generated", "build"))
+	if err != nil {
+		return false
+	}
+	return len(fis) > 0
+}
+
+func (l *LifecycleExecution) hasExtensionsForRun() bool {
+	type runImage struct {
+		Extend bool `toml:"extend,omitempty"`
+	}
+	type analyzedMD struct {
+		RunImage *runImage `toml:"run-image,omitempty"`
+	}
+	var amd analyzedMD
+	if _, err := toml.DecodeFile(filepath.Join(l.WorkingDir, "analyzed.toml"), &amd); err != nil {
+		return false
+	}
+	if amd.RunImage == nil {
+		return false
+	}
+	return amd.RunImage.Extend
 }
 
 func (l *LifecycleExecution) appendLayoutOperations(opts []PhaseConfigProviderOperation) ([]PhaseConfigProviderOperation, error) {
