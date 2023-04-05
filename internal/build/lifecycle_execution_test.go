@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/apex/log"
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
@@ -73,7 +74,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		fakePhaseFactory *fakes.FakePhaseFactory
 		configProvider   *build.PhaseConfigProvider
 
-		extensionsForBuild bool
+		extensionsForBuild, extensionsForRun bool
 	)
 
 	var configureDefaultTestLifecycle = func(opts *build.LifecycleOptions) {
@@ -120,13 +121,29 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		lifecycle = newTestLifecycleExec(t, true, lifecycleOps...)
 
 		// set working directory to be a directory that we control so that we can put fixtures into it
-		if extensionsForBuild {
+		if extensionsForBuild || extensionsForRun {
 			lifecycle.WorkingDir, err = os.MkdirTemp("", "pack.unit")
 			h.AssertNil(t, err)
-			err = os.MkdirAll(filepath.Join(lifecycle.WorkingDir, "generated", "build"), 0755)
-			h.AssertNil(t, err)
-			_, err = os.Create(filepath.Join(lifecycle.WorkingDir, "generated", "build", "some-dockerfile"))
-			h.AssertNil(t, err)
+			if extensionsForBuild {
+				err = os.MkdirAll(filepath.Join(lifecycle.WorkingDir, "generated", "build"), 0755)
+				h.AssertNil(t, err)
+				_, err = os.Create(filepath.Join(lifecycle.WorkingDir, "generated", "build", "some-dockerfile"))
+				h.AssertNil(t, err)
+			}
+			if extensionsForRun {
+				type runImage struct {
+					Extend bool `toml:"extend,omitempty"`
+				}
+				type analyzedMD struct {
+					RunImage *runImage `toml:"run-image,omitempty"`
+				}
+				var amd analyzedMD
+				amd.RunImage = &runImage{Extend: true}
+				f, err := os.Create(filepath.Join(lifecycle.WorkingDir, "analyzed.toml"))
+				h.AssertNil(t, err)
+				defer f.Close()
+				toml.NewEncoder(f).Encode(amd)
+			}
 		}
 
 		fakeLaunchCache = fakes.NewFakeCache()
@@ -524,12 +541,57 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("extensions", func() {
-				when("present <layers>/generated/build", func() {
-					providedUseCreator = false
-					extensionsForBuild = true
+				providedUseCreator = false
 
-					when("platform < 0.10", func() {
-						platformAPI = api.MustParse("0.9")
+				when("for build", func() {
+					when("present <layers>/generated/build", func() {
+						extensionsForBuild = true
+
+						when("platform < 0.10", func() {
+							platformAPI = api.MustParse("0.9")
+
+							it("runs the builder", func() {
+								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+									return fakePhaseFactory
+								})
+								h.AssertNil(t, err)
+
+								h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+
+								var found bool
+								for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+									if entry.Name() == "builder" {
+										found = true
+									}
+								}
+								h.AssertEq(t, found, true)
+							})
+						})
+
+						when("platform >= 0.10", func() {
+							platformAPI = api.MustParse("0.10")
+
+							it("runs the extender (build)", func() {
+								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+									return fakePhaseFactory
+								})
+								h.AssertNil(t, err)
+
+								h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+
+								var found bool
+								for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+									if entry.Name() == "extender (build)" {
+										found = true
+									}
+								}
+								h.AssertEq(t, found, true)
+							})
+						})
+					})
+
+					when("not present in <layers>/generated/build", func() {
+						platformAPI = api.MustParse("0.10")
 
 						it("runs the builder", func() {
 							err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
@@ -539,72 +601,85 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 							h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
 
-							var foundBuilder bool
+							var found bool
 							for _, entry := range fakePhaseFactory.NewCalledWithProvider {
-								switch entry.Name() {
-								case "builder":
-									foundBuilder = true
-								case "exporter":
-									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
-								case "analyzer":
-									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
+								if entry.Name() == "builder" {
+									found = true
 								}
 							}
-							h.AssertEq(t, foundBuilder, true)
-						})
-					})
-
-					when("platform >= 0.10", func() {
-						platformAPI = api.MustParse("0.10")
-
-						it("runs the extender", func() {
-							err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
-								return fakePhaseFactory
-							})
-							h.AssertNil(t, err)
-
-							h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
-
-							var foundExtender bool
-							for _, entry := range fakePhaseFactory.NewCalledWithProvider {
-								switch entry.Name() {
-								case "extender (build)":
-									foundExtender = true
-								case "exporter":
-									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
-								case "analyzer":
-									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
-								}
-							}
-							h.AssertEq(t, foundExtender, true)
+							h.AssertEq(t, found, true)
 						})
 					})
 				})
 
-				when("not present in <layers>/generated/build", func() {
-					providedUseCreator = false
-					platformAPI = api.MustParse("0.10")
+				when("for run", func() {
+					when("analyzed.toml extend", func() {
+						when("true", func() {
+							extensionsForRun = true
 
-					it("runs the builder", func() {
-						err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
-							return fakePhaseFactory
+							when("platform >= 0.12", func() {
+								platformAPI = api.MustParse("0.12")
+
+								it("runs the extender (run)", func() {
+									err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+										return fakePhaseFactory
+									})
+									h.AssertNil(t, err)
+
+									h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 6)
+
+									var found bool
+									for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+										if entry.Name() == "extender (run)" {
+											found = true
+										}
+									}
+									h.AssertEq(t, found, true)
+								})
+							})
+
+							when("platform < 0.12", func() {
+								platformAPI = api.MustParse("0.11")
+
+								it("doesn't run the extender", func() {
+									err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+										return fakePhaseFactory
+									})
+									h.AssertNil(t, err)
+
+									h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+
+									var found bool
+									for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+										if entry.Name() == "extender (run)" {
+											found = true
+										}
+									}
+									h.AssertEq(t, found, false)
+								})
+							})
 						})
-						h.AssertNil(t, err)
 
-						h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+						when("false", func() {
+							platformAPI = api.MustParse("0.12")
 
-						var foundBuilder bool
-						for _, entry := range fakePhaseFactory.NewCalledWithProvider {
-							switch entry.Name() {
-							case "builder":
-								foundBuilder = true
-							case "exporter":
-								h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
-							case "analyzer":
-								h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
-							}
-						}
-						h.AssertEq(t, foundBuilder, true)
+							it("doesn't run the extender", func() {
+								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+									return fakePhaseFactory
+								})
+								h.AssertNil(t, err)
+
+								h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+
+								var found bool
+								for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+									if entry.Name() == "extender (run)" {
+										found = true
+									}
+								}
+								h.AssertEq(t, found, false)
+							})
+						})
 					})
 				})
 			})

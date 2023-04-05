@@ -243,12 +243,12 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			})
 		}
 
-		//if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {
-		//	group.Go(func() error {
-		//		l.logger.Info(style.Step("EXTENDING (RUN)"))
-		//		return l.ExtendRun(ctx, buildCache, phaseFactory)
-		//	})
-		//}
+		if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {
+			group.Go(func() error {
+				l.logger.Info(style.Step("EXTENDING (RUN)"))
+				return l.ExtendRun(ctx, buildCache, phaseFactory)
+			})
+		}
 
 		if err := group.Wait(); err != nil {
 			return err
