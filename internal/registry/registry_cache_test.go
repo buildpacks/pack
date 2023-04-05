@@ -73,6 +73,13 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("registryURL is Azure", func() {
+			it("fails to create a registry cache", func() {
+				_, err := NewRegistryCache(logger, tmpDir, "https://dev.azure.com/")
+				h.AssertNil(t, err)
+			})
+		})
+
 		it("creates a RegistryCache", func() {
 			registryCache, err := NewRegistryCache(logger, tmpDir, registryFixture)
 			h.AssertNil(t, err)
