@@ -1701,35 +1701,69 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("extensions", func() {
-			when("present in <layers>/generated/build", func() {
-				extensionsForBuild = true
+			when("for build", func() {
+				when("present in <layers>/generated/build", func() {
+					extensionsForBuild = true
 
-				when("platform < 0.10", func() {
-					platformAPI = api.MustParse("0.9")
+					when("platform < 0.10", func() {
+						platformAPI = api.MustParse("0.9")
+
+						it("does not provide -build-image or /kaniko bind", func() {
+							h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-build-image")
+							h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+						})
+					})
+
+					when("platform >= 0.10", func() {
+						platformAPI = api.MustParse("0.10")
+
+						it("provides -build-image and /kaniko bind", func() {
+							h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-build-image", providedBuilderImage)
+							h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
+							h.AssertSliceContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+						})
+					})
+				})
+
+				when("not present in <layers>/generated/build", func() {
+					platformAPI = api.MustParse("0.10")
 
 					it("does not provide -build-image or /kaniko bind", func() {
 						h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-build-image")
 						h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
 					})
 				})
-
-				when("platform >= 0.10", func() {
-					platformAPI = api.MustParse("0.10")
-
-					it("provides -build-image and /kaniko bind", func() {
-						h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-build-image", providedBuilderImage)
-						h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
-						h.AssertSliceContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
-					})
-				})
 			})
 
-			when("not present in <layers>/generated/build", func() {
-				platformAPI = api.MustParse("0.10")
+			when("for run", func() {
+				when("analyzed.toml extend", func() {
+					when("true", func() {
+						extensionsForRun = true
 
-				it("does not provide -build-image or /kaniko bind", func() {
-					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-build-image")
-					h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+						when("platform >= 0.12", func() {
+							platformAPI = api.MustParse("0.12")
+
+							it("provides /kaniko bind", func() {
+								h.AssertSliceContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+							})
+						})
+
+						when("platform < 0.12", func() {
+							platformAPI = api.MustParse("0.11")
+
+							it("does not provide /kaniko bind", func() {
+								h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+							})
+						})
+					})
+
+					when("false", func() {
+						platformAPI = api.MustParse("0.12")
+
+						it("does not provide /kaniko bind", func() {
+							h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+						})
+					})
 				})
 			})
 		})
