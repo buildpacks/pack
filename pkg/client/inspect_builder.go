@@ -97,6 +97,23 @@ func (c *Client) InspectBuilder(name string, daemon bool, modifiers ...BuilderIn
 		return nil, err
 	}
 
+	if info.Extensions != nil {
+		return &BuilderInfo{
+			Description:     info.Description,
+			Stack:           info.StackID,
+			Mixins:          info.Mixins,
+			RunImage:        info.RunImage,
+			RunImageMirrors: info.RunImageMirrors,
+			Buildpacks:      info.Buildpacks,
+			Order:           info.Order,
+			BuildpackLayers: info.BuildpackLayers,
+			Lifecycle:       info.Lifecycle,
+			CreatedBy:       info.CreatedBy,
+			Extensions:      info.Extensions,
+			OrderExtensions: info.OrderExtensions,
+		}, nil
+	}
+
 	return &BuilderInfo{
 		Description:     info.Description,
 		Stack:           info.StackID,
@@ -108,7 +125,5 @@ func (c *Client) InspectBuilder(name string, daemon bool, modifiers ...BuilderIn
 		BuildpackLayers: info.BuildpackLayers,
 		Lifecycle:       info.Lifecycle,
 		CreatedBy:       info.CreatedBy,
-		Extensions:      info.Extensions,
-		OrderExtensions: info.OrderExtensions,
 	}, nil
 }
