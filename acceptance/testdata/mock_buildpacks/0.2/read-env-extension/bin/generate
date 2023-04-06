@@ -1,3 +1,14 @@
 #!/usr/bin/env bash
 
 echo "---> Generate: Read Env Extension"
+
+# 1. GET ARGS
+output_dir=$CNB_OUTPUT_DIR
+
+# 2. GENERATE build.Dockerfile
+cat >> "${output_dir}/build.Dockerfile" <<EOL
+ARG base_image
+FROM \${base_image}
+
+RUN echo "Hello World"
+EOL

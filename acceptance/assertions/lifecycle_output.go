@@ -73,7 +73,10 @@ func (l LifecycleOutputAssertionManager) IncludesSeparatePhases() {
 func (l LifecycleOutputAssertionManager) IncludesSeparatePhasesWithExtension() {
 	l.testObject.Helper()
 
-	l.assert.ContainsAll(l.output, "[detector]", "[analyzer]", "[extender]", "[exporter]")
+	// Earlier pack versions print `[extender]`, later pack versions print `[extender (build)]`.
+	// Removing the `]` for the extend phase allows us to navigate compat suite complexity without undo headache.
+	// When previous pack is old enough, we can make the matcher more precise.
+	l.assert.ContainsAll(l.output, "[detector]", "[analyzer]", "[extender", "[exporter]")
 }
 
 func (l LifecycleOutputAssertionManager) IncludesLifecycleImageTag(tag string) {

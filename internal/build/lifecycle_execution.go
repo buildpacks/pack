@@ -407,9 +407,9 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 		),
 		WithFlags(flags...),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
-			CopyOutTo(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.TmpDir))),
+			CopyOutToErr(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.TmpDir))),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
-			CopyOutTo(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.TmpDir))),
+			CopyOutToErr(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.TmpDir))),
 		envOp,
 	)
 
