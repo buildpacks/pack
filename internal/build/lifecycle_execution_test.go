@@ -46,6 +46,7 @@ func TestLifecycleExecution(t *testing.T) {
 func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 	var (
 		dockerConfigDir string
+		tmpDir          string
 
 		// lifecycle options
 		providedClearCache     bool
@@ -120,10 +121,12 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		lifecycle = newTestLifecycleExec(t, true, lifecycleOps...)
 
+		tmpDir, err = os.MkdirTemp("", "pack.unit")
+		h.AssertNil(t, err)
+		lifecycle.TmpDir = tmpDir
+
 		// set working directory to be a directory that we control so that we can put fixtures into it
 		if extensionsForBuild || extensionsForRun {
-			lifecycle.TmpDir, err = os.MkdirTemp("", "pack.unit")
-			h.AssertNil(t, err)
 			if extensionsForBuild {
 				// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
 				err = os.MkdirAll(filepath.Join(lifecycle.TmpDir, "build"), 0755)
@@ -156,9 +159,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		h.AssertNil(t, lifecycle.Cleanup())
 		h.AssertNil(t, os.Unsetenv("DOCKER_CONFIG"))
 		h.AssertNil(t, os.RemoveAll(dockerConfigDir))
+		h.AssertNil(t, os.RemoveAll(tmpDir))
 	})
 
 	when("#NewLifecycleExecution", func() {
