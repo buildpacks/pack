@@ -813,7 +813,8 @@ func (l *LifecycleExecution) hasExtensions() bool {
 }
 
 func (l *LifecycleExecution) hasExtensionsForBuild() bool {
-	fis, err := os.ReadDir(filepath.Join(l.WorkingDir, "generated", "build"))
+	// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
+	fis, err := os.ReadDir(filepath.Join(l.WorkingDir, "build"))
 	if err != nil {
 		return false
 	}

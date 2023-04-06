@@ -125,9 +125,10 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			lifecycle.WorkingDir, err = os.MkdirTemp("", "pack.unit")
 			h.AssertNil(t, err)
 			if extensionsForBuild {
-				err = os.MkdirAll(filepath.Join(lifecycle.WorkingDir, "generated", "build"), 0755)
+				// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
+				err = os.MkdirAll(filepath.Join(lifecycle.WorkingDir, "build"), 0755)
 				h.AssertNil(t, err)
-				_, err = os.Create(filepath.Join(lifecycle.WorkingDir, "generated", "build", "some-dockerfile"))
+				_, err = os.Create(filepath.Join(lifecycle.WorkingDir, "build", "some-dockerfile"))
 				h.AssertNil(t, err)
 			}
 			if extensionsForRun {
