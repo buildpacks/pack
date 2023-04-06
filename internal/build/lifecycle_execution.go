@@ -38,7 +38,7 @@ type LifecycleExecution struct {
 	os           string
 	mountPaths   mountPaths
 	opts         LifecycleOptions
-	WorkingDir   string
+	TmpDir       string
 }
 
 func NewLifecycleExecution(logger logging.Logger, docker DockerClient, opts LifecycleOptions) (*LifecycleExecution, error) {
@@ -55,7 +55,7 @@ func NewLifecycleExecution(logger logging.Logger, docker DockerClient, opts Life
 		return nil, err
 	}
 
-	workingDir, err := os.MkdirTemp("", "pack.tmp")
+	tmpDir, err := os.MkdirTemp("", "pack.tmp")
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func NewLifecycleExecution(logger logging.Logger, docker DockerClient, opts Life
 		opts:         opts,
 		os:           osType,
 		mountPaths:   mountPathsForOS(osType, opts.Workspace),
-		WorkingDir:   workingDir,
+		TmpDir:       tmpDir,
 	}
 
 	if opts.Interactive {
@@ -272,8 +272,8 @@ func (l *LifecycleExecution) Cleanup() error {
 	if err := l.docker.VolumeRemove(context.Background(), l.appVolume, true); err != nil {
 		reterr = errors.Wrapf(err, "failed to clean up app volume %s", l.appVolume)
 	}
-	if err := os.RemoveAll(l.WorkingDir); err != nil {
-		reterr = errors.Wrapf(err, "failed to clean up working directory %s", l.WorkingDir)
+	if err := os.RemoveAll(l.TmpDir); err != nil {
+		reterr = errors.Wrapf(err, "failed to clean up working directory %s", l.TmpDir)
 	}
 	return reterr
 }
@@ -407,9 +407,9 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 		),
 		WithFlags(flags...),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
-			CopyOutTo(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.WorkingDir))),
+			CopyOutTo(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.TmpDir))),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
-			CopyOutTo(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.WorkingDir))),
+			CopyOutTo(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.TmpDir))),
 		envOp,
 	)
 
@@ -812,7 +812,7 @@ func (l *LifecycleExecution) hasExtensions() bool {
 
 func (l *LifecycleExecution) hasExtensionsForBuild() bool {
 	// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
-	fis, err := os.ReadDir(filepath.Join(l.WorkingDir, "build"))
+	fis, err := os.ReadDir(filepath.Join(l.TmpDir, "build"))
 	if err != nil {
 		return false
 	}
@@ -827,7 +827,7 @@ func (l *LifecycleExecution) hasExtensionsForRun() bool {
 		RunImage *runImage `toml:"run-image,omitempty"`
 	}
 	var amd analyzedMD
-	if _, err := toml.DecodeFile(filepath.Join(l.WorkingDir, "analyzed.toml"), &amd); err != nil {
+	if _, err := toml.DecodeFile(filepath.Join(l.TmpDir, "analyzed.toml"), &amd); err != nil {
 		return false
 	}
 	if amd.RunImage == nil {

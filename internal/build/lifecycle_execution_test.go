@@ -122,13 +122,13 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		// set working directory to be a directory that we control so that we can put fixtures into it
 		if extensionsForBuild || extensionsForRun {
-			lifecycle.WorkingDir, err = os.MkdirTemp("", "pack.unit")
+			lifecycle.TmpDir, err = os.MkdirTemp("", "pack.unit")
 			h.AssertNil(t, err)
 			if extensionsForBuild {
 				// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
-				err = os.MkdirAll(filepath.Join(lifecycle.WorkingDir, "build"), 0755)
+				err = os.MkdirAll(filepath.Join(lifecycle.TmpDir, "build"), 0755)
 				h.AssertNil(t, err)
-				_, err = os.Create(filepath.Join(lifecycle.WorkingDir, "build", "some-dockerfile"))
+				_, err = os.Create(filepath.Join(lifecycle.TmpDir, "build", "some-dockerfile"))
 				h.AssertNil(t, err)
 			}
 			if extensionsForRun {
@@ -140,7 +140,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				}
 				var amd analyzedMD
 				amd.RunImage = &runImage{Extend: true}
-				f, err := os.Create(filepath.Join(lifecycle.WorkingDir, "analyzed.toml"))
+				f, err := os.Create(filepath.Join(lifecycle.TmpDir, "analyzed.toml"))
 				h.AssertNil(t, err)
 				defer f.Close()
 				toml.NewEncoder(f).Encode(amd)
