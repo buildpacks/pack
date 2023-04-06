@@ -652,11 +652,10 @@ func (l *LifecycleExecution) ExtendBuild(ctx context.Context, buildCache Cache, 
 		return fmt.Errorf("build cache must be volume cache when building with extensions")
 	}
 
-	extender := "extender (build)"
 	configProvider := NewPhaseConfigProvider(
-		extender,
+		"extender",
 		l,
-		WithLogPrefix(extender),
+		WithLogPrefix("extender (build)"),
 		WithArgs(l.withLogLevel()...),
 		WithBinds(l.opts.Volumes...),
 		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
@@ -683,11 +682,10 @@ func (l *LifecycleExecution) ExtendRun(ctx context.Context, buildCache Cache, ph
 		return fmt.Errorf("build cache must be volume cache when building with extensions")
 	}
 
-	extender := "extender (run)"
 	configProvider := NewPhaseConfigProvider(
-		extender,
+		"extender",
 		l,
-		WithLogPrefix(extender),
+		WithLogPrefix("extender (run)"),
 		WithArgs(l.withLogLevel()...),
 		WithBinds(l.opts.Volumes...),
 		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),

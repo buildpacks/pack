@@ -582,7 +582,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 								var found bool
 								for _, entry := range fakePhaseFactory.NewCalledWithProvider {
-									if entry.Name() == "extender (build)" {
+									if entry.Name() == "extender" {
 										found = true
 									}
 								}
@@ -631,7 +631,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 									var found bool
 									for _, entry := range fakePhaseFactory.NewCalledWithProvider {
-										if entry.Name() == "extender (run)" {
+										if entry.Name() == "extender" {
 											found = true
 										}
 									}
@@ -652,7 +652,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 									var found bool
 									for _, entry := range fakePhaseFactory.NewCalledWithProvider {
-										if entry.Name() == "extender (run)" {
+										if entry.Name() == "extender" {
 											found = true
 										}
 									}
@@ -674,7 +674,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 								var found bool
 								for _, entry := range fakePhaseFactory.NewCalledWithProvider {
-									if entry.Name() == "extender (run)" {
+									if entry.Name() == "extender" {
 										found = true
 									}
 								}
@@ -1812,7 +1812,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNotEq(t, lastCallIndex, -1)
 
 			configProvider = fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
-			h.AssertEq(t, configProvider.Name(), "extender (build)")
+			h.AssertEq(t, configProvider.Name(), "extender")
 		})
 
 		it("creates a phase and then runs it", func() {
@@ -1854,7 +1854,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNotEq(t, lastCallIndex, -1)
 
 			configProvider = fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
-			h.AssertEq(t, configProvider.Name(), "extender (run)")
+			h.AssertEq(t, configProvider.Name(), "extender")
 		})
 
 		it("creates a phase and then runs it", func() {
