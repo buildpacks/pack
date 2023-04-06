@@ -171,12 +171,12 @@ Processes:
 					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 					{ID: "test.bp.three.remote", Version: "3.0.0"},
 				},
-				Base: platform.RunImageMetadata{
+				Base: platform.RunImageForRebase{
 					TopLayer:  "some-remote-top-layer",
 					Reference: "some-remote-run-image-reference",
 				},
 				Stack: platform.StackMetadata{
-					RunImage: platform.StackRunImageMetadata{
+					RunImage: platform.RunImageForExport{
 						Image:   "some-remote-run-image",
 						Mirrors: []string{"some-remote-mirror", "other-remote-mirror"},
 					},
@@ -227,12 +227,12 @@ Processes:
 					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 					{ID: "test.bp.three.local", Version: "3.0.0"},
 				},
-				Base: platform.RunImageMetadata{
+				Base: platform.RunImageForRebase{
 					TopLayer:  "some-local-top-layer",
 					Reference: "some-local-run-image-reference",
 				},
 				Stack: platform.StackMetadata{
-					RunImage: platform.StackRunImageMetadata{
+					RunImage: platform.RunImageForExport{
 						Image:   "some-local-run-image",
 						Mirrors: []string{"some-local-mirror", "other-local-mirror"},
 					},
@@ -282,12 +282,12 @@ Processes:
 					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 					{ID: "test.bp.three.remote", Version: "3.0.0"},
 				},
-				Base: platform.RunImageMetadata{
+				Base: platform.RunImageForRebase{
 					TopLayer:  "some-remote-top-layer",
 					Reference: "some-remote-run-image-reference",
 				},
 				Stack: platform.StackMetadata{
-					RunImage: platform.StackRunImageMetadata{
+					RunImage: platform.RunImageForExport{
 						Image:   "some-remote-run-image",
 						Mirrors: []string{"some-remote-mirror", "other-remote-mirror"},
 					},
@@ -343,12 +343,12 @@ Processes:
 					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 					{ID: "test.bp.three.local", Version: "3.0.0"},
 				},
-				Base: platform.RunImageMetadata{
+				Base: platform.RunImageForRebase{
 					TopLayer:  "some-local-top-layer",
 					Reference: "some-local-run-image-reference",
 				},
 				Stack: platform.StackMetadata{
-					RunImage: platform.StackRunImageMetadata{
+					RunImage: platform.RunImageForExport{
 						Image:   "some-local-run-image",
 						Mirrors: []string{"some-local-mirror", "other-local-mirror"},
 					},
