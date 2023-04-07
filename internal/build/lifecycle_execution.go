@@ -843,6 +843,7 @@ func (l *LifecycleExecution) hasExtensionsForRun() bool {
 	return amd.RunImage.Extend
 }
 
+// TODO: we might need to pull the run image at this stage, see https://github.com/buildpacks/pack/issues/1686
 func (l *LifecycleExecution) runImageAfterExtensions() string {
 	var amd analyzedMD
 	if _, err := toml.DecodeFile(filepath.Join(l.TmpDir, "analyzed.toml"), &amd); err != nil {

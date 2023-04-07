@@ -145,8 +145,8 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				amd.RunImage = &runImage{Extend: true}
 				f, err := os.Create(filepath.Join(lifecycle.TmpDir, "analyzed.toml"))
 				h.AssertNil(t, err)
-				defer f.Close()
 				toml.NewEncoder(f).Encode(amd)
+				h.AssertNil(t, f.Close())
 			}
 		}
 
@@ -161,7 +161,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 	it.After(func() {
 		h.AssertNil(t, os.Unsetenv("DOCKER_CONFIG"))
 		h.AssertNil(t, os.RemoveAll(dockerConfigDir))
-		h.AssertNil(t, os.RemoveAll(tmpDir))
+		_ = os.RemoveAll(tmpDir)
 	})
 
 	when("#NewLifecycleExecution", func() {
