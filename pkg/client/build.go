@@ -1133,7 +1133,7 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 		bldr.AddExtension(ex)
 	}
 	if len(orderExtensions) > 0 && len(orderExtensions[0].Group) > 0 {
-		c.logger.Debug("Setting custom order")
+		c.logger.Debug("Setting custom order for extensions")
 		bldr.SetOrderExtensions(orderExtensions)
 	}
 
