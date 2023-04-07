@@ -482,6 +482,8 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, phas
 			l.withLogLevel()...,
 		),
 		WithNetwork(l.opts.Network),
+		If(l.hasExtensionsForRun(), WithPostContainerRunOperations(
+			CopyOutToErr(l.mountPaths.cnbDir(), l.TmpDir))), // FIXME: this is hacky; we should get the lifecycle binaries from the lifecycle image
 		flagsOp,
 		cacheBindOp,
 		registryOp,
@@ -692,6 +694,8 @@ func (l *LifecycleExecution) ExtendRun(ctx context.Context, buildCache Cache, ph
 		WithFlags(flags...),
 		WithNetwork(l.opts.Network),
 		WithRoot(),
+		WithImage(l.runImageAfterExtensions()),
+		WithBinds(fmt.Sprintf("%s:%s", filepath.Join(l.TmpDir, "cnb"), l.mountPaths.cnbDir())),
 		kanikoCacheBindOp,
 	)
 
@@ -819,13 +823,16 @@ func (l *LifecycleExecution) hasExtensionsForBuild() bool {
 	return len(fis) > 0
 }
 
+// FIXME: when lifecycle 0.17.0 is released, we can bump the library version imported by pack and use platform.AnalyzedMetadata directly
+type analyzedMD struct {
+	RunImage *runImage `toml:"run-image,omitempty"`
+}
+type runImage struct {
+	Extend    bool   `toml:"extend,omitempty"`
+	Reference string `toml:"reference"`
+}
+
 func (l *LifecycleExecution) hasExtensionsForRun() bool {
-	type runImage struct {
-		Extend bool `toml:"extend,omitempty"`
-	}
-	type analyzedMD struct {
-		RunImage *runImage `toml:"run-image,omitempty"`
-	}
 	var amd analyzedMD
 	if _, err := toml.DecodeFile(filepath.Join(l.TmpDir, "analyzed.toml"), &amd); err != nil {
 		return false
@@ -834,6 +841,18 @@ func (l *LifecycleExecution) hasExtensionsForRun() bool {
 		return false
 	}
 	return amd.RunImage.Extend
+}
+
+func (l *LifecycleExecution) runImageAfterExtensions() string {
+	var amd analyzedMD
+	if _, err := toml.DecodeFile(filepath.Join(l.TmpDir, "analyzed.toml"), &amd); err != nil {
+		return l.opts.RunImage
+	}
+	if amd.RunImage == nil {
+		// this shouldn't be reachable
+		return l.opts.RunImage
+	}
+	return amd.RunImage.Reference
 }
 
 func (l *LifecycleExecution) appendLayoutOperations(opts []PhaseConfigProviderOperation) ([]PhaseConfigProviderOperation, error) {

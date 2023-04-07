@@ -764,7 +764,7 @@ func testAcceptance(
 					it.Before(func() {
 						h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.Extensions), "")
 						h.SkipIf(t, !pack.SupportsFeature(invoke.Extensions), "")
-						h.SkipIf(t, !lifecycle.SupportsFeature(config.Extensions), "")
+						h.SkipIf(t, !lifecycle.SupportsFeature(config.BuildImageExtensions), "")
 						// create a task, handled by a 'task manager' which executes our pack commands during tests.
 						// looks like this is used to de-dup tasks
 						key := taskKey(
@@ -798,7 +798,7 @@ func testAcceptance(
 					it("creates builder", func() {
 						// Linux containers (including Linux containers on Windows)
 						extSimpleLayersDiffID := "sha256:b9e4a0ddfb650c7aa71d1e6aceea1665365e409b3078bfdc1e51c2b07ab2b423"
-						extReadEnvDiffID := "sha256:b49f178f802bbeb04acf4776bd41dcea8c47504ce31b06b580ec697387629cf2"
+						extReadEnvDiffID := "sha256:ab7419c5e0b1a0789bd07cef2ed0573ec6e98eb05d7f05eb95d4f035243e331c"
 						bpSimpleLayersDiffID := "sha256:285ff6683c99e5ae19805f6a62168fb40dca64d813c53b782604c9652d745c70"
 						bpReadEnvDiffID := "sha256:dd1e0efcbf3f08b014ef6eff9cfe7a9eac1cf20bd9b6a71a946f0a74575aa56f"
 						if imageManager.HostOS() == "windows" { // Windows containers on Windows
@@ -841,7 +841,7 @@ func testAcceptance(
 						})
 
 						when("builder is untrusted", func() {
-							it("uses the 5 phases, and runs the extender", func() {
+							it("uses the 5 phases, and runs the extender (build)", func() {
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
@@ -853,7 +853,37 @@ func testAcceptance(
 
 								assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
 								assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
-								assertOutput.IncludesSeparatePhasesWithExtension()
+								assertOutput.IncludesSeparatePhasesWithBuildExtension()
+
+								t.Log("inspecting image")
+								inspectCmd := "inspect"
+								if !pack.Supports("inspect") {
+									inspectCmd = "inspect-image"
+								}
+
+								output = pack.RunSuccessfully(inspectCmd, repoName)
+							})
+						})
+
+						when("there are run image extensions", func() {
+							it.Before(func() {
+								h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
+							})
+
+							it("uses the 5 phases, and runs the extender (run)", func() {
+								output := pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--network", "host", // export target is the daemon, but we need to be able to reach the registry where the builder image and run image are saved
+									"-B", builderName,
+									"--env", "EXT_RUN=1",
+								)
+
+								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+
+								assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
+								assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+								assertOutput.IncludesSeparatePhasesWithRunExtension()
 
 								t.Log("inspecting image")
 								inspectCmd := "inspect"

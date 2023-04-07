@@ -183,7 +183,8 @@ type LifecycleFeature int
 
 const (
 	CreationTime = iota
-	Extensions
+	BuildImageExtensions
+	RunImageExtensions
 )
 
 type LifecycleAssetSupported func(l *LifecycleAsset) bool
@@ -205,8 +206,9 @@ func supportsPlatformAPI(version string) LifecycleAssetSupported {
 }
 
 var lifecycleFeatureTests = map[LifecycleFeature]LifecycleAssetSupported{
-	CreationTime: supportsPlatformAPI("0.9"),
-	Extensions:   supportsPlatformAPI("0.10"),
+	CreationTime:         supportsPlatformAPI("0.9"),
+	BuildImageExtensions: supportsPlatformAPI("0.10"),
+	RunImageExtensions:   supportsPlatformAPI("0.12"),
 }
 
 func (l *LifecycleAsset) SupportsFeature(f LifecycleFeature) bool {

@@ -1865,7 +1865,12 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, fakePhase.RunCallCount, 1)
 		})
 
+		it("runs the phase with the run image", func() {
+			h.AssertEq(t, configProvider.ContainerConfig().Image, "some-run-image")
+		})
+
 		it("configures the phase with the expected arguments", func() {
+			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Entrypoint, "") // the run image may have an entrypoint configured, override it
 			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-log-level", "debug")
 			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-app", "/workspace")
 			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-kind", "run")
@@ -1873,7 +1878,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		it("configures the phase with binds", func() {
 			expectedBinds := providedVolumes
-			expectedBinds = append(expectedBinds, "some-cache:/kaniko")
+			expectedBinds = append(expectedBinds, "some-cache:/kaniko", fmt.Sprintf("%s:/cnb", filepath.Join(tmpDir, "cnb")))
 
 			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 		})
