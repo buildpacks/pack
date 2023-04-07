@@ -1094,9 +1094,6 @@ func (c *Client) processExtensions(ctx context.Context, builderImage imgutil.Ima
 			return nil, nil, errors.New("RegistryLocator type is not valid for extensions")
 		case buildpack.FromBuilderLocator:
 			return nil, nil, errors.New("from builder is not supported for extensions")
-
-				orderExtensions = newOrderExtensions
-			}
 		default:
 			newFetchedExs, moduleInfo, err := c.fetchBuildpack(ctx, ex, relativeBaseDir, builderImage, builderExs, opts, buildpack.KindExtension)
 			if err != nil {
