@@ -50,6 +50,7 @@ func Rebase(logger logging.Logger, cfg config.Config, pack PackClient) *cobra.Co
 	cmd.Flags().StringVar(&opts.RunImage, "run-image", "", "Run image to use for rebasing")
 	cmd.Flags().StringVar(&policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	cmd.Flags().StringVar(&opts.ReportDestinationDir, "report-output-dir", "", "Path to export build report.toml.\nOmitting the flag yield no report file.")
+	cmd.Flags().BoolVar(&opts.Force, "force", false, "Perform rebase operation without target validation (only available for API >= 0.12)")
 
 	AddHelpFlag(cmd, "rebase")
 	return cmd
