@@ -167,6 +167,32 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, bp.EnsureTargetSupport("fake-os", "fake-arch", "fake-distro", "0.0"))
 		})
 
+		it("succeeds with no target and bin/build.exe", func() {
+			bp := dist.BuildpackDescriptor{
+				WithInfo: dist.ModuleInfo{
+					ID:      "some.buildpack.id",
+					Version: "some.buildpack.version",
+				},
+				WithWindowsBuild: true,
+			}
+
+			h.AssertNil(t, bp.EnsureStackSupport("some.stack.id", []string{}, true))
+			h.AssertNil(t, bp.EnsureTargetSupport("windows", "amd64", "fake-distro", "0.0"))
+		})
+
+		it("succeeds with no target and bin/build", func() {
+			bp := dist.BuildpackDescriptor{
+				WithInfo: dist.ModuleInfo{
+					ID:      "some.buildpack.id",
+					Version: "some.buildpack.version",
+				},
+				WithLinuxBuild: true,
+			}
+
+			h.AssertNil(t, bp.EnsureStackSupport("some.stack.id", []string{}, true))
+			h.AssertNil(t, bp.EnsureTargetSupport("linux", "amd64", "fake-distro", "0.0"))
+		})
+
 		it("returns an error when no match", func() {
 			bp := dist.BuildpackDescriptor{
 				WithInfo: dist.ModuleInfo{

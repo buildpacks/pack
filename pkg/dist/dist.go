@@ -8,7 +8,8 @@ const (
 	BuildpackLayersLabel   = "io.buildpacks.buildpack.layers"
 	ExtensionLayersLabel   = "io.buildpacks.extension.layers"
 	ExtensionMetadataLabel = "io.buildpacks.extension.metadata"
-	DefaultTargetOS        = "linux"
+	DefaultTargetOSLinux   = "linux"
+	DefaultTargetOSWindows = "windows"
 	DefaultTargetArch      = "amd64"
 )
 

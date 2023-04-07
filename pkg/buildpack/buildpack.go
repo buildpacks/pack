@@ -76,6 +76,9 @@ func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 	if err := readDescriptor(KindBuildpack, &descriptor, blob); err != nil {
 		return nil, err
 	}
+	if err := detectPlatformSpecificValues(&descriptor, blob); err != nil {
+		return nil, err
+	}
 	if err := validateBuildpackDescriptor(descriptor); err != nil {
 		return nil, err
 	}
@@ -116,6 +119,28 @@ func readDescriptor(kind string, descriptor interface{}, blob Blob) error {
 		return errors.Wrapf(err, "decoding %s", descriptorFile)
 	}
 
+	return nil
+}
+
+func detectPlatformSpecificValues(descriptor *dist.BuildpackDescriptor, blob Blob) error {
+	rc, err := blob.Open()
+	if err != nil {
+		return errors.Wrapf(err, "open %s", KindBuildpack)
+	}
+	defer rc.Close()
+
+	_, _, err = archive.ReadTarEntry(rc, path.Join("bin", "build"))
+	if err == nil {
+		descriptor.WithLinuxBuild = true
+	}
+	_, _, err = archive.ReadTarEntry(rc, path.Join("bin", "build.bat"))
+	if err == nil {
+		descriptor.WithWindowsBuild = true
+	}
+	_, _, err = archive.ReadTarEntry(rc, path.Join("bin", "build.exe"))
+	if err == nil {
+		descriptor.WithWindowsBuild = true
+	}
 	return nil
 }
 
@@ -247,19 +272,21 @@ func validateBuildpackDescriptor(bpd dist.BuildpackDescriptor) error {
 		return errors.Errorf("%s is required", style.Symbol("buildpack.version"))
 	}
 
-	if len(bpd.Order()) == 0 && len(bpd.Stacks()) == 0 {
+	if len(bpd.Order()) == 0 && len(bpd.Stacks()) == 0 && len(bpd.Targets()) == 0 {
 		return errors.Errorf(
-			"buildpack %s: must have either %s or an %s defined",
+			"buildpack %s: must have either %s/%s or an %s defined",
 			style.Symbol(bpd.Info().FullName()),
+			style.Symbol("targets"),
 			style.Symbol("stacks"),
 			style.Symbol("order"),
 		)
 	}
 
-	if len(bpd.Order()) >= 1 && len(bpd.Stacks()) >= 1 {
+	if len(bpd.Order()) >= 1 && (len(bpd.Stacks()) >= 1 || len(bpd.Targets()) >= 0) {
 		return errors.Errorf(
-			"buildpack %s: cannot have both %s and an %s defined",
+			"buildpack %s: cannot have both %s/%s and an %s defined",
 			style.Symbol(bpd.Info().FullName()),
+			style.Symbol("targets"),
 			style.Symbol("stacks"),
 			style.Symbol("order"),
 		)
