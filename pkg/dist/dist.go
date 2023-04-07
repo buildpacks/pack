@@ -8,6 +8,8 @@ const (
 	BuildpackLayersLabel   = "io.buildpacks.buildpack.layers"
 	ExtensionLayersLabel   = "io.buildpacks.extension.layers"
 	ExtensionMetadataLabel = "io.buildpacks.extension.metadata"
+	DefaultTargetOS        = "linux"
+	DefaultTargetArch      = "amd64"
 )
 
 type BuildpackURI struct {

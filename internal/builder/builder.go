@@ -360,7 +360,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		}
 	}
 
-	if err := validateBuildpacks(b.StackID, b.Mixins(), b.LifecycleDescriptor(), b.Buildpacks(), b.additionalBuildpacks); err != nil {
+	if err := b.validateBuildpacks(); err != nil {
 		return errors.Wrap(err, "validating buildpacks")
 	}
 
@@ -633,24 +633,20 @@ func hasElementWithVersion(moduleList []dist.ModuleInfo, version string) bool {
 	return false
 }
 
-func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, allBuildpacks []dist.ModuleInfo, bpsToValidate []buildpack.BuildModule) error {
+func (b *Builder) validateBuildpacks() error {
 	bpLookup := map[string]interface{}{}
 
-	for _, bp := range allBuildpacks {
+	for _, bp := range b.Buildpacks() {
 		bpLookup[bp.FullName()] = nil
 	}
 
-	for _, bp := range bpsToValidate {
+	for _, bp := range b.additionalBuildpacks {
 		bpd := bp.Descriptor()
-		if err := validateLifecycleCompat(bpd, lifecycleDescriptor); err != nil {
+		if err := validateLifecycleCompat(bpd, b.LifecycleDescriptor()); err != nil {
 			return err
 		}
 
-		if len(bpd.Stacks()) >= 1 { // standard buildpack
-			if err := bpd.EnsureStackSupport(stackID, mixins, false); err != nil {
-				return err
-			}
-		} else { // order buildpack
+		if len(bpd.Stacks()) == 0 && len(bpd.Targets()) == 0 { // order buildpack
 			for _, g := range bpd.Order() {
 				for _, r := range g.Group {
 					if _, ok := bpLookup[r.FullName()]; !ok {
@@ -660,6 +656,28 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 						)
 					}
 				}
+			}
+		} else if err := bpd.EnsureStackSupport(b.StackID, b.Mixins(), false); err != nil {
+			return err
+		} else {
+			buildOS, err := b.Image().OS()
+			if err != nil {
+				return err
+			}
+			buildArch, err := b.Image().Architecture()
+			if err != nil {
+				return err
+			}
+			buildDistroName, err := b.Image().Label("io.buildpacks.distribution.name") // TODO use OSDistributionNameLabel from "github.com/buildpacks/lifecycle/platform"
+			if err != nil {
+				return err
+			}
+			buildDistroVersion, err := b.Image().Label("io.buildpacks.distribution.version") // TODO use OSDistributionVersionLabel from "github.com/buildpacks/lifecycle/platform"
+			if err != nil {
+				return err
+			}
+			if err := bpd.EnsureTargetSupport(buildOS, buildArch, buildDistroName, buildDistroVersion); err != nil {
+				return err
 			}
 		}
 	}

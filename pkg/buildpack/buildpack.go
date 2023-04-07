@@ -34,11 +34,13 @@ type BuildModule interface {
 type Descriptor interface {
 	API() *api.Version
 	EnsureStackSupport(stackID string, providedMixins []string, validateRunStageMixins bool) error
+	EnsureTargetSupport(os, arch, distroName, distroVersion string) error
 	EscapedID() string
 	Info() dist.ModuleInfo
 	Kind() string
 	Order() dist.Order
 	Stacks() []dist.Stack
+	Targets() []dist.Target
 }
 
 type Blob interface {
