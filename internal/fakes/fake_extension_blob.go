@@ -17,14 +17,6 @@ type fakeExtensionBlob struct {
 	chmod      int64
 }
 
-// NewFakeExtensionBlob creates a fake blob with contents:
-//
-//	\_ extension.toml
-//	\_ bin
-//	\_ bin/build
-//	build-contents
-//	\_ bin/detect
-//	detect-contents
 func NewFakeExtensionBlob(descriptor buildpack.Descriptor, chmod int64) (blob.Blob, error) {
 	return &fakeExtensionBlob{
 		descriptor: descriptor,
@@ -37,9 +29,8 @@ func (b *fakeExtensionBlob) Open() (reader io.ReadCloser, err error) {
 	if err = toml.NewEncoder(buf).Encode(b.descriptor); err != nil {
 		return nil, err
 	}
-
+  
 	tarBuilder := archive.TarBuilder{}
-
 	tarBuilder.AddFile("extension.toml", b.chmod, time.Now(), buf.Bytes())
 	tarBuilder.AddDir("bin", b.chmod, time.Now())
 	tarBuilder.AddFile("bin/build", b.chmod, time.Now(), []byte("build-contents"))

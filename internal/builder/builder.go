@@ -685,7 +685,6 @@ func validateExtensions(lifecycleDescriptor LifecycleDescriptor, allExtensions [
 }
 
 func validateLifecycleCompat(descriptor buildpack.Descriptor, lifecycleDescriptor LifecycleDescriptor) error {
-	// TODO: Warn when Buildpack API is deprecated - https://github.com/buildpacks/pack/issues/788
 	compatible := false
 	for _, version := range append(lifecycleDescriptor.APIs.Buildpack.Supported, lifecycleDescriptor.APIs.Buildpack.Deprecated...) {
 		compatible = version.Compare(descriptor.API()) == 0
