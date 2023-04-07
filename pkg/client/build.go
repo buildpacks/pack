@@ -137,7 +137,7 @@ type BuildOptions struct {
 
 	// List of extension images or archives to add to a builder.
 	// These extensions may overwrite those on the builder if they
-	// share both an ID and Version with a extension on the builder.
+	// share both an ID and Version with an extension on the builder.
 	Extensions []string
 
 	// Additional image tags to push to, each will contain contents identical to Image
