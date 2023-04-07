@@ -53,7 +53,10 @@ func (b *BuildpackDescriptor) EnsureStackSupport(stackID string, providedMixins 
 
 func (b *BuildpackDescriptor) EnsureTargetSupport(os, arch, distroName, distroVersion string) error {
 	if len(b.Targets()) == 0 {
-		if len(b.Order()) > 0 || len(b.Stacks()) > 0 {
+
+		// TODO check bin/build, bin/build.bat, or bin/build.exe
+
+		if len(b.Stacks()) > 0 {
 			return nil // Order buildpack or stack buildpack, no validation required
 		}
 		if os == DefaultTargetOS && arch == DefaultTargetArch {

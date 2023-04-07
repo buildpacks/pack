@@ -679,6 +679,8 @@ func (b *Builder) validateBuildpacks() error {
 			if err := bpd.EnsureTargetSupport(buildOS, buildArch, buildDistroName, buildDistroVersion); err != nil {
 				return err
 			}
+
+			// TODO ensure at least one run-image
 		}
 	}
 
