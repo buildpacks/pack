@@ -1092,19 +1092,7 @@ func (c *Client) processExtensions(ctx context.Context, builderImage imgutil.Ima
 		case buildpack.RegistryLocator:
 			return nil, nil, errors.New("RegistryLocator type is not valid for extensions")
 		case buildpack.FromBuilderLocator:
-			switch {
-			case len(orderExtensions) == 0 || len(orderExtensions[0].Group) == 0:
-				orderExtensions = builderOrder
-			case len(orderExtensions) > 1:
-				// This should only ever be possible if they are using from=builder twice which we don't allow
-				return nil, nil, errors.New("extensions from builder can only be defined once")
-			default:
-				newOrderExtensions := dist.Order{}
-				groupToAdd := orderExtensions[0].Group
-				for _, bOrderEntry := range builderOrder {
-					newEntry := dist.OrderEntry{Group: append(groupToAdd, bOrderEntry.Group...)}
-					newOrderExtensions = append(newOrderExtensions, newEntry)
-				}
+			return nil, nil, errors.New("from builder is not supported for extensions")
 
 				orderExtensions = newOrderExtensions
 			}
