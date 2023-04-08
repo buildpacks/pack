@@ -28,6 +28,8 @@ import (
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
+
+	lifecycleplatform "github.com/buildpacks/lifecycle/platform"
 )
 
 const (
@@ -668,11 +670,11 @@ func (b *Builder) validateBuildpacks() error {
 			if err != nil {
 				return err
 			}
-			buildDistroName, err := b.Image().Label("io.buildpacks.distribution.name") // TODO use OSDistributionNameLabel from "github.com/buildpacks/lifecycle/platform"
+			buildDistroName, err := b.Image().Label(lifecycleplatform.OSDistributionNameLabel)
 			if err != nil {
 				return err
 			}
-			buildDistroVersion, err := b.Image().Label("io.buildpacks.distribution.version") // TODO use OSDistributionVersionLabel from "github.com/buildpacks/lifecycle/platform"
+			buildDistroVersion, err := b.Image().Label(lifecycleplatform.OSDistributionVersionLabel)
 			if err != nil {
 				return err
 			}

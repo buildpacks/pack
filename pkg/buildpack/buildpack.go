@@ -282,7 +282,7 @@ func validateBuildpackDescriptor(bpd dist.BuildpackDescriptor) error {
 		)
 	}
 
-	if len(bpd.Order()) >= 1 && (len(bpd.Stacks()) >= 1 || len(bpd.Targets()) >= 0) {
+	if len(bpd.Order()) >= 1 && (len(bpd.Stacks()) >= 1 || len(bpd.Targets()) >= 1) {
 		return errors.Errorf(
 			"buildpack %s: cannot have both %s/%s and an %s defined",
 			style.Symbol(bpd.Info().FullName()),
