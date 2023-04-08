@@ -401,12 +401,12 @@ id = "some.stack.id"
 					},
 					archive.DefaultTarWriterFactory(),
 				)
-				h.AssertError(t, err, "cannot have both 'stacks' and an 'order' defined")
+				h.AssertError(t, err, "cannot have both 'targets'/'stacks' and an 'order' defined")
 			})
 		})
 
 		when("missing stacks and order", func() {
-			it("returns error", func() {
+			it("does not return an error", func() {
 				_, err := buildpack.FromBuildpackRootBlob(
 					&readerBlob{
 						openFn: func() io.ReadCloser {
@@ -421,7 +421,7 @@ version = "1.2.3"
 					},
 					archive.DefaultTarWriterFactory(),
 				)
-				h.AssertError(t, err, "must have either 'stacks' or an 'order' defined")
+				h.AssertNil(t, err)
 			})
 		})
 	})

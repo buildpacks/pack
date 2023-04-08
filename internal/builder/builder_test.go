@@ -766,8 +766,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						//  - 1 from stackLayer
 						//  - 1 from runImageLayer
 						h.AssertEq(t, baseImage.NumberOfAddedLayers(), 6)
-						oldSha256 := "4dc0072c61fc2bd7118bbc93a432eae0012082de094455cf0a9fed20e3c44789"
-						newSha256 := "29cb2bce4c2350f0e86f3dd30fa3810beb409b910126a18651de750f457fedfb"
+						oldSha256 := "2ba2e8563f7f43533ba26047a44f3e8bb7dd009043bd73a0e6aadb02c084955c"
+						newSha256 := "719faea06424d01bb5788ce63c1167e8d382b2d9df8fcf3a0a54ea9b2e3b4045"
 						if runtime.GOOS == "windows" {
 							newSha256 = "eaed4a1617bba5738ae5672f6aefda8add7abb2f8630c75dc97a6232879d4ae4"
 						}
@@ -794,7 +794,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				when("adding buildpack that already exists on the image", func() {
 					it("skips adding buildpack that already exists", func() {
 						logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
-						diffID := "4dc0072c61fc2bd7118bbc93a432eae0012082de094455cf0a9fed20e3c44789"
+						diffID := "2ba2e8563f7f43533ba26047a44f3e8bb7dd009043bd73a0e6aadb02c084955c"
 						bpLayer := dist.ModuleLayers{
 							"buildpack-1-id": map[string]dist.ModuleLayerInfo{
 								"buildpack-1-version-1": {

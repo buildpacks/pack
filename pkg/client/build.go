@@ -709,8 +709,9 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.
 					ID:      id,
 					Version: ver,
 				},
-				WithStacks: bp.Stacks,
-				WithOrder:  bp.Order,
+				WithStacks:  bp.Stacks,
+				WithTargets: bp.Targets,
+				WithOrder:   bp.Order,
 			}
 			all = append(all, &desc)
 		}

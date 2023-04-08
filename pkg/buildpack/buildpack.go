@@ -73,10 +73,15 @@ func FromBlob(descriptor Descriptor, blob Blob) BuildModule {
 func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
 	descriptor := dist.BuildpackDescriptor{}
 	descriptor.WithAPI = api.MustParse(dist.AssumedBuildpackAPIVersion)
-	if err := readDescriptor(KindBuildpack, &descriptor, blob); err != nil {
+	rc, err := blob.Open()
+	if err != nil {
+		return nil, errors.Wrapf(err, "open %s", KindBuildpack)
+	}
+	defer rc.Close()
+	if err := readDescriptor(KindBuildpack, &descriptor, rc); err != nil {
 		return nil, err
 	}
-	if err := detectPlatformSpecificValues(&descriptor, blob); err != nil {
+	if err := detectPlatformSpecificValues(&descriptor, rc); err != nil {
 		return nil, err
 	}
 	if err := validateBuildpackDescriptor(descriptor); err != nil {
@@ -91,7 +96,12 @@ func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
 	descriptor := dist.ExtensionDescriptor{}
 	descriptor.WithAPI = api.MustParse(dist.AssumedBuildpackAPIVersion)
-	if err := readDescriptor(KindExtension, &descriptor, blob); err != nil {
+	rc, err := blob.Open()
+	if err != nil {
+		return nil, errors.Wrapf(err, "open %s", KindExtension)
+	}
+	defer rc.Close()
+	if err := readDescriptor(KindExtension, &descriptor, rc); err != nil {
 		return nil, err
 	}
 	if err := validateExtensionDescriptor(descriptor); err != nil {
@@ -100,13 +110,7 @@ func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 	return buildpackFrom(&descriptor, blob, layerWriterFactory)
 }
 
-func readDescriptor(kind string, descriptor interface{}, blob Blob) error {
-	rc, err := blob.Open()
-	if err != nil {
-		return errors.Wrapf(err, "open %s", kind)
-	}
-	defer rc.Close()
-
+func readDescriptor(kind string, descriptor interface{}, rc io.ReadCloser) error {
 	descriptorFile := kind + ".toml"
 
 	_, buf, err := archive.ReadTarEntry(rc, descriptorFile)
@@ -122,14 +126,8 @@ func readDescriptor(kind string, descriptor interface{}, blob Blob) error {
 	return nil
 }
 
-func detectPlatformSpecificValues(descriptor *dist.BuildpackDescriptor, blob Blob) error {
-	rc, err := blob.Open()
-	if err != nil {
-		return errors.Wrapf(err, "open %s", KindBuildpack)
-	}
-	defer rc.Close()
-
-	_, _, err = archive.ReadTarEntry(rc, path.Join("bin", "build"))
+func detectPlatformSpecificValues(descriptor *dist.BuildpackDescriptor, rc io.ReadCloser) error {
+	_, _, err := archive.ReadTarEntry(rc, path.Join("bin", "build"))
 	if err == nil {
 		descriptor.WithLinuxBuild = true
 	}
@@ -270,16 +268,6 @@ func validateBuildpackDescriptor(bpd dist.BuildpackDescriptor) error {
 
 	if bpd.Info().Version == "" {
 		return errors.Errorf("%s is required", style.Symbol("buildpack.version"))
-	}
-
-	if len(bpd.Order()) == 0 && len(bpd.Stacks()) == 0 && len(bpd.Targets()) == 0 {
-		return errors.Errorf(
-			"buildpack %s: must have either %s/%s or an %s defined",
-			style.Symbol(bpd.Info().FullName()),
-			style.Symbol("targets"),
-			style.Symbol("stacks"),
-			style.Symbol("order"),
-		)
 	}
 
 	if len(bpd.Order()) >= 1 && (len(bpd.Stacks()) >= 1 || len(bpd.Targets()) >= 1) {

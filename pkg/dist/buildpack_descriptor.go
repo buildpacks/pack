@@ -15,7 +15,7 @@ type BuildpackDescriptor struct {
 	WithAPI          *api.Version `toml:"api"`
 	WithInfo         ModuleInfo   `toml:"buildpack"`
 	WithStacks       []Stack      `toml:"stacks"`
-	WithTargets      []Target     `toml:"targets"`
+	WithTargets      []Target     `toml:"targets,omitempty"`
 	WithOrder        Order        `toml:"order"`
 	WithWindowsBuild bool
 	WithLinuxBuild   bool
@@ -55,7 +55,7 @@ func (b *BuildpackDescriptor) EnsureStackSupport(stackID string, providedMixins 
 
 func (b *BuildpackDescriptor) EnsureTargetSupport(os, arch, distroName, distroVersion string) error {
 	if len(b.Targets()) == 0 {
-		if (!b.WithLinuxBuild && !b.WithWindowsBuild) || len(b.Stacks()) > 0 {
+		if (!b.WithLinuxBuild && !b.WithWindowsBuild) || len(b.Stacks()) > 0 { // nolint
 			return nil // Order buildpack or stack buildpack, no validation required
 		} else if b.WithLinuxBuild && os == DefaultTargetOSLinux && arch == DefaultTargetArch {
 			return nil

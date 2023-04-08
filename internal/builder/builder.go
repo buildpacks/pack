@@ -648,7 +648,7 @@ func (b *Builder) validateBuildpacks() error {
 			return err
 		}
 
-		if len(bpd.Stacks()) == 0 && len(bpd.Targets()) == 0 { // order buildpack
+		if len(bpd.Order()) > 0 { // order buildpack
 			for _, g := range bpd.Order() {
 				for _, r := range g.Group {
 					if _, ok := bpLookup[r.FullName()]; !ok {
