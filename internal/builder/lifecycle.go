@@ -14,7 +14,7 @@ import (
 
 // A snapshot of the latest tested lifecycle version values
 const (
-	DefaultLifecycleVersion    = "0.16.0"
+	DefaultLifecycleVersion    = "0.16.1"
 	DefaultBuildpackAPIVersion = "0.2"
 )
 
