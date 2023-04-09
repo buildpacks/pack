@@ -769,7 +769,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						oldSha256 := "2ba2e8563f7f43533ba26047a44f3e8bb7dd009043bd73a0e6aadb02c084955c"
 						newSha256 := "719faea06424d01bb5788ce63c1167e8d382b2d9df8fcf3a0a54ea9b2e3b4045"
 						if runtime.GOOS == "windows" {
-							newSha256 = "eaed4a1617bba5738ae5672f6aefda8add7abb2f8630c75dc97a6232879d4ae4"
+							newSha256 = "d99d31efba72ebf98e8101ada9e89464566e943c05367c561b116c2cb86837c9"
 						}
 
 						h.AssertContains(t, outBuf.String(), fmt.Sprintf(`buildpack 'buildpack-1-id@buildpack-1-version-1' was previously defined with different contents and will be overwritten

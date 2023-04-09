@@ -59,14 +59,14 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 		when("passed specific run image", func() {
 			it("selects that run image", func() {
 				runImgFlag := "flag/passed-run-image"
-				runImageName := subject.resolveRunImage(runImgFlag, defaultRegistry, "", stackInfo, nil, false)
+				runImageName := subject.resolveRunImage(runImgFlag, defaultRegistry, "", stackInfo.RunImage, nil, false)
 				assert.Equal(runImageName, runImgFlag)
 			})
 		})
 
 		when("publish is true", func() {
 			it("defaults to run-image in registry publishing to", func() {
-				runImageName := subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo, nil, true)
+				runImageName := subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo.RunImage, nil, true)
 				assert.Equal(runImageName, gcrRunMirror)
 			})
 
@@ -74,7 +74,7 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 				configMirrors := map[string][]string{
 					runImageName: {defaultRegistry + "/unique-run-img"},
 				}
-				runImageName := subject.resolveRunImage("", defaultRegistry, "", stackInfo, configMirrors, true)
+				runImageName := subject.resolveRunImage("", defaultRegistry, "", stackInfo.RunImage, configMirrors, true)
 				assert.NotEqual(runImageName, defaultMirror)
 				assert.Equal(runImageName, defaultRegistry+"/unique-run-img")
 			})
@@ -83,7 +83,7 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 				configMirrors := map[string][]string{
 					runImageName: {defaultRegistry + "/unique-run-img"},
 				}
-				runImageName := subject.resolveRunImage("", "test.registry.io", "", stackInfo, configMirrors, true)
+				runImageName := subject.resolveRunImage("", "test.registry.io", "", stackInfo.RunImage, configMirrors, true)
 				assert.NotEqual(runImageName, defaultMirror)
 				assert.Equal(runImageName, defaultRegistry+"/unique-run-img")
 			})
@@ -92,7 +92,7 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 		// If publish is false, we are using the local daemon, and want to match to the builder registry
 		when("publish is false", func() {
 			it("defaults to run-image in registry publishing to", func() {
-				runImageName := subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo, nil, false)
+				runImageName := subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo.RunImage, nil, false)
 				assert.Equal(runImageName, defaultMirror)
 				assert.NotEqual(runImageName, gcrRunMirror)
 			})
@@ -101,7 +101,7 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 				configMirrors := map[string][]string{
 					runImageName: {defaultRegistry + "/unique-run-img"},
 				}
-				runImageName := subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo, configMirrors, false)
+				runImageName := subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo.RunImage, configMirrors, false)
 				assert.NotEqual(runImageName, defaultMirror)
 				assert.Equal(runImageName, defaultRegistry+"/unique-run-img")
 			})
@@ -110,7 +110,7 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 				configMirrors := map[string][]string{
 					runImageName: {defaultRegistry + "/unique-run-img"},
 				}
-				runImageName := subject.resolveRunImage("", defaultRegistry, "test.registry.io", stackInfo, configMirrors, false)
+				runImageName := subject.resolveRunImage("", defaultRegistry, "test.registry.io", stackInfo.RunImage, configMirrors, false)
 				assert.NotEqual(runImageName, defaultMirror)
 				assert.Equal(runImageName, defaultRegistry+"/unique-run-img")
 			})

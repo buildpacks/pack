@@ -236,9 +236,19 @@ func (b *Builder) Stack() StackMetadata {
 	return b.metadata.Stack
 }
 
-// RunImages returns the run image metadata
+// RunImages returns all run image metadata
 func (b *Builder) RunImages() []RunImageMetadata {
-	return b.metadata.RunImages
+	return append(b.metadata.RunImages, b.Stack().RunImage)
+}
+
+// DefaultRunImage returns the default run image metadata
+func (b *Builder) DefaultRunImage() RunImageMetadata {
+	// run.images are ensured in builder.ValidateConfig()
+	// per the spec, we use the first one as the default
+	if len(b.metadata.RunImages) == 0 {
+		return b.Stack().RunImage
+	}
+	return b.metadata.RunImages[0]
 }
 
 // Mixins returns the mixins of the builder
