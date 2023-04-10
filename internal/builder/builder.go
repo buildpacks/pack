@@ -245,10 +245,7 @@ func (b *Builder) RunImages() []RunImageMetadata {
 func (b *Builder) DefaultRunImage() RunImageMetadata {
 	// run.images are ensured in builder.ValidateConfig()
 	// per the spec, we use the first one as the default
-	if len(b.metadata.RunImages) == 0 {
-		return b.Stack().RunImage
-	}
-	return b.metadata.RunImages[0]
+	return b.RunImages()[0]
 }
 
 // Mixins returns the mixins of the builder

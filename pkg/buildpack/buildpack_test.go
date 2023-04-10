@@ -104,6 +104,8 @@ id = "some.stack.id"
 			)
 			h.AssertNil(t, err)
 
+			h.AssertNil(t, bp.Descriptor().EnsureTargetSupport(dist.DefaultTargetOSLinux, dist.DefaultTargetArch, "", ""))
+
 			tarPath := writeBlobToFile(bp)
 			defer os.Remove(tarPath)
 
@@ -137,6 +139,78 @@ id = "some.stack.id"
 
 			h.AssertOnTarEntry(t, tarPath,
 				"/cnb/buildpacks/bp.one/1.2.3/bin/build",
+				h.HasFileMode(0755),
+				h.HasModTime(archive.NormalizedDateTime),
+				h.ContentEquals("build-contents"),
+			)
+		})
+
+		it("translates blob to windows bat distribution format", func() {
+			bp, err := buildpack.FromBuildpackRootBlob(
+				&readerBlob{
+					openFn: func() io.ReadCloser {
+						tarBuilder := archive.TarBuilder{}
+						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+api = "0.3"
+
+[buildpack]
+id = "bp.one"
+version = "1.2.3"
+`))
+
+						tarBuilder.AddDir("bin", 0700, time.Now())
+						tarBuilder.AddFile("bin/detect", 0700, time.Now(), []byte("detect-contents"))
+						tarBuilder.AddFile("bin/build.bat", 0700, time.Now(), []byte("build-contents"))
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
+					},
+				},
+				archive.DefaultTarWriterFactory(),
+			)
+			h.AssertNil(t, err)
+
+			h.AssertNil(t, bp.Descriptor().EnsureTargetSupport(dist.DefaultTargetOSWindows, dist.DefaultTargetArch, "", ""))
+
+			tarPath := writeBlobToFile(bp)
+			defer os.Remove(tarPath)
+
+			h.AssertOnTarEntry(t, tarPath,
+				"/cnb/buildpacks/bp.one/1.2.3/bin/build.bat",
+				h.HasFileMode(0755),
+				h.HasModTime(archive.NormalizedDateTime),
+				h.ContentEquals("build-contents"),
+			)
+		})
+
+		it("translates blob to windows exe distribution format", func() {
+			bp, err := buildpack.FromBuildpackRootBlob(
+				&readerBlob{
+					openFn: func() io.ReadCloser {
+						tarBuilder := archive.TarBuilder{}
+						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+api = "0.3"
+
+[buildpack]
+id = "bp.one"
+version = "1.2.3"
+`))
+
+						tarBuilder.AddDir("bin", 0700, time.Now())
+						tarBuilder.AddFile("bin/detect", 0700, time.Now(), []byte("detect-contents"))
+						tarBuilder.AddFile("bin/build.exe", 0700, time.Now(), []byte("build-contents"))
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
+					},
+				},
+				archive.DefaultTarWriterFactory(),
+			)
+			h.AssertNil(t, err)
+
+			h.AssertNil(t, bp.Descriptor().EnsureTargetSupport(dist.DefaultTargetOSWindows, dist.DefaultTargetArch, "", ""))
+
+			tarPath := writeBlobToFile(bp)
+			defer os.Remove(tarPath)
+
+			h.AssertOnTarEntry(t, tarPath,
+				"/cnb/buildpacks/bp.one/1.2.3/bin/build.exe",
 				h.HasFileMode(0755),
 				h.HasModTime(archive.NormalizedDateTime),
 				h.ContentEquals("build-contents"),
