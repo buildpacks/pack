@@ -148,6 +148,15 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, command.Execute())
 					})
 				})
+				when("rebase is true", func() {
+					it("passes it through", func() {
+						opts.Force = true
+						mockClient.EXPECT().Rebase(gomock.Any(), opts).Return(nil)
+						command = commands.Rebase(logger, cfg, mockClient)
+						command.SetArgs([]string{repoName, "--force"})
+						h.AssertNil(t, command.Execute())
+					})
+				})
 			})
 		})
 	})

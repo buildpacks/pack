@@ -132,12 +132,12 @@ remote_info:
 					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
-				Base: platform.RunImageMetadata{
+				Base: platform.RunImageForRebase{
 					TopLayer:  "some-remote-top-layer",
 					Reference: "some-remote-run-image-reference",
 				},
 				Stack: platform.StackMetadata{
-					RunImage: platform.StackRunImageMetadata{
+					RunImage: platform.RunImageForExport{
 						Image:   "some-remote-run-image",
 						Mirrors: []string{"some-remote-mirror", "other-remote-mirror"},
 					},
@@ -187,12 +187,12 @@ remote_info:
 					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
-				Base: platform.RunImageMetadata{
+				Base: platform.RunImageForRebase{
 					TopLayer:  "some-local-top-layer",
 					Reference: "some-local-run-image-reference",
 				},
 				Stack: platform.StackMetadata{
-					RunImage: platform.StackRunImageMetadata{
+					RunImage: platform.RunImageForExport{
 						Image:   "some-local-run-image",
 						Mirrors: []string{"some-local-mirror", "other-local-mirror"},
 					},

@@ -464,6 +464,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 						nil,
 						nil,
+						nil,
+						nil,
 						newLinuxImage,
 					)
 
@@ -1708,6 +1710,92 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("Extensions option", func() {
+			it.Before(func() {
+				subject.experimental = true
+				defaultBuilderImage.SetLabel("io.buildpacks.buildpack.order-extensions", `[{"group":[{"id":"extension.1.id","version":"extension.1.version"}]}, {"group":[{"id":"extension.2.id","version":"extension.2.version"}]}]`)
+				defaultWindowsBuilderImage.SetLabel("io.buildpacks.buildpack.order-extensions", `[{"group":[{"id":"extension.1.id","version":"extension.1.version"}]}, {"group":[{"id":"extension.2.id","version":"extension.2.version"}]}]`)
+			})
+
+			assertOrderEquals := func(content string) {
+				t.Helper()
+
+				orderLayer, err := defaultBuilderImage.FindLayerWithPath("/cnb/order.toml")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, orderLayer, "/cnb/order.toml", h.ContentEquals(content))
+			}
+
+			it("builder order-extensions is overwritten", func() {
+				additionalEx := ifakes.CreateExtensionTar(t, tmpDir, dist.ExtensionDescriptor{
+					WithAPI: api.MustParse("0.3"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "extension.add.1.id",
+						Version: "extension.add.1.version",
+					},
+				})
+
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:      "some/app",
+					Builder:    defaultBuilderName,
+					ClearCache: true,
+					Extensions: []string{additionalEx},
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+
+				assertOrderEquals(`[[order]]
+
+  [[order.group]]
+    id = "buildpack.1.id"
+    version = "buildpack.1.version"
+
+[[order]]
+
+  [[order.group]]
+    id = "buildpack.2.id"
+    version = "buildpack.2.version"
+
+[[order-extensions]]
+
+  [[order-extensions.group]]
+    id = "extension.add.1.id"
+    version = "extension.add.1.version"
+`)
+			})
+
+			when("id - no version is provided", func() {
+				it("resolves version", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    defaultBuilderName,
+						ClearCache: true,
+						Extensions: []string{"extension.1.id"},
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+
+					assertOrderEquals(`[[order]]
+
+  [[order.group]]
+    id = "buildpack.1.id"
+    version = "buildpack.1.version"
+
+[[order]]
+
+  [[order.group]]
+    id = "buildpack.2.id"
+    version = "buildpack.2.version"
+
+[[order-extensions]]
+
+  [[order-extensions.group]]
+    id = "extension.1.id"
+    version = "extension.1.version"
+`)
+				})
+			})
+		})
+
+		//TODO: "all buildpacks are added to ephemeral builder" test after extractPackaged() is completed.
+
 		when("ProjectDescriptor", func() {
 			when("project metadata", func() {
 				when("not experimental", func() {
@@ -2171,6 +2259,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								},
 								nil,
 								nil,
+								nil,
+								nil,
 								newLinuxImage,
 							)
 
@@ -2219,6 +2309,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									},
 								},
 							},
+							nil,
+							nil,
 							nil,
 							nil,
 							newLinuxImage,
@@ -2275,6 +2367,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 							nil,
 							nil,
+							nil,
+							nil,
 							newLinuxImage,
 						)
 
@@ -2329,6 +2423,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									},
 								},
 							},
+							nil,
+							nil,
 							nil,
 							nil,
 							newLinuxImage,
@@ -2912,6 +3008,10 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 				{ID: "buildpack.1.id", Version: "buildpack.1.version"},
 				{ID: "buildpack.2.id", Version: "buildpack.2.version"},
 			},
+			Extensions: []dist.ModuleInfo{
+				{ID: "extension.1.id", Version: "extension.1.version"},
+				{ID: "extension.2.id", Version: "extension.2.version"},
+			},
 			Stack: builder.StackMetadata{
 				RunImage: builder.RunImageMetadata{
 					Image: runImageName,
@@ -2973,6 +3073,33 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 				ModuleInfo: dist.ModuleInfo{
 					ID:      "buildpack.2.id",
 					Version: "buildpack.2.version",
+				},
+			}},
+		}},
+		dist.ModuleLayers{
+			"extension.1.id": {
+				"extension.1.version": {
+					API: api.MustParse("0.3"),
+				},
+			},
+			"extension.2.id": {
+				"extension.2.version": {
+					API: api.MustParse("0.3"),
+				},
+			},
+		},
+		dist.Order{{
+			Group: []dist.ModuleRef{{
+				ModuleInfo: dist.ModuleInfo{
+					ID:      "extension.1.id",
+					Version: "extension.1.version",
+				},
+			}},
+		}, {
+			Group: []dist.ModuleRef{{
+				ModuleInfo: dist.ModuleInfo{
+					ID:      "extension.2.id",
+					Version: "extension.2.version",
 				},
 			}},
 		}},
