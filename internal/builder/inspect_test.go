@@ -23,6 +23,7 @@ const (
 	testBuilderDescription = "Test Builder Description"
 	testStackID            = "test-builder-stack-id"
 	testRunImage           = "test/run-image"
+	testStackRunImage      = "test/stack-run-image"
 )
 
 var (
@@ -75,13 +76,19 @@ var (
 		Stack:       testStack,
 		Lifecycle:   inspectTestLifecycle,
 		CreatedBy:   testCreatorData,
+		RunImages: []builder.RunImageMetadata{
+			{
+				Image:   testRunImage,
+				Mirrors: testRunImageMirrors,
+			},
+		},
 	}
 	testMixins          = []string{"build:mixinA", "mixinX", "mixinY"}
 	expectedTestMixins  = []string{"mixinX", "mixinY", "build:mixinA"}
 	testRunImageMirrors = []string{"test/first-run-image-mirror", "test/second-run-image-mirror"}
 	testStack           = builder.StackMetadata{
 		RunImage: builder.RunImageMetadata{
-			Image:   testRunImage,
+			Image:   testStackRunImage,
 			Mirrors: testRunImageMirrors,
 		},
 	}
@@ -218,8 +225,11 @@ func testInspect(t *testing.T, when spec.G, it spec.S) {
 			assert.Equal(info.Description, testBuilderDescription)
 			assert.Equal(info.StackID, testStackID)
 			assert.Equal(info.Mixins, expectedTestMixins)
-			assert.Equal(info.RunImage, testRunImage)
-			assert.Equal(info.RunImageMirrors, testRunImageMirrors)
+			assert.Equal(len(info.RunImages), 2)
+			assert.Equal(info.RunImages[0].Image, testRunImage)
+			assert.Equal(info.RunImages[1].Image, testStackRunImage)
+			assert.Equal(info.RunImages[0].Mirrors, testRunImageMirrors)
+			assert.Equal(info.RunImages[1].Mirrors, testRunImageMirrors)
 			assert.Equal(info.Buildpacks, testBuildpacks)
 			assert.Equal(info.Order, expectedDetectionTestOrder)
 			assert.Equal(info.BuildpackLayers, testLayers)

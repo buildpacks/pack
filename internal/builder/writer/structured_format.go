@@ -84,7 +84,7 @@ func (w *StructuredFormat) Print(
 				BuildpackAPIs: local.Lifecycle.APIs.Buildpack,
 				PlatformAPIs:  local.Lifecycle.APIs.Platform,
 			},
-			RunImages:       runImages(local.RunImage, localRunImages, local.RunImageMirrors),
+			RunImages:       runImages(local.RunImages, localRunImages),
 			Buildpacks:      local.Buildpacks,
 			DetectionOrder:  local.Order,
 			Extensions:      local.Extensions,
@@ -108,7 +108,7 @@ func (w *StructuredFormat) Print(
 				BuildpackAPIs: remote.Lifecycle.APIs.Buildpack,
 				PlatformAPIs:  remote.Lifecycle.APIs.Platform,
 			},
-			RunImages:       runImages(remote.RunImage, localRunImages, remote.RunImageMirrors),
+			RunImages:       runImages(remote.RunImages, localRunImages),
 			Buildpacks:      remote.Buildpacks,
 			DetectionOrder:  remote.Order,
 			Extensions:      remote.Extensions,
@@ -133,23 +133,24 @@ func (w *StructuredFormat) Print(
 	return nil
 }
 
-func runImages(runImage string, localRunImages []config.RunImage, buildRunImages []string) []RunImage {
-	var images = []RunImage{}
+func runImages(runImages []pubbldr.RunImageConfig, localRunImages []config.RunImage) []RunImage {
+	images := []RunImage{}
 
 	for _, i := range localRunImages {
-		if i.Image == runImage {
-			for _, m := range i.Mirrors {
-				images = append(images, RunImage{Name: m, UserConfigured: true})
+		for _, runImage := range runImages {
+			if i.Image == runImage.Image {
+				for _, m := range i.Mirrors {
+					images = append(images, RunImage{Name: m, UserConfigured: true})
+				}
 			}
 		}
 	}
 
-	if runImage != "" {
-		images = append(images, RunImage{Name: runImage})
-	}
-
-	for _, m := range buildRunImages {
-		images = append(images, RunImage{Name: m})
+	for _, runImage := range runImages {
+		images = append(images, RunImage{Name: runImage.Image})
+		for _, m := range runImage.Mirrors {
+			images = append(images, RunImage{Name: m})
+		}
 	}
 
 	return images
