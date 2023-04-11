@@ -1618,6 +1618,23 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				)
 			})
 		})
+
+		when("#DefaultRunImage", func() {
+			it.Before(func() {
+				subject.SetRunImage(pubbldr.RunConfig{Images: []pubbldr.RunImageConfig{{
+					Image:   "some/run",
+					Mirrors: []string{"some/mirror", "other/mirror"},
+				}}})
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+				h.AssertEq(t, baseImage.IsSaved(), true)
+			})
+
+			it("adds the run.toml to the image", func() {
+				actual := subject.DefaultRunImage()
+				h.AssertEq(t, actual.Image, "some/run")
+				h.AssertEq(t, actual.Mirrors, []string{"some/mirror", "other/mirror"})
+			})
+		})
 	})
 
 	when("builder exists", func() {
