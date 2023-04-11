@@ -2,6 +2,7 @@ package buildpack_test
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -151,7 +152,7 @@ id = "some.stack.id"
 					openFn: func() io.ReadCloser {
 						tarBuilder := archive.TarBuilder{}
 						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
-api = "0.3"
+api = "0.9"
 
 [buildpack]
 id = "bp.one"
@@ -168,7 +169,9 @@ version = "1.2.3"
 			)
 			h.AssertNil(t, err)
 
-			h.AssertNil(t, bp.Descriptor().EnsureTargetSupport(dist.DefaultTargetOSWindows, dist.DefaultTargetArch, "", ""))
+			bpDescriptor := bp.Descriptor().(*dist.BuildpackDescriptor)
+			h.AssertTrue(t, bpDescriptor.WithWindowsBuild)
+			h.AssertFalse(t, bpDescriptor.WithLinuxBuild)
 
 			tarPath := writeBlobToFile(bp)
 			defer os.Remove(tarPath)
@@ -204,7 +207,9 @@ version = "1.2.3"
 			)
 			h.AssertNil(t, err)
 
-			h.AssertNil(t, bp.Descriptor().EnsureTargetSupport(dist.DefaultTargetOSWindows, dist.DefaultTargetArch, "", ""))
+			bpDescriptor := bp.Descriptor().(*dist.BuildpackDescriptor)
+			h.AssertTrue(t, bpDescriptor.WithWindowsBuild)
+			h.AssertFalse(t, bpDescriptor.WithLinuxBuild)
 
 			tarPath := writeBlobToFile(bp)
 			defer os.Remove(tarPath)
@@ -238,6 +243,7 @@ id = "some.stack.id"
 			bp, err := buildpack.FromBuildpackRootBlob(
 				&errorBlob{
 					realBlob: realBlob,
+					limit:    4,
 				},
 				archive.DefaultTarWriterFactory(),
 			)
@@ -247,7 +253,7 @@ id = "some.stack.id"
 			h.AssertNil(t, err)
 
 			_, err = io.Copy(io.Discard, bpReader)
-			h.AssertError(t, err, "error from errBlob")
+			h.AssertError(t, err, "error from errBlob (reached limit of 4)")
 		})
 
 		when("calculating permissions", func() {
@@ -302,6 +308,10 @@ id = "some.stack.id"
 						archive.DefaultTarWriterFactory(),
 					)
 					h.AssertNil(t, err)
+
+					bpDescriptor := bp.Descriptor().(*dist.BuildpackDescriptor)
+					h.AssertFalse(t, bpDescriptor.WithWindowsBuild)
+					h.AssertTrue(t, bpDescriptor.WithLinuxBuild)
 
 					tarPath := writeBlobToFile(bp)
 					defer os.Remove(tarPath)
@@ -534,16 +544,17 @@ version = "1.2.3"
 }
 
 type errorBlob struct {
-	notFirst bool
+	count    int
+	limit    int
 	realBlob buildpack.Blob
 }
 
 func (e *errorBlob) Open() (io.ReadCloser, error) {
-	if !e.notFirst {
-		e.notFirst = true
+	if e.count < e.limit {
+		e.count += 1
 		return e.realBlob.Open()
 	}
-	return nil, errors.New("error from errBlob")
+	return nil, errors.New(fmt.Sprintf("error from errBlob (reached limit of %d)", e.limit))
 }
 
 type readerBlob struct {

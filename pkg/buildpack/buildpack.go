@@ -73,15 +73,10 @@ func FromBlob(descriptor Descriptor, blob Blob) BuildModule {
 func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
 	descriptor := dist.BuildpackDescriptor{}
 	descriptor.WithAPI = api.MustParse(dist.AssumedBuildpackAPIVersion)
-	rc, err := blob.Open()
-	if err != nil {
-		return nil, errors.Wrapf(err, "open %s", KindBuildpack)
-	}
-	defer rc.Close()
-	if err := readDescriptor(KindBuildpack, &descriptor, rc); err != nil {
+	if err := readDescriptor(KindBuildpack, &descriptor, blob); err != nil {
 		return nil, err
 	}
-	if err := detectPlatformSpecificValues(&descriptor, rc); err != nil {
+	if err := detectPlatformSpecificValues(&descriptor, blob); err != nil {
 		return nil, err
 	}
 	if err := validateBuildpackDescriptor(descriptor); err != nil {
@@ -96,12 +91,7 @@ func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
 	descriptor := dist.ExtensionDescriptor{}
 	descriptor.WithAPI = api.MustParse(dist.AssumedBuildpackAPIVersion)
-	rc, err := blob.Open()
-	if err != nil {
-		return nil, errors.Wrapf(err, "open %s", KindExtension)
-	}
-	defer rc.Close()
-	if err := readDescriptor(KindExtension, &descriptor, rc); err != nil {
+	if err := readDescriptor(KindExtension, &descriptor, blob); err != nil {
 		return nil, err
 	}
 	if err := validateExtensionDescriptor(descriptor); err != nil {
@@ -110,7 +100,13 @@ func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 	return buildpackFrom(&descriptor, blob, layerWriterFactory)
 }
 
-func readDescriptor(kind string, descriptor interface{}, rc io.ReadCloser) error {
+func readDescriptor(kind string, descriptor interface{}, blob Blob) error {
+	rc, err := blob.Open()
+	if err != nil {
+		return errors.Wrapf(err, "open %s", kind)
+	}
+	defer rc.Close()
+
 	descriptorFile := kind + ".toml"
 
 	_, buf, err := archive.ReadTarEntry(rc, descriptorFile)
@@ -126,20 +122,33 @@ func readDescriptor(kind string, descriptor interface{}, rc io.ReadCloser) error
 	return nil
 }
 
-func detectPlatformSpecificValues(descriptor *dist.BuildpackDescriptor, rc io.ReadCloser) error {
-	_, _, err := archive.ReadTarEntry(rc, path.Join("bin", "build"))
-	if err == nil {
+func detectPlatformSpecificValues(descriptor *dist.BuildpackDescriptor, blob Blob) error {
+	if val, err := hasFile(blob, path.Join("bin", "build")); val {
 		descriptor.WithLinuxBuild = true
+	} else if err != nil {
+		return err
 	}
-	_, _, err = archive.ReadTarEntry(rc, path.Join("bin", "build.bat"))
-	if err == nil {
+	if val, err := hasFile(blob, path.Join("bin", "build.bat")); val {
 		descriptor.WithWindowsBuild = true
+	} else if err != nil {
+		return err
 	}
-	_, _, err = archive.ReadTarEntry(rc, path.Join("bin", "build.exe"))
-	if err == nil {
+	if val, err := hasFile(blob, path.Join("bin", "build.exe")); val {
 		descriptor.WithWindowsBuild = true
+	} else if err != nil {
+		return err
 	}
 	return nil
+}
+
+func hasFile(blob Blob, file string) (bool, error) {
+	rc, err := blob.Open()
+	if err != nil {
+		return false, errors.Wrapf(err, "open %s", "buildpack bin/")
+	}
+	defer rc.Close()
+	_, _, err = archive.ReadTarEntry(rc, file)
+	return err == nil, nil
 }
 
 func buildpackFrom(descriptor Descriptor, blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
