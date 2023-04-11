@@ -48,12 +48,6 @@ Detection Order:
     │           └ simple/layers@simple-layers-version
     └ read/env@read-env-version                          (optional)
 
-Extensions:
-  (none)
-
-Detection Order (Extensions):
-  (none)
-
 LOCAL:
 
 Created By:
@@ -101,9 +95,3 @@ Detection Order:
     │        └ Group #1:
     │           └ simple/layers@simple-layers-version
     └ read/env@read-env-version                          (optional)
-
-Extensions:
-  (none)
-
-Detection Order (Extensions):
-  (none)

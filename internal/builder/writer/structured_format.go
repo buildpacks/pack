@@ -43,8 +43,8 @@ type BuilderInfo struct {
 	RunImages              []RunImage              `json:"run_images" yaml:"run_images" toml:"run_images"`
 	Buildpacks             []dist.ModuleInfo       `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
 	pubbldr.DetectionOrder `json:"detection_order" yaml:"detection_order" toml:"detection_order"`
-	Extensions             []dist.ModuleInfo      `json:"extensions" yaml:"extensions" toml:"extensions"`
-	OrderExtensions        pubbldr.DetectionOrder `json:"order_extensions" yaml:"order_extensions" toml:"order_extensions"`
+	Extensions             []dist.ModuleInfo      `json:"extensions,omitempty" yaml:"extensions,omitempty" toml:"extensions,omitempty"`
+	OrderExtensions        pubbldr.DetectionOrder `json:"order_extensions,omitempty" yaml:"order_extensions,omitempty" toml:"order_extensions,omitempty"`
 }
 
 type StructuredFormat struct {

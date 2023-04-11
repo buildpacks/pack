@@ -61,8 +61,12 @@ Stack:
 {{ .RunImages }}
 {{ .Buildpacks }}
 {{ .Order }}
+{{- if ne .Extensions "" }}
 {{ .Extensions }}
-{{ .OrderExtensions}}`
+{{- end }}
+{{- if ne .OrderExtensions "" }}
+{{ .OrderExtensions }}
+{{- end }}`
 )
 
 type HumanReadable struct{}
@@ -129,9 +133,15 @@ func writeBuilderInfo(
 	if err != nil {
 		return fmt.Errorf("compiling detection order output: %w", err)
 	}
-	orderExtString, orderExtWarnings, err := detectionOrderExtOutput(info.OrderExtensions, sharedInfo.Name)
-	if err != nil {
-		return fmt.Errorf("compiling detection order extensions output: %w", err)
+
+	var orderExtString string
+	var orderExtWarnings []string
+
+	if info.Extensions != nil {
+		orderExtString, orderExtWarnings, err = detectionOrderExtOutput(info.OrderExtensions, sharedInfo.Name)
+		if err != nil {
+			return fmt.Errorf("compiling detection order extensions output: %w", err)
+		}
 	}
 	buildpacksString, buildpacksWarnings, err := buildpacksOutput(info.Buildpacks, sharedInfo.Name)
 	if err != nil {
@@ -139,19 +149,26 @@ func writeBuilderInfo(
 	}
 	lifecycleString, lifecycleWarnings := lifecycleOutput(info.Lifecycle, sharedInfo.Name)
 
-	extensionsString, extensionsWarnings, err := extensionsOutput(info.Extensions, sharedInfo.Name)
-	if err != nil {
-		return fmt.Errorf("compiling extensions output: %w", err)
+	var extensionsString string
+	var extensionsWarnings []string
+
+	if info.Extensions != nil {
+		extensionsString, extensionsWarnings, err = extensionsOutput(info.Extensions, sharedInfo.Name)
+		if err != nil {
+			return fmt.Errorf("compiling extensions output: %w", err)
+		}
 	}
 
 	warnings = append(warnings, runImagesWarnings...)
 	warnings = append(warnings, orderWarnings...)
 	warnings = append(warnings, buildpacksWarnings...)
 	warnings = append(warnings, lifecycleWarnings...)
-	warnings = append(warnings, extensionsWarnings...)
-	warnings = append(warnings, orderExtWarnings...)
-
+	if info.Extensions != nil {
+		warnings = append(warnings, extensionsWarnings...)
+		warnings = append(warnings, orderExtWarnings...)
+	}
 	outputTemplate, _ := template.New("").Parse(outputTemplate)
+
 	err = outputTemplate.Execute(
 		logger.Writer(),
 		&struct {

@@ -99,6 +99,58 @@ Detection Order (Extensions):
  ├ test.bp.two@test.bp.two.version            (optional)
  └ test.bp.three@test.bp.three.version
 `
+		expectedRemoteOutputWithoutExtensions = `
+REMOTE:
+
+Description: Some remote description
+
+Created By:
+  Name: Pack CLI
+  Version: 1.2.3
+
+Trusted: No
+
+Stack:
+  ID: test.stack.id
+
+Lifecycle:
+  Version: 6.7.8
+  Buildpack APIs:
+    Deprecated: (none)
+    Supported: 1.2, 2.3
+  Platform APIs:
+    Deprecated: 0.1, 1.2
+    Supported: 4.5
+
+Run Images:
+  first/local     (user-configured)
+  second/local    (user-configured)
+  some/run-image
+  first/default
+  second/default
+
+Buildpacks:
+  ID                     NAME        VERSION                        HOMEPAGE
+  test.top.nested        -           test.top.nested.version        -
+  test.nested            -                                          http://geocities.com/top-bp
+  test.bp.one            -           test.bp.one.version            http://geocities.com/cool-bp
+  test.bp.two            -           test.bp.two.version            -
+  test.bp.three          -           test.bp.three.version          -
+
+Detection Order:
+ ├ Group #1:
+ │  ├ test.top.nested@test.top.nested.version
+ │  │  └ Group #1:
+ │  │     ├ test.nested
+ │  │     │  └ Group #1:
+ │  │     │     └ test.bp.one@test.bp.one.version      (optional)
+ │  │     ├ test.bp.three@test.bp.three.version        (optional)
+ │  │     └ test.nested.two@test.nested.two.version
+ │  │        └ Group #2:
+ │  │           └ test.bp.one@test.bp.one.version    (optional)[cyclic]
+ │  └ test.bp.two@test.bp.two.version                (optional)
+ └ test.bp.three@test.bp.three.version
+`
 
 		expectedLocalOutput = `
 LOCAL:
@@ -164,6 +216,60 @@ Detection Order (Extensions):
  ├ test.bp.two@test.bp.two.version            (optional)
  └ test.bp.three@test.bp.three.version
 `
+
+		expectedLocalOutputWithoutExtensions = `
+LOCAL:
+
+Description: Some local description
+
+Created By:
+  Name: Pack CLI
+  Version: 4.5.6
+
+Trusted: No
+
+Stack:
+  ID: test.stack.id
+
+Lifecycle:
+  Version: 4.5.6
+  Buildpack APIs:
+    Deprecated: 4.5, 6.7
+    Supported: 8.9, 10.11
+  Platform APIs:
+    Deprecated: (none)
+    Supported: 7.8
+
+Run Images:
+  first/local     (user-configured)
+  second/local    (user-configured)
+  some/run-image
+  first/local-default
+  second/local-default
+
+Buildpacks:
+  ID                     NAME        VERSION                        HOMEPAGE
+  test.top.nested        -           test.top.nested.version        -
+  test.nested            -                                          http://geocities.com/top-bp
+  test.bp.one            -           test.bp.one.version            http://geocities.com/cool-bp
+  test.bp.two            -           test.bp.two.version            -
+  test.bp.three          -           test.bp.three.version          -
+
+Detection Order:
+ ├ Group #1:
+ │  ├ test.top.nested@test.top.nested.version
+ │  │  └ Group #1:
+ │  │     ├ test.nested
+ │  │     │  └ Group #1:
+ │  │     │     └ test.bp.one@test.bp.one.version      (optional)
+ │  │     ├ test.bp.three@test.bp.three.version        (optional)
+ │  │     └ test.nested.two@test.nested.two.version
+ │  │        └ Group #2:
+ │  │           └ test.bp.one@test.bp.one.version    (optional)[cyclic]
+ │  └ test.bp.two@test.bp.two.version                (optional)
+ └ test.bp.three@test.bp.three.version
+`
+
 		expectedVerboseStack = `
 Stack:
   ID: test.stack.id
@@ -183,10 +289,6 @@ Run Images:
 `
 		expectedEmptyBuildpacks = `
 Buildpacks:
-  (none)
-`
-		expectedEmptyExtensions = `
-Extensions:
   (none)
 `
 		expectedEmptyOrder = `
@@ -508,7 +610,7 @@ REMOTE:
 		})
 
 		when("no extensions are specified", func() {
-			it("displays extensions as (none)", func() {
+			it("displays no extensions as (none)", func() {
 				localInfo.Extensions = []dist.ModuleInfo{}
 				remoteInfo.Extensions = []dist.ModuleInfo{}
 
@@ -518,7 +620,9 @@ REMOTE:
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
-				assert.Contains(outBuf.String(), expectedEmptyExtensions)
+				assert.Contains(outBuf.String(), "Inspecting builder: 'test-builder'")
+				assert.Contains(outBuf.String(), expectedRemoteOutputWithoutExtensions)
+				assert.Contains(outBuf.String(), expectedLocalOutputWithoutExtensions)
 			})
 		})
 
