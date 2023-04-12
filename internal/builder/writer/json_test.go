@@ -285,8 +285,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				Description:     "Some remote description",
 				Stack:           "test.stack.id",
 				Mixins:          []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"},
-				RunImage:        "some/run-image",
-				RunImageMirrors: []string{"first/default", "second/default"},
+				RunImages:       []pubbldr.RunImageConfig{{Image: "some/run-image", Mirrors: []string{"first/default", "second/default"}}},
 				Buildpacks:      buildpacks,
 				Order:           order,
 				Extensions:      extensions,
@@ -319,8 +318,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				Description:     "Some local description",
 				Stack:           "test.stack.id",
 				Mixins:          []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"},
-				RunImage:        "some/run-image",
-				RunImageMirrors: []string{"first/local-default", "second/local-default"},
+				RunImages:       []pubbldr.RunImageConfig{{Image: "some/run-image", Mirrors: []string{"first/local-default", "second/local-default"}}},
 				Buildpacks:      buildpacks,
 				Order:           order,
 				Extensions:      extensions,
@@ -450,10 +448,8 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 
 		when("no run images are specified", func() {
 			it("displays run images as empty list", func() {
-				localInfo.RunImage = ""
-				localInfo.RunImageMirrors = []string{}
-				remoteInfo.RunImage = ""
-				remoteInfo.RunImageMirrors = []string{}
+				localInfo.RunImages = []pubbldr.RunImageConfig{}
+				remoteInfo.RunImages = []pubbldr.RunImageConfig{}
 				emptyLocalRunImages := []config.RunImage{}
 
 				jsonWriter := writer.NewJSON()

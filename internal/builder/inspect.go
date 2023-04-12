@@ -15,8 +15,7 @@ type Info struct {
 	Description     string
 	StackID         string
 	Mixins          []string
-	RunImage        string
-	RunImageMirrors []string
+	RunImages       []pubbldr.RunImageConfig
 	Buildpacks      []dist.ModuleInfo
 	Order           pubbldr.DetectionOrder
 	BuildpackLayers dist.ModuleLayers
@@ -80,7 +79,7 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 
 	stackID, err := labelManager.StackID()
 	if err != nil {
-		return Info{}, fmt.Errorf("reading image stack id: %w", err)
+		// TODO log warn
 	}
 
 	mixins, err := labelManager.Mixins()
@@ -126,12 +125,31 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 		APIs: metadata.Lifecycle.APIs,
 	})
 
+	var runImages []pubbldr.RunImageConfig
+	for _, ri := range metadata.RunImages {
+		runImages = append(runImages, pubbldr.RunImageConfig{
+			Image:   ri.Image,
+			Mirrors: ri.Mirrors,
+		})
+	}
+	addStackRunImage := true
+	for _, ri := range runImages {
+		if ri.Image == metadata.Stack.RunImage.Image {
+			addStackRunImage = false
+		}
+	}
+	if addStackRunImage && metadata.Stack.RunImage.Image != "" {
+		runImages = append(runImages, pubbldr.RunImageConfig{
+			Image:   metadata.Stack.RunImage.Image,
+			Mirrors: metadata.Stack.RunImage.Mirrors,
+		})
+	}
+
 	return Info{
 		Description:     metadata.Description,
 		StackID:         stackID,
 		Mixins:          append(commonMixins, buildMixins...),
-		RunImage:        metadata.Stack.RunImage.Image,
-		RunImageMirrors: metadata.Stack.RunImage.Mirrors,
+		RunImages:       runImages,
 		Buildpacks:      sortBuildPacksByID(uniqueBuildpacks(metadata.Buildpacks)),
 		Order:           detectionOrder,
 		BuildpackLayers: layers,

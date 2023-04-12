@@ -8,6 +8,9 @@ const (
 	BuildpackLayersLabel   = "io.buildpacks.buildpack.layers"
 	ExtensionLayersLabel   = "io.buildpacks.extension.layers"
 	ExtensionMetadataLabel = "io.buildpacks.extension.metadata"
+	DefaultTargetOSLinux   = "linux"
+	DefaultTargetOSWindows = "windows"
+	DefaultTargetArch      = "amd64"
 )
 
 type BuildpackURI struct {
@@ -51,6 +54,7 @@ type ModuleLayers map[string]map[string]ModuleLayerInfo
 type ModuleLayerInfo struct {
 	API         *api.Version `json:"api"`
 	Stacks      []Stack      `json:"stacks,omitempty"`
+	Targets     []Target     `json:"targets,omitempty"`
 	Order       Order        `json:"order,omitempty"`
 	LayerDiffID string       `json:"layerDiffID"`
 	Homepage    string       `json:"homepage,omitempty"`
