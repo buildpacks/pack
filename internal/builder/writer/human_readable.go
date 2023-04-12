@@ -46,8 +46,8 @@ Created By:
 {{ end -}}
 
 Trusted: {{.Trusted}}
-{{ if ne .Info.Stack "" -}}
-Stack:
+
+{{ if ne .Info.Stack "" -}}Stack:
   ID: {{ .Info.Stack }}{{ end -}}
 {{- if .Verbose}}
 {{- if ne (len .Info.Mixins) 0 }}
