@@ -301,7 +301,7 @@ func testInspect(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("label manager returns an error for `StackID`", func() {
+		when("label manager does not return an error for `StackID`", func() {
 			it("returns the wrapped error", func() {
 				expectedBaseError := errors.New("label not found")
 
@@ -314,7 +314,7 @@ func testInspect(t *testing.T, when spec.G, it spec.S) {
 				)
 				_, err := inspector.Inspect(testBuilderName, true, pubbldr.OrderDetectionNone)
 
-				assert.ErrorWithMessage(err, "reading image stack id: label not found")
+				assert.Nil(err)
 			})
 		})
 

@@ -79,7 +79,7 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 
 	stackID, err := labelManager.StackID()
 	if err != nil {
-		return Info{}, fmt.Errorf("reading image stack id: %w", err)
+		// TODO log warn
 	}
 
 	mixins, err := labelManager.Mixins()

@@ -38,7 +38,7 @@ type Stack struct {
 type BuilderInfo struct {
 	Description            string                  `json:"description,omitempty" yaml:"description,omitempty" toml:"description,omitempty"`
 	CreatedBy              builder.CreatorMetadata `json:"created_by" yaml:"created_by" toml:"created_by"`
-	Stack                  Stack                   `json:"stack" yaml:"stack" toml:"stack"`
+	Stack                  *Stack                  `json:"stack,omitempty" yaml:"stack,omitempty" toml:"stack,omitempty"`
 	Lifecycle              Lifecycle               `json:"lifecycle" yaml:"lifecycle" toml:"lifecycle"`
 	RunImages              []RunImage              `json:"run_images" yaml:"run_images" toml:"run_images"`
 	Buildpacks             []dist.ModuleInfo       `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
@@ -69,7 +69,10 @@ func (w *StructuredFormat) Print(
 	outputInfo := InspectOutput{SharedBuilderInfo: builderInfo}
 
 	if local != nil {
-		stack := Stack{ID: local.Stack}
+		var stack *Stack
+		if local.Stack != "" {
+			stack = &Stack{ID: local.Stack}
+		}
 
 		if logger.IsVerbose() {
 			stack.Mixins = local.Mixins
@@ -93,7 +96,10 @@ func (w *StructuredFormat) Print(
 	}
 
 	if remote != nil {
-		stack := Stack{ID: remote.Stack}
+		var stack *Stack
+		if remote.Stack != "" {
+			stack = &Stack{ID: remote.Stack}
+		}
 
 		if logger.IsVerbose() {
 			stack.Mixins = remote.Mixins
