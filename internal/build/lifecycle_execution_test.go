@@ -119,19 +119,18 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 		lifecycleOps = append(lifecycleOps, fakes.WithBuilder(fakeBuilder))
 
-		lifecycle = newTestLifecycleExec(t, true, lifecycleOps...)
-
 		tmpDir, err = os.MkdirTemp("", "pack.unit")
 		h.AssertNil(t, err)
-		lifecycle.TmpDir = tmpDir
+
+		lifecycle = newTestLifecycleExec(t, true, tmpDir, lifecycleOps...)
 
 		// set working directory to be a directory that we control so that we can put fixtures into it
 		if extensionsForBuild || extensionsForRun {
 			if extensionsForBuild {
 				// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
-				err = os.MkdirAll(filepath.Join(lifecycle.TmpDir, "build"), 0755)
+				err = os.MkdirAll(filepath.Join(tmpDir, "build"), 0755)
 				h.AssertNil(t, err)
-				_, err = os.Create(filepath.Join(lifecycle.TmpDir, "build", "some-dockerfile"))
+				_, err = os.Create(filepath.Join(tmpDir, "build", "some-dockerfile"))
 				h.AssertNil(t, err)
 			}
 			if extensionsForRun {
@@ -143,7 +142,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				}
 				var amd analyzedMD
 				amd.RunImage = &runImage{Extend: true}
-				f, err := os.Create(filepath.Join(lifecycle.TmpDir, "analyzed.toml"))
+				f, err := os.Create(filepath.Join(tmpDir, "analyzed.toml"))
 				h.AssertNil(t, err)
 				toml.NewEncoder(f).Encode(amd)
 				h.AssertNil(t, f.Close())
@@ -178,7 +177,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				}))
 				h.AssertNil(t, err)
 
-				lifecycleExec := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
+				lifecycleExec := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
 				h.AssertEq(t, lifecycleExec.PlatformAPI().String(), "0.8")
 			})
 		})
@@ -191,7 +190,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				)
 				h.AssertNil(t, err)
 
-				lifecycleExec := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
+				lifecycleExec := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
 				h.AssertEq(t, lifecycleExec.PlatformAPI().String(), "0.4")
 			})
 		})
@@ -203,7 +202,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				)
 				h.AssertNil(t, err)
 
-				_, err = newTestLifecycleExecErr(t, false, fakes.WithBuilder(fakeBuilder))
+				_, err = newTestLifecycleExecErr(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
 				h.AssertError(t, err, "unable to find a supported Platform API version")
 			})
 		})
@@ -288,7 +287,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					Termui:       fakeTermui,
 				}
 
-				lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+				lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 				h.AssertNil(t, err)
 				h.AssertEq(t, filepath.Base(lifecycle.AppDir()), "workspace")
 
@@ -320,7 +319,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						Termui:       fakeTermui,
 					}
 
-					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 					h.AssertNil(t, err)
 
 					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
@@ -389,7 +388,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						Termui:       fakeTermui,
 					}
 
-					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 					h.AssertNil(t, err)
 
 					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
@@ -423,7 +422,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						Termui:       fakeTermui,
 					}
 
-					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 					h.AssertNil(t, err)
 
 					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
@@ -453,7 +452,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					Termui:       fakeTermui,
 				}
 
-				lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+				lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 				h.AssertNil(t, err)
 
 				err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
@@ -487,7 +486,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						Termui:       fakeTermui,
 					}
 
-					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 					h.AssertNil(t, err)
 					h.AssertEq(t, filepath.Base(lifecycle.AppDir()), "app")
 
@@ -704,7 +703,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						Termui:       fakeTermui,
 					}
 
-					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 					h.AssertNil(t, err)
 
 					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
@@ -732,7 +731,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						Termui: fakeTermui,
 					}
 
-					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 					h.AssertNil(t, err)
 
 					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
@@ -939,7 +938,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("configures the phase with daemon access with inherited docker-host", func() {
-					lifecycle := newTestLifecycleExec(t, true, lifecycleOps...)
+					lifecycle := newTestLifecycleExec(t, true, "some-temp-dir", lifecycleOps...)
 					fakePhase := &fakes.FakePhase{}
 					fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 					err := lifecycle.Create(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
@@ -1030,7 +1029,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						options.Image = imageName
 						options.PreviousImage = "some-previous-image"
 					})
-					lifecycle := newTestLifecycleExec(t, true, lifecycleOps...)
+					lifecycle := newTestLifecycleExec(t, true, "some-temp-dir", lifecycleOps...)
 
 					err = lifecycle.Create(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
 					h.AssertError(t, err, "invalid image name")
@@ -1046,7 +1045,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						options.PreviousImage = "%%%"
 						options.Image = imageName
 					})
-					lifecycle := newTestLifecycleExec(t, true, lifecycleOps...)
+					lifecycle := newTestLifecycleExec(t, true, "some-temp-dir", lifecycleOps...)
 
 					err = lifecycle.Create(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
 					h.AssertError(t, err, "invalid previous image name")
@@ -1091,7 +1090,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							options.PreviousImage = "example.io/some/previous:latest"
 							options.Image = imageName
 						})
-						lifecycle := newTestLifecycleExec(t, true, lifecycleOps...)
+						lifecycle := newTestLifecycleExec(t, true, "some-temp-dir", lifecycleOps...)
 
 						err = lifecycle.Create(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
 						h.AssertError(t, err, fmt.Sprintf("%s", err))
@@ -1522,7 +1521,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						options.Image = imageName
 						options.PreviousImage = "some-previous-image"
 					})
-					lifecycle := newTestLifecycleExec(t, true, lifecycleOps...)
+					lifecycle := newTestLifecycleExec(t, true, "some-temp-dir", lifecycleOps...)
 
 					err = lifecycle.Analyze(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
 					h.AssertError(t, err, "invalid image name")
@@ -1539,7 +1538,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						options.PreviousImage = "%%%"
 						options.Image = imageName
 					})
-					lifecycle := newTestLifecycleExec(t, true, lifecycleOps...)
+					lifecycle := newTestLifecycleExec(t, true, "some-temp-dir", lifecycleOps...)
 
 					err = lifecycle.Analyze(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
 					h.AssertError(t, err, "invalid previous image name")
@@ -1590,7 +1589,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							options.PreviousImage = "example.io/some/previous:latest"
 							options.Image = imageName
 						})
-						lifecycle := newTestLifecycleExec(t, true, lifecycleOps...)
+						lifecycle := newTestLifecycleExec(t, true, "some-temp-dir", lifecycleOps...)
 
 						err = lifecycle.Analyze(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
 						h.AssertNotNil(t, err)
@@ -2289,7 +2288,7 @@ func newFakeImageCache() *fakes.FakeCache {
 	return c
 }
 
-func newTestLifecycleExecErr(t *testing.T, logVerbose bool, ops ...func(*build.LifecycleOptions)) (*build.LifecycleExecution, error) {
+func newTestLifecycleExecErr(t *testing.T, logVerbose bool, tmpDir string, ops ...func(*build.LifecycleOptions)) (*build.LifecycleExecution, error) {
 	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
 
@@ -2315,13 +2314,13 @@ func newTestLifecycleExecErr(t *testing.T, logVerbose bool, ops ...func(*build.L
 		op(&opts)
 	}
 
-	return build.NewLifecycleExecution(logger, docker, opts)
+	return build.NewLifecycleExecution(logger, docker, tmpDir, opts)
 }
 
-func newTestLifecycleExec(t *testing.T, logVerbose bool, ops ...func(*build.LifecycleOptions)) *build.LifecycleExecution {
+func newTestLifecycleExec(t *testing.T, logVerbose bool, tmpDir string, ops ...func(*build.LifecycleOptions)) *build.LifecycleExecution {
 	t.Helper()
 
-	lifecycleExec, err := newTestLifecycleExecErr(t, logVerbose, ops...)
+	lifecycleExec, err := newTestLifecycleExecErr(t, logVerbose, tmpDir, ops...)
 	h.AssertNil(t, err)
 	return lifecycleExec
 }

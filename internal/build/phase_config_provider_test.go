@@ -37,7 +37,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			expectedBuilderImage := ifakes.NewImage("some-builder-name", "", nil)
 			fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithImage(expectedBuilderImage))
 			h.AssertNil(t, err)
-			lifecycle := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
+			lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
 			expectedPhaseName := "some-name"
 			expectedCmd := strslice.StrSlice{"/cnb/lifecycle/" + expectedPhaseName}
 
@@ -71,7 +71,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, fakeBuilderImage.SetOS("windows"))
 				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithImage(fakeBuilderImage))
 				h.AssertNil(t, err)
-				lifecycle := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
+				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
 
 				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
 
@@ -86,7 +86,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				fakeTermui := &fakes.FakeTermui{HandlerFunc: handler}
-				lifecycle := newTestLifecycleExec(t, false, fakes.WithTermui(fakeTermui))
+				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithTermui(fakeTermui))
 				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
 
 				h.AssertError(t, phaseConfigProvider.Handler()(nil, nil, nil), "i was called")
@@ -95,7 +95,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithArgs", func() {
 			it("sets args on the config", func() {
-				lifecycle := newTestLifecycleExec(t, false)
+				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir")
 				expectedArgs := strslice.StrSlice{"some-arg-1", "some-arg-2"}
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -111,7 +111,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithFlags", func() {
 			it("sets args on the config", func() {
-				lifecycle := newTestLifecycleExec(t, false)
+				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir")
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
 					"some-name",
@@ -127,7 +127,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithBinds", func() {
 			it("sets binds on the config", func() {
-				lifecycle := newTestLifecycleExec(t, false)
+				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir")
 				expectedBinds := []string{"some-bind-1", "some-bind-2"}
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -143,7 +143,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 		when("called with WithDaemonAccess", func() {
 			when("building for non-Windows", func() {
 				it("sets daemon access on the config", func() {
-					lifecycle := newTestLifecycleExec(t, false)
+					lifecycle := newTestLifecycleExec(t, false, "some-temp-dir")
 
 					phaseConfigProvider := build.NewPhaseConfigProvider(
 						"some-name",
@@ -163,7 +163,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, fakeBuilderImage.SetOS("windows"))
 					fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithImage(fakeBuilderImage))
 					h.AssertNil(t, err)
-					lifecycle := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
+					lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
 
 					phaseConfigProvider := build.NewPhaseConfigProvider(
 						"some-name",
@@ -179,7 +179,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithEnv", func() {
 			it("sets the environment on the config", func() {
-				lifecycle := newTestLifecycleExec(t, false)
+				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir")
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
 					"some-name",
@@ -193,7 +193,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithImage", func() {
 			it("sets the image on the config", func() {
-				lifecycle := newTestLifecycleExec(t, false)
+				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir")
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
 					"some-name",
@@ -207,7 +207,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithNetwork", func() {
 			it("sets the network mode on the config", func() {
-				lifecycle := newTestLifecycleExec(t, false)
+				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir")
 				expectedNetworkMode := "some-network-mode"
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -226,7 +226,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithRegistryAccess", func() {
 			it("sets registry access on the config", func() {
-				lifecycle := newTestLifecycleExec(t, false)
+				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir")
 				authConfig := "some-auth-config"
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -246,7 +246,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 		when("called with WithRoot", func() {
 			when("building for non-Windows", func() {
 				it("sets root user on the config", func() {
-					lifecycle := newTestLifecycleExec(t, false)
+					lifecycle := newTestLifecycleExec(t, false, "some-temp-dir")
 
 					phaseConfigProvider := build.NewPhaseConfigProvider(
 						"some-name",
@@ -264,7 +264,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, fakeBuilderImage.SetOS("windows"))
 					fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithImage(fakeBuilderImage))
 					h.AssertNil(t, err)
-					lifecycle := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
+					lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
 
 					phaseConfigProvider := build.NewPhaseConfigProvider(
 						"some-name",
@@ -279,7 +279,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithLogPrefix", func() {
 			it("sets prefix writers", func() {
-				lifecycle := newTestLifecycleExec(t, false)
+				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir")
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
 					"some-name",
@@ -311,7 +311,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					Builder: defaultBuilder,
 				}
 
-				lifecycleExec, err := build.NewLifecycleExecution(logger, docker, opts)
+				lifecycleExec, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 				h.AssertNil(t, err)
 
 				_ = build.NewPhaseConfigProvider(
@@ -348,7 +348,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 						Builder: defaultBuilder,
 					}
 
-					lifecycleExec, err := build.NewLifecycleExecution(logger, docker, opts)
+					lifecycleExec, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 					h.AssertNil(t, err)
 
 					_ = build.NewPhaseConfigProvider(

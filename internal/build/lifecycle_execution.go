@@ -38,10 +38,10 @@ type LifecycleExecution struct {
 	os           string
 	mountPaths   mountPaths
 	opts         LifecycleOptions
-	TmpDir       string
+	tmpDir       string
 }
 
-func NewLifecycleExecution(logger logging.Logger, docker DockerClient, opts LifecycleOptions) (*LifecycleExecution, error) {
+func NewLifecycleExecution(logger logging.Logger, docker DockerClient, tmpDir string, opts LifecycleOptions) (*LifecycleExecution, error) {
 	latestSupportedPlatformAPI, err := FindLatestSupported(append(
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Deprecated,
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Supported...,
@@ -55,11 +55,6 @@ func NewLifecycleExecution(logger logging.Logger, docker DockerClient, opts Life
 		return nil, err
 	}
 
-	tmpDir, err := os.MkdirTemp("", "pack.tmp")
-	if err != nil {
-		return nil, err
-	}
-
 	exec := &LifecycleExecution{
 		logger:       logger,
 		docker:       docker,
@@ -69,7 +64,7 @@ func NewLifecycleExecution(logger logging.Logger, docker DockerClient, opts Life
 		opts:         opts,
 		os:           osType,
 		mountPaths:   mountPathsForOS(osType, opts.Workspace),
-		TmpDir:       tmpDir,
+		tmpDir:       tmpDir,
 	}
 
 	if opts.Interactive {
@@ -272,8 +267,8 @@ func (l *LifecycleExecution) Cleanup() error {
 	if err := l.docker.VolumeRemove(context.Background(), l.appVolume, true); err != nil {
 		reterr = errors.Wrapf(err, "failed to clean up app volume %s", l.appVolume)
 	}
-	if err := os.RemoveAll(l.TmpDir); err != nil {
-		reterr = errors.Wrapf(err, "failed to clean up working directory %s", l.TmpDir)
+	if err := os.RemoveAll(l.tmpDir); err != nil {
+		reterr = errors.Wrapf(err, "failed to clean up working directory %s", l.tmpDir)
 	}
 	return reterr
 }
@@ -407,9 +402,9 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 		),
 		WithFlags(flags...),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
-			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.TmpDir))),
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.tmpDir))),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
-			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.TmpDir))),
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.tmpDir))),
 		envOp,
 	)
 
@@ -483,7 +478,7 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, phas
 		),
 		WithNetwork(l.opts.Network),
 		If(l.hasExtensionsForRun(), WithPostContainerRunOperations(
-			CopyOutToMaybe(l.mountPaths.cnbDir(), l.TmpDir))), // FIXME: this is hacky; we should get the lifecycle binaries from the lifecycle image
+			CopyOutToMaybe(l.mountPaths.cnbDir(), l.tmpDir))), // FIXME: this is hacky; we should get the lifecycle binaries from the lifecycle image
 		flagsOp,
 		cacheBindOp,
 		registryOp,
@@ -695,7 +690,7 @@ func (l *LifecycleExecution) ExtendRun(ctx context.Context, buildCache Cache, ph
 		WithNetwork(l.opts.Network),
 		WithRoot(),
 		WithImage(l.runImageAfterExtensions()),
-		WithBinds(fmt.Sprintf("%s:%s", filepath.Join(l.TmpDir, "cnb"), l.mountPaths.cnbDir())),
+		WithBinds(fmt.Sprintf("%s:%s", filepath.Join(l.tmpDir, "cnb"), l.mountPaths.cnbDir())),
 		kanikoCacheBindOp,
 	)
 
@@ -819,7 +814,7 @@ func (l *LifecycleExecution) hasExtensions() bool {
 
 func (l *LifecycleExecution) hasExtensionsForBuild() bool {
 	// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
-	fis, err := os.ReadDir(filepath.Join(l.TmpDir, "build"))
+	fis, err := os.ReadDir(filepath.Join(l.tmpDir, "build"))
 	if err != nil {
 		return false
 	}
@@ -837,7 +832,7 @@ type runImage struct {
 
 func (l *LifecycleExecution) hasExtensionsForRun() bool {
 	var amd analyzedMD
-	if _, err := toml.DecodeFile(filepath.Join(l.TmpDir, "analyzed.toml"), &amd); err != nil {
+	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
 		return false
 	}
 	if amd.RunImage == nil {
@@ -849,7 +844,7 @@ func (l *LifecycleExecution) hasExtensionsForRun() bool {
 // TODO: we might need to pull the run image at this stage, see https://github.com/buildpacks/pack/issues/1686
 func (l *LifecycleExecution) runImageAfterExtensions() string {
 	var amd analyzedMD
-	if _, err := toml.DecodeFile(filepath.Join(l.TmpDir, "analyzed.toml"), &amd); err != nil {
+	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
 		return l.opts.RunImage
 	}
 	if amd.RunImage == nil {
