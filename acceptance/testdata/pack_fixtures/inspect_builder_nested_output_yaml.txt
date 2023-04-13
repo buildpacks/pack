@@ -58,8 +58,6 @@ remote_info:
             - id: read/env
               version: read-env-version
               optional: true
-    extensions: []
-    order_extensions: []
 local_info:
     created_by:
         name: Pack CLI
@@ -116,5 +114,3 @@ local_info:
             - id: read/env
               version: read-env-version
               optional: true
-    extensions: []
-    order_extensions: []

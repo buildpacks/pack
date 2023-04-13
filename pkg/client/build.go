@@ -323,7 +323,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
 
-	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors, opts.Publish)
+	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish)
 
 	fetchOptions := image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy}
 	if opts.Layout() {
@@ -610,7 +610,7 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	if err != nil {
 		return nil, err
 	}
-	if bldr.Stack().RunImage.Image == "" {
+	if bldr.Stack().RunImage.Image == "" && len(bldr.RunImages()) == 0 {
 		return nil, errors.New("builder metadata is missing run-image")
 	}
 
@@ -709,8 +709,9 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.
 					ID:      id,
 					Version: ver,
 				},
-				WithStacks: bp.Stacks,
-				WithOrder:  bp.Order,
+				WithStacks:  bp.Stacks,
+				WithTargets: bp.Targets,
+				WithOrder:   bp.Order,
 			}
 			all = append(all, &desc)
 		}

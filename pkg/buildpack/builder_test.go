@@ -764,7 +764,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								// buildpackage metadata
 								h.ContentContains(`"io.buildpacks.buildpackage.metadata":"{\"id\":\"bp.1.id\",\"version\":\"bp.1.version\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}]}"`),
 								// buildpack layers metadata
-								h.ContentContains(`"io.buildpacks.buildpack.layers":"{\"bp.1.id\":{\"bp.1.version\":{\"api\":\"0.2\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}],\"layerDiffID\":\"sha256:9fa0bb03eebdd0f8e4b6d6f50471b44be83dba750624dfce15dac45975c5707b\"}}`),
+								h.ContentContains(`"io.buildpacks.buildpack.layers":"{\"bp.1.id\":{\"bp.1.version\":{\"api\":\"0.2\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}],\"layerDiffID\":\"sha256:44447e95b06b73496d1891de5afb01936e9999b97ea03dad6337d9f5610807a7\"}}`),
 								// image os
 								h.ContentContains(`"os":"linux"`),
 							)

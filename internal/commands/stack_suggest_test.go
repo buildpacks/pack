@@ -32,6 +32,12 @@ func testStacksSuggestCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, command.Execute())
 			h.AssertEq(t, outBuf.String(), `Stacks maintained by the community:
 
+    Stack ID: Deprecation Notice
+    Description: Stacks are deprecated in favor of using BuildImages and RunImages directly, but will continue to be supported throughout all of 2023 and 2024 if not longer. Please see our docs for more details- https://buildpacks.io/docs/concepts/components/stack
+    Maintainer: CNB
+    Build Image: 
+    Run Image: 
+
     Stack ID: heroku-20
     Description: The official Heroku stack based on Ubuntu 20.04
     Maintainer: Heroku

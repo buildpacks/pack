@@ -47,8 +47,8 @@ Created By:
 
 Trusted: {{.Trusted}}
 
-Stack:
-  ID: {{ .Info.Stack }}
+{{ if ne .Info.Stack "" -}}Stack:
+  ID: {{ .Info.Stack }}{{ end -}}
 {{- if .Verbose}}
 {{- if ne (len .Info.Mixins) 0 }}
   Mixins:
@@ -61,8 +61,12 @@ Stack:
 {{ .RunImages }}
 {{ .Buildpacks }}
 {{ .Order }}
+{{- if ne .Extensions "" }}
 {{ .Extensions }}
-{{ .OrderExtensions}}`
+{{- end }}
+{{- if ne .OrderExtensions "" }}
+{{ .OrderExtensions }}
+{{- end }}`
 )
 
 type HumanReadable struct{}
@@ -121,7 +125,7 @@ func writeBuilderInfo(
 
 	var warnings []string
 
-	runImagesString, runImagesWarnings, err := runImagesOutput(info.RunImage, localRunImages, info.RunImageMirrors, sharedInfo.Name)
+	runImagesString, runImagesWarnings, err := runImagesOutput(info.RunImages, localRunImages, sharedInfo.Name)
 	if err != nil {
 		return fmt.Errorf("compiling run images output: %w", err)
 	}
@@ -129,9 +133,15 @@ func writeBuilderInfo(
 	if err != nil {
 		return fmt.Errorf("compiling detection order output: %w", err)
 	}
-	orderExtString, orderExtWarnings, err := detectionOrderExtOutput(info.OrderExtensions, sharedInfo.Name)
-	if err != nil {
-		return fmt.Errorf("compiling detection order extensions output: %w", err)
+
+	var orderExtString string
+	var orderExtWarnings []string
+
+	if info.Extensions != nil {
+		orderExtString, orderExtWarnings, err = detectionOrderExtOutput(info.OrderExtensions, sharedInfo.Name)
+		if err != nil {
+			return fmt.Errorf("compiling detection order extensions output: %w", err)
+		}
 	}
 	buildpacksString, buildpacksWarnings, err := buildpacksOutput(info.Buildpacks, sharedInfo.Name)
 	if err != nil {
@@ -139,19 +149,26 @@ func writeBuilderInfo(
 	}
 	lifecycleString, lifecycleWarnings := lifecycleOutput(info.Lifecycle, sharedInfo.Name)
 
-	extensionsString, extensionsWarnings, err := extensionsOutput(info.Extensions, sharedInfo.Name)
-	if err != nil {
-		return fmt.Errorf("compiling extensions output: %w", err)
+	var extensionsString string
+	var extensionsWarnings []string
+
+	if info.Extensions != nil {
+		extensionsString, extensionsWarnings, err = extensionsOutput(info.Extensions, sharedInfo.Name)
+		if err != nil {
+			return fmt.Errorf("compiling extensions output: %w", err)
+		}
 	}
 
 	warnings = append(warnings, runImagesWarnings...)
 	warnings = append(warnings, orderWarnings...)
 	warnings = append(warnings, buildpacksWarnings...)
 	warnings = append(warnings, lifecycleWarnings...)
-	warnings = append(warnings, extensionsWarnings...)
-	warnings = append(warnings, orderExtWarnings...)
-
+	if info.Extensions != nil {
+		warnings = append(warnings, extensionsWarnings...)
+		warnings = append(warnings, orderExtWarnings...)
+	}
 	outputTemplate, _ := template.New("").Parse(outputTemplate)
+
 	err = outputTemplate.Execute(
 		logger.Writer(),
 		&struct {
@@ -226,9 +243,8 @@ func stringFromBool(subject bool) string {
 }
 
 func runImagesOutput(
-	runImage string,
+	runImages []pubbldr.RunImageConfig,
 	localRunImages []config.RunImage,
-	buildRunImages []string,
 	builderName string,
 ) (string, []string, error) {
 	output := "Run Images:\n"
@@ -236,36 +252,39 @@ func runImagesOutput(
 	tabWriterBuf := bytes.Buffer{}
 
 	localMirrorTabWriter := tabwriter.NewWriter(&tabWriterBuf, writerMinWidth, writerTabWidth, defaultTabWidth, writerPadChar, writerFlags)
-	err := writeLocalMirrors(localMirrorTabWriter, runImage, localRunImages)
+	err := writeLocalMirrors(localMirrorTabWriter, runImages, localRunImages)
 	if err != nil {
 		return "", []string{}, fmt.Errorf("writing local mirrors: %w", err)
 	}
 
 	var warnings []string
 
-	if runImage != "" {
-		_, err = fmt.Fprintf(localMirrorTabWriter, "  %s\n", runImage)
-		if err != nil {
-			return "", []string{}, fmt.Errorf("writing to tabwriter: %w", err)
-		}
-	} else {
+	if len(runImages) == 0 {
 		warnings = append(
 			warnings,
 			fmt.Sprintf("%s does not specify a run image", builderName),
 			"Users must build with an explicitly specified run image",
 		)
-	}
-	for _, m := range buildRunImages {
-		_, err = fmt.Fprintf(localMirrorTabWriter, "  %s\n", m)
-		if err != nil {
-			return "", []string{}, fmt.Errorf("writing to tab writer: %w", err)
+	} else {
+		for _, runImage := range runImages {
+			if runImage.Image != "" {
+				_, err = fmt.Fprintf(localMirrorTabWriter, "  %s\n", runImage.Image)
+				if err != nil {
+					return "", []string{}, fmt.Errorf("writing to tabwriter: %w", err)
+				}
+			}
+			for _, m := range runImage.Mirrors {
+				_, err = fmt.Fprintf(localMirrorTabWriter, "  %s\n", m)
+				if err != nil {
+					return "", []string{}, fmt.Errorf("writing to tab writer: %w", err)
+				}
+			}
+			err = localMirrorTabWriter.Flush()
+			if err != nil {
+				return "", []string{}, fmt.Errorf("flushing tab writer: %w", err)
+			}
 		}
 	}
-	err = localMirrorTabWriter.Flush()
-	if err != nil {
-		return "", []string{}, fmt.Errorf("flushing tab writer: %w", err)
-	}
-
 	runImageOutput := tabWriterBuf.String()
 	if runImageOutput == "" {
 		runImageOutput = fmt.Sprintf("  %s\n", none)
@@ -276,13 +295,15 @@ func runImagesOutput(
 	return output, warnings, nil
 }
 
-func writeLocalMirrors(logWriter io.Writer, runImage string, localRunImages []config.RunImage) error {
+func writeLocalMirrors(logWriter io.Writer, runImages []pubbldr.RunImageConfig, localRunImages []config.RunImage) error {
 	for _, i := range localRunImages {
-		if i.Image == runImage {
-			for _, m := range i.Mirrors {
-				_, err := fmt.Fprintf(logWriter, "  %s\t(user-configured)\n", m)
-				if err != nil {
-					return fmt.Errorf("writing local mirror: %s: %w", m, err)
+		for _, ri := range runImages {
+			if i.Image == ri.Image {
+				for _, m := range i.Mirrors {
+					_, err := fmt.Fprintf(logWriter, "  %s\t(user-configured)\n", m)
+					if err != nil {
+						return fmt.Errorf("writing local mirror: %s: %w", m, err)
+					}
 				}
 			}
 		}

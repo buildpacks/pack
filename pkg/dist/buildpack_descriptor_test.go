@@ -150,6 +150,120 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("validating against run image target", func() {
+		it("succeeds with no distribution", func() {
+			bp := dist.BuildpackDescriptor{
+				WithInfo: dist.ModuleInfo{
+					ID:      "some.buildpack.id",
+					Version: "some.buildpack.version",
+				},
+				WithTargets: []dist.Target{{
+					OS:   "fake-os",
+					Arch: "fake-arch",
+				}},
+			}
+
+			h.AssertNil(t, bp.EnsureStackSupport("some.stack.id", []string{}, true))
+			h.AssertNil(t, bp.EnsureTargetSupport("fake-os", "fake-arch", "fake-distro", "0.0"))
+		})
+
+		it("succeeds with no target and bin/build.exe", func() {
+			bp := dist.BuildpackDescriptor{
+				WithInfo: dist.ModuleInfo{
+					ID:      "some.buildpack.id",
+					Version: "some.buildpack.version",
+				},
+				WithWindowsBuild: true,
+			}
+
+			h.AssertNil(t, bp.EnsureStackSupport("some.stack.id", []string{}, true))
+			h.AssertNil(t, bp.EnsureTargetSupport("windows", "amd64", "fake-distro", "0.0"))
+		})
+
+		it("succeeds with no target and bin/build", func() {
+			bp := dist.BuildpackDescriptor{
+				WithInfo: dist.ModuleInfo{
+					ID:      "some.buildpack.id",
+					Version: "some.buildpack.version",
+				},
+				WithLinuxBuild: true,
+			}
+
+			h.AssertNil(t, bp.EnsureStackSupport("some.stack.id", []string{}, true))
+			h.AssertNil(t, bp.EnsureTargetSupport("linux", "amd64", "fake-distro", "0.0"))
+		})
+
+		it("returns an error when no match", func() {
+			bp := dist.BuildpackDescriptor{
+				WithInfo: dist.ModuleInfo{
+					ID:      "some.buildpack.id",
+					Version: "some.buildpack.version",
+				},
+				WithTargets: []dist.Target{{
+					OS:   "fake-os",
+					Arch: "fake-arch",
+				}},
+			}
+
+			h.AssertNil(t, bp.EnsureStackSupport("some.stack.id", []string{}, true))
+			h.AssertError(t, bp.EnsureTargetSupport("some-other-os", "fake-arch", "fake-distro", "0.0"),
+				"buildpack 'some.buildpack.id@some.buildpack.version' does not support target: (some-other-os fake-arch, fake-distro@0.0)")
+		})
+
+		it("succeeds with distribution", func() {
+			bp := dist.BuildpackDescriptor{
+				WithInfo: dist.ModuleInfo{
+					ID:      "some.buildpack.id",
+					Version: "some.buildpack.version",
+				},
+				WithTargets: []dist.Target{{
+					OS:   "fake-os",
+					Arch: "fake-arch",
+					Distributions: []dist.Distribution{
+						{
+							Name:     "fake-distro",
+							Versions: []string{"0.1"},
+						},
+						{
+							Name:     "another-distro",
+							Versions: []string{"0.22"},
+						},
+					},
+				}},
+			}
+
+			h.AssertNil(t, bp.EnsureStackSupport("some.stack.id", []string{}, true))
+			h.AssertNil(t, bp.EnsureTargetSupport("fake-os", "fake-arch", "fake-distro", "0.1"))
+		})
+
+		it("returns an error when no distribution matches", func() {
+			bp := dist.BuildpackDescriptor{
+				WithInfo: dist.ModuleInfo{
+					ID:      "some.buildpack.id",
+					Version: "some.buildpack.version",
+				},
+				WithTargets: []dist.Target{{
+					OS:   "fake-os",
+					Arch: "fake-arch",
+					Distributions: []dist.Distribution{
+						{
+							Name:     "fake-distro",
+							Versions: []string{"0.1"},
+						},
+						{
+							Name:     "another-distro",
+							Versions: []string{"0.22"},
+						},
+					},
+				}},
+			}
+
+			h.AssertNil(t, bp.EnsureStackSupport("some.stack.id", []string{}, true))
+			h.AssertError(t, bp.EnsureTargetSupport("some-other-os", "fake-arch", "fake-distro", "0.0"),
+				"buildpack 'some.buildpack.id@some.buildpack.version' does not support target: (some-other-os fake-arch, fake-distro@0.0)")
+		})
+	})
+
 	when("#Kind", func() {
 		it("returns 'buildpack'", func() {
 			bpDesc := dist.BuildpackDescriptor{}

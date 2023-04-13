@@ -12,10 +12,13 @@ import (
 )
 
 type BuildpackDescriptor struct {
-	WithAPI    *api.Version `toml:"api"`
-	WithInfo   ModuleInfo   `toml:"buildpack"`
-	WithStacks []Stack      `toml:"stacks"`
-	WithOrder  Order        `toml:"order"`
+	WithAPI          *api.Version `toml:"api"`
+	WithInfo         ModuleInfo   `toml:"buildpack"`
+	WithStacks       []Stack      `toml:"stacks"`
+	WithTargets      []Target     `toml:"targets,omitempty"`
+	WithOrder        Order        `toml:"order"`
+	WithWindowsBuild bool
+	WithLinuxBuild   bool
 }
 
 func (b *BuildpackDescriptor) EscapedID() string {
@@ -24,7 +27,7 @@ func (b *BuildpackDescriptor) EscapedID() string {
 
 func (b *BuildpackDescriptor) EnsureStackSupport(stackID string, providedMixins []string, validateRunStageMixins bool) error {
 	if len(b.Stacks()) == 0 {
-		return nil // Order buildpack, no validation required
+		return nil // Order buildpack or a buildpack using Targets, no validation required
 	}
 
 	bpMixins, err := b.findMixinsForStack(stackID)
@@ -50,6 +53,40 @@ func (b *BuildpackDescriptor) EnsureStackSupport(stackID string, providedMixins 
 	return nil
 }
 
+func (b *BuildpackDescriptor) EnsureTargetSupport(os, arch, distroName, distroVersion string) error {
+	if len(b.Targets()) == 0 {
+		if (!b.WithLinuxBuild && !b.WithWindowsBuild) || len(b.Stacks()) > 0 { // nolint
+			return nil // Order buildpack or stack buildpack, no validation required
+		} else if b.WithLinuxBuild && os == DefaultTargetOSLinux && arch == DefaultTargetArch {
+			return nil
+		} else if b.WithWindowsBuild && os == DefaultTargetOSWindows && arch == DefaultTargetArch {
+			return nil
+		}
+	}
+	for _, target := range b.Targets() {
+		if target.OS == os {
+			if target.Arch == "*" || arch == "" || target.Arch == arch {
+				if len(target.Distributions) == 0 || distroName == "" || distroVersion == "" {
+					return nil
+				}
+				for _, distro := range target.Distributions {
+					if distro.Name == distroName {
+						if len(distro.Versions) == 0 {
+							return nil
+						}
+						for _, version := range distro.Versions {
+							if version == distroVersion {
+								return nil
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return fmt.Errorf("buildpack %s does not support target: (%s %s, %s@%s)", style.Symbol(b.Info().FullName()), os, arch, distroName, distroVersion)
+}
+
 func (b *BuildpackDescriptor) Kind() string {
 	return "buildpack"
 }
@@ -68,6 +105,10 @@ func (b *BuildpackDescriptor) Order() Order {
 
 func (b *BuildpackDescriptor) Stacks() []Stack {
 	return b.WithStacks
+}
+
+func (b *BuildpackDescriptor) Targets() []Target {
+	return b.WithTargets
 }
 
 func (b *BuildpackDescriptor) findMixinsForStack(stackID string) ([]string, error) {
