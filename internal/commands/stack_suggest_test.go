@@ -33,7 +33,7 @@ func testStacksSuggestCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, outBuf.String(), `Stacks maintained by the community:
 
     Stack ID: Deprecation Notice
-    Description: Stacks will continue to be supported through at least 2024 but are deprecated in favor of using BuildImages and RunImages directly. Please see our docs for more details- https://buildpacks.io/docs/concepts/components/stack
+    Description: Stacks are deprecated in favor of using BuildImages and RunImages directly, but will continue to be supported throughout all of 2023 and 2024 if not longer. Please see our docs for more details- https://buildpacks.io/docs/concepts/components/stack
     Maintainer: CNB
     Build Image: 
     Run Image: 

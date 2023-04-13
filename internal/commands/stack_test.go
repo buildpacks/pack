@@ -33,7 +33,7 @@ func testStackCommand(t *testing.T, when spec.G, it spec.S) {
 			command.SetOut(bb)
 			h.AssertNil(t, command.Execute())
 			h.AssertEq(t, bb.String(), `(Deprecated)
-Stacks will continue to be supported through at least 2024 but are deprecated in favor of using BuildImages and RunImages directly. Please see our docs for more details- https://buildpacks.io/docs/concepts/components/stack
+Stacks are deprecated in favor of using BuildImages and RunImages directly, but will continue to be supported throughout all of 2023 and '24 if not longer. Please see our docs for more details- https://buildpacks.io/docs/concepts/components/stack
 
 Usage:
   stack [command]
