@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"testing"
 
+	pubbldr "github.com/buildpacks/pack/builder"
+
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -36,13 +38,13 @@ var (
 	expectedLocalInfo = &client.BuilderInfo{
 		Description: "test-local-builder",
 		Stack:       "local-stack",
-		RunImage:    "local/image",
+		RunImages:   []pubbldr.RunImageConfig{{Image: "local/image"}},
 		Lifecycle:   minimalLifecycleDescriptor,
 	}
 	expectedRemoteInfo = &client.BuilderInfo{
 		Description: "test-remote-builder",
 		Stack:       "remote-stack",
-		RunImage:    "remote/image",
+		RunImages:   []pubbldr.RunImageConfig{{Image: "remote/image"}},
 		Lifecycle:   minimalLifecycleDescriptor,
 	}
 	expectedLocalDisplay  = "Sample output for local builder"

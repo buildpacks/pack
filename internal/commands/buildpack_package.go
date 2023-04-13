@@ -108,8 +108,12 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			if flags.Publish {
 				action = "published"
 			}
+			location := "docker daemon"
+			if flags.Format == client.FormatFile {
+				location = "file"
+			}
 
-			logger.Infof("Successfully %s package %s", action, style.Symbol(name))
+			logger.Infof("Successfully %s package %s and saved to %s", action, style.Symbol(name), location)
 			return nil
 		}),
 	}

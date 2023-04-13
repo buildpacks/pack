@@ -40,6 +40,10 @@ type RebaseOptions struct {
 
 	// If provided, directory to which report.toml will be copied
 	ReportDestinationDir string
+
+	// Pass-through force flag to lifecycle rebase command to skip target data
+	// validated (will not have any effect if API < 0.12).
+	Force bool
 }
 
 // Rebase updates the run image layers in an app image.
@@ -66,11 +70,9 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		opts.RunImage,
 		imageRef.Context().RegistryStr(),
 		"",
-		builder.StackMetadata{
-			RunImage: builder.RunImageMetadata{
-				Image:   md.Stack.RunImage.Image,
-				Mirrors: md.Stack.RunImage.Mirrors,
-			},
+		builder.RunImageMetadata{
+			Image:   md.Stack.RunImage.Image,
+			Mirrors: md.Stack.RunImage.Mirrors,
 		},
 		opts.AdditionalMirrors,
 		opts.Publish)
@@ -85,7 +87,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	}
 
 	c.logger.Infof("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
-	rebaser := &lifecycle.Rebaser{Logger: c.logger, PlatformAPI: build.SupportedPlatformAPIVersions.Latest()}
+	rebaser := &lifecycle.Rebaser{Logger: c.logger, PlatformAPI: build.SupportedPlatformAPIVersions.Latest(), Force: opts.Force}
 	report, err := rebaser.Rebase(appImage, baseImage, appImage.Name(), nil)
 	if err != nil {
 		return err

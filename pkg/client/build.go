@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -134,6 +135,11 @@ type BuildOptions struct {
 	// These buildpacks may overwrite those on the builder if they
 	// share both an ID and Version with a buildpack on the builder.
 	Buildpacks []string
+
+	// List of extension images or archives to add to a builder.
+	// These extensions may overwrite those on the builder if they
+	// share both an ID and Version with an extension on the builder.
+	Extensions []string
 
 	// Additional image tags to push to, each will contain contents identical to Image
 	AdditionalTags []string
@@ -317,7 +323,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
 
-	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors, opts.Publish)
+	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish)
 
 	fetchOptions := image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy}
 	if opts.Layout() {
@@ -350,6 +356,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
+	fetchedExs, orderExtensions, err := c.processExtensions(ctx, bldr.Image(), bldr.Extensions(), bldr.OrderExtensions(), bldr.StackID, opts)
+	if err != nil {
+		return err
+	}
+
 	if err := c.validateMixins(fetchedBPs, bldr, runImageName, runMixins); err != nil {
 		return errors.Wrap(err, "validating stack mixins")
 	}
@@ -363,7 +374,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		buildEnvs[k] = v
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs)
+	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, orderExtensions, fetchedExs)
 	if err != nil {
 		return err
 	}
@@ -599,7 +610,7 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	if err != nil {
 		return nil, err
 	}
-	if bldr.Stack().RunImage.Image == "" {
+	if bldr.Stack().RunImage.Image == "" && len(bldr.RunImages()) == 0 {
 		return nil, errors.New("builder metadata is missing run-image")
 	}
 
@@ -698,8 +709,9 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.
 					ID:      id,
 					Version: ver,
 				},
-				WithStacks: bp.Stacks,
-				WithOrder:  bp.Order,
+				WithStacks:  bp.Stacks,
+				WithTargets: bp.Targets,
+				WithOrder:   bp.Order,
 			}
 			all = append(all, &desc)
 		}
@@ -915,7 +927,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				order = newOrder
 			}
 		default:
-			newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderImage, builderBPs, opts)
+			newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderImage, builderBPs, opts, buildpack.KindBuildpack)
 			if err != nil {
 				return fetchedBPs, order, err
 			}
@@ -949,7 +961,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 		if len(preBuildpacks) > 0 || len(postBuildpacks) > 0 {
 			order = builderOrder
 			for _, bp := range preBuildpacks {
-				newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderImage, builderBPs, opts)
+				newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderImage, builderBPs, opts, buildpack.KindBuildpack)
 				if err != nil {
 					return fetchedBPs, order, err
 				}
@@ -958,7 +970,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			}
 
 			for _, bp := range postBuildpacks {
-				newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderImage, builderBPs, opts)
+				newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderImage, builderBPs, opts, buildpack.KindBuildpack)
 				if err != nil {
 					return fetchedBPs, order, err
 				}
@@ -971,7 +983,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 	return fetchedBPs, order, nil
 }
 
-func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir string, builderImage imgutil.Image, builderBPs []dist.ModuleInfo, opts BuildOptions) ([]buildpack.BuildModule, *dist.ModuleInfo, error) {
+func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir string, builderImage imgutil.Image, builderBPs []dist.ModuleInfo, opts BuildOptions, kind string) ([]buildpack.BuildModule, *dist.ModuleInfo, error) {
 	pullPolicy := opts.PullPolicy
 	publish := opts.Publish
 	registry := opts.Registry
@@ -995,13 +1007,17 @@ func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir 
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "getting OS from %s", style.Symbol(builderImage.Name()))
 		}
-		mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, bp, buildpack.DownloadOptions{
+		downloadOptions := buildpack.DownloadOptions{
 			RegistryName:    registry,
 			ImageOS:         imageOS,
 			RelativeBaseDir: relativeBaseDir,
 			Daemon:          !publish,
 			PullPolicy:      pullPolicy,
-		})
+		}
+		if kind == buildpack.KindExtension {
+			downloadOptions.ModuleKind = kind
+		}
+		mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, bp, downloadOptions)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "downloading buildpack")
 		}
@@ -1063,7 +1079,36 @@ func prependBuildpackToOrder(order dist.Order, bpInfo dist.ModuleInfo) (newOrder
 	return newOrder
 }
 
-func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []buildpack.BuildModule) (*builder.Builder, error) {
+func (c *Client) processExtensions(ctx context.Context, builderImage imgutil.Image, builderExs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedExs []buildpack.BuildModule, orderExtensions dist.Order, err error) {
+	relativeBaseDir := opts.RelativeBaseDir
+	declaredExs := opts.Extensions
+
+	orderExtensions = dist.Order{{Group: []dist.ModuleRef{}}}
+	for _, ex := range declaredExs {
+		locatorType, err := buildpack.GetLocatorType(ex, relativeBaseDir, builderExs)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		switch locatorType {
+		case buildpack.RegistryLocator:
+			return nil, nil, errors.New("RegistryLocator type is not valid for extensions")
+		case buildpack.FromBuilderLocator:
+			return nil, nil, errors.New("from builder is not supported for extensions")
+		default:
+			newFetchedExs, moduleInfo, err := c.fetchBuildpack(ctx, ex, relativeBaseDir, builderImage, builderExs, opts, buildpack.KindExtension)
+			if err != nil {
+				return fetchedExs, orderExtensions, err
+			}
+			fetchedExs = append(fetchedExs, newFetchedExs...)
+			orderExtensions = prependBuildpackToOrder(orderExtensions, *moduleInfo)
+		}
+	}
+
+	return fetchedExs, orderExtensions, nil
+}
+
+func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []buildpack.BuildModule, orderExtensions dist.Order, extensions []buildpack.BuildModule) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
 	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {
@@ -1079,6 +1124,16 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 	if len(order) > 0 && len(order[0].Group) > 0 {
 		c.logger.Debug("Setting custom order")
 		bldr.SetOrder(order)
+	}
+
+	for _, ex := range extensions {
+		exInfo := ex.Descriptor().Info()
+		c.logger.Debugf("Adding extension %s version %s to builder", style.Symbol(exInfo.ID), style.Symbol(exInfo.Version))
+		bldr.AddExtension(ex)
+	}
+	if len(orderExtensions) > 0 && len(orderExtensions[0].Group) > 0 {
+		c.logger.Debug("Setting custom order for extensions")
+		bldr.SetOrderExtensions(orderExtensions)
 	}
 
 	if err := bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version}); err != nil {
@@ -1101,11 +1156,15 @@ func randString(n int) string {
 }
 
 func processVolumes(imgOS string, volumes []string) (processed []string, warnings []string, err error) {
-	parserOS := mounts.OSLinux
-	if imgOS == "windows" {
-		parserOS = mounts.OSWindows
+	var parser mounts.Parser
+	switch "windows" {
+	case imgOS:
+		parser = mounts.NewWindowsParser()
+	case runtime.GOOS:
+		parser = mounts.NewLCOWParser()
+	default:
+		parser = mounts.NewLinuxParser()
 	}
-	parser := mounts.NewParser(parserOS)
 	for _, v := range volumes {
 		volume, err := parser.ParseMountRaw(v, "")
 		if err != nil {

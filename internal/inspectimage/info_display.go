@@ -95,7 +95,7 @@ func getConfigMirrors(info *client.ImageInfo, imageMirrors []config.RunImage) []
 	return nil
 }
 
-func displayBase(base platform.RunImageMetadata) BaseDisplay {
+func displayBase(base platform.RunImageForRebase) BaseDisplay {
 	return BaseDisplay{
 		TopLayer:  base.TopLayer,
 		Reference: base.Reference,

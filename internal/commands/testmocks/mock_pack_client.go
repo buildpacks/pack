@@ -171,6 +171,20 @@ func (mr *MockPackClientMockRecorder) PackageBuildpack(arg0, arg1 interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackageBuildpack", reflect.TypeOf((*MockPackClient)(nil).PackageBuildpack), arg0, arg1)
 }
 
+// PackageExtension mocks base method.
+func (m *MockPackClient) PackageExtension(arg0 context.Context, arg1 client.PackageBuildpackOptions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PackageExtension", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PackageExtension indicates an expected call of PackageExtension.
+func (mr *MockPackClientMockRecorder) PackageExtension(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackageExtension", reflect.TypeOf((*MockPackClient)(nil).PackageExtension), arg0, arg1)
+}
+
 // PullBuildpack mocks base method.
 func (m *MockPackClient) PullBuildpack(arg0 context.Context, arg1 client.PullBuildpackOptions) error {
 	m.ctrl.T.Helper()
