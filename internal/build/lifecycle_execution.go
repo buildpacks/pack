@@ -407,9 +407,9 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 		),
 		WithFlags(flags...),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
-			CopyOutToErr(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.TmpDir))),
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.TmpDir))),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
-			CopyOutToErr(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.TmpDir))),
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.TmpDir))),
 		envOp,
 	)
 
@@ -483,7 +483,7 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, phas
 		),
 		WithNetwork(l.opts.Network),
 		If(l.hasExtensionsForRun(), WithPostContainerRunOperations(
-			CopyOutToErr(l.mountPaths.cnbDir(), l.TmpDir))), // FIXME: this is hacky; we should get the lifecycle binaries from the lifecycle image
+			CopyOutToMaybe(l.mountPaths.cnbDir(), l.TmpDir))), // FIXME: this is hacky; we should get the lifecycle binaries from the lifecycle image
 		flagsOp,
 		cacheBindOp,
 		registryOp,

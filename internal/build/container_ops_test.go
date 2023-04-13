@@ -318,7 +318,7 @@ drwxr-xr-x    2 123      456 (.*) some-vol
 		})
 	})
 
-	when("#CopyOutErr", func() {
+	when("#CopyOutMaybe", func() {
 		it("reads the contents of a container directory", func() {
 			h.SkipIf(t, osType == "windows", "copying directories out of windows containers not yet supported")
 
@@ -357,7 +357,7 @@ drwxr-xr-x    2 123      456 (.*) some-vol
 				return nil
 			}
 
-			copyOutDirsOp := build.CopyOutErr(handler, containerDir)
+			copyOutDirsOp := build.CopyOutMaybe(handler, containerDir)
 			err = copyOutDirsOp(ctrClient, ctx, ctr.ID, io.Discard, io.Discard)
 			h.AssertNil(t, err)
 

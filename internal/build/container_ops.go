@@ -43,10 +43,10 @@ func CopyOut(handler func(closer io.ReadCloser) error, srcs ...string) Container
 	}
 }
 
-// CopyOutErr copies container directories to a handler function. The handler is responsible for closing the Reader.
-// CopyOutErr differs from CopyOut in that it does not require the source files to exist in the container
-// in order to exit without error.
-func CopyOutErr(handler func(closer io.ReadCloser) error, srcs ...string) ContainerOperation {
+// CopyOutMaybe copies container directories to a handler function. The handler is responsible for closing the Reader.
+// CopyOutMaybe differs from CopyOut in that it will silently continue to the next source file if the file reader cannot be instantiated
+// because the source file does not exist in the container.
+func CopyOutMaybe(handler func(closer io.ReadCloser) error, srcs ...string) ContainerOperation {
 	return func(ctrClient DockerClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
 		for _, src := range srcs {
 			reader, _, err := ctrClient.CopyFromContainer(ctx, containerID, src)
@@ -79,8 +79,8 @@ func CopyOutTo(src, dest string) ContainerOperation {
 	}, src)
 }
 
-func CopyOutToErr(src, dest string) ContainerOperation {
-	return CopyOutErr(func(reader io.ReadCloser) error {
+func CopyOutToMaybe(src, dest string) ContainerOperation {
+	return CopyOutMaybe(func(reader io.ReadCloser) error {
 		info := darchive.CopyInfo{
 			Path:  src,
 			IsDir: true,
