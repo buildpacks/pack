@@ -15,6 +15,7 @@ type Descriptor interface {
 	Info() ModuleInfo
 	Order() Order
 	Stacks() []Stack
+	Targets() []Target
 }
 
 func LayerDiffID(layerTarPath string) (v1.Hash, error) {
@@ -45,6 +46,7 @@ func AddToLayersMD(layerMD ModuleLayers, descriptor Descriptor, diffID string) {
 	layerMD[info.ID][info.Version] = ModuleLayerInfo{
 		API:         descriptor.API(),
 		Stacks:      descriptor.Stacks(),
+		Targets:     descriptor.Targets(),
 		Order:       descriptor.Order(),
 		LayerDiffID: diffID,
 		Homepage:    info.Homepage,

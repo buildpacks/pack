@@ -140,7 +140,15 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 	"buildpack": {"deprecated": ["0.1"], "supported": ["1.2", "1.3"]},
 	"platform": {"deprecated": [], "supported": ["2.3", "2.4"]}
   }},
-  "createdBy": {"name": "pack", "version": "1.2.3"}
+  "createdBy": {"name": "pack", "version": "1.2.3"},
+  "images": [
+    {
+      "image": "some/run-image",
+      "mirrors": [
+        "gcr.io/some/default"
+      ]
+    }
+  ]
 }`))
 
 						assert.Succeeds(builderImage.SetLabel(
@@ -221,11 +229,10 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 						assert.Nil(err)
 
 						want := BuilderInfo{
-							Description:     "Some description",
-							Stack:           "test.stack.id",
-							Mixins:          []string{"mixinOne", "mixinThree", "build:mixinTwo", "build:mixinFour"},
-							RunImage:        "some/run-image",
-							RunImageMirrors: []string{"gcr.io/some/default"},
+							Description: "Some description",
+							Stack:       "test.stack.id",
+							Mixins:      []string{"mixinOne", "mixinThree", "build:mixinTwo", "build:mixinFour"},
+							RunImages:   []pubbldr.RunImageConfig{{Image: "some/run-image", Mirrors: []string{"gcr.io/some/default"}}},
 							Buildpacks: []dist.ModuleInfo{
 								{
 									ID:       "test.bp.one",

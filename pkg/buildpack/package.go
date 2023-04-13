@@ -67,8 +67,9 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 					Homepage: bpInfo.Homepage,
 					Name:     bpInfo.Name,
 				},
-				WithStacks: bpInfo.Stacks,
-				WithOrder:  bpInfo.Order,
+				WithStacks:  bpInfo.Stacks,
+				WithTargets: bpInfo.Targets,
+				WithOrder:   bpInfo.Order,
 			}
 
 			diffID := bpInfo.LayerDiffID // Allow use in closure

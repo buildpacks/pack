@@ -28,6 +28,8 @@ import (
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
+
+	lifecycleplatform "github.com/buildpacks/lifecycle/platform"
 )
 
 const (
@@ -234,9 +236,16 @@ func (b *Builder) Stack() StackMetadata {
 	return b.metadata.Stack
 }
 
-// RunImages returns the run image metadata
+// RunImages returns all run image metadata
 func (b *Builder) RunImages() []RunImageMetadata {
-	return b.metadata.RunImages
+	return append(b.metadata.RunImages, b.Stack().RunImage)
+}
+
+// DefaultRunImage returns the default run image metadata
+func (b *Builder) DefaultRunImage() RunImageMetadata {
+	// run.images are ensured in builder.ValidateConfig()
+	// per the spec, we use the first one as the default
+	return b.RunImages()[0]
 }
 
 // Mixins returns the mixins of the builder
@@ -360,7 +369,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		}
 	}
 
-	if err := validateBuildpacks(b.StackID, b.Mixins(), b.LifecycleDescriptor(), b.Buildpacks(), b.additionalBuildpacks); err != nil {
+	if err := b.validateBuildpacks(); err != nil {
 		return errors.Wrap(err, "validating buildpacks")
 	}
 
@@ -633,24 +642,20 @@ func hasElementWithVersion(moduleList []dist.ModuleInfo, version string) bool {
 	return false
 }
 
-func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, allBuildpacks []dist.ModuleInfo, bpsToValidate []buildpack.BuildModule) error {
+func (b *Builder) validateBuildpacks() error {
 	bpLookup := map[string]interface{}{}
 
-	for _, bp := range allBuildpacks {
+	for _, bp := range b.Buildpacks() {
 		bpLookup[bp.FullName()] = nil
 	}
 
-	for _, bp := range bpsToValidate {
+	for _, bp := range b.additionalBuildpacks {
 		bpd := bp.Descriptor()
-		if err := validateLifecycleCompat(bpd, lifecycleDescriptor); err != nil {
+		if err := validateLifecycleCompat(bpd, b.LifecycleDescriptor()); err != nil {
 			return err
 		}
 
-		if len(bpd.Stacks()) >= 1 { // standard buildpack
-			if err := bpd.EnsureStackSupport(stackID, mixins, false); err != nil {
-				return err
-			}
-		} else { // order buildpack
+		if len(bpd.Order()) > 0 { // order buildpack
 			for _, g := range bpd.Order() {
 				for _, r := range g.Group {
 					if _, ok := bpLookup[r.FullName()]; !ok {
@@ -661,6 +666,30 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 					}
 				}
 			}
+		} else if err := bpd.EnsureStackSupport(b.StackID, b.Mixins(), false); err != nil {
+			return err
+		} else {
+			buildOS, err := b.Image().OS()
+			if err != nil {
+				return err
+			}
+			buildArch, err := b.Image().Architecture()
+			if err != nil {
+				return err
+			}
+			buildDistroName, err := b.Image().Label(lifecycleplatform.OSDistributionNameLabel)
+			if err != nil {
+				return err
+			}
+			buildDistroVersion, err := b.Image().Label(lifecycleplatform.OSDistributionVersionLabel)
+			if err != nil {
+				return err
+			}
+			if err := bpd.EnsureTargetSupport(buildOS, buildArch, buildDistroName, buildDistroVersion); err != nil {
+				return err
+			}
+
+			// TODO ensure at least one run-image
 		}
 	}
 
@@ -903,7 +932,12 @@ func orderFileContents(order dist.Order, orderExt dist.Order) (string, error) {
 
 func (b *Builder) stackLayer(dest string) (string, error) {
 	buf := &bytes.Buffer{}
-	err := toml.NewEncoder(buf).Encode(b.metadata.Stack)
+	var err error
+	if b.metadata.Stack.RunImage.Image != "" {
+		err = toml.NewEncoder(buf).Encode(b.metadata.Stack)
+	} else if len(b.metadata.RunImages) > 0 {
+		err = toml.NewEncoder(buf).Encode(b.metadata.RunImages[0])
+	}
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to marshal stack.toml")
 	}
