@@ -534,7 +534,7 @@ func CreateFakeLifecycleExecution(logger logging.Logger, docker client.CommonAPI
 		termui = &fakes.FakeTermui{HandlerFunc: handler[0]}
 	}
 
-	return build.NewLifecycleExecution(logger, docker, build.LifecycleOptions{
+	return build.NewLifecycleExecution(logger, docker, "some-temp-dir", build.LifecycleOptions{
 		AppPath:     appDir,
 		Builder:     fakeBuilder,
 		HTTPProxy:   "some-http-proxy",

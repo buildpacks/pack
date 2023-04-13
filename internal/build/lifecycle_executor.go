@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/buildpacks/imgutil"
@@ -108,7 +109,12 @@ func NewLifecycleExecutor(logger logging.Logger, docker DockerClient) *Lifecycle
 }
 
 func (l *LifecycleExecutor) Execute(ctx context.Context, opts LifecycleOptions) error {
-	lifecycleExec, err := NewLifecycleExecution(l.logger, l.docker, opts)
+	tmpDir, err := os.MkdirTemp("", "pack.tmp")
+	if err != nil {
+		return err
+	}
+
+	lifecycleExec, err := NewLifecycleExecution(l.logger, l.docker, tmpDir, opts)
 	if err != nil {
 		return err
 	}

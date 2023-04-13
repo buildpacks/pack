@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/errdefs"
 	darchive "github.com/docker/docker/pkg/archive"
 	"github.com/pkg/errors"
 
@@ -42,8 +43,44 @@ func CopyOut(handler func(closer io.ReadCloser) error, srcs ...string) Container
 	}
 }
 
+// CopyOutMaybe copies container directories to a handler function. The handler is responsible for closing the Reader.
+// CopyOutMaybe differs from CopyOut in that it will silently continue to the next source file if the file reader cannot be instantiated
+// because the source file does not exist in the container.
+func CopyOutMaybe(handler func(closer io.ReadCloser) error, srcs ...string) ContainerOperation {
+	return func(ctrClient DockerClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
+		for _, src := range srcs {
+			reader, _, err := ctrClient.CopyFromContainer(ctx, containerID, src)
+			if err != nil {
+				if errdefs.IsNotFound(err) {
+					continue
+				}
+				return err
+			}
+
+			err = handler(reader)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
 func CopyOutTo(src, dest string) ContainerOperation {
 	return CopyOut(func(reader io.ReadCloser) error {
+		info := darchive.CopyInfo{
+			Path:  src,
+			IsDir: true,
+		}
+
+		defer reader.Close()
+		return darchive.CopyTo(reader, info, dest)
+	}, src)
+}
+
+func CopyOutToMaybe(src, dest string) ContainerOperation {
+	return CopyOutMaybe(func(reader io.ReadCloser) error {
 		info := darchive.CopyInfo{
 			Path:  src,
 			IsDir: true,
