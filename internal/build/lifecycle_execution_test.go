@@ -1919,8 +1919,22 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				[]string{"-log-level", "debug"},
 				[]string{"-cache-dir", "/cache"},
 				[]string{"-run-image", providedRunImage},
+				[]string{"-stack", "/layers/stack.toml"},
 				[]string{providedTargetImage},
 			)
+			h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-run")
+		})
+
+		when("platform >= 0.12", func() {
+			platformAPI = api.MustParse("0.12")
+
+			it("provides -run instead of -stack", func() {
+				h.AssertIncludeAllExpectedPatterns(t,
+					configProvider.ContainerConfig().Cmd,
+					[]string{"-run", "/layers/run.toml"},
+				)
+				h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-stack")
+			})
 		})
 
 		when("additional tags are specified", func() {

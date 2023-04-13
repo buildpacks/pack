@@ -718,13 +718,16 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 	flags := []string{
 		"-app", l.mountPaths.appDir(),
 		"-cache-dir", l.mountPaths.cacheDir(),
-		// "-stack", l.mountPaths.stackPath(), // TODO: remove, replace with "-run" as part of https://github.com/buildpacks/pack/issues/1301
+	}
+
+	if l.platformAPI.LessThan("0.12") {
+		flags = append(flags, "-stack", l.mountPaths.stackPath())
+	} else {
+		flags = append(flags, "-run", l.mountPaths.runPath())
 	}
 
 	if l.platformAPI.LessThan("0.7") {
-		flags = append(flags,
-			"-run-image", l.opts.RunImage,
-		)
+		flags = append(flags, "-run-image", l.opts.RunImage)
 	}
 	processType := determineDefaultProcessType(l.platformAPI, l.opts.DefaultProcessType)
 	if processType != "" {
