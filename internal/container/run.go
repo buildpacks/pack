@@ -6,16 +6,15 @@ import (
 	"io"
 
 	"github.com/docker/docker/api/types"
-	containertypes "github.com/docker/docker/api/types/container"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/pkg/errors"
 )
 
-type Handler func(bodyChan <-chan dcontainer.ContainerWaitOKBody, errChan <-chan error, reader io.Reader) error
+type Handler func(bodyChan <-chan dcontainer.WaitResponse, errChan <-chan error, reader io.Reader) error
 
 type DockerClient interface {
-	ContainerWait(ctx context.Context, container string, condition dcontainer.WaitCondition) (<-chan containertypes.ContainerWaitOKBody, <-chan error)
+	ContainerWait(ctx context.Context, container string, condition dcontainer.WaitCondition) (<-chan dcontainer.WaitResponse, <-chan error)
 	ContainerAttach(ctx context.Context, container string, options types.ContainerAttachOptions) (types.HijackedResponse, error)
 	ContainerStart(ctx context.Context, container string, options types.ContainerStartOptions) error
 }
@@ -41,7 +40,7 @@ func RunWithHandler(ctx context.Context, docker DockerClient, ctrID string, hand
 }
 
 func DefaultHandler(out, errOut io.Writer) Handler {
-	return func(bodyChan <-chan dcontainer.ContainerWaitOKBody, errChan <-chan error, reader io.Reader) error {
+	return func(bodyChan <-chan dcontainer.WaitResponse, errChan <-chan error, reader io.Reader) error {
 		copyErr := make(chan error)
 		go func() {
 			_, err := stdcopy.StdCopy(out, errOut, reader)
