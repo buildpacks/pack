@@ -10,7 +10,6 @@ import (
 	net "net"
 	http "net/http"
 	reflect "reflect"
-	time "time"
 
 	types "github.com/docker/docker/api/types"
 	container "github.com/docker/docker/api/types/container"
@@ -210,10 +209,10 @@ func (mr *MockCommonAPIClientMockRecorder) ContainerCommit(arg0, arg1, arg2 inte
 }
 
 // ContainerCreate mocks base method.
-func (m *MockCommonAPIClient) ContainerCreate(arg0 context.Context, arg1 *container.Config, arg2 *container.HostConfig, arg3 *network.NetworkingConfig, arg4 *v1.Platform, arg5 string) (container.ContainerCreateCreatedBody, error) {
+func (m *MockCommonAPIClient) ContainerCreate(arg0 context.Context, arg1 *container.Config, arg2 *container.HostConfig, arg3 *network.NetworkingConfig, arg4 *v1.Platform, arg5 string) (container.CreateResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerCreate", arg0, arg1, arg2, arg3, arg4, arg5)
-	ret0, _ := ret[0].(container.ContainerCreateCreatedBody)
+	ret0, _ := ret[0].(container.CreateResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -459,7 +458,7 @@ func (mr *MockCommonAPIClientMockRecorder) ContainerResize(arg0, arg1, arg2 inte
 }
 
 // ContainerRestart mocks base method.
-func (m *MockCommonAPIClient) ContainerRestart(arg0 context.Context, arg1 string, arg2 *time.Duration) error {
+func (m *MockCommonAPIClient) ContainerRestart(arg0 context.Context, arg1 string, arg2 container.StopOptions) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerRestart", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -532,7 +531,7 @@ func (mr *MockCommonAPIClientMockRecorder) ContainerStatsOneShot(arg0, arg1 inte
 }
 
 // ContainerStop mocks base method.
-func (m *MockCommonAPIClient) ContainerStop(arg0 context.Context, arg1 string, arg2 *time.Duration) error {
+func (m *MockCommonAPIClient) ContainerStop(arg0 context.Context, arg1 string, arg2 container.StopOptions) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerStop", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -590,10 +589,10 @@ func (mr *MockCommonAPIClientMockRecorder) ContainerUpdate(arg0, arg1, arg2 inte
 }
 
 // ContainerWait mocks base method.
-func (m *MockCommonAPIClient) ContainerWait(arg0 context.Context, arg1 string, arg2 container.WaitCondition) (<-chan container.ContainerWaitOKBody, <-chan error) {
+func (m *MockCommonAPIClient) ContainerWait(arg0 context.Context, arg1 string, arg2 container.WaitCondition) (<-chan container.WaitResponse, <-chan error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerWait", arg0, arg1, arg2)
-	ret0, _ := ret[0].(<-chan container.ContainerWaitOKBody)
+	ret0, _ := ret[0].(<-chan container.WaitResponse)
 	ret1, _ := ret[1].(<-chan error)
 	return ret0, ret1
 }
@@ -693,18 +692,18 @@ func (mr *MockCommonAPIClientMockRecorder) Dialer() *gomock.Call {
 }
 
 // DiskUsage mocks base method.
-func (m *MockCommonAPIClient) DiskUsage(arg0 context.Context) (types.DiskUsage, error) {
+func (m *MockCommonAPIClient) DiskUsage(arg0 context.Context, arg1 types.DiskUsageOptions) (types.DiskUsage, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DiskUsage", arg0)
+	ret := m.ctrl.Call(m, "DiskUsage", arg0, arg1)
 	ret0, _ := ret[0].(types.DiskUsage)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DiskUsage indicates an expected call of DiskUsage.
-func (mr *MockCommonAPIClientMockRecorder) DiskUsage(arg0 interface{}) *gomock.Call {
+func (mr *MockCommonAPIClientMockRecorder) DiskUsage(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DiskUsage", reflect.TypeOf((*MockCommonAPIClient)(nil).DiskUsage), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DiskUsage", reflect.TypeOf((*MockCommonAPIClient)(nil).DiskUsage), arg0, arg1)
 }
 
 // DistributionInspect mocks base method.
@@ -1680,10 +1679,10 @@ func (mr *MockCommonAPIClientMockRecorder) TaskLogs(arg0, arg1, arg2 interface{}
 }
 
 // VolumeCreate mocks base method.
-func (m *MockCommonAPIClient) VolumeCreate(arg0 context.Context, arg1 volume.VolumeCreateBody) (types.Volume, error) {
+func (m *MockCommonAPIClient) VolumeCreate(arg0 context.Context, arg1 volume.CreateOptions) (volume.Volume, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VolumeCreate", arg0, arg1)
-	ret0, _ := ret[0].(types.Volume)
+	ret0, _ := ret[0].(volume.Volume)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1695,10 +1694,10 @@ func (mr *MockCommonAPIClientMockRecorder) VolumeCreate(arg0, arg1 interface{}) 
 }
 
 // VolumeInspect mocks base method.
-func (m *MockCommonAPIClient) VolumeInspect(arg0 context.Context, arg1 string) (types.Volume, error) {
+func (m *MockCommonAPIClient) VolumeInspect(arg0 context.Context, arg1 string) (volume.Volume, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VolumeInspect", arg0, arg1)
-	ret0, _ := ret[0].(types.Volume)
+	ret0, _ := ret[0].(volume.Volume)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1710,10 +1709,10 @@ func (mr *MockCommonAPIClientMockRecorder) VolumeInspect(arg0, arg1 interface{})
 }
 
 // VolumeInspectWithRaw mocks base method.
-func (m *MockCommonAPIClient) VolumeInspectWithRaw(arg0 context.Context, arg1 string) (types.Volume, []byte, error) {
+func (m *MockCommonAPIClient) VolumeInspectWithRaw(arg0 context.Context, arg1 string) (volume.Volume, []byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VolumeInspectWithRaw", arg0, arg1)
-	ret0, _ := ret[0].(types.Volume)
+	ret0, _ := ret[0].(volume.Volume)
 	ret1, _ := ret[1].([]byte)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
@@ -1726,10 +1725,10 @@ func (mr *MockCommonAPIClientMockRecorder) VolumeInspectWithRaw(arg0, arg1 inter
 }
 
 // VolumeList mocks base method.
-func (m *MockCommonAPIClient) VolumeList(arg0 context.Context, arg1 filters.Args) (volume.VolumeListOKBody, error) {
+func (m *MockCommonAPIClient) VolumeList(arg0 context.Context, arg1 filters.Args) (volume.ListResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VolumeList", arg0, arg1)
-	ret0, _ := ret[0].(volume.VolumeListOKBody)
+	ret0, _ := ret[0].(volume.ListResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1752,6 +1751,20 @@ func (m *MockCommonAPIClient) VolumeRemove(arg0 context.Context, arg1 string, ar
 func (mr *MockCommonAPIClientMockRecorder) VolumeRemove(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VolumeRemove", reflect.TypeOf((*MockCommonAPIClient)(nil).VolumeRemove), arg0, arg1, arg2)
+}
+
+// VolumeUpdate mocks base method.
+func (m *MockCommonAPIClient) VolumeUpdate(arg0 context.Context, arg1 string, arg2 swarm.Version, arg3 volume.UpdateOptions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VolumeUpdate", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// VolumeUpdate indicates an expected call of VolumeUpdate.
+func (mr *MockCommonAPIClientMockRecorder) VolumeUpdate(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VolumeUpdate", reflect.TypeOf((*MockCommonAPIClient)(nil).VolumeUpdate), arg0, arg1, arg2, arg3)
 }
 
 // VolumesPrune mocks base method.

@@ -140,7 +140,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 			it("runs the phase with provided handlers", func() {
 				var actual string
-				var handler container.Handler = func(bodyChan <-chan dcontainer.ContainerWaitOKBody, errChan <-chan error, reader io.Reader) error {
+				var handler container.Handler = func(bodyChan <-chan dcontainer.WaitResponse, errChan <-chan error, reader io.Reader) error {
 					data, _ := io.ReadAll(reader)
 					actual = string(data)
 					return nil

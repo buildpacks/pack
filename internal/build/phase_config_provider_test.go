@@ -81,7 +81,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("building with interactive mode", func() {
 			it("returns a phase config provider with interactive args", func() {
-				handler := func(bodyChan <-chan container.ContainerWaitOKBody, errChan <-chan error, reader io.Reader) error {
+				handler := func(bodyChan <-chan container.WaitResponse, errChan <-chan error, reader io.Reader) error {
 					return errors.New("i was called")
 				}
 

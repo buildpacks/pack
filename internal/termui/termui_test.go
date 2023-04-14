@@ -37,7 +37,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 	it("performs the lifecycle", func() {
 		var (
 			fakeBuild           = make(chan bool, 1)
-			fakeBodyChan        = make(chan dcontainer.ContainerWaitOKBody, 1)
+			fakeBodyChan        = make(chan dcontainer.WaitResponse, 1)
 			fakeApp             = fakes.NewApp()
 			r, w                = io.Pipe()
 			fakeDockerStdWriter = fakes.NewDockerStdWriter(w)
@@ -69,7 +69,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		defer func() {
-			fakeBodyChan <- dcontainer.ContainerWaitOKBody{StatusCode: 0}
+			fakeBodyChan <- dcontainer.WaitResponse{StatusCode: 0}
 			fakeBuild <- true
 			w.Close()
 			fakeApp.StopRunning()
@@ -142,7 +142,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 		h.AssertFalse(t, bpChildren2[0].GetChildren()[0].GetReference().(*tar.Header).FileInfo().IsDir())
 
 		// finish build
-		fakeBodyChan <- dcontainer.ContainerWaitOKBody{StatusCode: 0}
+		fakeBodyChan <- dcontainer.WaitResponse{StatusCode: 0}
 		w.Close()
 		time.Sleep(500 * time.Millisecond)
 		fakeBuild <- true
@@ -154,7 +154,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 	it("performs the lifecycle (when the builder is untrusted)", func() {
 		var (
 			fakeBuild           = make(chan bool, 1)
-			fakeBodyChan        = make(chan dcontainer.ContainerWaitOKBody, 1)
+			fakeBodyChan        = make(chan dcontainer.WaitResponse, 1)
 			fakeApp             = fakes.NewApp()
 			r, w                = io.Pipe()
 			fakeDockerStdWriter = fakes.NewDockerStdWriter(w)
@@ -185,7 +185,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		defer func() {
-			fakeBodyChan <- dcontainer.ContainerWaitOKBody{StatusCode: 0}
+			fakeBodyChan <- dcontainer.WaitResponse{StatusCode: 0}
 			fakeBuild <- true
 			w.Close()
 			fakeApp.StopRunning()
@@ -226,7 +226,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 		}, eventuallyInterval, eventuallyDuration)
 
 		// finish build
-		fakeBodyChan <- dcontainer.ContainerWaitOKBody{StatusCode: 1}
+		fakeBodyChan <- dcontainer.WaitResponse{StatusCode: 1}
 		w.Close()
 		time.Sleep(500 * time.Millisecond)
 		fakeBuild <- true

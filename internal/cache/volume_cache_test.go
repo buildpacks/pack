@@ -225,7 +225,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is a cache volume", func() {
 			it.Before(func() {
-				dockerClient.VolumeCreate(context.TODO(), volume.VolumeCreateBody{
+				dockerClient.VolumeCreate(context.TODO(), volume.CreateOptions{
 					Name: volumeName,
 				})
 			})
