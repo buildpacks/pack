@@ -77,10 +77,7 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 		return Info{}, fmt.Errorf("reading image metadata: %w", err)
 	}
 
-	stackID, err := labelManager.StackID()
-	if err != nil {
-		// TODO log warn
-	}
+	stackID, _ := labelManager.StackID() // ignore error because stack is optional
 
 	mixins, err := labelManager.Mixins()
 	if err != nil {

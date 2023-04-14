@@ -548,18 +548,18 @@ func extractSupportedLifecycleApis(labels map[string]string) ([]string, error) {
 	//     io.buildpacks.lifecycle.apis":"{\"buildpack\":{\"deprecated\":[],\"supported\":[\"0.2\",\"0.3\",\"0.4\",\"0.5\",\"0.6\",\"0.7\",\"0.8\",\"0.9\"]},\"platform\":{\"deprecated\":[],\"supported\":[\"0.3\",\"0.4\",\"0.5\",\"0.6\",\"0.7\",\"0.8\",\"0.9\",\"0.10\"]}}\",\"io.buildpacks.lifecycle.version\":\"0.15.3\"}")
 
 	// This struct is defined in lifecycle-repository/tools/image/main.go#Descriptor -- we could consider moving it from the main package to an importable location.
-	var bpPlatformApi struct {
+	var bpPlatformAPI struct {
 		Platform struct {
 			Deprecated []string
 			Supported  []string
 		}
 	}
 	if len(labels["io.buildpacks.lifecycle.apis"]) > 0 {
-		err := json.Unmarshal([]byte(labels["io.buildpacks.lifecycle.apis"]), &bpPlatformApi)
+		err := json.Unmarshal([]byte(labels["io.buildpacks.lifecycle.apis"]), &bpPlatformAPI)
 		if err != nil {
 			return nil, err
 		}
-		return append(bpPlatformApi.Platform.Deprecated, bpPlatformApi.Platform.Supported...), nil
+		return append(bpPlatformAPI.Platform.Deprecated, bpPlatformAPI.Platform.Supported...), nil
 	}
 	return []string{}, nil
 }
@@ -1069,10 +1069,7 @@ func prependBuildpackToOrder(order dist.Order, bpInfo dist.ModuleInfo) (newOrder
 			ModuleInfo: bpInfo,
 			Optional:   false,
 		}}
-		for _, g := range newEntry.Group {
-			newGroup = append(newGroup, g)
-		}
-		newEntry.Group = newGroup
+		newEntry.Group = append(newGroup, newEntry.Group...)
 		newOrder = append(newOrder, newEntry)
 	}
 

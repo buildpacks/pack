@@ -9,6 +9,8 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
@@ -271,7 +273,7 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 		if deprecatedAPI.Equal(bpDesc.API()) {
 			c.logger.Warnf(
 				"%s %s is using deprecated Buildpacks API version %s",
-				strings.Title(kind),
+				cases.Title(language.AmericanEnglish).String(kind),
 				style.Symbol(bpDesc.Info().FullName()),
 				style.Symbol(bpDesc.API().String()),
 			)
@@ -281,11 +283,11 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 
 	// Fixes 1453
 	sort.Slice(depBPs, func(i, j int) bool {
-		compareId := strings.Compare(depBPs[i].Descriptor().Info().ID, depBPs[j].Descriptor().Info().ID)
-		if compareId == 0 {
+		compareID := strings.Compare(depBPs[i].Descriptor().Info().ID, depBPs[j].Descriptor().Info().ID)
+		if compareID == 0 {
 			return strings.Compare(depBPs[i].Descriptor().Info().Version, depBPs[j].Descriptor().Info().Version) <= 0
 		}
-		return compareId < 0
+		return compareID < 0
 	})
 
 	switch kind {

@@ -107,7 +107,7 @@ func (s *Termui) handle() {
 }
 
 func (s *Termui) Handler() container.Handler {
-	return func(bodyChan <-chan dcontainer.ContainerWaitOKBody, errChan <-chan error, reader io.Reader) error {
+	return func(bodyChan <-chan dcontainer.WaitResponse, errChan <-chan error, reader io.Reader) error {
 		var (
 			copyErr = make(chan error)
 			r, w    = io.Pipe()

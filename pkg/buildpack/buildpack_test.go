@@ -1,7 +1,6 @@
 package buildpack_test
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -554,7 +553,7 @@ func (e *errorBlob) Open() (io.ReadCloser, error) {
 		e.count += 1
 		return e.realBlob.Open()
 	}
-	return nil, errors.New(fmt.Sprintf("error from errBlob (reached limit of %d)", e.limit))
+	return nil, fmt.Errorf("error from errBlob (reached limit of %d)", e.limit)
 }
 
 type readerBlob struct {
