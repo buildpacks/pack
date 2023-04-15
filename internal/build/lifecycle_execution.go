@@ -715,10 +715,14 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		"-cache-dir", l.mountPaths.cacheDir(),
 	}
 
+	expEnv := NullOp()
 	if l.platformAPI.LessThan("0.12") {
 		flags = append(flags, "-stack", l.mountPaths.stackPath())
 	} else {
 		flags = append(flags, "-run", l.mountPaths.runPath())
+		if l.hasExtensionsForRun() {
+			expEnv = WithEnv("CNB_EXPERIMENTAL_MODE=warn")
+		}
 	}
 
 	if l.platformAPI.LessThan("0.7") {
@@ -740,9 +744,9 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		cacheBindOp = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
 
-	withEnv := NullOp()
+	epochEnv := NullOp()
 	if l.opts.CreationTime != nil && l.platformAPI.AtLeast("0.9") {
-		withEnv = WithEnv(fmt.Sprintf("%s=%s", sourceDateEpochEnv, strconv.Itoa(int(l.opts.CreationTime.Unix()))))
+		epochEnv = WithEnv(fmt.Sprintf("%s=%s", sourceDateEpochEnv, strconv.Itoa(int(l.opts.CreationTime.Unix()))))
 	}
 
 	opts := []PhaseConfigProviderOperation{
@@ -771,7 +775,8 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		If(l.opts.Interactive, WithPostContainerRunOperations(
 			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
 			CopyOut(l.opts.Termui.ReadLayers, l.mountPaths.layersDir(), l.mountPaths.appDir()))),
-		withEnv,
+		epochEnv,
+		expEnv,
 	}
 
 	var export RunnerCleaner
