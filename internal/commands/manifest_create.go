@@ -1,38 +1,79 @@
 package commands
 
 import (
-	"github.com/buildpacks/imgutil/remote"
+	"path/filepath"
+
+	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
+	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 )
 
+type ManifestCreateFlags struct {
+	Publish   bool
+	Insecure  bool
+	Registry  string
+	Format    string
+	LayoutDir string
+}
+
 func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
+	var flags ManifestCreateFlags
 	cmd := &cobra.Command{
-		Use:   "create <id>",
+		Use:   "create <manifest-list> <manifest> [<manifest> ... ]",
 		Short: "Creates a manifest list",
 		Args:  cobra.MatchAll(cobra.MinimumNArgs(2)),
-		Example: `pack manifest create paketobuildpacks/builder:full-1.0.0 \ paketobuildpacks/builder:full-linux-amd64 \
-				 paketobuildpacks/builder:full-linux-arm`,
+		Example: `pack manifest create create cnbs/sample-package:hello-multiarch-universe \ 
+					cnbs/sample-package:hello-universe \ 
+					cnbs/sample-package:hello-universe-windows`,
 		Long: "manifest create generates a manifest list for a multi-arch image",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-
-			idx, _ := remote.NewIndex(args[0]) // This will return an empty index
-
-			// Add every manifest to image index
-			for _, j := range args[1:] {
-				idx.Add(j)
+			if err := validateManifestCreateFlags(&flags); err != nil {
+				return err
 			}
 
-			// Store layout in local storage
-			idx.Save("out/index")
+			layoutDir := ""
+			if flags.LayoutDir == "" {
+				layoutDir = "./oci-layout"
+			} else {
+				layoutDir = flags.LayoutDir
+			}
+			layoutDir, err := filepath.Abs(filepath.Dir(layoutDir))
+			if err != nil {
+				return errors.Wrap(err, "getting absolute layout path")
+			}
 
+			indexName := args[0]
+			manifests := args[1:]
+			if err := pack.CreateManifest(cmd.Context(), client.CreateManifestOptions{
+				ManifestName: indexName,
+				Manifests:    manifests,
+				Format:       flags.Format,
+				Publish:      flags.Publish,
+				Registry:     flags.Registry,
+				LayoutDir:    layoutDir,
+			}); err != nil {
+				return err
+			}
+			logger.Infof("Successfully created image index %s", style.Symbol(indexName))
+			// logging.Tip(logger, "Run %s to use this builder", style.Symbol(fmt.Sprintf("pack build <image-name> --builder %s", imageName)))
 			return nil
+
 		}),
 	}
 
-	// cmd.Flags().StringVarP(&flags.API, "api", "a", "0.8", "Buildpack API compatibility of the generated buildpack")
+	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry`)
+	cmd.Flags().BoolVar(&flags.Insecure, "insecure", false, `Allow publishing to insecure registry`)
+	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save image index as ("OCI" or "V2S2")`)
+	cmd.Flags().StringVarP(&flags.Registry, "registry", "reg", "", `Registry URL to publish the image index`)
+	cmd.Flags().StringVarP(&flags.LayoutDir, "layout", "out", "", `Relative directory path to save the OCI layout`)
 
 	AddHelpFlag(cmd, "create")
 	return cmd
+}
+
+func validateManifestCreateFlags(p *ManifestCreateFlags) error {
+	return nil
 }
