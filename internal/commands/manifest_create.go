@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func ManifestCreate(logger logging.Logger) *cobra.Command {
+func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create <id>",
 		Short: "Creates a manifest list",

@@ -5,15 +5,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewManifestCommand(logger logging.Logger) *cobra.Command {
+func NewManifestCommand(logger logging.Logger, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "manifest",
 		Aliases: []string{"manifest"},
-		Short:   "Create manifest list",
+		Short:   "Handle manifest list",
 		RunE:    nil,
 	}
 
-	cmd.AddCommand(ManifestCreate(logger))
+	cmd.AddCommand(ManifestCreate(logger, client))
 
 	AddHelpFlag(cmd, "manifest")
 	return cmd
