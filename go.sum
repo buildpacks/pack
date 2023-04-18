@@ -84,10 +84,10 @@ github.com/aws/smithy-go v1.13.5/go.mod h1:Tg+OJXh4MB2R/uN61Ko2f6hTZwB/ZYGOtib8J
 github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230110223219-40efa3093a22 h1:Sq2n1xnF4uuEGNUVOLKHZXoL0CVdxIQOQTEZ7EW762Q=
 github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230110223219-40efa3093a22/go.mod h1:G93AFVEAkW0+tabIqmQCLN/r6sZgP4pFxfoiEzDeQNM=
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
-github.com/buildpacks/imgutil v0.0.0-20230324153732-a6c0ed910692 h1:QaSg0ifVdMjapbMAuyGjzHTP1d7Jf3xOop3qDnzhhRg=
-github.com/buildpacks/imgutil v0.0.0-20230324153732-a6c0ed910692/go.mod h1:zL5lZzgFuv9l36n52FjomVrUHpyuZf6r1UHKaZ4LeSQ=
-github.com/buildpacks/lifecycle v0.16.1-0.20230331210422-21fb915dcefc h1:30PImZyz1H57ySK9Ujz2lPD4i5arRZLA2qZ28CGBzJw=
-github.com/buildpacks/lifecycle v0.16.1-0.20230331210422-21fb915dcefc/go.mod h1:tRwE4AcK98sRafXiR85I239X+D9PQoLQZHVlL6SaybM=
+github.com/buildpacks/imgutil v0.0.0-20230412223147-81015c668834 h1:V3xhD9kbougG1QgtpA60UK6JnBPW7gX17zZ2ekXwUpo=
+github.com/buildpacks/imgutil v0.0.0-20230412223147-81015c668834/go.mod h1:hgxVR7UpPvT5gATbRGM582oy048sUocDg6R6PMWAxow=
+github.com/buildpacks/lifecycle v0.17.0-pre.1 h1:YE4961UxDaLhtKI45yznzqfkZDoHxiki/aoUx2igvRk=
+github.com/buildpacks/lifecycle v0.17.0-pre.1/go.mod h1:yPCzhhQDBoXdrD/9yEBsZ7AXVNPUnX3a4gioZAK5CxI=
 github.com/bwesterb/go-ristretto v1.2.0/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7NFEuV9ekS419A0=
 github.com/checkpoint-restore/go-criu/v5 v5.3.0/go.mod h1:E/eQpaFtUKGOOSEBZgmKAcn+zUUwWxqcaKZlF54wK8E=
 github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589 h1:krfRl01rzPzxSxyLyrChD+U+MzsBXbm0OwYYB67uF+4=
