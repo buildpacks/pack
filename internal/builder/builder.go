@@ -64,21 +64,23 @@ const (
 
 // Builder represents a pack builder, used to build images
 type Builder struct {
-	baseImageName        string
-	image                imgutil.Image
-	layerWriterFactory   archive.TarWriterFactory
-	lifecycle            Lifecycle
-	lifecycleDescriptor  LifecycleDescriptor
-	additionalBuildpacks buildpack.ModuleManager
-	additionalExtensions buildpack.ModuleManager
-	metadata             Metadata
-	mixins               []string
-	env                  map[string]string
-	uid, gid             int
-	StackID              string
-	replaceOrder         bool
-	order                dist.Order
-	orderExtensions      dist.Order
+	baseImageName            string
+	image                    imgutil.Image
+	layerWriterFactory       archive.TarWriterFactory
+	lifecycle                Lifecycle
+	lifecycleDescriptor      LifecycleDescriptor
+	additionalBuildpacks     buildpack.ModuleManager
+	additionalExtensions     buildpack.ModuleManager
+	metadata                 Metadata
+	flattenExcludeBuildpacks []string
+	mixins                   []string
+	env                      map[string]string
+	uid, gid                 int
+	StackID                  string
+	replaceOrder             bool
+	flattenAllBuildpacks     bool
+	order                    dist.Order
+	orderExtensions          dist.Order
 }
 
 type orderTOML struct {
@@ -92,33 +94,39 @@ type toAdd struct {
 	module  buildpack.BuildModule
 }
 
+type BuilderOption func(*options) error
+
+type options struct {
+	flatten bool
+	depth   int
+	exclude []string
+}
+
 // FromImage constructs a builder from a builder image
 func FromImage(img imgutil.Image) (*Builder, error) {
-	return constructFlattenBuilder(img, "", true, false, 0, nil)
+	return constructBuilder(img, "", true)
 }
 
 // New constructs a new builder from a base image
-func New(baseImage imgutil.Image, name string) (*Builder, error) {
-	return constructFlattenBuilder(baseImage, name, false, false, 0, nil)
+func New(baseImage imgutil.Image, name string, ops ...BuilderOption) (*Builder, error) {
+	return constructBuilder(baseImage, name, false, ops...)
 }
 
-func NewBuilder(baseImage imgutil.Image, name string, flatten bool, depth int, exclude []string) (*Builder, error) {
-	return constructFlattenBuilder(baseImage, name, false, flatten, depth, exclude)
-}
-
-func constructFlattenBuilder(img imgutil.Image, newName string, errOnMissingLabel, flatten bool, depth int, exclude []string) (*Builder, error) {
+func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool, ops ...BuilderOption) (*Builder, error) {
 	var metadata Metadata
 	if ok, err := dist.GetLabel(img, metadataLabel, &metadata); err != nil {
 		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)
 	} else if !ok && errOnMissingLabel {
 		return nil, fmt.Errorf("builder %s missing label %s -- try recreating builder", style.Symbol(img.Name()), style.Symbol(metadataLabel))
 	}
-	buildpacksModule := *buildpack.NewModuleManager(flatten, depth)
-	extensionsModule := *buildpack.NewModuleManager(flatten, depth)
-	return constructBuilder(img, newName, metadata, buildpacksModule, extensionsModule)
-}
 
-func constructBuilder(img imgutil.Image, newName string, metadata Metadata, buildpackModule buildpack.ModuleManager, extesionsModule buildpack.ModuleManager) (*Builder, error) {
+	opts := &options{}
+	for _, op := range ops {
+		if err := op(opts); err != nil {
+			return nil, err
+		}
+	}
+
 	imageOS, err := img.OS()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting image OS")
@@ -129,14 +137,16 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata, buil
 	}
 
 	bldr := &Builder{
-		baseImageName:        img.Name(),
-		image:                img,
-		layerWriterFactory:   layerWriterFactory,
-		metadata:             metadata,
-		lifecycleDescriptor:  constructLifecycleDescriptor(metadata),
-		env:                  map[string]string{},
-		additionalBuildpacks: buildpackModule,
-		additionalExtensions: extesionsModule,
+		baseImageName:            img.Name(),
+		image:                    img,
+		layerWriterFactory:       layerWriterFactory,
+		metadata:                 metadata,
+		lifecycleDescriptor:      constructLifecycleDescriptor(metadata),
+		env:                      map[string]string{},
+		additionalBuildpacks:     *buildpack.NewModuleManager(opts.flatten, opts.depth),
+		additionalExtensions:     *buildpack.NewModuleManager(opts.flatten, opts.depth),
+		flattenAllBuildpacks:     opts.flatten && opts.depth < 0,
+		flattenExcludeBuildpacks: opts.exclude,
 	}
 
 	if err := addImgLabelsToBuildr(bldr); err != nil {
@@ -148,6 +158,15 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata, buil
 	}
 
 	return bldr, nil
+}
+
+func WithFlatten(depth int, exclude []string) BuilderOption {
+	return func(o *options) error {
+		o.flatten = true
+		o.depth = depth
+		o.exclude = exclude
+		return nil
+	}
 }
 
 func constructLifecycleDescriptor(metadata Metadata) LifecycleDescriptor {
@@ -607,36 +626,81 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 		}
 	}
 
-	// Let's squash build modules
-	for i, flattenModules := range b.FlattenModules(kind) {
-		modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-flatten-%s", kind, strconv.Itoa(i)))
-		if err = os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
+	if b.flattenAllBuildpacks {
+		fmt.Println("flatten all buildpacks ... !!!")
+
+		// let's squash all buildpacks in a single layer
+		modFlattenTmpDir := filepath.Join(tmpDir, "buildpack-all-flatten")
+		if err := os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
 			return errors.Wrap(err, "creating flatten temp dir")
 		}
-		flattenTarFilePath := filepath.Join(modFlattenTmpDir, fmt.Sprintf("%s-flatten-%s.tar", kind, strconv.Itoa(i)))
+		finalTarPath := filepath.Join(modFlattenTmpDir, "all-flatten.tar")
 
 		var tarsPath []string
-		for _, module := range flattenModules {
-			m := collectionToAdd[module.Descriptor().Info().FullName()]
-			tarsPath = append(tarsPath, m.tarPath)
+		for key := range collectionToAdd {
+			if !b.skipFlatten(key) {
+				m := collectionToAdd[key]
+				tarsPath = append(tarsPath, m.tarPath)
+			}
 		}
 
-		err = archive.MergeTars(flattenTarFilePath, tarsPath...)
+		err := archive.MergeTars(finalTarPath, tarsPath...)
 		if err != nil {
 			return errors.Wrap(err, "merging modules tar files")
 		}
 
-		diffID, err := dist.LayerDiffID(flattenTarFilePath)
+		diffID, err := dist.LayerDiffID(finalTarPath)
 		if err != nil {
-			return errors.Wrapf(err, "adding layer %s", flattenTarFilePath)
+			return errors.Wrapf(err, "adding layer %s", finalTarPath)
 		}
 
 		// Update the diffId and tar path for each module squashed
-		for _, module := range flattenModules {
-			addModule := collectionToAdd[module.Descriptor().Info().FullName()]
-			addModule.tarPath = flattenTarFilePath
-			addModule.diffID = diffID.String()
-			collectionToAdd[module.Descriptor().Info().FullName()] = addModule
+		for key := range collectionToAdd {
+			if !b.skipFlatten(key) {
+				addModule := collectionToAdd[key]
+				addModule.tarPath = finalTarPath
+				addModule.diffID = diffID.String()
+				collectionToAdd[key] = addModule
+			}
+		}
+	} else {
+		// Let's squash build modules
+		for i, flattenModules := range b.FlattenModules(kind) {
+			modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-flatten-%s", kind, strconv.Itoa(i)))
+			if err = os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
+				return errors.Wrap(err, "creating flatten temp dir")
+			}
+			flattenTarFilePath := filepath.Join(modFlattenTmpDir, fmt.Sprintf("%s-flatten-%s.tar", kind, strconv.Itoa(i)))
+
+			var tarsPath []string
+			for _, module := range flattenModules {
+				key := module.Descriptor().Info().FullName()
+				if !b.skipFlatten(key) {
+					m := collectionToAdd[key]
+					tarsPath = append(tarsPath, m.tarPath)
+				}
+			}
+
+			err = archive.MergeTars(flattenTarFilePath, tarsPath...)
+			if err != nil {
+				return errors.Wrap(err, "merging modules tar files")
+			}
+
+			diffID, err := dist.LayerDiffID(flattenTarFilePath)
+			if err != nil {
+				return errors.Wrapf(err, "adding layer %s", flattenTarFilePath)
+			}
+
+			// Update the diffId and tar path for each module squashed
+			for _, module := range flattenModules {
+				key := module.Descriptor().Info().FullName()
+				if !b.skipFlatten(key) {
+					addModule := collectionToAdd[key]
+					addModule.tarPath = flattenTarFilePath
+					addModule.diffID = diffID.String()
+					collectionToAdd[key] = addModule
+				}
+			}
 		}
 	}
 
@@ -645,17 +709,18 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 	diffIdAdded := map[string]string{}
 	for _, k := range keys {
 		module := collectionToAdd[k]
+		bp := module.module
 		addLayer := true
-		if b.MustBeFlatten(module.module) {
+		if b.MustBeFlatten(bp) {
 			if _, ok := diffIdAdded[module.diffID]; !ok {
 				diffIdAdded[module.diffID] = module.tarPath
 			} else {
 				addLayer = false
-				logger.Debugf("Squashing %s %s (diffID=%s)", kind, style.Symbol(module.module.Descriptor().Info().FullName()), module.diffID)
+				logger.Debugf("Squashing %s %s (diffID=%s)", kind, style.Symbol(bp.Descriptor().Info().FullName()), module.diffID)
 			}
 		}
 		if addLayer {
-			logger.Debugf("Adding %s %s (diffID=%s)", kind, style.Symbol(module.module.Descriptor().Info().FullName()), module.diffID)
+			logger.Debugf("Adding %s %s (diffID=%s)", kind, style.Symbol(bp.Descriptor().Info().FullName()), module.diffID)
 			if err = image.AddLayerWithDiffID(module.tarPath, module.diffID); err != nil {
 				return errors.Wrapf(err,
 					"adding layer tar for %s %s",
@@ -664,7 +729,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 				)
 			}
 		}
-		dist.AddToLayersMD(layers, module.module.Descriptor(), module.diffID)
+		dist.AddToLayersMD(layers, bp.Descriptor(), module.diffID)
 	}
 
 	return nil
@@ -1108,6 +1173,15 @@ func (b *Builder) whiteoutLayer(tmpDir string, i int, bpInfo dist.ModuleInfo) (s
 	}
 
 	return fh.Name(), nil
+}
+
+func (b *Builder) skipFlatten(bpFullName string) bool {
+	for _, excludeBP := range b.flattenExcludeBuildpacks {
+		if excludeBP == bpFullName {
+			return true
+		}
+	}
+	return false
 }
 
 func sortKeys(collection map[string]toAdd) []string {

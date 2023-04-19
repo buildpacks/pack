@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -17,11 +18,13 @@ import (
 
 // BuilderCreateFlags define flags provided to the CreateBuilder command
 type BuilderCreateFlags struct {
-	FlattenMetaBuildpacks bool
-	Publish               bool
-	BuilderTomlPath       string
-	Registry              string
-	Policy                string
+	Flatten         bool
+	Publish         bool
+	BuilderTomlPath string
+	Registry        string
+	Policy          string
+	FlattenExclude  []string
+	Depth           int
 }
 
 // CreateBuilder creates a builder image, based on a builder config
@@ -74,13 +77,15 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 
 			imageName := args[0]
 			if err := pack.CreateBuilder(cmd.Context(), client.CreateBuilderOptions{
-				RelativeBaseDir:       relativeBaseDir,
-				BuilderName:           imageName,
-				Config:                builderConfig,
-				Publish:               flags.Publish,
-				Registry:              flags.Registry,
-				PullPolicy:            pullPolicy,
-				FlattenMetaBuildpacks: flags.FlattenMetaBuildpacks,
+				RelativeBaseDir: relativeBaseDir,
+				BuilderName:     imageName,
+				Config:          builderConfig,
+				Publish:         flags.Publish,
+				Registry:        flags.Registry,
+				PullPolicy:      pullPolicy,
+				Flatten:         flags.Flatten,
+				FlattenExclude:  flags.FlattenExclude,
+				Depth:           flags.Depth,
 			}); err != nil {
 				return err
 			}
@@ -97,7 +102,9 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
-	cmd.Flags().BoolVar(&flags.FlattenMetaBuildpacks, "flatten-meta-buildpacks", false, "Flatten every meta-buildpack and its dependencies into one layer")
+	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten the compose buildpacks layers")
+	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpack to exclude for being flatten. Use buildpack by id and version in the form of '<buildpack>@<version>'")
+	cmd.Flags().IntVar(&flags.Depth, "depth", -1, "Max depth to flatten compose buildpacks layers.\nOmission of this flag or values < 0 will flatten the entire tree.")
 
 	AddHelpFlag(cmd, "create")
 	return cmd
@@ -118,6 +125,14 @@ func validateCreateFlags(flags *BuilderCreateFlags, cfg config.Config) error {
 
 	if flags.BuilderTomlPath == "" {
 		return errors.Errorf("Please provide a builder config path, using --config.")
+	}
+
+	if flags.Flatten && len(flags.FlattenExclude) > 0 {
+		for _, exclude := range flags.FlattenExclude {
+			if strings.Count(exclude, "@") != 1 {
+				return errors.Errorf("invalid buildpack id and version format: %s. Please use the format '<buildpack>@<version>' to exclude a buildpack for being flatten", exclude)
+			}
+		}
 	}
 
 	return nil

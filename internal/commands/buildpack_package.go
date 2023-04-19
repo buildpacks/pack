@@ -148,7 +148,7 @@ func validateBuildpackPackageFlags(p *BuildpackPackageFlags) error {
 
 	if p.Flatten && len(p.FlattenExclude) > 0 {
 		for _, exclude := range p.FlattenExclude {
-			if !strings.Contains(exclude, "@") {
+			if strings.Count(exclude, "@") != 1 {
 				return errors.Errorf("invalid buildpack id and version format: %s. Please use the format '<buildpack>@<version>' to exclude a buildpack for being flatten", exclude)
 			}
 		}

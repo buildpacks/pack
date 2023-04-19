@@ -36,14 +36,20 @@ type CreateBuilderOptions struct {
 	// Requires BuilderName to be a valid registry location.
 	Publish bool
 
-	// Flatten meta-buildpacks and its dependencies into one layer
-	FlattenMetaBuildpacks bool
-
 	// Buildpack registry name. Defines where all registry buildpacks will be pulled from.
 	Registry string
 
 	// Strategy for updating images before a build.
 	PullPolicy image.PullPolicy
+
+	// Flatten layers
+	Flatten bool
+
+	// Max depth for flattening compose buildpacks.
+	Depth int
+
+	// List of buildpack images to exclude from the package been flatten.
+	FlattenExclude []string
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.
@@ -145,7 +151,12 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	}
 
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
-	bldr, err := builder.NewBuilder(baseImage, opts.BuilderName, opts.FlattenMetaBuildpacks, 0, nil)
+
+	var builderOpts []builder.BuilderOption
+	if opts.Flatten {
+		builderOpts = append(builderOpts, builder.WithFlatten(opts.Depth, opts.FlattenExclude))
+	}
+	bldr, err := builder.New(baseImage, opts.BuilderName, builderOpts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid build-image")
 	}
