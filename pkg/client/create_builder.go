@@ -145,7 +145,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	}
 
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
-	bldr, err := builder.NewBuilder(baseImage, opts.BuilderName, opts.FlattenMetaBuildpacks)
+	bldr, err := builder.NewBuilder(baseImage, opts.BuilderName, opts.FlattenMetaBuildpacks, 0, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid build-image")
 	}

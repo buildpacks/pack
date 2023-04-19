@@ -30,7 +30,7 @@ func (c *Client) PackageExtension(ctx context.Context, opts PackageBuildpackOpti
 		return errors.Wrap(err, "creating layer writer factory")
 	}
 
-	packageBuilder := buildpack.NewPackageBuilder(c.imageFactory, opts.FlattenMetaBuildpacks, opts.FlattenAll)
+	packageBuilder := buildpack.NewBuilder(c.imageFactory)
 
 	exURI := opts.Config.Extension.URI
 	if exURI == "" {

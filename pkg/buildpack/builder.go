@@ -69,25 +69,46 @@ func (i *layoutImage) AddLayerWithDiffID(path, _ string) error {
 	return nil
 }
 
+type PackageBuilderOption func(*options) error
+
+type options struct {
+	flatten bool
+	depth   int
+	exclude []string
+}
+
 type PackageBuilder struct {
-	buildpack            BuildModule
-	extension            BuildModule
-	dependencies         ModuleManager
-	imageFactory         ImageFactory
-	flattenAllBuildpacks bool
+	buildpack                BuildModule
+	extension                BuildModule
+	dependencies             ModuleManager
+	imageFactory             ImageFactory
+	flattenAllBuildpacks     bool
+	flattenExcludeBuildpacks []string
 }
 
 // TODO: Rename to PackageBuilder
-func NewBuilder(imageFactory ImageFactory) *PackageBuilder {
-	return NewPackageBuilder(imageFactory, false, false)
+func NewBuilder(imageFactory ImageFactory, ops ...PackageBuilderOption) *PackageBuilder {
+	opts := &options{}
+	for _, op := range ops {
+		if err := op(opts); err != nil {
+			return nil
+		}
+	}
+	moduleManager := NewModuleManager(opts.flatten, opts.depth)
+	return &PackageBuilder{
+		imageFactory:             imageFactory,
+		dependencies:             *moduleManager,
+		flattenAllBuildpacks:     opts.flatten && opts.depth < 0,
+		flattenExcludeBuildpacks: opts.exclude,
+	}
 }
 
-func NewPackageBuilder(imageFactory ImageFactory, flatten bool, flattenAll bool) *PackageBuilder {
-	moduleManager := NewModuleManager(flatten)
-	return &PackageBuilder{
-		imageFactory:         imageFactory,
-		dependencies:         *moduleManager,
-		flattenAllBuildpacks: flattenAll,
+func WithFlatten(depth int, exclude []string) PackageBuilderOption {
+	return func(o *options) error {
+		o.flatten = true
+		o.depth = depth
+		o.exclude = exclude
+		return nil
 	}
 }
 
@@ -154,8 +175,10 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 
 		var tarsPath []string
 		for key := range collectionToAdd {
-			m := collectionToAdd[key]
-			tarsPath = append(tarsPath, m.tarPath)
+			if !b.skipFlatten(key) {
+				m := collectionToAdd[key]
+				tarsPath = append(tarsPath, m.tarPath)
+			}
 		}
 
 		err := archive.MergeTars(finalTarPath, tarsPath...)
@@ -170,10 +193,12 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 
 		// Update the diffId and tar path for each module squashed
 		for key := range collectionToAdd {
-			addModule := collectionToAdd[key]
-			addModule.tarPath = finalTarPath
-			addModule.diffID = diffID.String()
-			collectionToAdd[key] = addModule
+			if !b.skipFlatten(key) {
+				addModule := collectionToAdd[key]
+				addModule.tarPath = finalTarPath
+				addModule.diffID = diffID.String()
+				collectionToAdd[key] = addModule
+			}
 		}
 	} else {
 		// Let's squash build modules
@@ -186,8 +211,10 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 
 			var tarsPath []string
 			for _, module := range flattenModules {
-				m := collectionToAdd[module.Descriptor().Info().FullName()]
-				tarsPath = append(tarsPath, m.tarPath)
+				if !b.skipFlatten(module.Descriptor().Info().FullName()) {
+					m := collectionToAdd[module.Descriptor().Info().FullName()]
+					tarsPath = append(tarsPath, m.tarPath)
+				}
 			}
 
 			err := archive.MergeTars(flattenTarFilePath, tarsPath...)
@@ -202,10 +229,12 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 
 			// Update the diffId and tar path for each module squashed
 			for _, module := range flattenModules {
-				addModule := collectionToAdd[module.Descriptor().Info().FullName()]
-				addModule.tarPath = flattenTarFilePath
-				addModule.diffID = diffID.String()
-				collectionToAdd[module.Descriptor().Info().FullName()] = addModule
+				if !b.skipFlatten(module.Descriptor().Info().FullName()) {
+					addModule := collectionToAdd[module.Descriptor().Info().FullName()]
+					addModule.tarPath = flattenTarFilePath
+					addModule.diffID = diffID.String()
+					collectionToAdd[module.Descriptor().Info().FullName()] = addModule
+				}
 			}
 		}
 	}
@@ -364,6 +393,15 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 	defer tw.Close()
 
 	return archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, false, nil)
+}
+
+func (p *PackageBuilder) skipFlatten(bpFullName string) bool {
+	for _, excludeBP := range p.flattenExcludeBuildpacks {
+		if excludeBP == bpFullName {
+			return true
+		}
+	}
+	return false
 }
 
 func newLayoutImage(imageOS string) (*layoutImage, error) {

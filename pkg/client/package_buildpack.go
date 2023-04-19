@@ -40,12 +40,6 @@ type PackageBuildpackOptions struct {
 	// Defines the Buildpacks configuration.
 	Config pubbldpkg.Config
 
-	// Flatten meta-buildpacks and its dependencies into one layer
-	FlattenMetaBuildpacks bool
-
-	// Flatten all into one layer
-	FlattenAll bool
-
 	// Push resulting builder image up to a registry
 	// specified in the Name variable.
 	Publish bool
@@ -56,6 +50,15 @@ type PackageBuildpackOptions struct {
 	// Name of the buildpack registry. Used to
 	// add buildpacks to a package.
 	Registry string
+
+	// Flatten layers
+	Flatten bool
+
+	// Max depth for flattening compose buildpacks.
+	Depth int
+
+	// List of buildpack images to exclude from the package been flatten.
+	FlattenExclude []string
 }
 
 // PackageBuildpack packages buildpack(s) into either an image or file.
@@ -78,7 +81,11 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return errors.Wrap(err, "creating layer writer factory")
 	}
 
-	packageBuilder := buildpack.NewPackageBuilder(c.imageFactory, opts.FlattenMetaBuildpacks, opts.FlattenAll)
+	var packageBuilderOpts []buildpack.PackageBuilderOption
+	if opts.Flatten {
+		packageBuilderOpts = append(packageBuilderOpts, buildpack.WithFlatten(opts.Depth, opts.FlattenExclude))
+	}
+	packageBuilder := buildpack.NewBuilder(c.imageFactory, packageBuilderOpts...)
 
 	bpURI := opts.Config.Buildpack.URI
 	if bpURI == "" {

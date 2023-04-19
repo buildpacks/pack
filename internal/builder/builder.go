@@ -94,27 +94,27 @@ type toAdd struct {
 
 // FromImage constructs a builder from a builder image
 func FromImage(img imgutil.Image) (*Builder, error) {
-	return constructFlattenBuilder(img, "", true, false)
+	return constructFlattenBuilder(img, "", true, false, 0, nil)
 }
 
 // New constructs a new builder from a base image
 func New(baseImage imgutil.Image, name string) (*Builder, error) {
-	return constructFlattenBuilder(baseImage, name, false, false)
+	return constructFlattenBuilder(baseImage, name, false, false, 0, nil)
 }
 
-func NewBuilder(baseImage imgutil.Image, name string, flatten bool) (*Builder, error) {
-	return constructFlattenBuilder(baseImage, name, false, flatten)
+func NewBuilder(baseImage imgutil.Image, name string, flatten bool, depth int, exclude []string) (*Builder, error) {
+	return constructFlattenBuilder(baseImage, name, false, flatten, depth, exclude)
 }
 
-func constructFlattenBuilder(img imgutil.Image, newName string, errOnMissingLabel, flatten bool) (*Builder, error) {
+func constructFlattenBuilder(img imgutil.Image, newName string, errOnMissingLabel, flatten bool, depth int, exclude []string) (*Builder, error) {
 	var metadata Metadata
 	if ok, err := dist.GetLabel(img, metadataLabel, &metadata); err != nil {
 		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)
 	} else if !ok && errOnMissingLabel {
 		return nil, fmt.Errorf("builder %s missing label %s -- try recreating builder", style.Symbol(img.Name()), style.Symbol(metadataLabel))
 	}
-	buildpacksModule := *buildpack.NewModuleManager(flatten)
-	extensionsModule := *buildpack.NewModuleManager(flatten)
+	buildpacksModule := *buildpack.NewModuleManager(flatten, depth)
+	extensionsModule := *buildpack.NewModuleManager(flatten, depth)
 	return constructBuilder(img, newName, metadata, buildpacksModule, extensionsModule)
 }
 
