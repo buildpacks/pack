@@ -2969,6 +2969,232 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("#getFileFilter", func() {
+		it("project descriptor with include directive", func() {
+			toCheck := []fileFilterCompare{
+				{
+					inputType:      "unnested files",
+					directiveInput: []string{"file1.txt", "file2.txt"},
+					patternOutputMap: map[string]bool{
+						"parent":           false,
+						"file1.txt":        true,
+						"file2.txt":        true,
+						"parent/file1.txt": true,
+						"parent/file2.txt": true,
+					},
+				},
+				{
+					inputType:      "unnested directories",
+					directiveInput: []string{"dir1", "dir2"},
+					patternOutputMap: map[string]bool{
+						"dir1":                  true,
+						"dir2":                  true,
+						"file1.txt":             false,
+						"dir1/dir2":             true,
+						"dir1/dir2/folder3":     true,
+						"folder/dir1":           true,
+						"dir1/file1.txt":        true,
+						"folder/folder2/dir2":   true,
+						"dir2/folder/file2.txt": true,
+					},
+				},
+				{
+					inputType:      "single level nested files",
+					directiveInput: []string{"parent/file1.txt", "parent/file2.txt"},
+					patternOutputMap: map[string]bool{
+						"parent":           true,
+						"file1.txt":        false,
+						"file2.txt":        false,
+						"parent/file1.txt": true,
+						"parent/file2.txt": true,
+					},
+				},
+				{
+					inputType:      "double level nested files",
+					directiveInput: []string{"parent1/file1.txt", "parent1/parent2/file2.txt"},
+					patternOutputMap: map[string]bool{
+						"parent1":                   true,
+						"parent2":                   false,
+						"file1.txt":                 false,
+						"file2.txt":                 false,
+						"parent1/parent2":           true,
+						"parent1/file1.txt":         true,
+						"parent2/file2.txt":         false,
+						"parent1/parent2/file2.txt": true,
+					},
+				},
+				{
+					inputType:      "multi level nested files with same dir names",
+					directiveInput: []string{"parent/samename/diffname/samename/file1.txt"},
+					patternOutputMap: map[string]bool{
+						"parent":                            true,
+						"samename":                          false,
+						"diffname":                          false,
+						"file1.txt":                         false,
+						"parent/samename":                   true,
+						"samename/diffname":                 false,
+						"diffname/samename":                 false,
+						"samename/file1.txt":                false,
+						"parent/samename/diffname":          true,
+						"samename/diffname/samename":        false,
+						"diffname/samename/file1.txt":       false,
+						"parent/samename/diffname/samename": true,
+						"parent/samename/diffname/samename/file1.txt": true,
+					},
+				},
+				{
+					inputType:      "regex input 1",
+					directiveInput: []string{"parent1/*", "parent2/*", "abc/*/def", "!testdir/*", "!filetoexclude.txt"},
+					patternOutputMap: map[string]bool{
+						"parent1":                   false,
+						"parent2":                   false,
+						"absent":                    false,
+						"parent1/parent2/":          true,
+						"testdir":                   false,
+						"testdir/file.txt":          false,
+						"absent/parent2/":           true,
+						"absent/parent2/file.txt":   true,
+						"absent/testdir/file2.txt":  false,
+						"filetoexclude.txt":         false,
+						"absent/filetoexclude.txt":  false,
+						"parent1/filetoexclude.txt": false,
+						"abc/ghi/def":               true,
+						"abc/def":                   false,
+						"abc/def/def/file.txt":      true,
+					},
+				},
+			}
+
+			for _, checkEntry := range toCheck {
+				t.Logf("checking directive input type: %s", checkEntry.inputType)
+				fileFilter, err := getFileFilter(projectTypes.Descriptor{
+					Build: projectTypes.Build{
+						Include: checkEntry.directiveInput,
+					},
+				})
+				for pattern, expectedOutput := range checkEntry.patternOutputMap {
+					t.Logf("checking pattern %s", pattern)
+					h.AssertEq(t, fileFilter(pattern), expectedOutput)
+				}
+				h.AssertNil(t, err)
+			}
+		})
+
+		it("project descriptor with exclude directive", func() {
+			toCheck := []fileFilterCompare{
+				{
+					inputType:      "unnested files",
+					directiveInput: []string{"file1.txt", "file2.txt"},
+					patternOutputMap: map[string]bool{
+						"parent":           true,
+						"file1.txt":        false,
+						"file2.txt":        false,
+						"parent/file1.txt": false,
+						"parent/file2.txt": false,
+					},
+				},
+				{
+					inputType:      "unnested directories",
+					directiveInput: []string{"dir1", "dir2"},
+					patternOutputMap: map[string]bool{
+						"dir1":                  false,
+						"dir2":                  false,
+						"file1.txt":             true,
+						"dir1/dir2":             false,
+						"dir1/dir2/folder3":     false,
+						"folder/dir1":           false,
+						"dir1/file1.txt":        false,
+						"folder/folder2/dir2":   false,
+						"dir2/folder/file2.txt": false,
+					},
+				},
+				{
+					inputType:      "single level nested files",
+					directiveInput: []string{"parent/file1.txt", "parent/file2.txt"},
+					patternOutputMap: map[string]bool{
+						"parent":           true,
+						"file1.txt":        true,
+						"file2.txt":        true,
+						"parent/file1.txt": false,
+						"parent/file2.txt": false,
+					},
+				},
+				{
+					inputType:      "double level nested files",
+					directiveInput: []string{"parent1/file1.txt", "parent1/parent2/file2.txt"},
+					patternOutputMap: map[string]bool{
+						"parent1":                   true,
+						"parent2":                   true,
+						"file1.txt":                 true,
+						"file2.txt":                 true,
+						"parent1/parent2":           true,
+						"parent1/file1.txt":         false,
+						"parent2/file2.txt":         true,
+						"parent1/parent2/file2.txt": false,
+					},
+				},
+			}
+
+			for _, checkEntry := range toCheck {
+				t.Logf("checking directive input type: %s", checkEntry.inputType)
+				fileFilter, err := getFileFilter(projectTypes.Descriptor{
+					Build: projectTypes.Build{
+						Exclude: checkEntry.directiveInput,
+					},
+				})
+				for pattern, expectedOutput := range checkEntry.patternOutputMap {
+					t.Logf("checking pattern: %s", pattern)
+					h.AssertEq(t, fileFilter(pattern), expectedOutput)
+				}
+				h.AssertNil(t, err)
+			}
+		})
+	})
+
+	when("#getParentDirs", func() {
+		it("check parent directories non windows", func() {
+			h.SkipIf(t, runtime.GOOS == "windows", "These tests are disabled for windows environments")
+			compare := map[string][]string{
+				".":                              {},
+				"/":                              {},
+				"parent":                         {},
+				"parent/child1":                  {"parent"},
+				"parent/child1/file.txt":         {"parent", "parent/child1"},
+				"parent/child1/child2/":          {"parent", "parent/child1", "parent/child1/child2"},
+				"parent/same/diff/same/file.txt": {"parent", "parent/same", "parent/same/diff", "parent/same/diff/same"},
+				"parent/child/grandchild/*.ts":   {"parent", "parent/child", "parent/child/grandchild"},
+			}
+
+			for input, expectedOutput := range compare {
+				t.Logf("checking parent directories for: %s", input)
+				parentDirs, err := getParentDirs(input)
+				h.AssertEq(t, parentDirs, expectedOutput)
+				h.AssertNil(t, err)
+			}
+		})
+
+		it("check parent directories windows", func() {
+			h.SkipIf(t, runtime.GOOS != "windows", "These tests are disabled for non windows environments")
+			compare := map[string][]string{
+				".":                                  {},
+				"\\":                                 {},
+				"parent":                             {},
+				"parent\\child1":                     {"parent"},
+				"parent\\child1\\file.txt":           {"parent", "parent\\child1"},
+				"parent\\child1\\child2\\":           {"parent", "parent\\child1", "parent\\child1\\child2"},
+				"parent\\same\\diff\\same\\file.txt": {"parent", "parent\\same", "parent\\same\\diff", "parent\\same\\diff\\same"},
+				"parent\\child\\grandchild\\*.ts":    {"parent", "parent\\child", "parent\\child\\grandchild"},
+			}
+
+			for input, expectedOutput := range compare {
+				t.Logf("checking parent directories for: %s", input)
+				parentDirs, err := getParentDirs(input)
+				h.AssertEq(t, parentDirs, expectedOutput)
+				h.AssertNil(t, err)
+			}
+		})
+	})
 }
 
 func diffIDForFile(t *testing.T, path string) string {
@@ -3114,4 +3340,10 @@ type executeFailsLifecycle struct {
 func (f *executeFailsLifecycle) Execute(_ context.Context, opts build.LifecycleOptions) error {
 	f.Opts = opts
 	return errors.New("")
+}
+
+type fileFilterCompare struct {
+	inputType        string
+	directiveInput   []string
+	patternOutputMap map[string]bool
 }
