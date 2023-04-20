@@ -1934,6 +1934,16 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				)
 				h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-stack")
 			})
+
+			when("extensions", func() {
+				when("for run", func() {
+					extensionsForRun = true
+
+					it("sets CNB_EXPERIMENTAL_MODE=warn in the environment", func() {
+						h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
+					})
+				})
+			})
 		})
 
 		when("additional tags are specified", func() {
