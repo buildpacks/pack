@@ -626,9 +626,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 		}
 	}
 
-	if b.flattenAllBuildpacks {
-		fmt.Println("flatten all buildpacks ... !!!")
-
+	if b.flattenAllBuildpacks && len(additionalModules) > 0 {
 		// let's squash all buildpacks in a single layer
 		modFlattenTmpDir := filepath.Join(tmpDir, "buildpack-all-flatten")
 		if err := os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
