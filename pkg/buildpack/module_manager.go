@@ -4,6 +4,10 @@ import (
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
+const (
+	FlattenMaxDepth = -1
+)
+
 type ModuleManager struct {
 	modules        []BuildModule
 	flattenModules [][]BuildModule
@@ -38,7 +42,7 @@ func (f *ModuleManager) AddModules(main BuildModule, deps ...BuildModule) {
 		// default behavior
 		f.modules = append(f.modules, append([]BuildModule{main}, deps...)...)
 	} else {
-		if f.maxDepth == -1 {
+		if f.maxDepth <= FlattenMaxDepth {
 			// flatten all
 			f.flattenModules = append(f.flattenModules, append([]BuildModule{main}, deps...))
 		} else {

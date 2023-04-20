@@ -130,7 +130,7 @@ func validateCreateFlags(flags *BuilderCreateFlags, cfg config.Config) error {
 	if flags.Flatten && len(flags.FlattenExclude) > 0 {
 		for _, exclude := range flags.FlattenExclude {
 			if strings.Count(exclude, "@") != 1 {
-				return errors.Errorf("invalid buildpack id and version format: %s. Please use the format '<buildpack>@<version>' to exclude a buildpack for being flatten", exclude)
+				return errors.Errorf("invalid buildpack id and version format: %s. Please use the format '<buildpack>@<version>' to exclude a buildpack for being flattened", exclude)
 			}
 		}
 	}

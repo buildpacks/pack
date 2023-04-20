@@ -2,6 +2,7 @@ package commands_test
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -190,6 +191,25 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 					"--config", builderConfigPath,
 				})
 				h.AssertError(t, command.Execute(), "builder config contains image extensions; support for image extensions is currently experimental")
+			})
+		})
+
+		when("flatten is set to true", func() {
+			it.Before(func() {
+				h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(validConfig), 0666))
+			})
+
+			when("flatten exclude doesn't have format <buildpack>@<version>", func() {
+				it("errors with a descriptive message", func() {
+					command.SetArgs([]string{
+						"some/builder",
+						"--config", builderConfigPath,
+						"--flatten",
+						"--flatten-exclude", "some-buildpack",
+					})
+					h.AssertError(t, command.Execute(), fmt.Sprintf("invalid buildpack id and version format: %s. "+
+						"Please use the format '<buildpack>@<version>' to exclude a buildpack for being flattened", "some-buildpack"))
+				})
 			})
 		})
 	})
