@@ -704,14 +704,14 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 
 	// Fixes 1453
 	keys := sortKeys(collectionToAdd)
-	diffIdAdded := map[string]string{}
+	diffIDAdded := map[string]string{}
 	for _, k := range keys {
 		module := collectionToAdd[k]
 		bp := module.module
 		addLayer := true
 		if b.MustBeFlatten(bp) {
-			if _, ok := diffIdAdded[module.diffID]; !ok {
-				diffIdAdded[module.diffID] = module.tarPath
+			if _, ok := diffIDAdded[module.diffID]; !ok {
+				diffIDAdded[module.diffID] = module.tarPath
 			} else {
 				addLayer = false
 				logger.Debugf("Squashing %s %s (diffID=%s)", kind, style.Symbol(bp.Descriptor().Info().FullName()), module.diffID)

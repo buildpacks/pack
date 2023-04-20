@@ -86,7 +86,7 @@ func (f *flattenModuleRecurser) calculateFlattenModules(main BuildModule, deps [
 			}
 		}
 	} else {
-		modules = append(modules, append([]BuildModule{main}))
+		modules = append(modules, []BuildModule{main})
 	}
 	return modules
 }

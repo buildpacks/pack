@@ -240,15 +240,15 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 	}
 
 	bpLayers := dist.ModuleLayers{}
-	diffIdAdded := map[string]string{}
+	diffIDAdded := map[string]string{}
 
 	for key := range collectionToAdd {
 		module := collectionToAdd[key]
 		bp := module.module
 		addLayer := true
 		if b.MustBeFlatten(bp) {
-			if _, ok := diffIdAdded[module.diffID]; !ok {
-				diffIdAdded[module.diffID] = module.tarPath
+			if _, ok := diffIDAdded[module.diffID]; !ok {
+				diffIDAdded[module.diffID] = module.tarPath
 			} else {
 				addLayer = false
 			}
@@ -395,8 +395,8 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 	return archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, false, nil)
 }
 
-func (p *PackageBuilder) skipFlatten(bpFullName string) bool {
-	for _, excludeBP := range p.flattenExcludeBuildpacks {
+func (b *PackageBuilder) skipFlatten(bpFullName string) bool {
+	for _, excludeBP := range b.flattenExcludeBuildpacks {
 		if excludeBP == bpFullName {
 			return true
 		}

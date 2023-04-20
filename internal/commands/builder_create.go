@@ -102,9 +102,9 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
-	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten the compose buildpacks layers")
+	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten the buildpacks layers")
 	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpack to exclude for being flatten. Use buildpack by id and version in the form of '<buildpack>@<version>'")
-	cmd.Flags().IntVar(&flags.Depth, "depth", -1, "Max depth to flatten compose buildpacks layers.\nOmission of this flag or values < 0 will flatten the entire tree.")
+	cmd.Flags().IntVar(&flags.Depth, "depth", -1, "Max depth to flatten composite buildpacks layers.\nOmission of this flag or values < 0 will flatten the entire tree.")
 
 	AddHelpFlag(cmd, "create")
 	return cmd
