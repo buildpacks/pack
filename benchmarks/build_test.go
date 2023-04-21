@@ -25,6 +25,8 @@ var (
 	trustedImg  = baseImg + "-trusted-"
 	builder     = "cnbs/sample-builder:bionic"
 	mockAppPath = filepath.Join("..", "acceptance", "testdata", "mock_app")
+	paketoBuilder = "paketobuildpacks/builder:base"
+	additionalBuildapck = "docker://cnbs/sample-package:hello-universe"
 )
 
 func BenchmarkBuild(b *testing.B) {
@@ -53,6 +55,16 @@ func BenchmarkBuild(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			// perform the operation we're analyzing
 			cmd.SetArgs([]string{fmt.Sprintf("%s%d", trustedImg, i), "-p", mockAppPath, "-B", builder, "--trust-builder"})
+			if err = cmd.Execute(); err != nil {
+				b.Error(errors.Wrapf(err, "running build #%d", i))
+			}
+		}
+	})
+
+	b.Run("with Addtional Buildpack", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			// perform the operation we're analyzing
+			cmd.SetArgs([]string{fmt.Sprintf("%s%d", trustedImg, i), "-p", mockAppPath, "-B", paketoBuilder, "--buildpack", additionalBuildapck})
 			if err = cmd.Execute(); err != nil {
 				b.Error(errors.Wrapf(err, "running build #%d", i))
 			}
