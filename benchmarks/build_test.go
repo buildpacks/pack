@@ -21,11 +21,11 @@ import (
 )
 
 var (
-	baseImg     = "some-org/" + h.RandString(10)
-	trustedImg  = baseImg + "-trusted-"
-	builder     = "cnbs/sample-builder:bionic"
-	mockAppPath = filepath.Join("..", "acceptance", "testdata", "mock_app")
-	paketoBuilder = "paketobuildpacks/builder:base"
+	baseImg             = "some-org/" + h.RandString(10)
+	trustedImg          = baseImg + "-trusted-"
+	builder             = "cnbs/sample-builder:bionic"
+	mockAppPath         = filepath.Join("..", "acceptance", "testdata", "mock_app")
+	paketoBuilder       = "paketobuildpacks/builder:base"
 	additionalBuildapck = "docker://cnbs/sample-package:hello-universe"
 )
 
