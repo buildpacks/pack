@@ -6,6 +6,7 @@ import (
 
 const (
 	FlattenMaxDepth = -1
+	FlattenNone     = 0
 )
 
 type ModuleManager struct {
@@ -17,11 +18,14 @@ type ModuleManager struct {
 
 func NewModuleManager(flatten bool, maxDepth int) *ModuleManager {
 	return &ModuleManager{
-		flatten:  flatten,
-		maxDepth: maxDepth,
+		flatten:        flatten,
+		maxDepth:       maxDepth,
+		modules:        []BuildModule{},
+		flattenModules: [][]BuildModule{},
 	}
 }
 
+// Modules return all the modules handle by the manager, including the flatten modules.
 func (f *ModuleManager) Modules() []BuildModule {
 	all := f.modules
 	for _, modules := range f.flattenModules {
@@ -30,6 +34,7 @@ func (f *ModuleManager) Modules() []BuildModule {
 	return all
 }
 
+// GetFlattenModules returns all the flatten modules handle by the manager.
 func (f *ModuleManager) GetFlattenModules() [][]BuildModule {
 	if f.flatten {
 		return f.flattenModules
@@ -37,6 +42,8 @@ func (f *ModuleManager) GetFlattenModules() [][]BuildModule {
 	return nil
 }
 
+// AddModules determines whether the modules must be added as flatten or not. It uses the
+// flatten and maxDepth configuration given during initialization of the manager.
 func (f *ModuleManager) AddModules(main BuildModule, deps ...BuildModule) {
 	if !f.flatten {
 		// default behavior
@@ -52,6 +59,7 @@ func (f *ModuleManager) AddModules(main BuildModule, deps ...BuildModule) {
 	}
 }
 
+// IsFlatten returns true if the given module is flatten.
 func (f *ModuleManager) IsFlatten(module BuildModule) bool {
 	if f.flatten {
 		for _, modules := range f.flattenModules {
