@@ -3,6 +3,7 @@ package commands
 import (
 	"path/filepath"
 
+	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -34,6 +35,16 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 				return err
 			}
 
+			mediaType := imgutil.DockerTypes
+			format := flags.Format
+			if format == "oci" {
+				mediaType = imgutil.OCITypes
+			} else if format == "v2s2" || format == "" {
+				mediaType = imgutil.DockerTypes
+			} else {
+				return errors.Errorf("unsupported media type given for --format")
+			}
+
 			layoutDir := ""
 			if flags.LayoutDir == "" {
 				layoutDir = "./oci-layout"
@@ -50,7 +61,7 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 			if err := pack.CreateManifest(cmd.Context(), client.CreateManifestOptions{
 				ManifestName: indexName,
 				Manifests:    manifests,
-				Format:       flags.Format,
+				MediaType:    mediaType,
 				Publish:      flags.Publish,
 				Registry:     flags.Registry,
 				LayoutDir:    layoutDir,

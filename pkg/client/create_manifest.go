@@ -16,7 +16,7 @@ type CreateManifestOptions struct {
 	Manifests []string
 
 	// Manifest list type (oci or v2s2) to use when pushing the list (default is v2s2)
-	Format string
+	MediaType imgutil.MediaTypes
 
 	// Skip creating index locally, directly publish to a registry.
 	// Requires ManifestName to be a valid registry location.
@@ -32,13 +32,6 @@ type CreateManifestOptions struct {
 func (c *Client) CreateManifest(ctx context.Context, opts CreateManifestOptions) error {
 
 	mediaType := imgutil.DockerTypes
-	if opts.Format == "oci" {
-		mediaType = imgutil.OCITypes
-	} else if opts.Format == "v2s2" {
-		mediaType = imgutil.DockerTypes
-	} else {
-		mediaType = imgutil.DockerTypes
-	}
 
 	idx, err := remote.NewIndex(
 		opts.ManifestName,
