@@ -36,8 +36,7 @@ func (c *Client) CreateManifest(ctx context.Context, opts CreateManifestOptions)
 	idx, err := remote.NewIndex(
 		opts.ManifestName,
 		authn.DefaultKeychain,
-		remote.WithIndexMediaTypes(mediaType),
-		remote.WithPath(opts.LayoutDir)) // This will return an empty index
+		remote.WithIndexMediaTypes(mediaType)) // This will return an empty index
 	if err != nil {
 		panic(err)
 	}
