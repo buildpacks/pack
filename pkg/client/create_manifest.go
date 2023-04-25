@@ -52,8 +52,11 @@ func (c *Client) CreateManifest(ctx context.Context, opts CreateManifestOptions)
 		}
 	}
 
-	// Store layout in local storage
-	idx.Save()
+	// Store index
+	err = idx.Save()
+	if err != nil {
+		panic(err)
+	}
 
 	return nil
 
