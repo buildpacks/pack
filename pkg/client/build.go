@@ -100,7 +100,7 @@ type BuildOptions struct {
 	DockerHost string
 
 	// Used to determine a run-image mirror if Run Image is empty.
-	// Used in combination with Builder metadata to determine to the the 'best' mirror.
+	// Used in combination with Builder metadata to determine to the 'best' mirror.
 	// 'best' is defined as:
 	//  - if Publish is true, the best mirror matches registry we are publishing to.
 	//  - if Publish is false, the best mirror matches a registry specified in Image.

@@ -63,7 +63,7 @@ jobs:
               UBUNTU_VERSION:  ${{ matrix.target }}
 
             ###
-            # NOTE: 'uses' does not suport interpolation so we have to manually define the
+            # NOTE: 'uses' does not support interpolation so we have to manually define the
             # following steps per variant.
             ###
 
