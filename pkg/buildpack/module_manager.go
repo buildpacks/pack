@@ -87,13 +87,13 @@ func (f *flattenModuleRecurser) calculateFlattenModules(main BuildModule, deps [
 	modules := make([][]BuildModule, 0)
 	orders := main.Descriptor().Order()
 	if len(orders) > 0 {
-		bps, newDeps := buildpacksFromGroup(orders, deps)
 		if depth == f.maxDepth {
-			modules = append(modules, append([]BuildModule{main}, bps...))
+			modules = append(modules, append([]BuildModule{main}, deps...))
 		}
 		if depth < f.maxDepth {
+			bps, newDeps := buildpacksFromGroup(orders, deps)
+			modules = append(modules, []BuildModule{main})
 			for _, bp := range bps {
-				modules = append(modules, []BuildModule{main})
 				modules = append(modules, f.calculateFlattenModules(bp, newDeps, depth+1)...)
 			}
 		}
