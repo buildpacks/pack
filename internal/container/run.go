@@ -20,7 +20,7 @@ type DockerClient interface {
 }
 
 func RunWithHandler(ctx context.Context, docker DockerClient, ctrID string, handler Handler) error {
-	bodyChan, errChan := docker.ContainerWait(ctx, ctrID, dcontainer.WaitConditionNextExit)
+	bodyChan, errChan := docker.ContainerWait(ctx, ctrID, dcontainer.WaitConditionNotRunning)
 
 	resp, err := docker.ContainerAttach(ctx, ctrID, types.ContainerAttachOptions{
 		Stream: true,
