@@ -67,8 +67,8 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry`)
 	cmd.Flags().BoolVar(&flags.Insecure, "insecure", false, `Allow publishing to insecure registry`)
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save image index as ("OCI" or "V2S2")`)
-	cmd.Flags().StringVarP(&flags.Registry, "registry", "reg", "", `Registry URL to publish the image index`)
-	cmd.Flags().StringVarP(&flags.LayoutDir, "layout", "out", "", `Relative directory path to save the OCI layout`)
+	cmd.Flags().StringVarP(&flags.Registry, "registry", "r", "", `Registry URL to publish the image index`)
+	cmd.Flags().StringVarP(&flags.LayoutDir, "layout", "o", "", `Relative directory path to save the OCI layout`)
 
 	AddHelpFlag(cmd, "create")
 	return cmd
