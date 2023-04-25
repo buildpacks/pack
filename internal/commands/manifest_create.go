@@ -45,12 +45,11 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 				return errors.Errorf("unsupported media type given for --format")
 			}
 
-			layoutDir := ""
-			if flags.LayoutDir == "" {
-				layoutDir = "./oci-layout"
-			} else {
+			layoutDir := "./oci-layout"
+			if flags.LayoutDir != "" {
 				layoutDir = flags.LayoutDir
 			}
+
 			layoutDir, err := filepath.Abs(filepath.Dir(layoutDir))
 			if err != nil {
 				return errors.Wrap(err, "getting absolute layout path")
