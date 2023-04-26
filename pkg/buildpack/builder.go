@@ -324,7 +324,7 @@ func (b *PackageBuilder) validate() error {
 
 func (b *PackageBuilder) resolvedStacks() []dist.Stack {
 	stacks := b.buildpack.Descriptor().Stacks()
-	for _, bp := range b.dependencies.modules {
+	for _, bp := range b.dependencies.Modules() {
 		bpd := bp.Descriptor()
 
 		if len(stacks) == 0 {
