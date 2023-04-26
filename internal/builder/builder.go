@@ -632,7 +632,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 		if err := os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
 			return errors.Wrap(err, "creating flatten temp dir")
 		}
-		finalTarPath := filepath.Join(modFlattenTmpDir, "all-flatten.tar")
+		finalTarPath := filepath.Join(modFlattenTmpDir, fmt.Sprintf("%s-flatten-all.tar", kind))
 
 		var tarsPath []string
 		for key := range collectionToAdd {
