@@ -2,7 +2,6 @@ package archive
 
 import (
 	"archive/tar"
-	"fmt"
 	"io"
 	"os"
 
@@ -50,6 +49,10 @@ func addTar(tw *tar.Writer, path string) error {
 			}
 			break
 		}
+		if header.FileInfo().Size() == 0 {
+			break
+		}
+
 		if err = tw.WriteHeader(header); err != nil {
 			break
 		} else if _, err = io.Copy(tw, reader); err != nil {
@@ -63,20 +66,11 @@ func addTar(tw *tar.Writer, path string) error {
 func openTarFile(path string) (*tar.Reader, io.ReadCloser, error) {
 	var (
 		rc  io.ReadCloser
-		n   int
 		err error
 	)
 
-	buff := make([]byte, 1024)
 	if rc, err = os.Open(path); err != nil {
 		return nil, nil, err
 	}
-	if n, err = rc.Read(buff); err != nil {
-		return nil, nil, err
-	} else if n == 0 {
-		rc.Close()
-		return nil, nil, fmt.Errorf("%s is empty", path)
-	}
-
 	return tar.NewReader(rc), rc, nil
 }
