@@ -975,6 +975,106 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("flatten option is set", func() {
+			var (
+				fakeLayerImage *h.FakeAddedLayerImage
+			)
+
+			var successfullyCreateFlattenBuilder = func() {
+				t.Helper()
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+				h.AssertEq(t, fakeLayerImage.IsSaved(), true)
+			}
+
+			it.Before(func() {
+				fakeLayerImage = &h.FakeAddedLayerImage{Image: fakeBuildImage}
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any()).Return(fakeLayerImage, nil)
+
+				var depBPs []buildpack.BuildModule
+				blob1 := blob.NewBlob(filepath.Join("testdata", "buildpack-flatten", "buildpack-1"))
+				for i := 2; i <= 7; i++ {
+					b := blob.NewBlob(filepath.Join("testdata", "buildpack-flatten", fmt.Sprintf("buildpack-%d", i)))
+					bp, err := buildpack.FromBuildpackRootBlob(b, archive.DefaultTarWriterFactory())
+					h.AssertNil(t, err)
+					depBPs = append(depBPs, bp)
+				}
+				mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/flatten-bp-1.tgz").Return(blob1, nil).AnyTimes()
+
+				bp, err := buildpack.FromBuildpackRootBlob(blob1, archive.DefaultTarWriterFactory())
+				h.AssertNil(t, err)
+				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/flatten-bp-1.tgz", gomock.Any()).Return(bp, depBPs, nil).AnyTimes()
+
+				opts = client.CreateBuilderOptions{
+					RelativeBaseDir: "/",
+					BuilderName:     "some/builder",
+					Config: pubbldr.Config{
+						Description: "Some description",
+						Buildpacks: []pubbldr.ModuleConfig{
+							{
+								ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-1", Version: "1", Homepage: "http://buildpack-1"},
+								ImageOrURI: dist.ImageOrURI{
+									BuildpackURI: dist.BuildpackURI{
+										URI: "https://example.fake/flatten-bp-1.tgz",
+									},
+								},
+							},
+						},
+						Order: []dist.OrderEntry{{
+							Group: []dist.ModuleRef{
+								{ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-2", Version: "2"}, Optional: false},
+								{ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-4", Version: "4"}, Optional: false},
+								{ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-6", Version: "6"}, Optional: false},
+								{ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-7", Version: "7"}, Optional: false},
+							}},
+						},
+						Stack: pubbldr.StackConfig{
+							ID: "some.stack.id",
+						},
+						Run: pubbldr.RunConfig{
+							Images: []pubbldr.RunImageConfig{{
+								Image:   "some/run-image",
+								Mirrors: []string{"localhost:5000/some/run-image"},
+							}},
+						},
+						Build: pubbldr.BuildConfig{
+							Image: "some/build-image",
+						},
+						Lifecycle: pubbldr.LifecycleConfig{URI: "file:///some-lifecycle"},
+					},
+					Publish:    false,
+					PullPolicy: image.PullAlways,
+				}
+			})
+
+			when("flatten all", func() {
+				it("creates 1 layer for all buildpacks", func() {
+					prepareFetcherWithRunImages()
+					opts.Flatten = true
+
+					successfullyCreateFlattenBuilder()
+
+					layers := fakeLayerImage.AddedLayersOrder()
+
+					h.AssertEq(t, len(layers), 1)
+				})
+
+				when("with exclude", func() {
+					it("creates 1 layer for buildpacks and 1 layer for buildpack excluded", func() {
+						prepareFetcherWithRunImages()
+						opts.Flatten = true
+						opts.FlattenExclude = []string{"flatten/bp-7@7"}
+
+						successfullyCreateFlattenBuilder()
+
+						layers := fakeLayerImage.AddedLayersOrder()
+						h.AssertEq(t, len(layers), 2)
+					})
+				})
+			})
+		})
 	})
 }
 
