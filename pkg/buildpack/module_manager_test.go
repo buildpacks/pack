@@ -147,6 +147,7 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 				it("returns one flatten module (1 layer)", func() {
 					modules := moduleManager.GetFlattenModules()
 					h.AssertEq(t, len(modules), 1)
+					h.AssertEq(t, len(modules[0]), 7)
 				})
 			})
 
@@ -158,8 +159,13 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("#IsFlatten", func() {
-				it("returns true", func() {
-					// check a composite leaf module
+				it("returns true for flatten modules", func() {
+					h.AssertTrue(t, moduleManager.IsFlatten(compositeBP1))
+					h.AssertTrue(t, moduleManager.IsFlatten(bp1))
+					h.AssertTrue(t, moduleManager.IsFlatten(compositeBP2))
+					h.AssertTrue(t, moduleManager.IsFlatten(bp21))
+					h.AssertTrue(t, moduleManager.IsFlatten(bp22))
+					h.AssertTrue(t, moduleManager.IsFlatten(compositeBP3))
 					h.AssertTrue(t, moduleManager.IsFlatten(bp31))
 				})
 			})
@@ -172,18 +178,25 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("#GetFlattenModules", func() {
-				it("returns 3 modules (3 layers)", func() {
+				it("returns 1 flatten module with [compositeBP2, bp21, bp22, compositeBP3, bp31]", func() {
 					modules := moduleManager.GetFlattenModules()
-					h.AssertEq(t, len(modules), 3)
+					h.AssertEq(t, len(modules), 1)
+					h.AssertEq(t, len(modules[0]), 5)
 				})
 			})
 
 			when("#IsFlatten", func() {
-				it("returns true", func() {
-					h.AssertTrue(t, moduleManager.IsFlatten(bp1))
+				it("returns true for flatten modules", func() {
+					h.AssertTrue(t, moduleManager.IsFlatten(compositeBP2))
 					h.AssertTrue(t, moduleManager.IsFlatten(bp21))
 					h.AssertTrue(t, moduleManager.IsFlatten(bp22))
+					h.AssertTrue(t, moduleManager.IsFlatten(compositeBP3))
 					h.AssertTrue(t, moduleManager.IsFlatten(bp31))
+				})
+
+				it("returns false for no flatten modules", func() {
+					h.AssertFalse(t, moduleManager.IsFlatten(bp1))
+					h.AssertFalse(t, moduleManager.IsFlatten(compositeBP1))
 				})
 			})
 		})
@@ -195,18 +208,25 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("#GetFlattenModules", func() {
-				it("returns 6 modules (6 layers)", func() {
+				it("returns 1 flatten module with [compositeBP3, bp31]", func() {
 					modules := moduleManager.GetFlattenModules()
-					h.AssertEq(t, len(modules), 6)
+					h.AssertEq(t, len(modules), 1)
+					h.AssertEq(t, len(modules[0]), 2)
 				})
 			})
 
 			when("#IsFlatten", func() {
-				it("returns true", func() {
-					h.AssertTrue(t, moduleManager.IsFlatten(bp1))
-					h.AssertTrue(t, moduleManager.IsFlatten(bp21))
-					h.AssertTrue(t, moduleManager.IsFlatten(bp22))
+				it("returns true for flatten modules", func() {
+					h.AssertTrue(t, moduleManager.IsFlatten(compositeBP3))
 					h.AssertTrue(t, moduleManager.IsFlatten(bp31))
+				})
+
+				it("returns false for no flatten modules", func() {
+					h.AssertFalse(t, moduleManager.IsFlatten(compositeBP2))
+					h.AssertFalse(t, moduleManager.IsFlatten(bp21))
+					h.AssertFalse(t, moduleManager.IsFlatten(bp22))
+					h.AssertFalse(t, moduleManager.IsFlatten(bp1))
+					h.AssertFalse(t, moduleManager.IsFlatten(compositeBP1))
 				})
 			})
 		})

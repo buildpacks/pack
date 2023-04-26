@@ -977,6 +977,14 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("flatten option is set", func() {
+			/*       1
+			 *    /    \
+			 *   2      3
+			 *         /  \
+			 *	  	 4     5
+			 *			  /  \
+			 *			 6   7
+			 */
 			var (
 				fakeLayerImage *h.FakeAddedLayerImage
 			)
@@ -1071,6 +1079,36 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						layers := fakeLayerImage.AddedLayersOrder()
 						h.AssertEq(t, len(layers), 2)
+					})
+				})
+			})
+
+			when("with depth", func() {
+				when("depth = 1", func() {
+					it("creates 3 layers [1,2,[3,4,5,6,7]]", func() {
+						prepareFetcherWithRunImages()
+						opts.Flatten = true
+						opts.Depth = 1
+
+						successfullyCreateFlattenBuilder()
+
+						layers := fakeLayerImage.AddedLayersOrder()
+
+						h.AssertEq(t, len(layers), 3)
+					})
+				})
+
+				when("depth = 2", func() {
+					it("creates 5 layers [1,2,3,4,[5,6,7]]", func() {
+						prepareFetcherWithRunImages()
+						opts.Flatten = true
+						opts.Depth = 2
+
+						successfullyCreateFlattenBuilder()
+
+						layers := fakeLayerImage.AddedLayersOrder()
+
+						h.AssertEq(t, len(layers), 5)
 					})
 				})
 			})

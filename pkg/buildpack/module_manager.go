@@ -54,7 +54,14 @@ func (f *ModuleManager) AddModules(main BuildModule, deps ...BuildModule) {
 			f.flattenModules = append(f.flattenModules, append([]BuildModule{main}, deps...))
 		} else {
 			recurser := newFlattenModuleRecurser(f.maxDepth)
-			f.flattenModules = append(f.flattenModules, recurser.calculateFlattenModules(main, deps, 0)...)
+			calculateModules := recurser.calculateFlattenModules(main, deps, 0)
+			for _, modules := range calculateModules {
+				if len(modules) == 1 {
+					f.modules = append(f.modules, modules...)
+				} else {
+					f.flattenModules = append(f.flattenModules, modules)
+				}
+			}
 		}
 	}
 }
