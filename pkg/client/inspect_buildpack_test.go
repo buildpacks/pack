@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
@@ -347,7 +348,10 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 	it.After(func() {
 		mockController.Finish()
-		h.AssertNil(t, os.RemoveAll(tmpDir))
+		err := os.RemoveAll(tmpDir)
+		if runtime.GOOS != "windows" {
+			h.AssertNil(t, err)
+		}
 	})
 
 	when("inspect-buildpack", func() {
