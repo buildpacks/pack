@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/buildpacks/pack/pkg/cache"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -19,6 +18,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/buildpacks/pack/pkg/cache"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"

@@ -5,13 +5,14 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/buildpacks/pack/pkg/cache"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/buildpacks/pack/pkg/cache"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"

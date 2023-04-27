@@ -2,11 +2,12 @@ package build
 
 import (
 	"context"
-	"github.com/buildpacks/pack/pkg/cache"
 	"io"
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/buildpacks/pack/pkg/cache"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"

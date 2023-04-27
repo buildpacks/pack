@@ -2,11 +2,12 @@ package cache_test
 
 import (
 	"context"
-	"github.com/buildpacks/pack/pkg/cache"
 	"math/rand"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/buildpacks/pack/pkg/cache"
 
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/volume"

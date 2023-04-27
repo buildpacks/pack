@@ -3,11 +3,12 @@ package build
 import (
 	"context"
 	"fmt"
-	"github.com/buildpacks/pack/pkg/cache"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/buildpacks/pack/pkg/cache"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle/api"

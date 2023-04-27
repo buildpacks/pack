@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/buildpacks/pack/pkg/cache"
 	"io"
 	"math/rand"
 	"os"
@@ -12,6 +11,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/buildpacks/pack/pkg/cache"
 
 	"github.com/BurntSushi/toml"
 	"github.com/apex/log"

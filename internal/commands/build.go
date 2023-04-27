@@ -1,12 +1,13 @@
 package commands
 
 import (
-	"github.com/buildpacks/pack/pkg/cache"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/buildpacks/pack/pkg/cache"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
