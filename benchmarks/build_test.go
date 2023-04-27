@@ -6,6 +6,7 @@ package benchmarks
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -21,15 +22,16 @@ import (
 )
 
 var (
-	baseImg             = "some-org/" + h.RandString(10)
-	trustedImg          = baseImg + "-trusted-"
-	builder             = "cnbs/sample-builder:bionic"
-	mockAppPath         = filepath.Join("..", "acceptance", "testdata", "mock_app")
-	paketoBuilder       = "paketobuildpacks/builder:base"
-	additionalBuildapck = "docker://cnbs/sample-package:hello-universe"
+	baseImg             string
+	trustedImg          string
+	builder             string
+	mockAppPath         string
+	paketoBuilder       string
+	additionalBuildapck string
 )
 
 func BenchmarkBuild(b *testing.B) {
+	setEnv()
 	dockerClient, err := dockerCli.NewClientWithOpts(dockerCli.FromEnv, dockerCli.WithVersion("1.38"))
 	if err != nil {
 		b.Error(errors.Wrap(err, "creating docker client"))
@@ -95,4 +97,23 @@ func createCmd(b *testing.B, docker *dockerCli.Client) *cobra.Command {
 		b.Error(errors.Wrap(err, "creating packClient"))
 	}
 	return commands.Build(logger, cfg.Config{}, packClient)
+}
+
+func setEnv() {
+	if baseImg = os.Getenv("baseImg"); baseImg == "" {
+		baseImg = "some-org/" + h.RandString(10)
+	}
+	trustedImg = baseImg + "-trusted-"
+	if builder = os.Getenv("builder"); builder == "" {
+		builder = "cnbs/sample-builder:bionic"
+	}
+	if mockAppPath = os.Getenv("mockAppPath"); mockAppPath == "" {
+		mockAppPath = filepath.Join("..", "acceptance", "testdata", "mock_app")
+	}
+	if paketoBuilder = os.Getenv("paketoBuilder"); paketoBuilder == "" {
+		paketoBuilder = "paketobuildpacks/builder:base"
+	}
+	if additionalBuildapck = os.Getenv("additionalBuildapck"); additionalBuildapck == "" {
+		additionalBuildapck = "docker://cnbs/sample-package:hello-universe"
+	}
 }
