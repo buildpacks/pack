@@ -65,14 +65,14 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	} else if !ok {
 		return errors.Errorf("could not find label %s on image", style.Symbol(platform.LayerMetadataLabel))
 	}
-
+	// TODO: we should provide "stack" information if it is present
 	runImageName := c.resolveRunImage(
 		opts.RunImage,
 		imageRef.Context().RegistryStr(),
 		"",
 		builder.RunImageMetadata{
-			Image:   md.Stack.RunImage.Image,
-			Mirrors: md.Stack.RunImage.Mirrors,
+			Image:   md.RunImage.Image,
+			Mirrors: md.RunImage.Mirrors,
 		},
 		opts.AdditionalMirrors,
 		opts.Publish)

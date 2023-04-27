@@ -323,6 +323,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
 
+	// TODO: for older platform API, provide "stack" information instead of "run" information
 	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish)
 
 	fetchOptions := image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy}
@@ -361,7 +362,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	if err := c.validateMixins(fetchedBPs, bldr, runImageName, runMixins); err != nil {
+	if err := c.validateMixins(fetchedBPs, bldr, runImageName, runMixins); err != nil { // TODO: don't validate mixins for newer platforms
 		return errors.Wrap(err, "validating stack mixins")
 	}
 

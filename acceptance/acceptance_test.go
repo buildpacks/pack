@@ -1047,7 +1047,7 @@ func testAcceptance(
 						assertImage.HasBaseImage(repoName, runImage)
 
 						t.Log("sets the run image metadata")
-						assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"stack":{"runImage":{"image":"%s","mirrors":["%s"]}}}`, runImage, runImageMirror))
+						assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"pack-test/run","mirrors":["%s"]`, runImageMirror))
 
 						t.Log("sets the source metadata")
 						assertImage.HasLabelWithData(repoName, "io.buildpacks.project.metadata", (`{"source":{"type":"project","version":{"declared":"1.0.2"},"metadata":{"url":"https://github.com/buildpacks/pack"}}}`))
@@ -1906,7 +1906,6 @@ func testAcceptance(
 					when("--cache with options for build cache as image", func() {
 						var cacheImageName, cacheFlags string
 						it.Before(func() {
-							h.SkipIf(t, !pack.SupportsFeature(invoke.Cache), "")
 							cacheImageName = fmt.Sprintf("%s-cache", repoName)
 							cacheFlags = fmt.Sprintf("type=build;format=image;name=%s", cacheImageName)
 						})
@@ -1948,8 +1947,9 @@ func testAcceptance(
 						var bindCacheDir, cacheFlags string
 						it.Before(func() {
 							h.SkipIf(t, !pack.SupportsFeature(invoke.Cache), "")
-							cacheBindName := fmt.Sprintf("%s-bind", repoName)
-							bindCacheDir, err := os.MkdirTemp("", cacheBindName)
+							cacheBindName := strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%s-bind", repoName), string(filepath.Separator), "-"), ":", "-")
+							var err error
+							bindCacheDir, err = os.MkdirTemp("", cacheBindName)
 							assert.Nil(err)
 							cacheFlags = fmt.Sprintf("type=build;format=bind;source=%s", bindCacheDir)
 						})
@@ -2188,11 +2188,6 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					})
 
 					when("--creation-time", func() {
-						it.Before(func() {
-							h.SkipIf(t, !pack.SupportsFeature(invoke.CreationTime), "")
-							h.SkipIf(t, !lifecycle.SupportsFeature(config.CreationTime), "")
-						})
-
 						when("provided as 'now'", func() {
 							it("image has create time of the current time", func() {
 								expectedTime := time.Now()

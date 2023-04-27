@@ -194,7 +194,7 @@ func (i *PackInvoker) EnableExperimental() {
 //   - "<command>" (e.g. "create-builder")
 //   - "<flag>" (e.g. "--verbose")
 //   - "<command> <flag>" (e.g. "build --network")
-//   - "<command>... <flag>" (e.g. "config trusted-builder--network")
+//   - "<command>... <flag>" (e.g. "config trusted-builder --network")
 //
 // Any other form may return false.
 func (i *PackInvoker) Supports(command string) bool {
@@ -218,6 +218,9 @@ func (i *PackInvoker) Supports(command string) bool {
 	output, err := i.baseCmd(cmdParts...).CombinedOutput()
 	i.assert.Nil(err)
 
+	// FIXME: this doesn't appear to be working as expected,
+	// as tests against "build --creation-time" and "build --cache" are returning unsupported
+	// even on the latest version of pack.
 	return re.MatchString(string(output)) && !strings.Contains(string(output), "Unknown help topic")
 }
 
