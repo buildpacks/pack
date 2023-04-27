@@ -3,6 +3,7 @@ package build
 import (
 	"context"
 	"fmt"
+	"github.com/buildpacks/pack/pkg/cache"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -17,7 +18,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/logging"

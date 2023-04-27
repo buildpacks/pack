@@ -2,6 +2,7 @@ package cache_test
 
 import (
 	"context"
+	"github.com/buildpacks/pack/pkg/cache"
 	"math/rand"
 	"strings"
 	"testing"
@@ -16,7 +17,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/cache"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 

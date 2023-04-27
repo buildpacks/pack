@@ -2,8 +2,7 @@ package fakes
 
 import (
 	"context"
-
-	"github.com/buildpacks/pack/internal/cache"
+	"github.com/buildpacks/pack/pkg/cache"
 )
 
 type FakeCache struct {
