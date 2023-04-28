@@ -148,6 +148,23 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 							h.AssertContains(t, lbl, `"runImage":{"topLayer":"local-mirror-top-layer-sha","reference":"local-mirror-digest"`)
 						})
 					})
+					when("there is a label and it has a run image and no stack", func() {
+						it("reads the run image from the label", func() {
+							h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata",
+								`{"runImage":{"image":"some/run", "mirrors":["example.com/some/run"]}}`))
+							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
+								RepoName: "some/app",
+							}))
+							h.AssertEq(t, fakeAppImage.Base(), "some/run")
+						})
+					})
+					when("there is neither runImage nor stack", func() {
+						it("fails gracefully", func() {
+							h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata", `{}`))
+							h.AssertError(t, subject.Rebase(context.TODO(), RebaseOptions{RepoName: "some/app"}),
+								"run image must be specified")
+						})
+					})
 				})
 
 				when("the image does not have a label with a run image specified", func() {

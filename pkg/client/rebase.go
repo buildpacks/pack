@@ -66,15 +66,17 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return errors.Errorf("could not find label %s on image", style.Symbol(platform.LayerMetadataLabel))
 	}
 	var runImageMD builder.RunImageMetadata
-	if md.RunImage.Image != "" { // TODO: add unit
+	if md.RunImage.Image != "" {
 		runImageMD = builder.RunImageMetadata{
 			Image:   md.RunImage.Image,
 			Mirrors: md.RunImage.Mirrors,
 		}
 	} else {
-		runImageMD = builder.RunImageMetadata{
-			Image:   md.Stack.RunImage.Image,
-			Mirrors: md.Stack.RunImage.Mirrors,
+		if md.Stack != nil {
+			runImageMD = builder.RunImageMetadata{
+				Image:   md.Stack.RunImage.Image,
+				Mirrors: md.Stack.RunImage.Mirrors,
+			}
 		}
 	}
 	runImageName := c.resolveRunImage(
