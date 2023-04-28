@@ -229,7 +229,8 @@ type Feature int
 const (
 	CreationTime = iota
 	Cache
-	Extensions
+	BuildImageExtensions
+	RunImageExtensions
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -239,8 +240,11 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	Cache: func(i *PackInvoker) bool {
 		return i.Supports("build --cache")
 	},
-	Extensions: func(i *PackInvoker) bool {
+	BuildImageExtensions: func(i *PackInvoker) bool {
 		return i.laterThan("v0.27.0")
+	},
+	RunImageExtensions: func(i *PackInvoker) bool {
+		return i.laterThan("v0.29.0")
 	},
 }
 

@@ -762,8 +762,8 @@ func testAcceptance(
 
 				when("builder has extensions", func() {
 					it.Before(func() {
-						h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.Extensions), "")
-						h.SkipIf(t, !pack.SupportsFeature(invoke.Extensions), "")
+						h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.BuildImageExtensions), "")
+						h.SkipIf(t, !pack.SupportsFeature(invoke.BuildImageExtensions), "")
 						h.SkipIf(t, !lifecycle.SupportsFeature(config.BuildImageExtensions), "")
 						// create a task, handled by a 'task manager' which executes our pack commands during tests.
 						// looks like this is used to de-dup tasks
@@ -867,6 +867,7 @@ func testAcceptance(
 
 						when("there are run image extensions", func() {
 							it.Before(func() {
+								h.SkipIf(t, !pack.SupportsFeature(invoke.RunImageExtensions), "")
 								h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
 							})
 

@@ -29,7 +29,6 @@ func (c *Client) parseTagReference(imageName string) (name.Reference, error) {
 }
 
 func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, runImageMetadata builder.RunImageMetadata, additionalMirrors map[string][]string, publish bool) string {
-	// TODO: this function should receive "stack" information as well if present
 	if runImage != "" {
 		c.logger.Debugf("Using provided run-image %s", style.Symbol(runImage))
 		return runImage
