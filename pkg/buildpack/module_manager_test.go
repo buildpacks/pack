@@ -143,17 +143,24 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 				moduleManager.AddModules(compositeBP1, []buildpack.BuildModule{bp1, compositeBP2, bp21, bp22, compositeBP3, bp31}...)
 			})
 
-			when("#GetFlattenModules", func() {
+			when("#FlattenModules", func() {
 				it("returns one flatten module (1 layer)", func() {
-					modules := moduleManager.GetFlattenModules()
+					modules := moduleManager.FlattenModules()
 					h.AssertEq(t, len(modules), 1)
 					h.AssertEq(t, len(modules[0]), 7)
 				})
 			})
 
-			when("#Modules", func() {
+			when("#NonFlattenModules", func() {
+				it("returns empty", func() {
+					modules := moduleManager.NonFlattenModules()
+					h.AssertEq(t, len(modules), 0)
+				})
+			})
+
+			when("#AllModules", func() {
 				it("returns all modules", func() {
-					modules := moduleManager.Modules()
+					modules := moduleManager.AllModules()
 					h.AssertEq(t, len(modules), 7)
 				})
 			})
@@ -177,9 +184,9 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 				moduleManager.AddModules(compositeBP1, []buildpack.BuildModule{bp1, compositeBP2, bp21, bp22, compositeBP3, bp31}...)
 			})
 
-			when("#GetFlattenModules", func() {
+			when("#FlattenModules", func() {
 				it("returns 1 flatten module with [compositeBP2, bp21, bp22, compositeBP3, bp31]", func() {
-					modules := moduleManager.GetFlattenModules()
+					modules := moduleManager.FlattenModules()
 					h.AssertEq(t, len(modules), 1)
 					h.AssertEq(t, len(modules[0]), 5)
 				})
@@ -207,9 +214,9 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 				moduleManager.AddModules(compositeBP1, []buildpack.BuildModule{bp1, compositeBP2, bp21, bp22, compositeBP3, bp31}...)
 			})
 
-			when("#GetFlattenModules", func() {
+			when("#FlattenModules", func() {
 				it("returns 1 flatten module with [compositeBP3, bp31]", func() {
-					modules := moduleManager.GetFlattenModules()
+					modules := moduleManager.FlattenModules()
 					h.AssertEq(t, len(modules), 1)
 					h.AssertEq(t, len(modules[0]), 2)
 				})
@@ -237,9 +244,9 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 			moduleManager = buildpack.NewModuleManager(false, buildpack.FlattenNone)
 		})
 
-		when("#Modules", func() {
+		when("#NonFlattenModules", func() {
 			it("returns nil when no modules are added", func() {
-				modules := moduleManager.Modules()
+				modules := moduleManager.NonFlattenModules()
 				h.AssertEq(t, len(modules), 0)
 			})
 
@@ -248,15 +255,15 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 					moduleManager.AddModules(compositeBP1, []buildpack.BuildModule{bp1, compositeBP2, bp21, bp22, compositeBP3, bp31}...)
 				})
 				it("returns all modules added", func() {
-					modules := moduleManager.Modules()
+					modules := moduleManager.NonFlattenModules()
 					h.AssertEq(t, len(modules), 7)
 				})
 			})
 		})
 
-		when("#GetFlattenModules", func() {
+		when("#FlattenModules", func() {
 			it("returns nil when no modules are added", func() {
-				modules := moduleManager.GetFlattenModules()
+				modules := moduleManager.FlattenModules()
 				h.AssertEq(t, len(modules), 0)
 			})
 
@@ -265,7 +272,7 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 					moduleManager.AddModules(compositeBP1, []buildpack.BuildModule{bp1, compositeBP2, bp21, bp22, compositeBP3, bp31}...)
 				})
 				it("returns nil", func() {
-					modules := moduleManager.GetFlattenModules()
+					modules := moduleManager.FlattenModules()
 					h.AssertEq(t, len(modules), 0)
 				})
 			})

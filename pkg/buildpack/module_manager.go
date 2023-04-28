@@ -25,8 +25,8 @@ func NewModuleManager(flatten bool, maxDepth int) *ModuleManager {
 	}
 }
 
-// Modules return all the modules handle by the manager, including the flatten modules.
-func (f *ModuleManager) Modules() []BuildModule {
+// AllModules returns all modules handle by the manager
+func (f *ModuleManager) AllModules() []BuildModule {
 	all := f.modules
 	for _, modules := range f.flattenModules {
 		all = append(all, modules...)
@@ -34,15 +34,20 @@ func (f *ModuleManager) Modules() []BuildModule {
 	return all
 }
 
-// GetFlattenModules returns all the flatten modules handle by the manager.
-func (f *ModuleManager) GetFlattenModules() [][]BuildModule {
+// NonFlattenModules returns all none flatten modules handle by the manager
+func (f *ModuleManager) NonFlattenModules() []BuildModule {
+	return f.modules
+}
+
+// FlattenModules returns all flatten modules handle by the manager.
+func (f *ModuleManager) FlattenModules() [][]BuildModule {
 	if f.flatten {
 		return f.flattenModules
 	}
 	return nil
 }
 
-// AddModules determines whether the modules must be added as flatten or not. It uses the
+// AddModules determines whether the modules must be added as flatten or not. It uses
 // flatten and maxDepth configuration given during initialization of the manager.
 func (f *ModuleManager) AddModules(main BuildModule, deps ...BuildModule) {
 	if !f.flatten {
@@ -51,7 +56,11 @@ func (f *ModuleManager) AddModules(main BuildModule, deps ...BuildModule) {
 	} else {
 		if f.maxDepth <= FlattenMaxDepth {
 			// flatten all
-			f.flattenModules = append(f.flattenModules, append([]BuildModule{main}, deps...))
+			if len(f.flattenModules) == 1 {
+				f.flattenModules[0] = append(f.flattenModules[0], append([]BuildModule{main}, deps...)...)
+			} else {
+				f.flattenModules = append(f.flattenModules, append([]BuildModule{main}, deps...))
+			}
 		} else {
 			recurser := newFlattenModuleRecurser(f.maxDepth)
 			calculateModules := recurser.calculateFlattenModules(main, deps, 0)

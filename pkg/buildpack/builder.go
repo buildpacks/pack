@@ -18,6 +18,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/pkg/logging"
+
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
@@ -75,11 +77,15 @@ type options struct {
 	flatten bool
 	depth   int
 	exclude []string
+	logger  logging.Logger
+	factory archive.TarWriterFactory
 }
 
 type PackageBuilder struct {
 	buildpack                BuildModule
 	extension                BuildModule
+	logger                   logging.Logger
+	layerWriterFactory       archive.TarWriterFactory
 	dependencies             ModuleManager
 	imageFactory             ImageFactory
 	flattenAllBuildpacks     bool
@@ -100,6 +106,8 @@ func NewBuilder(imageFactory ImageFactory, ops ...PackageBuilderOption) *Package
 		dependencies:             *moduleManager,
 		flattenAllBuildpacks:     opts.flatten && opts.depth < 0,
 		flattenExcludeBuildpacks: opts.exclude,
+		logger:                   opts.logger,
+		layerWriterFactory:       opts.factory,
 	}
 }
 
@@ -108,6 +116,20 @@ func WithFlatten(depth int, exclude []string) PackageBuilderOption {
 		o.flatten = true
 		o.depth = depth
 		o.exclude = exclude
+		return nil
+	}
+}
+
+func WithLogger(logger logging.Logger) PackageBuilderOption {
+	return func(o *options) error {
+		o.logger = logger
+		return nil
+	}
+}
+
+func WithLayerWriterFactory(factory archive.TarWriterFactory) PackageBuilderOption {
+	return func(o *options) error {
+		o.factory = factory
 		return nil
 	}
 }
@@ -132,7 +154,15 @@ func (b *PackageBuilder) MustBeFlatten(module BuildModule) bool {
 }
 
 func (b *PackageBuilder) FlattenModules() [][]BuildModule {
-	return b.dependencies.GetFlattenModules()
+	return b.dependencies.FlattenModules()
+}
+
+func (b *PackageBuilder) AllModules() []BuildModule {
+	all := b.dependencies.NonFlattenModules()
+	for _, modules := range b.dependencies.FlattenModules() {
+		all = append(all, modules...)
+	}
+	return all
 }
 
 func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error {
@@ -144,8 +174,53 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 	}
 
 	collectionToAdd := map[string]toAdd{}
-	// Let's create the tarball for each module
-	for _, bp := range append(b.dependencies.Modules(), b.buildpack) {
+	var individualBuildModules []BuildModule
+
+	// Let's create the tarball for each flatten module
+	if len(b.FlattenModules()) > 0 {
+		buildModuleWriter := NewBuildModuleWriter(b.logger, b.layerWriterFactory, "/cnb/buildpacks")
+		excludedModules := ExcludeSet(b.flattenExcludeBuildpacks)
+
+		var (
+			finalTarPath string
+			err          error
+		)
+		for i, additionalModules := range b.FlattenModules() {
+			modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("buildpack-%s-flatten", strconv.Itoa(i)))
+			if err := os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
+				return errors.Wrap(err, "creating flatten temp dir")
+			}
+
+			if b.flattenAllBuildpacks {
+				// include the buildpack itself
+				additionalModules = append(additionalModules, b.buildpack)
+			}
+			finalTarPath, individualBuildModules, err = buildModuleWriter.NToLayerTar(modFlattenTmpDir, fmt.Sprintf("buildpack-flatten-%s", strconv.Itoa(i)), additionalModules, excludedModules)
+			if err != nil {
+				return errors.Wrapf(err, "adding layer %s", finalTarPath)
+			}
+
+			diffID, err := dist.LayerDiffID(finalTarPath)
+			if err != nil {
+				return errors.Wrapf(err, "calculating diffID for layer %s", finalTarPath)
+			}
+
+			for _, module := range additionalModules {
+				collectionToAdd[module.Descriptor().Info().FullName()] = toAdd{
+					tarPath: finalTarPath,
+					diffID:  diffID.String(),
+					module:  module,
+				}
+			}
+		}
+	}
+
+	if !b.flattenAllBuildpacks {
+		individualBuildModules = append(individualBuildModules, b.buildpack)
+	}
+
+	// Let's create the tarball for each individual module
+	for _, bp := range append(b.dependencies.NonFlattenModules(), individualBuildModules...) {
 		bpLayerTar, err := ToLayerTar(tmpDir, bp)
 		if err != nil {
 			return err
@@ -162,80 +237,6 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 			tarPath: bpLayerTar,
 			diffID:  diffID.String(),
 			module:  bp,
-		}
-	}
-
-	if b.flattenAllBuildpacks {
-		// let's squash all buildpacks in a single layer
-		modFlattenTmpDir := filepath.Join(tmpDir, "buildpack-all-flatten")
-		if err := os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
-			return errors.Wrap(err, "creating flatten temp dir")
-		}
-		finalTarPath := filepath.Join(modFlattenTmpDir, "all-flatten.tar")
-
-		var tarsPath []string
-		for key := range collectionToAdd {
-			if !b.skipFlatten(key) {
-				m := collectionToAdd[key]
-				tarsPath = append(tarsPath, m.tarPath)
-			}
-		}
-
-		err := archive.MergeTars(finalTarPath, tarsPath...)
-		if err != nil {
-			return errors.Wrap(err, "merging modules tar files")
-		}
-
-		diffID, err := dist.LayerDiffID(finalTarPath)
-		if err != nil {
-			return errors.Wrapf(err, "adding layer %s", finalTarPath)
-		}
-
-		// Update the diffId and tar path for each module squashed
-		for key := range collectionToAdd {
-			if !b.skipFlatten(key) {
-				addModule := collectionToAdd[key]
-				addModule.tarPath = finalTarPath
-				addModule.diffID = diffID.String()
-				collectionToAdd[key] = addModule
-			}
-		}
-	} else {
-		// Let's squash build modules
-		for i, flattenModules := range b.FlattenModules() {
-			modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-flatten-%s", "buildpack", strconv.Itoa(i)))
-			if err := os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
-				return errors.Wrap(err, "creating flatten temp dir")
-			}
-			flattenTarFilePath := filepath.Join(modFlattenTmpDir, fmt.Sprintf("%s-flatten-%s.tar", "buildpack", strconv.Itoa(i)))
-
-			var tarsPath []string
-			for _, module := range flattenModules {
-				if !b.skipFlatten(module.Descriptor().Info().FullName()) {
-					m := collectionToAdd[module.Descriptor().Info().FullName()]
-					tarsPath = append(tarsPath, m.tarPath)
-				}
-			}
-
-			err := archive.MergeTars(flattenTarFilePath, tarsPath...)
-			if err != nil {
-				return errors.Wrap(err, "merging modules tar files")
-			}
-
-			diffID, err := dist.LayerDiffID(flattenTarFilePath)
-			if err != nil {
-				return errors.Wrapf(err, "adding layer %s", flattenTarFilePath)
-			}
-
-			// Update the diffId and tar path for each module squashed
-			for _, module := range flattenModules {
-				if !b.skipFlatten(module.Descriptor().Info().FullName()) {
-					addModule := collectionToAdd[module.Descriptor().Info().FullName()]
-					addModule.tarPath = flattenTarFilePath
-					addModule.diffID = diffID.String()
-					collectionToAdd[module.Descriptor().Info().FullName()] = addModule
-				}
-			}
 		}
 	}
 
@@ -310,7 +311,7 @@ func (b *PackageBuilder) validate() error {
 
 	// we don't need to validate extensions because there are no order or stacks in extensions
 	if b.buildpack != nil && b.extension == nil {
-		if err := validateBuildpacks(b.buildpack, b.dependencies.Modules()); err != nil {
+		if err := validateBuildpacks(b.buildpack, b.AllModules()); err != nil {
 			return err
 		}
 
@@ -324,12 +325,12 @@ func (b *PackageBuilder) validate() error {
 
 func (b *PackageBuilder) resolvedStacks() []dist.Stack {
 	stacks := b.buildpack.Descriptor().Stacks()
-	for _, bp := range b.dependencies.Modules() {
+	for _, bp := range b.AllModules() {
 		bpd := bp.Descriptor()
 
 		if len(stacks) == 0 {
 			stacks = bpd.Stacks()
-		} else if len(bpd.Stacks()) > 0 { // skip over "meta-buildpacks"
+		} else if len(bpd.Stacks()) > 0 { // exclude over "meta-buildpacks"
 			stacks = stack.MergeCompatible(stacks, bpd.Stacks())
 		}
 	}

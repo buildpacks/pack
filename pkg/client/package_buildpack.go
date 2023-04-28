@@ -83,7 +83,8 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 	var packageBuilderOpts []buildpack.PackageBuilderOption
 	if opts.Flatten {
-		packageBuilderOpts = append(packageBuilderOpts, buildpack.WithFlatten(opts.Depth, opts.FlattenExclude))
+		packageBuilderOpts = append(packageBuilderOpts, buildpack.WithFlatten(opts.Depth, opts.FlattenExclude),
+			buildpack.WithLayerWriterFactory(writerFactory), buildpack.WithLogger(c.logger))
 	}
 	packageBuilder := buildpack.NewBuilder(c.imageFactory, packageBuilderOpts...)
 
