@@ -396,15 +396,6 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 	return archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, false, nil)
 }
 
-func (b *PackageBuilder) skipFlatten(bpFullName string) bool {
-	for _, excludeBP := range b.flattenExcludeBuildpacks {
-		if excludeBP == bpFullName {
-			return true
-		}
-	}
-	return false
-}
-
 func newLayoutImage(imageOS string) (*layoutImage, error) {
 	i := empty.Image
 

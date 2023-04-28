@@ -688,10 +688,13 @@ func (b *Builder) addFlattenModules(kind string, logger logging.Logger, tmpDir s
 		}
 
 		finalTarPath, buildModuleExcluded, err = buildModuleWriter.NToLayerTar(modFlattenTmpDir, fmt.Sprintf("%s-flatten-%s", kind, strconv.Itoa(i)), additionalModules, excludedModules)
+		if err != nil {
+			return nil, errors.Wrapf(err, "writing layer %s", finalTarPath)
+		}
 
 		diffID, err := dist.LayerDiffID(finalTarPath)
 		if err != nil {
-			return nil, errors.Wrapf(err, "adding layer %s", finalTarPath)
+			return nil, errors.Wrapf(err, "calculating diff layer %s", finalTarPath)
 		}
 
 		for _, module := range additionalModules {
