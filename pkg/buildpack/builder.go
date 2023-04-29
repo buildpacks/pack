@@ -330,7 +330,7 @@ func (b *PackageBuilder) resolvedStacks() []dist.Stack {
 
 		if len(stacks) == 0 {
 			stacks = bpd.Stacks()
-		} else if len(bpd.Stacks()) > 0 { // exclude over "meta-buildpacks"
+		} else if len(bpd.Stacks()) > 0 { // skip over "meta-buildpacks"
 			stacks = stack.MergeCompatible(stacks, bpd.Stacks())
 		}
 	}

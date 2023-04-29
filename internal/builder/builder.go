@@ -78,7 +78,6 @@ type Builder struct {
 	uid, gid                 int
 	StackID                  string
 	replaceOrder             bool
-	flattenAllBuildpacks     bool
 	order                    dist.Order
 	orderExtensions          dist.Order
 }
@@ -145,7 +144,6 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 		env:                      map[string]string{},
 		additionalBuildpacks:     *buildpack.NewModuleManager(opts.flatten, opts.depth),
 		additionalExtensions:     *buildpack.NewModuleManager(opts.flatten, opts.depth),
-		flattenAllBuildpacks:     opts.flatten && opts.depth < 0,
 		flattenExcludeBuildpacks: opts.exclude,
 	}
 
