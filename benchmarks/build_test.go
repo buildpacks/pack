@@ -6,6 +6,7 @@ package benchmarks
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -21,13 +22,16 @@ import (
 )
 
 var (
-	baseImg     = "some-org/" + h.RandString(10)
-	trustedImg  = baseImg + "-trusted-"
-	builder     = "cnbs/sample-builder:bionic"
-	mockAppPath = filepath.Join("..", "acceptance", "testdata", "mock_app")
+	baseImg             string
+	trustedImg          string
+	builder             string
+	mockAppPath         string
+	paketoBuilder       string
+	additionalBuildapck string
 )
 
 func BenchmarkBuild(b *testing.B) {
+	setEnv()
 	dockerClient, err := dockerCli.NewClientWithOpts(dockerCli.FromEnv, dockerCli.WithVersion("1.38"))
 	if err != nil {
 		b.Error(errors.Wrap(err, "creating docker client"))
@@ -59,6 +63,16 @@ func BenchmarkBuild(b *testing.B) {
 		}
 	})
 
+	b.Run("with Addtional Buildpack", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			// perform the operation we're analyzing
+			cmd.SetArgs([]string{fmt.Sprintf("%s%d", trustedImg, i), "-p", mockAppPath, "-B", paketoBuilder, "--buildpack", additionalBuildapck})
+			if err = cmd.Execute(); err != nil {
+				b.Error(errors.Wrapf(err, "running build #%d", i))
+			}
+		}
+	})
+
 	// Cleanup
 	for i := 0; i < b.N; i++ {
 		if err = h.DockerRmi(dockerClient, fmt.Sprintf("%s%d", baseImg, i)); err != nil {
@@ -83,4 +97,23 @@ func createCmd(b *testing.B, docker *dockerCli.Client) *cobra.Command {
 		b.Error(errors.Wrap(err, "creating packClient"))
 	}
 	return commands.Build(logger, cfg.Config{}, packClient)
+}
+
+func setEnv() {
+	if baseImg = os.Getenv("baseImg"); baseImg == "" {
+		baseImg = "some-org/" + h.RandString(10)
+	}
+	trustedImg = baseImg + "-trusted-"
+	if builder = os.Getenv("builder"); builder == "" {
+		builder = "cnbs/sample-builder:bionic"
+	}
+	if mockAppPath = os.Getenv("mockAppPath"); mockAppPath == "" {
+		mockAppPath = filepath.Join("..", "acceptance", "testdata", "mock_app")
+	}
+	if paketoBuilder = os.Getenv("paketoBuilder"); paketoBuilder == "" {
+		paketoBuilder = "paketobuildpacks/builder:base"
+	}
+	if additionalBuildapck = os.Getenv("additionalBuildapck"); additionalBuildapck == "" {
+		additionalBuildapck = "docker://cnbs/sample-package:hello-universe"
+	}
 }
