@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/imgutil/remote"
-	"github.com/google/go-containerregistry/pkg/authn"
 )
 
 type CreateManifestOptions struct {
@@ -31,18 +29,11 @@ type CreateManifestOptions struct {
 
 func (c *Client) CreateManifest(ctx context.Context, opts CreateManifestOptions) error {
 
-	mediaType := imgutil.DockerTypes
-
-	idx, err := remote.NewIndex(
-		opts.ManifestName,
-		authn.DefaultKeychain,
-		remote.WithIndexMediaTypes(mediaType)) // This will return an empty index
+	indexCreator := c.indexFactory
+	idx, err := indexCreator.NewIndex(opts)
 	if err != nil {
 		panic(err)
 	}
-
-	// When the publish flag is used all the manifests MUST have os/arch defined otherwise an error must be thrown
-	// The format flag will be ignored if it is not used in conjunction with the publish flag
 
 	// Add every manifest to image index
 	for _, j := range opts.Manifests {
