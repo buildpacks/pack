@@ -9,7 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/paths"
 
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
@@ -17,16 +20,15 @@ import (
 )
 
 type BuildModuleWriter struct {
-	logger       logging.Logger
-	factory      archive.TarWriterFactory
-	buildpackDir string
+	logger  logging.Logger
+	factory archive.TarWriterFactory
 }
 
-func NewBuildModuleWriter(logger logging.Logger, factory archive.TarWriterFactory, dir string) *BuildModuleWriter {
+// NewBuildModuleWriter creates a BuildModule writer
+func NewBuildModuleWriter(logger logging.Logger, factory archive.TarWriterFactory) *BuildModuleWriter {
 	return &BuildModuleWriter{
-		logger:       logger,
-		factory:      factory,
-		buildpackDir: dir,
+		logger:  logger,
+		factory: factory,
 	}
 }
 
@@ -52,21 +54,21 @@ func (b *BuildModuleWriter) NToLayerTar(tarPath, filename string, modules []Buil
 		if _, ok := exclude[module.Descriptor().Info().FullName()]; !ok {
 			if !duplicated[module.Descriptor().Info().FullName()] {
 				duplicated[module.Descriptor().Info().FullName()] = true
-				b.logger.Debugf("Adding %s", style.Symbol(module.Descriptor().Info().FullName()))
+				b.logger.Debugf("adding %s", style.Symbol(module.Descriptor().Info().FullName()))
 
 				if err := b.writeBuildModuleToTar(tw, module, &parentFolderAdded); err != nil {
 					return "", nil, errors.Wrapf(err, "adding %s", style.Symbol(module.Descriptor().Info().FullName()))
 				}
-				bpInfo := module.Descriptor().Info()
-				rootPath := path.Join(b.buildpackDir, strings.ReplaceAll(bpInfo.ID, "/", "_"))
+				rootPath := processRootPath(module)
+				b.logger.Debugf("root path %s", style.Symbol(rootPath))
 				if !parentFolderAdded[rootPath] {
 					parentFolderAdded[rootPath] = true
 				}
 			} else {
-				b.logger.Debugf("Skipping %s, it was already added", style.Symbol(module.Descriptor().Info().FullName()))
+				b.logger.Debugf("skipping %s, it was already added", style.Symbol(module.Descriptor().Info().FullName()))
 			}
 		} else {
-			b.logger.Debugf("Excluding %s for being flattened", style.Symbol(module.Descriptor().Info().FullName()))
+			b.logger.Debugf("excluding %s for being flattened", style.Symbol(module.Descriptor().Info().FullName()))
 			buildModuleExcluded = append(buildModuleExcluded, module)
 		}
 	}
@@ -120,4 +122,19 @@ func (b *BuildModuleWriter) writeBuildModuleToTar(tw archive.TarWriter, module B
 	}
 
 	return nil
+}
+
+func processRootPath(module BuildModule) string {
+	var bpFolder string
+	switch module.Descriptor().Kind() {
+	case buildpack.KindBuildpack:
+		bpFolder = "buildpacks"
+	case buildpack.KindExtension:
+		bpFolder = "extensions"
+	default:
+		bpFolder = "buildpacks"
+	}
+	bpInfo := module.Descriptor().Info()
+	rootPath := path.Join(paths.RootDir, "cnb", bpFolder, strings.ReplaceAll(bpInfo.ID, "/", "_"))
+	return rootPath
 }

@@ -676,7 +676,7 @@ func (b *Builder) addFlattenModules(kind string, logger logging.Logger, tmpDir s
 		err                 error
 	)
 
-	buildModuleWriter := buildpack.NewBuildModuleWriter(logger, b.layerWriterFactory, buildpacksDir)
+	buildModuleWriter := buildpack.NewBuildModuleWriter(logger, b.layerWriterFactory)
 	excludedModules := buildpack.ExcludeSet(b.flattenExcludeBuildpacks)
 
 	for i, additionalModules := range flattenModules {
