@@ -30,9 +30,16 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 
 			indexName := args[0]
 			manifest := args[1]
+			all := false
+
+			if flags.All {
+				all = flags.All
+			}
+
 			if err := pack.AddManifest(cmd.Context(), client.AddManifestOptions{
 				Index:    indexName,
 				Manifest: manifest,
+				All:      all,
 			}); err != nil {
 				return err
 			}
