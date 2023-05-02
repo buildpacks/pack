@@ -29,8 +29,11 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 			indexName := args[0]
 			manifest := args[1]
 			if err := pack.AnnotateManifest(cmd.Context(), client.AnnotateManifestOptions{
-				Index:    indexName,
-				Manifest: manifest,
+				Index:        indexName,
+				Manifest:     manifest,
+				Architecture: flags.Architecture,
+				OS:           flags.OS,
+				Variant:      flags.Variant,
 			}); err != nil {
 				return err
 			}
