@@ -215,7 +215,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 		}
 	}
 
-	if !b.flattenAllBuildpacks {
+	if !b.flattenAllBuildpacks || len(b.FlattenModules()) == 0 {
 		individualBuildModules = append(individualBuildModules, b.buildpack)
 	}
 
