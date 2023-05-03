@@ -179,7 +179,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 	// Let's create the tarball for each flatten module
 	if len(b.FlattenModules()) > 0 {
 		buildModuleWriter := NewBuildModuleWriter(b.logger, b.layerWriterFactory)
-		excludedModules := ExcludeSet(b.flattenExcludeBuildpacks)
+		excludedModules := Set(b.flattenExcludeBuildpacks)
 
 		var (
 			finalTarPath string

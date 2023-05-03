@@ -677,7 +677,7 @@ func (b *Builder) addFlattenModules(kind string, logger logging.Logger, tmpDir s
 	)
 
 	buildModuleWriter := buildpack.NewBuildModuleWriter(logger, b.layerWriterFactory)
-	excludedModules := buildpack.ExcludeSet(b.flattenExcludeBuildpacks)
+	excludedModules := buildpack.Set(b.flattenExcludeBuildpacks)
 
 	for i, additionalModules := range flattenModules {
 		modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s-flatten", kind, strconv.Itoa(i)))

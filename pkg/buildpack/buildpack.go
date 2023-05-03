@@ -326,7 +326,8 @@ func ToLayerTar(dest string, module BuildModule) (string, error) {
 	return layerTar, nil
 }
 
-func ExcludeSet(exclude []string) map[string]struct{} {
+// Set returns a set of the given string slice.
+func Set(exclude []string) map[string]struct{} {
 	type void struct{}
 	var member void
 	var excludedModules = make(map[string]struct{})
