@@ -44,8 +44,9 @@ func testBuildModuleWriter(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		logger = logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
+		h.SkipIf(t, runtime.GOOS != "linux", "Skipped on non-linux")
 
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 		buildModuleWriter = buildpack.NewBuildModuleWriter(logger, archive.DefaultTarWriterFactory())
 		tmpDir, err = os.MkdirTemp("", "test_build_module_writer")
 		h.AssertNil(t, err)
@@ -101,9 +102,7 @@ func testBuildModuleWriter(t *testing.T, when spec.G, it spec.S) {
 
 	it.After(func() {
 		err := os.RemoveAll(tmpDir)
-		if runtime.GOOS != "windows" {
-			h.AssertNil(t, err)
-		}
+		h.AssertNil(t, err)
 	})
 
 	when("#NToLayerTar", func() {
