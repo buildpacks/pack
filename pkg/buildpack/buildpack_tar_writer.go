@@ -60,7 +60,6 @@ func (b *BuildModuleWriter) NToLayerTar(tarPath, filename string, modules []Buil
 					return "", nil, errors.Wrapf(err, "adding %s", style.Symbol(module.Descriptor().Info().FullName()))
 				}
 				rootPath := processRootPath(module)
-				b.logger.Debugf("root path %s", style.Symbol(rootPath))
 				if !parentFolderAdded[rootPath] {
 					parentFolderAdded[rootPath] = true
 				}
