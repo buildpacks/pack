@@ -498,7 +498,7 @@ func testWithoutSpecificBuilderRequirement(
 	when("config", func() {
 		when("default-builder", func() {
 			it("sets the default builder in ~/.pack/config.toml", func() {
-				builderName := "paketobuildpacks/builder:base"
+				builderName := "paketobuildpacks/builder-jammy-base"
 				output := pack.RunSuccessfully("config", "default-builder", builderName)
 
 				assertions.NewOutputAssertionManager(t, output).ReportsSettingDefaultBuilder(builderName)
@@ -576,7 +576,7 @@ func testWithoutSpecificBuilderRequirement(
 	when("report", func() {
 		when("default builder is set", func() {
 			it("redacts default builder", func() {
-				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder:base")
+				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder-jammy-base")
 
 				output := pack.RunSuccessfully("report")
 				version := pack.Version()
@@ -600,7 +600,7 @@ func testWithoutSpecificBuilderRequirement(
 			})
 
 			it("explicit mode doesn't redact", func() {
-				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder:base")
+				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder-jammy-base")
 
 				output := pack.RunSuccessfully("report", "--explicit")
 				version := pack.Version()
@@ -613,7 +613,7 @@ func testWithoutSpecificBuilderRequirement(
 				expectedOutput := pack.FixtureManager().TemplateFixture(
 					"report_output.txt",
 					map[string]interface{}{
-						"DefaultBuilder": "paketobuildpacks/builder:base",
+						"DefaultBuilder": "paketobuildpacks/builder-jammy-base",
 						"Version":        version,
 						"OS":             runtime.GOOS,
 						"Arch":           runtime.GOARCH,
