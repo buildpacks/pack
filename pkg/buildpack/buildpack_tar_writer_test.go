@@ -44,7 +44,7 @@ func testBuildModuleWriter(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		h.SkipIf(t, runtime.GOOS != "linux", "Skipped on non-linux")
+		h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
 
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 		buildModuleWriter = buildpack.NewBuildModuleWriter(logger, archive.DefaultTarWriterFactory())
