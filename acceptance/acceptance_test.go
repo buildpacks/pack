@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/pack/pkg/cache"
+
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/ghodss/yaml"
@@ -32,7 +34,6 @@ import (
 	"github.com/buildpacks/pack/acceptance/config"
 	"github.com/buildpacks/pack/acceptance/invoke"
 	"github.com/buildpacks/pack/acceptance/managers"
-	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
 	h "github.com/buildpacks/pack/testhelpers"
