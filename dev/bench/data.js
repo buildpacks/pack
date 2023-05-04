@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683217005902,
+  "lastUpdate": 1683225463411,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -124,6 +124,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Addtional_Buildpack",
             "value": 29640697841,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "freilich.david@gmail.com",
+            "name": "David Freilich",
+            "username": "dfreilich"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5667b07d01c961ff30a735ca1d6222e4736b2696",
+          "message": "Merge pull request #1738 from buildpacks/dependabot/go_modules/github.com/docker/cli-23.0.5incompatible\n\nbuild(deps): bump github.com/docker/cli from 23.0.4+incompatible to 23.0.5+incompatible\r\nSigned-off-by: David Freilich <freilich.david@gmail.com>",
+          "timestamp": "2023-05-04T21:35:29+03:00",
+          "tree_id": "16ebe3abf5e90a77331a8278a9061b1bddc5e3fb",
+          "url": "https://github.com/buildpacks/pack/commit/5667b07d01c961ff30a735ca1d6222e4736b2696"
+        },
+        "date": 1683225462511,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6555696356,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1858477793,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Addtional_Buildpack",
+            "value": 33585789339,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
