@@ -36,7 +36,7 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 			fakeAppImage = fakes.NewImage("buildpack/image", "", &fakeIdentifier{name: "buildpack-image"})
 
 			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.buildpackage.metadata",
-				`{"id":"heroku/java-function","version":"1.1.1","stacks":[{"id":"heroku-18"},{"id":"io.buildpacks.stacks.bionic"},{"id":"org.cloudfoundry.stacks.cflinuxfs3"}]}`))
+				`{"id":"heroku/java-function","version":"1.1.1","stacks":[{"id":"heroku-18"},{"id":"io.buildpacks.stacks.jammy"},{"id":"org.cloudfoundry.stacks.cflinuxfs3"}]}`))
 			fakeImageFetcher.RemoteImages["buildpack/image"] = fakeAppImage
 
 			fakeLogger := logging.NewLogWithWriters(&out, &out)

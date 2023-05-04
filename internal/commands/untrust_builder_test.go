@@ -124,7 +124,7 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("builder is a suggested builder", func() {
 			it("does nothing and reports that ", func() {
-				builder := "paketobuildpacks/builder:base"
+				builder := "paketobuildpacks/builder-jammy-base"
 				command := commands.UntrustBuilder(logger, config.Config{}, configPath)
 				command.SetArgs([]string{builder})
 
