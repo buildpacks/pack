@@ -59,7 +59,7 @@ func GenerateTar(genFn func(TarWriter) error) io.ReadCloser {
 	return GenerateTarWithWriter(genFn, DefaultTarWriterFactory())
 }
 
-// GenerateTarWithTar returns a reader to a tar from a generator function using a writer from the provided factory.
+// GenerateTarWithWriter returns a reader to a tar from a generator function using a writer from the provided factory.
 // Note that the generator will not fully execute until the reader is fully read from. Any errors returned by the
 // generator will be returned when reading the reader.
 func GenerateTarWithWriter(genFn func(TarWriter) error, twf TarWriterFactory) io.ReadCloser {

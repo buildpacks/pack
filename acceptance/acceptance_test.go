@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/pack/pkg/cache"
+
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/ghodss/yaml"
@@ -32,7 +34,6 @@ import (
 	"github.com/buildpacks/pack/acceptance/config"
 	"github.com/buildpacks/pack/acceptance/invoke"
 	"github.com/buildpacks/pack/acceptance/managers"
-	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -498,7 +499,7 @@ func testWithoutSpecificBuilderRequirement(
 	when("config", func() {
 		when("default-builder", func() {
 			it("sets the default builder in ~/.pack/config.toml", func() {
-				builderName := "paketobuildpacks/builder:base"
+				builderName := "paketobuildpacks/builder-jammy-base"
 				output := pack.RunSuccessfully("config", "default-builder", builderName)
 
 				assertions.NewOutputAssertionManager(t, output).ReportsSettingDefaultBuilder(builderName)
@@ -576,7 +577,7 @@ func testWithoutSpecificBuilderRequirement(
 	when("report", func() {
 		when("default builder is set", func() {
 			it("redacts default builder", func() {
-				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder:base")
+				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder-jammy-base")
 
 				output := pack.RunSuccessfully("report")
 				version := pack.Version()
@@ -600,7 +601,7 @@ func testWithoutSpecificBuilderRequirement(
 			})
 
 			it("explicit mode doesn't redact", func() {
-				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder:base")
+				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder-jammy-base")
 
 				output := pack.RunSuccessfully("report", "--explicit")
 				version := pack.Version()
@@ -613,7 +614,7 @@ func testWithoutSpecificBuilderRequirement(
 				expectedOutput := pack.FixtureManager().TemplateFixture(
 					"report_output.txt",
 					map[string]interface{}{
-						"DefaultBuilder": "paketobuildpacks/builder:base",
+						"DefaultBuilder": "paketobuildpacks/builder-jammy-base",
 						"Version":        version,
 						"OS":             runtime.GOOS,
 						"Arch":           runtime.GOARCH,

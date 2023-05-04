@@ -201,9 +201,9 @@ func (o OutputAssertionManager) IncludesPrefixedHerokuBuilders() {
 }
 
 var paketoBuilders = []string{
-	"paketobuildpacks/builder:base",
-	"paketobuildpacks/builder:full",
-	"paketobuildpacks/builder:tiny",
+	"paketobuildpacks/builder-jammy-base",
+	"paketobuildpacks/builder-jammy-full",
+	"paketobuildpacks/builder-jammy-tiny",
 }
 
 func (o OutputAssertionManager) IncludesPaketoBuilders() {

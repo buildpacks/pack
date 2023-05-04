@@ -7,8 +7,8 @@ require (
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20230412223147-81015c668834
 	github.com/buildpacks/lifecycle v0.17.0-pre.1
-	github.com/docker/cli v23.0.4+incompatible
-	github.com/docker/docker v23.0.4+incompatible
+	github.com/docker/cli v23.0.5+incompatible
+	github.com/docker/docker v23.0.5+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gdamore/tcell/v2 v2.6.0

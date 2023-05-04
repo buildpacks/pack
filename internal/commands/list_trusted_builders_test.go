@@ -67,9 +67,9 @@ func testListTrustedBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 				"gcr.io/buildpacks/builder:v1",
 				"heroku/builder:22",
 				"heroku/buildpacks:20",
-				"paketobuildpacks/builder:base",
-				"paketobuildpacks/builder:full",
-				"paketobuildpacks/builder:tiny",
+				"paketobuildpacks/builder-jammy-base",
+				"paketobuildpacks/builder-jammy-full",
+				"paketobuildpacks/builder-jammy-tiny",
 			)
 
 			listTrustedBuildersCommand := commands.ListTrustedBuilders(
@@ -88,9 +88,9 @@ func testListTrustedBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 				"gcr.io/buildpacks/builder:v1",
 				builderName,
 				"heroku/buildpacks:20",
-				"paketobuildpacks/builder:base",
-				"paketobuildpacks/builder:full",
-				"paketobuildpacks/builder:tiny",
+				"paketobuildpacks/builder-jammy-base",
+				"paketobuildpacks/builder-jammy-full",
+				"paketobuildpacks/builder-jammy-tiny",
 			)
 		})
 	})
