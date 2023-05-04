@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683203764789,
+  "lastUpdate": 1683217005902,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -82,6 +82,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Addtional_Buildpack",
             "value": 41734972476,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "freilich.david@gmail.com",
+            "name": "David Freilich",
+            "username": "dfreilich"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a551896ca450f102eaebaf5748936ef26051142d",
+          "message": "Merge pull request #1739 from buildpacks/dependabot/go_modules/github.com/docker/docker-23.0.5incompatible\n\nbuild(deps): bump github.com/docker/docker from 23.0.4+incompatible to 23.0.5+incompatible\r\nSigned-off-by: David Freilich <freilich.david@gmail.com>",
+          "timestamp": "2023-05-04T19:14:36+03:00",
+          "tree_id": "f248f20c4174d7351a703a38b7401b8f8631a356",
+          "url": "https://github.com/buildpacks/pack/commit/a551896ca450f102eaebaf5748936ef26051142d"
+        },
+        "date": 1683217005089,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6237789315,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1818207036,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Addtional_Buildpack",
+            "value": 29640697841,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
