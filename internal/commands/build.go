@@ -7,11 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buildpacks/pack/pkg/cache"
+
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/client"

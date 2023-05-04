@@ -111,7 +111,7 @@ func setEnv() {
 		mockAppPath = filepath.Join("..", "acceptance", "testdata", "mock_app")
 	}
 	if paketoBuilder = os.Getenv("paketoBuilder"); paketoBuilder == "" {
-		paketoBuilder = "paketobuildpacks/builder:base"
+		paketoBuilder = "paketobuildpacks/builder-jammy-base"
 	}
 	if additionalBuildapck = os.Getenv("additionalBuildapck"); additionalBuildapck == "" {
 		additionalBuildapck = "docker://cnbs/sample-package:hello-universe"

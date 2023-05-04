@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/pack/pkg/cache"
+
 	"github.com/BurntSushi/toml"
 	"github.com/apex/log"
 	ifakes "github.com/buildpacks/imgutil/fakes"
@@ -27,7 +29,6 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
-	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"

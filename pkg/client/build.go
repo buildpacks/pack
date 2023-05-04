@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buildpacks/pack/pkg/cache"
+
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layout"
@@ -29,7 +31,6 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/cache"
 	internalConfig "github.com/buildpacks/pack/internal/config"
 	pname "github.com/buildpacks/pack/internal/name"
 	"github.com/buildpacks/pack/internal/stack"
