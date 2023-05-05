@@ -213,8 +213,8 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 	pack config default-builder <builder-image>`)
 
-				assert.Matches(outBuf.String(), regexp.MustCompile(`Paketo Buildpacks:\s+'paketobuildpacks/builder:base'`))
-				assert.Matches(outBuf.String(), regexp.MustCompile(`Paketo Buildpacks:\s+'paketobuildpacks/builder:full'`))
+				assert.Matches(outBuf.String(), regexp.MustCompile(`Paketo Buildpacks:\s+'paketobuildpacks/builder-jammy-base'`))
+				assert.Matches(outBuf.String(), regexp.MustCompile(`Paketo Buildpacks:\s+'paketobuildpacks/builder-jammy-full'`))
 				assert.Matches(outBuf.String(), regexp.MustCompile(`Heroku:\s+'heroku/buildpacks:20'`))
 			})
 		})

@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buildpacks/pack/pkg/cache"
+
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layout"
@@ -29,7 +31,6 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/cache"
 	internalConfig "github.com/buildpacks/pack/internal/config"
 	pname "github.com/buildpacks/pack/internal/name"
 	"github.com/buildpacks/pack/internal/stack"
@@ -100,7 +101,7 @@ type BuildOptions struct {
 	DockerHost string
 
 	// Used to determine a run-image mirror if Run Image is empty.
-	// Used in combination with Builder metadata to determine to the the 'best' mirror.
+	// Used in combination with Builder metadata to determine to the 'best' mirror.
 	// 'best' is defined as:
 	//  - if Publish is true, the best mirror matches registry we are publishing to.
 	//  - if Publish is false, the best mirror matches a registry specified in Image.
@@ -323,7 +324,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
 
-	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors, opts.Publish)
+	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish)
 
 	fetchOptions := image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy}
 	if opts.Layout() {
@@ -548,18 +549,18 @@ func extractSupportedLifecycleApis(labels map[string]string) ([]string, error) {
 	//     io.buildpacks.lifecycle.apis":"{\"buildpack\":{\"deprecated\":[],\"supported\":[\"0.2\",\"0.3\",\"0.4\",\"0.5\",\"0.6\",\"0.7\",\"0.8\",\"0.9\"]},\"platform\":{\"deprecated\":[],\"supported\":[\"0.3\",\"0.4\",\"0.5\",\"0.6\",\"0.7\",\"0.8\",\"0.9\",\"0.10\"]}}\",\"io.buildpacks.lifecycle.version\":\"0.15.3\"}")
 
 	// This struct is defined in lifecycle-repository/tools/image/main.go#Descriptor -- we could consider moving it from the main package to an importable location.
-	var bpPlatformApi struct {
+	var bpPlatformAPI struct {
 		Platform struct {
 			Deprecated []string
 			Supported  []string
 		}
 	}
 	if len(labels["io.buildpacks.lifecycle.apis"]) > 0 {
-		err := json.Unmarshal([]byte(labels["io.buildpacks.lifecycle.apis"]), &bpPlatformApi)
+		err := json.Unmarshal([]byte(labels["io.buildpacks.lifecycle.apis"]), &bpPlatformAPI)
 		if err != nil {
 			return nil, err
 		}
-		return append(bpPlatformApi.Platform.Deprecated, bpPlatformApi.Platform.Supported...), nil
+		return append(bpPlatformAPI.Platform.Deprecated, bpPlatformAPI.Platform.Supported...), nil
 	}
 	return []string{}, nil
 }
@@ -610,7 +611,7 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	if err != nil {
 		return nil, err
 	}
-	if bldr.Stack().RunImage.Image == "" {
+	if bldr.Stack().RunImage.Image == "" && len(bldr.RunImages()) == 0 {
 		return nil, errors.New("builder metadata is missing run-image")
 	}
 
@@ -709,8 +710,9 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.
 					ID:      id,
 					Version: ver,
 				},
-				WithStacks: bp.Stacks,
-				WithOrder:  bp.Order,
+				WithStacks:  bp.Stacks,
+				WithTargets: bp.Targets,
+				WithOrder:   bp.Order,
 			}
 			all = append(all, &desc)
 		}
@@ -1068,10 +1070,7 @@ func prependBuildpackToOrder(order dist.Order, bpInfo dist.ModuleInfo) (newOrder
 			ModuleInfo: bpInfo,
 			Optional:   false,
 		}}
-		for _, g := range newEntry.Group {
-			newGroup = append(newGroup, g)
-		}
-		newEntry.Group = newGroup
+		newEntry.Group = append(newGroup, newEntry.Group...)
 		newOrder = append(newOrder, newEntry)
 	}
 

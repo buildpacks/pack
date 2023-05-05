@@ -4,7 +4,10 @@ import (
 	"context"
 	"io"
 	"math/rand"
+	"os"
 	"time"
+
+	"github.com/buildpacks/pack/pkg/cache"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"
@@ -12,7 +15,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -108,7 +110,12 @@ func NewLifecycleExecutor(logger logging.Logger, docker DockerClient) *Lifecycle
 }
 
 func (l *LifecycleExecutor) Execute(ctx context.Context, opts LifecycleOptions) error {
-	lifecycleExec, err := NewLifecycleExecution(l.logger, l.docker, opts)
+	tmpDir, err := os.MkdirTemp("", "pack.tmp")
+	if err != nil {
+		return err
+	}
+
+	lifecycleExec, err := NewLifecycleExecution(l.logger, l.docker, tmpDir, opts)
 	if err != nil {
 		return err
 	}

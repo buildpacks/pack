@@ -3,12 +3,12 @@ module github.com/buildpacks/pack
 require (
 	github.com/BurntSushi/toml v1.2.1
 	github.com/Masterminds/semver v1.5.0
-	github.com/Microsoft/go-winio v0.6.0
+	github.com/Microsoft/go-winio v0.6.1
 	github.com/apex/log v1.9.0
-	github.com/buildpacks/imgutil v0.0.0-20230324153732-a6c0ed910692
-	github.com/buildpacks/lifecycle v0.16.1-0.20230331210422-21fb915dcefc
-	github.com/docker/cli v23.0.3+incompatible
-	github.com/docker/docker v23.0.3+incompatible
+	github.com/buildpacks/imgutil v0.0.0-20230412223147-81015c668834
+	github.com/buildpacks/lifecycle v0.17.0-pre.1
+	github.com/docker/cli v23.0.5+incompatible
+	github.com/docker/docker v23.0.5+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gdamore/tcell/v2 v2.6.0
@@ -32,6 +32,7 @@ require (
 	golang.org/x/crypto v0.8.0
 	golang.org/x/mod v0.10.0
 	golang.org/x/oauth2 v0.7.0
+	golang.org/x/sync v0.1.0
 	golang.org/x/term v0.7.0
 	golang.org/x/text v0.9.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -113,7 +114,6 @@ require (
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	golang.org/x/net v0.9.0 // indirect
-	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/tools v0.7.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect

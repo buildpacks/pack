@@ -318,6 +318,64 @@ drwxr-xr-x    2 123      456 (.*) some-vol
 		})
 	})
 
+	when("#CopyOutMaybe", func() {
+		it("reads the contents of a container directory", func() {
+			h.SkipIf(t, osType == "windows", "copying directories out of windows containers not yet supported")
+
+			containerDir := "/some-vol"
+			if osType == "windows" {
+				containerDir = `c:\some-vol`
+			}
+
+			ctrCmd := []string{"ls", "-al", "/some-vol"}
+			if osType == "windows" {
+				ctrCmd = []string{"cmd", "/c", `dir /q /s c:\some-vol`}
+			}
+
+			ctx := context.Background()
+			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
+			h.AssertNil(t, err)
+			defer cleanupContainer(ctx, ctr.ID)
+
+			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), containerDir, 123, 456, osType, false, nil)
+			err = copyDirOp(ctrClient, ctx, ctr.ID, io.Discard, io.Discard)
+			h.AssertNil(t, err)
+
+			tarDestination, err := os.CreateTemp("", "pack.container.ops.test.")
+			h.AssertNil(t, err)
+			defer os.RemoveAll(tarDestination.Name())
+
+			handler := func(reader io.ReadCloser) error {
+				defer reader.Close()
+
+				contents, err := io.ReadAll(reader)
+				h.AssertNil(t, err)
+
+				err = os.WriteFile(tarDestination.Name(), contents, 0600)
+				h.AssertNil(t, err)
+
+				return nil
+			}
+
+			copyOutDirsOp := build.CopyOutMaybe(handler, containerDir)
+			err = copyOutDirsOp(ctrClient, ctx, ctr.ID, io.Discard, io.Discard)
+			h.AssertNil(t, err)
+
+			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(io.Discard, io.Discard))
+			h.AssertNil(t, err)
+
+			separator := "/"
+			if osType == "windows" {
+				separator = `\`
+			}
+
+			h.AssertTarball(t, tarDestination.Name())
+			h.AssertTarHasFile(t, tarDestination.Name(), fmt.Sprintf("some-vol%sfake-app-file", separator))
+			h.AssertTarHasFile(t, tarDestination.Name(), fmt.Sprintf("some-vol%sfake-app-symlink", separator))
+			h.AssertTarHasFile(t, tarDestination.Name(), fmt.Sprintf("some-vol%sfile-to-ignore", separator))
+		})
+	})
+
 	when("#WriteStackToml", func() {
 		it("writes file", func() {
 			containerDir := "/layers-vol"
@@ -637,7 +695,7 @@ drwxr-xr-x    2 123      456 (.*) some-vol
 	})
 }
 
-func createContainer(ctx context.Context, imageName, containerDir, osType string, cmd ...string) (dcontainer.ContainerCreateCreatedBody, error) {
+func createContainer(ctx context.Context, imageName, containerDir, osType string, cmd ...string) (dcontainer.CreateResponse, error) {
 	isolationType := dcontainer.IsolationDefault
 	if osType == "windows" {
 		isolationType = dcontainer.IsolationProcess

@@ -2,7 +2,6 @@ package client_test
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -132,6 +131,5 @@ func assertBuildpackToml(t *testing.T, path string, id string) {
 	h.AssertNil(t, err)
 	defer f.Close()
 
-	fmt.Printf("%s\n", buildpackDescriptor)
 	h.AssertEq(t, buildpackDescriptor.Info().ID, "example/my-cnb")
 }

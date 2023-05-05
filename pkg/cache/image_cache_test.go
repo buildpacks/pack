@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/pack/pkg/cache"
+
 	"github.com/buildpacks/imgutil/local"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -15,7 +17,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/cache"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 

@@ -766,10 +766,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						//  - 1 from stackLayer
 						//  - 1 from runImageLayer
 						h.AssertEq(t, baseImage.NumberOfAddedLayers(), 6)
-						oldSha256 := "4dc0072c61fc2bd7118bbc93a432eae0012082de094455cf0a9fed20e3c44789"
-						newSha256 := "29cb2bce4c2350f0e86f3dd30fa3810beb409b910126a18651de750f457fedfb"
+						oldSha256 := "2ba2e8563f7f43533ba26047a44f3e8bb7dd009043bd73a0e6aadb02c084955c"
+						newSha256 := "719faea06424d01bb5788ce63c1167e8d382b2d9df8fcf3a0a54ea9b2e3b4045"
 						if runtime.GOOS == "windows" {
-							newSha256 = "eaed4a1617bba5738ae5672f6aefda8add7abb2f8630c75dc97a6232879d4ae4"
+							newSha256 = "d99d31efba72ebf98e8101ada9e89464566e943c05367c561b116c2cb86837c9"
 						}
 
 						h.AssertContains(t, outBuf.String(), fmt.Sprintf(`buildpack 'buildpack-1-id@buildpack-1-version-1' was previously defined with different contents and will be overwritten
@@ -794,7 +794,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				when("adding buildpack that already exists on the image", func() {
 					it("skips adding buildpack that already exists", func() {
 						logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
-						diffID := "4dc0072c61fc2bd7118bbc93a432eae0012082de094455cf0a9fed20e3c44789"
+						diffID := "2ba2e8563f7f43533ba26047a44f3e8bb7dd009043bd73a0e6aadb02c084955c"
 						bpLayer := dist.ModuleLayers{
 							"buildpack-1-id": map[string]dist.ModuleLayerInfo{
 								"buildpack-1-version-1": {
@@ -1616,6 +1616,23 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.ContentEquals(`other-val`),
 					h.HasModTime(archive.NormalizedDateTime),
 				)
+			})
+		})
+
+		when("#DefaultRunImage", func() {
+			it.Before(func() {
+				subject.SetRunImage(pubbldr.RunConfig{Images: []pubbldr.RunImageConfig{{
+					Image:   "some/run",
+					Mirrors: []string{"some/mirror", "other/mirror"},
+				}}})
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+				h.AssertEq(t, baseImage.IsSaved(), true)
+			})
+
+			it("adds the run.toml to the image", func() {
+				actual := subject.DefaultRunImage()
+				h.AssertEq(t, actual.Image, "some/run")
+				h.AssertEq(t, actual.Mirrors, []string{"some/mirror", "other/mirror"})
 			})
 		})
 	})
