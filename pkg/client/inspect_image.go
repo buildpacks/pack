@@ -177,7 +177,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 	}
 
 	var stackCompat platform.StackMetadata
-	if layersMd.RunImage.Image != "" { // TODO: add unit
+	if layersMd.RunImage.Image != "" {
 		stackCompat = layersMd.RunImage.ToStackMetadata()
 	} else {
 		stackCompat = layersMd.Stack
