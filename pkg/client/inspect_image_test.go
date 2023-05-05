@@ -214,7 +214,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, infoWithExtension.StackID, "test.stack.id")
 				})
 
-				it("something stg run image", func() {
+				it("returns the stack from runImage.Image if set", func() {
 					h.AssertNil(t, mockImage.SetLabel(
 						"io.buildpacks.lifecycle.metadata",
 						`{
