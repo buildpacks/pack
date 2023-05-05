@@ -92,7 +92,7 @@ func apiIntersection(apisA, apisB []*api.Version) []*api.Version {
 	return apis
 }
 
-// public for unit test purposes but cmon you probably don't want to actually call this.
+// FindLatestSupported finds the latest Platform API version supported by both the builder and the lifecycle.
 func FindLatestSupported(builderapis []*api.Version, lifecycleapis []string) (*api.Version, error) {
 	var apis []*api.Version
 	// if a custom lifecycle image was used we need to take an intersection of its supported apis with the builder's supported apis.
