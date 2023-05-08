@@ -305,7 +305,8 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 	case buildpack.KindBuildpack:
 		bldr.AddBuildpacks(mainBP, depBPs)
 	case buildpack.KindExtension:
-		bldr.AddExtensions(mainBP, depBPs)
+		// Extensions can't be composite
+		bldr.AddExtension(mainBP)
 	default:
 		return fmt.Errorf("unknown module kind: %s", kind)
 	}

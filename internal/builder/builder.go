@@ -334,14 +334,6 @@ func (b *Builder) AddExtension(bp buildpack.BuildModule) {
 	b.metadata.Extensions = append(b.metadata.Extensions, bp.Descriptor().Info())
 }
 
-func (b *Builder) AddExtensions(main buildpack.BuildModule, dependencies []buildpack.BuildModule) {
-	b.additionalExtensions.AddModules(main, dependencies...)
-	b.metadata.Extensions = append(b.metadata.Extensions, main.Descriptor().Info())
-	for _, dep := range dependencies {
-		b.metadata.Extensions = append(b.metadata.Extensions, dep.Descriptor().Info())
-	}
-}
-
 // SetLifecycle sets the lifecycle of the builder
 func (b *Builder) SetLifecycle(lifecycle Lifecycle) {
 	b.lifecycle = lifecycle
