@@ -309,7 +309,7 @@ func (b *Builder) FlattenModules(kind string) [][]buildpack.BuildModule {
 }
 
 func (b *Builder) MustBeFlatten(module buildpack.BuildModule) bool {
-	return b.additionalBuildpacks.IsFlatten(module)
+	return b.additionalBuildpacks.ShouldFlatten(module)
 }
 
 // Setters

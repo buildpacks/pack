@@ -150,7 +150,7 @@ func (b *PackageBuilder) AddDependencies(main BuildModule, dependencies []BuildM
 }
 
 func (b *PackageBuilder) MustBeFlatten(module BuildModule) bool {
-	return b.flattenAllBuildpacks || (b.dependencies.IsFlatten(module))
+	return b.flattenAllBuildpacks || (b.dependencies.ShouldFlatten(module))
 }
 
 func (b *PackageBuilder) FlattenModules() [][]BuildModule {

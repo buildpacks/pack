@@ -75,8 +75,8 @@ func (f *ModuleManager) AddModules(main BuildModule, deps ...BuildModule) {
 	}
 }
 
-// IsFlatten returns true if the given module is flatten.
-func (f *ModuleManager) IsFlatten(module BuildModule) bool {
+// ShouldFlatten returns true if the given module is flattened.
+func (f *ModuleManager) ShouldFlatten(module BuildModule) bool {
 	if f.flatten {
 		for _, modules := range f.flattenModules {
 			for _, v := range modules {
