@@ -308,7 +308,7 @@ func (b *Builder) FlattenModules(kind string) [][]buildpack.BuildModule {
 	return manager.FlattenModules()
 }
 
-func (b *Builder) MustBeFlatten(module buildpack.BuildModule) bool {
+func (b *Builder) ShouldFlatten(module buildpack.BuildModule) bool {
 	return b.additionalBuildpacks.ShouldFlatten(module)
 }
 
@@ -703,7 +703,7 @@ func (b *Builder) addFlattenModules(kind string, logger logging.Logger, tmpDir s
 		module := collectionToAdd[k]
 		bp := module.module
 		addLayer := true
-		if b.MustBeFlatten(bp) {
+		if b.ShouldFlatten(bp) {
 			if _, ok := diffIDAdded[module.diffID]; !ok {
 				diffIDAdded[module.diffID] = module.tarPath
 			} else {

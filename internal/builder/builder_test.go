@@ -1805,11 +1805,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("#MustBeFlatten", func() {
+			when("#ShouldFlatten", func() {
 				it("it returns true for each buildpack", func() {
-					h.AssertTrue(t, bldr.MustBeFlatten(bp1v1))
-					h.AssertTrue(t, bldr.MustBeFlatten(bp2v1))
-					h.AssertTrue(t, bldr.MustBeFlatten(bp1v2))
+					h.AssertTrue(t, bldr.ShouldFlatten(bp1v1))
+					h.AssertTrue(t, bldr.ShouldFlatten(bp2v1))
+					h.AssertTrue(t, bldr.ShouldFlatten(bp1v2))
 				})
 			})
 		})
