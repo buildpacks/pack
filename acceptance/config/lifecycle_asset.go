@@ -70,12 +70,30 @@ func earliestVersion(versions []*api.Version) *api.Version {
 	return earliest
 }
 
+func latestVersion(versions []*api.Version) *api.Version {
+	var latest *api.Version
+	for _, version := range versions {
+		switch {
+		case version == nil:
+			continue
+		case latest == nil:
+			latest = version
+		case latest.Compare(version) < 0:
+			latest = version
+		}
+	}
+	return latest
+}
 func (l *LifecycleAsset) EarliestBuildpackAPIVersion() string {
 	return earliestVersion(l.descriptor.APIs.Buildpack.Supported).String()
 }
 
 func (l *LifecycleAsset) EarliestPlatformAPIVersion() string {
 	return earliestVersion(l.descriptor.APIs.Platform.Supported).String()
+}
+
+func (l *LifecycleAsset) LatestPlatformAPIVersion() string {
+	return latestVersion(l.descriptor.APIs.Platform.Supported).String()
 }
 
 func (l *LifecycleAsset) OutputForAPIs() (deprecatedBuildpackAPIs, supportedBuildpackAPIs, deprecatedPlatformAPIs, supportedPlatformAPIs string) {

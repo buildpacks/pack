@@ -431,7 +431,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return fmt.Errorf("finding latest supported Platform API: %w", err)
 	}
 	if usingPlatformAPI.LessThan("0.12") {
-		if err = c.validateMixins(fetchedBPs, bldr, runImageName, runMixins); err != nil { // TODO: add test
+		if err = c.validateMixins(fetchedBPs, bldr, runImageName, runMixins); err != nil {
 			return fmt.Errorf("validating stack mixins: %w", err)
 		}
 	}

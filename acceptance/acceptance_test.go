@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/lifecycle/api"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/ghodss/yaml"
@@ -1563,17 +1564,32 @@ func testAcceptance(
 								assert.Succeeds(os.Remove(otherStackBuilderTgz))
 							})
 
-							it("errors", func() {
-								output, err := pack.Run(
+							it("succeeds", func() {
+								_, err := pack.Run(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--buildpack", otherStackBuilderTgz,
 								)
+								assert.Nil(err)
+							})
 
-								assert.NotNil(err)
-								assert.Contains(output, "other/stack/bp")
-								assert.Contains(output, "other-stack-version")
-								assert.Contains(output, "does not support stack 'pack.test.stack'")
+							when("platform API < 0.12", func() {
+								it.Before(func() {
+									h.SkipIf(t, api.MustParse(lifecycle.LatestPlatformAPIVersion()).AtLeast("0.12"), "")
+								})
+
+								it("errors", func() {
+									output, err := pack.Run(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--buildpack", otherStackBuilderTgz,
+									)
+
+									assert.NotNil(err)
+									assert.Contains(output, "other/stack/bp")
+									assert.Contains(output, "other-stack-version")
+									assert.Contains(output, "does not support stack 'pack.test.stack'")
+								})
 							})
 						})
 					})
