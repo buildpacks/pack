@@ -1758,7 +1758,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("builder is flatten", func() {
+	when("builder is flattened", func() {
 		var (
 			bldr         *builder.Builder
 			builderImage imgutil.Image
@@ -1792,7 +1792,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				bldr.AddBuildpacks(bp1v1, deps)
 			})
 
-			when("#FlattenModules", func() {
+			when("#FlattenedModules", func() {
 				it("it return one array with all buildpacks on it", func() {
 					h.AssertEq(t, len(bldr.FlattenModules(buildpack.KindBuildpack)), 1)
 					h.AssertEq(t, len(bldr.FlattenModules(buildpack.KindBuildpack)[0]), 3)

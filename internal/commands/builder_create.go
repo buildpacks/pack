@@ -102,9 +102,9 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
-	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten the buildpacks layers")
-	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpack to exclude for being flatten. Use buildpack by id and version in the form of '<buildpack>@<version>'")
-	cmd.Flags().IntVar(&flags.Depth, "depth", -1, "Max depth to flatten composite buildpacks layers.\nOmission of this flag or values < 0 will flatten the entire tree.")
+	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten each composite buildpack into a single layer")
+	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpacks to exclude from flattening, in the form of '<buildpack-id>@<buildpack-version>'")
+	cmd.Flags().IntVar(&flags.Depth, "depth", -1, "Max depth to flatten each composite buildpack.\nOmission of this flag or values < 0 will flatten the entire tree.")
 
 	AddHelpFlag(cmd, "create")
 	return cmd
@@ -130,7 +130,7 @@ func validateCreateFlags(flags *BuilderCreateFlags, cfg config.Config) error {
 	if flags.Flatten && len(flags.FlattenExclude) > 0 {
 		for _, exclude := range flags.FlattenExclude {
 			if strings.Count(exclude, "@") != 1 {
-				return errors.Errorf("invalid buildpack id and version format: %s. Please use the format '<buildpack>@<version>' to exclude a buildpack for being flattened", exclude)
+				return errors.Errorf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", exclude)
 			}
 		}
 	}

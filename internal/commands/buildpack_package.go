@@ -131,9 +131,9 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to the Buildpack that needs to be packaged")
 	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")
-	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten the buildpacks layers")
-	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpack to exclude for being flatten. Use buildpack by id and version in the form of '<buildpack>@<version>'")
-	cmd.Flags().IntVar(&flags.Depth, "depth", -1, "Max depth to flatten composite buildpacks layers.\nOmission of this flag or values < 0 will flatten the entire tree.")
+	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten the buildpack into a single layer")
+	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpacks to exclude from flattening, in the form of '<buildpack-id>@<buildpack-version>'")
+	cmd.Flags().IntVar(&flags.Depth, "depth", -1, "Max depth to flatten.\nOmission of this flag or values < 0 will flatten the entire tree.")
 	AddHelpFlag(cmd, "package")
 	return cmd
 }
@@ -149,7 +149,7 @@ func validateBuildpackPackageFlags(p *BuildpackPackageFlags) error {
 	if p.Flatten && len(p.FlattenExclude) > 0 {
 		for _, exclude := range p.FlattenExclude {
 			if strings.Count(exclude, "@") != 1 {
-				return errors.Errorf("invalid buildpack id and version format: %s. Please use the format '<buildpack>@<version>' to exclude a buildpack for being flattened", exclude)
+				return errors.Errorf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", exclude)
 			}
 		}
 	}
