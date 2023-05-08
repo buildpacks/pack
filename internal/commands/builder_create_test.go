@@ -207,8 +207,7 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 						"--flatten",
 						"--flatten-exclude", "some-buildpack",
 					})
-					h.AssertError(t, command.Execute(), fmt.Sprintf("invalid buildpack id and version format: %s. "+
-						"Please use the format '<buildpack>@<version>' to exclude a buildpack for being flattened", "some-buildpack"))
+					h.AssertError(t, command.Execute(), fmt.Sprintf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", "some-buildpack"))
 				})
 			})
 		})

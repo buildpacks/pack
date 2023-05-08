@@ -25,9 +25,9 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 	 *    /    \
 	 *   bp1   compositeBP2
 	 *           /   |    \
-	 *	  	  bp21 bp22 compositeBP3
-	 *					  |
-	 *					bp31
+	 *	      bp21 bp22 compositeBP3
+	 *			          |
+	 *		            bp31
 	 */
 	var (
 		moduleManager *buildpack.ModuleManager

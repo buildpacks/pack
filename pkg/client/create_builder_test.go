@@ -983,7 +983,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			 *         /  \
 			 *        4     5
 			 *	          /  \
-			 *            6   7
+			 *           6   7
 			 */
 			var (
 				fakeLayerImage *h.FakeAddedLayerImage

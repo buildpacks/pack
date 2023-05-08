@@ -127,8 +127,7 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 							cmd.SetArgs([]string{"test", "-f", "file", "--flatten", "--flatten-exclude", "some-buildpack"})
 
 							err := cmd.Execute()
-							h.AssertError(t, err, fmt.Sprintf("invalid buildpack id and version format: %s. "+
-								"Please use the format '<buildpack>@<version>' to exclude a buildpack for being flattened", "some-buildpack"))
+							h.AssertError(t, err, fmt.Sprintf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", "some-buildpack"))
 						})
 					})
 				})
