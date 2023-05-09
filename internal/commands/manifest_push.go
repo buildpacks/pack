@@ -1,6 +1,9 @@
 package commands
 
 import (
+	"path/filepath"
+
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -23,7 +26,7 @@ func ManifestPush(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "push [OPTIONS] <manifest-list>",
 		Short:   "Push a manifest list to a repository",
-		Args:    cobra.MatchAll(cobra.ExactArgs(2)),
+		Args:    cobra.MatchAll(cobra.ExactArgs(1)),
 		Example: `pack manifest push cnbs/sample-package:hello-multiarch-universe`,
 		Long:    "manifest push pushes a manifest list (Image index) to a registry.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
@@ -32,8 +35,16 @@ func ManifestPush(logger logging.Logger, pack PackClient) *cobra.Command {
 			}
 
 			indexName := args[0]
+			packHome, err := config.PackHome()
+			if err != nil {
+				return err
+			}
+
+			manifestDir := filepath.Join(packHome, "manifests")
+
 			if err := pack.PushManifest(cmd.Context(), client.PushManifestOptions{
 				Index: indexName,
+				Path:  manifestDir,
 			}); err != nil {
 				return err
 			}

@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -55,6 +56,13 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 				return errors.Wrap(err, "getting absolute layout path")
 			}
 
+			packHome, err := config.PackHome()
+			if err != nil {
+				return err
+			}
+
+			manifestDir := filepath.Join(packHome, "manifests")
+
 			indexName := args[0]
 			manifests := args[1:]
 			if err := pack.CreateManifest(cmd.Context(), client.CreateManifestOptions{
@@ -64,6 +72,7 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 				Publish:      flags.Publish,
 				Registry:     flags.Registry,
 				LayoutDir:    layoutDir,
+				ManifestDir:  manifestDir,
 			}); err != nil {
 				return err
 			}

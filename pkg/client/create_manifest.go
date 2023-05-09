@@ -25,6 +25,9 @@ type CreateManifestOptions struct {
 
 	// Directory to store OCI layout
 	LayoutDir string
+
+	// Directory to store OCI layout
+	ManifestDir string
 }
 
 func (c *Client) CreateManifest(ctx context.Context, opts CreateManifestOptions) error {
@@ -32,21 +35,21 @@ func (c *Client) CreateManifest(ctx context.Context, opts CreateManifestOptions)
 	indexCreator := c.indexFactory
 	idx, err := indexCreator.NewIndex(opts)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// Add every manifest to image index
 	for _, j := range opts.Manifests {
 		err := idx.Add(j)
 		if err != nil {
-			panic(err)
+			return err
 		}
 	}
 
 	// Store index
 	err = idx.Save()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	return nil

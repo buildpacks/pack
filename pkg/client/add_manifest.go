@@ -8,13 +8,23 @@ import (
 
 type AddManifestOptions struct {
 	Index    string
+	Path     string
 	Manifest string
 	All      bool
 }
 
 func (c *Client) AddManifest(ctx context.Context, opts AddManifestOptions) error {
+	indexManifest, err := local.GetIndexManifest(opts.Index, opts.Path)
+	if err != nil {
+		panic(err)
+	}
 
-	err := local.AppendManifest(opts.Index, opts.Manifest)
+	idx, err := local.NewIndex(opts.Index, opts.Path, local.WithManifest(indexManifest))
+	if err != nil {
+		panic(err)
+	}
+
+	err = idx.AppendManifest(opts.Manifest)
 	if err != nil {
 		return err
 	}

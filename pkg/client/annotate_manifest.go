@@ -8,6 +8,7 @@ import (
 
 type AnnotateManifestOptions struct {
 	Index        string
+	Path         string
 	Manifest     string
 	Architecture string
 	OS           string
@@ -15,8 +16,17 @@ type AnnotateManifestOptions struct {
 }
 
 func (c *Client) AnnotateManifest(ctx context.Context, opts AnnotateManifestOptions) error {
-	err := local.AnnotateManifest(
-		opts.Index,
+	indexManifest, err := local.GetIndexManifest(opts.Index, opts.Path)
+	if err != nil {
+		panic(err)
+	}
+
+	idx, err := local.NewIndex(opts.Index, opts.Path, local.WithManifest(indexManifest))
+	if err != nil {
+		panic(err)
+	}
+
+	err = idx.AnnotateManifest(
 		opts.Manifest,
 		local.AnnotateFields{
 			Architecture: opts.Architecture,

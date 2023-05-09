@@ -301,6 +301,6 @@ func (f *indexFactory) NewIndex(opts CreateManifestOptions) (imgutil.ImageIndex,
 
 	return local.NewIndex(
 		opts.ManifestName,
-		f.dockerClient,
+		opts.ManifestDir,
 		local.WithIndexMediaTypes(opts.MediaType))
 }

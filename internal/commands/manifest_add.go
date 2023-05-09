@@ -1,6 +1,9 @@
 package commands
 
 import (
+	"path/filepath"
+
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -36,8 +39,16 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 				all = flags.All
 			}
 
+			packHome, err := config.PackHome()
+			if err != nil {
+				return err
+			}
+
+			manifestDir := filepath.Join(packHome, "manifests")
+
 			if err := pack.AddManifest(cmd.Context(), client.AddManifestOptions{
 				Index:    indexName,
+				Path:     manifestDir,
 				Manifest: manifest,
 				All:      all,
 			}); err != nil {
