@@ -239,6 +239,13 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			})
 		}
 
+		currentRunImage := l.runImageAfterExtensions()
+		if currentRunImage != l.opts.RunImage {
+			if err := l.opts.FetchRunImage(currentRunImage); err != nil {
+				return err
+			}
+		}
+
 		if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {
 			group.Go(func() error {
 				l.logger.Info(style.Step("EXTENDING (RUN)"))

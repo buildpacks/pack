@@ -78,6 +78,7 @@ type LifecycleOptions struct {
 	LifecycleImage       string
 	LifecycleApis        []string // optional - populated only if custom lifecycle image is downloaded, from that lifecycle's container's Labels.
 	RunImage             string
+	FetchRunImage        func(name string) error
 	ProjectMetadata      platform.ProjectMetadata
 	ClearCache           bool
 	Publish              bool

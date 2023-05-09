@@ -502,6 +502,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		}
 	}
 
+	fetchRunImage := func(name string) error {
+		_, err := c.imageFetcher.Fetch(ctx, name, fetchOptions)
+		return err
+	}
 	lifecycleOpts := build.LifecycleOptions{
 		AppPath:              appPath,
 		Image:                imageRef,
@@ -509,6 +513,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		BuilderImage:         builderRef.Name(),
 		LifecycleImage:       ephemeralBuilder.Name(),
 		RunImage:             runImageName,
+		FetchRunImage:        fetchRunImage,
 		ProjectMetadata:      projectMetadata,
 		ClearCache:           opts.ClearCache,
 		Publish:              opts.Publish,
