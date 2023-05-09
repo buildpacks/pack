@@ -69,8 +69,8 @@ type Builder struct {
 	layerWriterFactory       archive.TarWriterFactory
 	lifecycle                Lifecycle
 	lifecycleDescriptor      LifecycleDescriptor
-	additionalBuildpacks     buildpack.ModuleManager
-	additionalExtensions     buildpack.ModuleManager
+	additionalBuildpacks     buildpack.ManagedCollection
+	additionalExtensions     buildpack.ManagedCollection
 	metadata                 Metadata
 	flattenExcludeBuildpacks []string
 	mixins                   []string
@@ -289,18 +289,17 @@ func (b *Builder) GID() int {
 }
 
 func (b *Builder) AllModules(kind string) []buildpack.BuildModule {
-	manager := b.moduleManager(kind)
-	return manager.AllModules()
+	return b.moduleManager(kind).AllModules()
 }
 
-func (b *Builder) moduleManager(kind string) buildpack.ModuleManager {
+func (b *Builder) moduleManager(kind string) *buildpack.ManagedCollection {
 	switch kind {
 	case buildpack.KindBuildpack:
-		return b.additionalBuildpacks
+		return &b.additionalBuildpacks
 	case buildpack.KindExtension:
-		return b.additionalExtensions
+		return &b.additionalExtensions
 	}
-	return buildpack.ModuleManager{}
+	return &buildpack.ManagedCollection{}
 }
 
 func (b *Builder) FlattenedModules(kind string) [][]buildpack.BuildModule {

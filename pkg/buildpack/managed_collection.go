@@ -9,15 +9,15 @@ const (
 	FlattenNone     = 0
 )
 
-type ModuleManager struct {
+type ManagedCollection struct {
 	explodesModules  []BuildModule
 	flattenedModules [][]BuildModule
 	flatten          bool
 	maxDepth         int
 }
 
-func NewModuleManager(flatten bool, maxDepth int) *ModuleManager {
-	return &ModuleManager{
+func NewModuleManager(flatten bool, maxDepth int) *ManagedCollection {
+	return &ManagedCollection{
 		flatten:          flatten,
 		maxDepth:         maxDepth,
 		explodesModules:  []BuildModule{},
@@ -26,7 +26,7 @@ func NewModuleManager(flatten bool, maxDepth int) *ModuleManager {
 }
 
 // AllModules returns all explodesModules handle by the manager
-func (f *ModuleManager) AllModules() []BuildModule {
+func (f *ManagedCollection) AllModules() []BuildModule {
 	all := f.explodesModules
 	for _, modules := range f.flattenedModules {
 		all = append(all, modules...)
@@ -35,12 +35,12 @@ func (f *ModuleManager) AllModules() []BuildModule {
 }
 
 // ExplodedModules returns all modules that will be added to the output artifact as a single layer containing a single module.
-func (f *ModuleManager) ExplodedModules() []BuildModule {
+func (f *ManagedCollection) ExplodedModules() []BuildModule {
 	return f.explodesModules
 }
 
 // FlattenedModules returns all modules that will be added to the output artifact as a single layer containing multiple modules.
-func (f *ModuleManager) FlattenedModules() [][]BuildModule {
+func (f *ManagedCollection) FlattenedModules() [][]BuildModule {
 	if f.flatten {
 		return f.flattenedModules
 	}
@@ -49,7 +49,7 @@ func (f *ModuleManager) FlattenedModules() [][]BuildModule {
 
 // AddModules determines whether the explodesModules must be added as flatten or not. It uses
 // flatten and maxDepth configuration given during initialization of the manager.
-func (f *ModuleManager) AddModules(main BuildModule, deps ...BuildModule) {
+func (f *ManagedCollection) AddModules(main BuildModule, deps ...BuildModule) {
 	if !f.flatten {
 		// default behavior
 		f.explodesModules = append(f.explodesModules, append([]BuildModule{main}, deps...)...)
@@ -76,7 +76,7 @@ func (f *ModuleManager) AddModules(main BuildModule, deps ...BuildModule) {
 }
 
 // ShouldFlatten returns true if the given module is flattened.
-func (f *ModuleManager) ShouldFlatten(module BuildModule) bool {
+func (f *ManagedCollection) ShouldFlatten(module BuildModule) bool {
 	if f.flatten {
 		for _, modules := range f.flattenedModules {
 			for _, v := range modules {

@@ -17,7 +17,7 @@ import (
 func TestModuleManager(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "ModuleManager", testModuleManager, spec.Report(report.Terminal{}))
+	spec.Run(t, "ManagedCollection", testModuleManager, spec.Report(report.Terminal{}))
 }
 
 func testModuleManager(t *testing.T, when spec.G, it spec.S) {
@@ -30,7 +30,7 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 	 *		            bp31
 	 */
 	var (
-		moduleManager *buildpack.ModuleManager
+		moduleManager *buildpack.ManagedCollection
 		compositeBP1  buildpack.BuildModule
 		bp1           buildpack.BuildModule
 		compositeBP2  buildpack.BuildModule

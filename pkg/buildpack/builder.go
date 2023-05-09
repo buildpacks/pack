@@ -86,7 +86,7 @@ type PackageBuilder struct {
 	extension                BuildModule
 	logger                   logging.Logger
 	layerWriterFactory       archive.TarWriterFactory
-	dependencies             ModuleManager
+	dependencies             ManagedCollection
 	imageFactory             ImageFactory
 	flattenAllBuildpacks     bool
 	flattenExcludeBuildpacks []string
