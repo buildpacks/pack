@@ -61,7 +61,7 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 				Path:    filepath.Join(tmpDir, "some-cnb"),
 				Version: "1.0.0",
 				Stacks: []dist.Stack{{
-					ID:     "io.buildpacks.stacks.bionic",
+					ID:     "io.buildpacks.stacks.jammy",
 					Mixins: []string{},
 				}},
 			}).Return(nil).MaxTimes(1)

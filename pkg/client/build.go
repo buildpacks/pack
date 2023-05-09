@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buildpacks/pack/pkg/cache"
+
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layout"
@@ -29,7 +31,6 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/cache"
 	internalConfig "github.com/buildpacks/pack/internal/config"
 	pname "github.com/buildpacks/pack/internal/name"
 	"github.com/buildpacks/pack/internal/stack"
@@ -100,7 +101,7 @@ type BuildOptions struct {
 	DockerHost string
 
 	// Used to determine a run-image mirror if Run Image is empty.
-	// Used in combination with Builder metadata to determine to the the 'best' mirror.
+	// Used in combination with Builder metadata to determine to the 'best' mirror.
 	// 'best' is defined as:
 	//  - if Publish is true, the best mirror matches registry we are publishing to.
 	//  - if Publish is false, the best mirror matches a registry specified in Image.

@@ -1203,7 +1203,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
-				when("uri is a http url", func() {
+				when("uri is an http url", func() {
 					var server *ghttp.Server
 
 					it.Before(func() {
