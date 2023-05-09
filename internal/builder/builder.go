@@ -303,9 +303,9 @@ func (b *Builder) moduleManager(kind string) buildpack.ModuleManager {
 	return buildpack.ModuleManager{}
 }
 
-func (b *Builder) FlattenModules(kind string) [][]buildpack.BuildModule {
+func (b *Builder) FlattenedModules(kind string) [][]buildpack.BuildModule {
 	manager := b.moduleManager(kind)
-	return manager.FlattenModules()
+	return manager.FlattenedModules()
 }
 
 func (b *Builder) ShouldFlatten(module buildpack.BuildModule) bool {
@@ -440,12 +440,12 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	}
 
 	var excludedBuildpacks []buildpack.BuildModule
-	excludedBuildpacks, err = b.addFlattenModules(buildpack.KindBuildpack, logger, tmpDir, b.image, b.additionalBuildpacks.FlattenModules(), bpLayers)
+	excludedBuildpacks, err = b.addFlattenedModules(buildpack.KindBuildpack, logger, tmpDir, b.image, b.additionalBuildpacks.FlattenedModules(), bpLayers)
 	if err != nil {
 		return err
 	}
 
-	err = b.addModules(buildpack.KindBuildpack, logger, tmpDir, b.image, append(b.additionalBuildpacks.NonFlattenModules(), excludedBuildpacks...), bpLayers)
+	err = b.addExplodedModules(buildpack.KindBuildpack, logger, tmpDir, b.image, append(b.additionalBuildpacks.ExplodedModules(), excludedBuildpacks...), bpLayers)
 	if err != nil {
 		return err
 	}
@@ -459,12 +459,12 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	}
 
 	var excludedExtensions []buildpack.BuildModule
-	excludedExtensions, err = b.addFlattenModules(buildpack.KindExtension, logger, tmpDir, b.image, b.additionalExtensions.FlattenModules(), extLayers)
+	excludedExtensions, err = b.addFlattenedModules(buildpack.KindExtension, logger, tmpDir, b.image, b.additionalExtensions.FlattenedModules(), extLayers)
 	if err != nil {
 		return err
 	}
 
-	err = b.addModules(buildpack.KindExtension, logger, tmpDir, b.image, append(b.additionalExtensions.NonFlattenModules(), excludedExtensions...), extLayers)
+	err = b.addExplodedModules(buildpack.KindExtension, logger, tmpDir, b.image, append(b.additionalExtensions.ExplodedModules(), excludedExtensions...), extLayers)
 	if err != nil {
 		return err
 	}
@@ -550,7 +550,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 // Helpers
 
-func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.ModuleLayers) error {
+func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.ModuleLayers) error {
 	collectionToAdd := map[string]toAdd{}
 
 	type modInfo struct {
@@ -660,7 +660,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 	return nil
 }
 
-func (b *Builder) addFlattenModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, flattenModules [][]buildpack.BuildModule, layers dist.ModuleLayers) ([]buildpack.BuildModule, error) {
+func (b *Builder) addFlattenedModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, flattenModules [][]buildpack.BuildModule, layers dist.ModuleLayers) ([]buildpack.BuildModule, error) {
 	collectionToAdd := map[string]toAdd{}
 	var (
 		buildModuleExcluded []buildpack.BuildModule

@@ -10,65 +10,65 @@ const (
 )
 
 type ModuleManager struct {
-	modules        []BuildModule
-	flattenModules [][]BuildModule
-	flatten        bool
-	maxDepth       int
+	explodesModules  []BuildModule
+	flattenedModules [][]BuildModule
+	flatten          bool
+	maxDepth         int
 }
 
 func NewModuleManager(flatten bool, maxDepth int) *ModuleManager {
 	return &ModuleManager{
-		flatten:        flatten,
-		maxDepth:       maxDepth,
-		modules:        []BuildModule{},
-		flattenModules: [][]BuildModule{},
+		flatten:          flatten,
+		maxDepth:         maxDepth,
+		explodesModules:  []BuildModule{},
+		flattenedModules: [][]BuildModule{},
 	}
 }
 
-// AllModules returns all modules handle by the manager
+// AllModules returns all explodesModules handle by the manager
 func (f *ModuleManager) AllModules() []BuildModule {
-	all := f.modules
-	for _, modules := range f.flattenModules {
+	all := f.explodesModules
+	for _, modules := range f.flattenedModules {
 		all = append(all, modules...)
 	}
 	return all
 }
 
-// NonFlattenModules returns all none flatten modules handle by the manager
-func (f *ModuleManager) NonFlattenModules() []BuildModule {
-	return f.modules
+// ExplodedModules returns all modules that will be added to the output artifact as a single layer containing a single module.
+func (f *ModuleManager) ExplodedModules() []BuildModule {
+	return f.explodesModules
 }
 
-// FlattenModules returns all flatten modules handle by the manager.
-func (f *ModuleManager) FlattenModules() [][]BuildModule {
+// FlattenedModules returns all modules that will be added to the output artifact as a single layer containing multiple modules.
+func (f *ModuleManager) FlattenedModules() [][]BuildModule {
 	if f.flatten {
-		return f.flattenModules
+		return f.flattenedModules
 	}
 	return nil
 }
 
-// AddModules determines whether the modules must be added as flatten or not. It uses
+// AddModules determines whether the explodesModules must be added as flatten or not. It uses
 // flatten and maxDepth configuration given during initialization of the manager.
 func (f *ModuleManager) AddModules(main BuildModule, deps ...BuildModule) {
 	if !f.flatten {
 		// default behavior
-		f.modules = append(f.modules, append([]BuildModule{main}, deps...)...)
+		f.explodesModules = append(f.explodesModules, append([]BuildModule{main}, deps...)...)
 	} else {
 		if f.maxDepth <= FlattenMaxDepth {
 			// flatten all
-			if len(f.flattenModules) == 1 {
-				f.flattenModules[0] = append(f.flattenModules[0], append([]BuildModule{main}, deps...)...)
+			if len(f.flattenedModules) == 1 {
+				f.flattenedModules[0] = append(f.flattenedModules[0], append([]BuildModule{main}, deps...)...)
 			} else {
-				f.flattenModules = append(f.flattenModules, append([]BuildModule{main}, deps...))
+				f.flattenedModules = append(f.flattenedModules, append([]BuildModule{main}, deps...))
 			}
 		} else {
 			recurser := newFlattenModuleRecurser(f.maxDepth)
-			calculateModules := recurser.calculateFlattenModules(main, deps, 0)
-			for _, modules := range calculateModules {
+			calculatedModules := recurser.calculateFlattenedModules(main, deps, 0)
+			for _, modules := range calculatedModules {
 				if len(modules) == 1 {
-					f.modules = append(f.modules, modules...)
+					f.explodesModules = append(f.explodesModules, modules...)
 				} else {
-					f.flattenModules = append(f.flattenModules, modules)
+					f.flattenedModules = append(f.flattenedModules, modules)
 				}
 			}
 		}
@@ -78,7 +78,7 @@ func (f *ModuleManager) AddModules(main BuildModule, deps ...BuildModule) {
 // ShouldFlatten returns true if the given module is flattened.
 func (f *ModuleManager) ShouldFlatten(module BuildModule) bool {
 	if f.flatten {
-		for _, modules := range f.flattenModules {
+		for _, modules := range f.flattenedModules {
 			for _, v := range modules {
 				if v == module {
 					return true
@@ -99,35 +99,40 @@ func newFlattenModuleRecurser(maxDepth int) *flattenModuleRecurser {
 	}
 }
 
-func (f *flattenModuleRecurser) calculateFlattenModules(main BuildModule, deps []BuildModule, depth int) [][]BuildModule {
+// calculateFlattenedModules returns groups of modules that will be added to the output artifact as a single layer containing multiple modules.
+// It takes the given main module and its dependencies and based on the depth it will recursively calculate the groups of modules inspecting if the main
+// module is a composited Buildpack or not until it reaches the maxDepth.
+func (f *flattenModuleRecurser) calculateFlattenedModules(main BuildModule, deps []BuildModule, depth int) [][]BuildModule {
 	modules := make([][]BuildModule, 0)
-	orders := main.Descriptor().Order()
-	if len(orders) > 0 {
+	groups := main.Descriptor().Order()
+	if len(groups) > 0 {
 		if depth == f.maxDepth {
 			modules = append(modules, append([]BuildModule{main}, deps...))
 		}
 		if depth < f.maxDepth {
-			bps, newDeps := buildpacksFromGroup(orders, deps)
+			nextBPs, nextDeps := buildpacksFromGroups(groups, deps)
 			modules = append(modules, []BuildModule{main})
-			for _, bp := range bps {
-				modules = append(modules, f.calculateFlattenModules(bp, newDeps, depth+1)...)
+			for _, bp := range nextBPs {
+				modules = append(modules, f.calculateFlattenedModules(bp, nextDeps, depth+1)...)
 			}
 		}
 	} else {
+		// It is not a composited Buildpack, we add it as a single module
 		modules = append(modules, []BuildModule{main})
 	}
 	return modules
 }
 
-func buildpacksFromGroup(orders dist.Order, deps []BuildModule) ([]BuildModule, []BuildModule) {
+// buildpacksFromGroups
+func buildpacksFromGroups(order dist.Order, deps []BuildModule) ([]BuildModule, []BuildModule) {
 	bps := make([]BuildModule, 0)
 	newDeps := make([]BuildModule, 0)
 
 	type void struct{}
 	var member void
 	set := make(map[string]void)
-	for _, order := range orders {
-		for _, group := range order.Group {
+	for _, groups := range order {
+		for _, group := range groups.Group {
 			set[group.FullName()] = member
 		}
 	}

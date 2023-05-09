@@ -149,17 +149,17 @@ func (b *PackageBuilder) AddDependencies(main BuildModule, dependencies []BuildM
 	b.dependencies.AddModules(main, dependencies...)
 }
 
-func (b *PackageBuilder) MustBeFlatten(module BuildModule) bool {
+func (b *PackageBuilder) ShouldFlatten(module BuildModule) bool {
 	return b.flattenAllBuildpacks || (b.dependencies.ShouldFlatten(module))
 }
 
-func (b *PackageBuilder) FlattenModules() [][]BuildModule {
-	return b.dependencies.FlattenModules()
+func (b *PackageBuilder) FlattenedModules() [][]BuildModule {
+	return b.dependencies.FlattenedModules()
 }
 
 func (b *PackageBuilder) AllModules() []BuildModule {
-	all := b.dependencies.NonFlattenModules()
-	for _, modules := range b.dependencies.FlattenModules() {
+	all := b.dependencies.ExplodedModules()
+	for _, modules := range b.dependencies.FlattenedModules() {
 		all = append(all, modules...)
 	}
 	return all
@@ -177,7 +177,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 	var individualBuildModules []BuildModule
 
 	// Let's create the tarball for each flatten module
-	if len(b.FlattenModules()) > 0 {
+	if len(b.FlattenedModules()) > 0 {
 		buildModuleWriter := NewBuildModuleWriter(b.logger, b.layerWriterFactory)
 		excludedModules := Set(b.flattenExcludeBuildpacks)
 
@@ -185,7 +185,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 			finalTarPath string
 			err          error
 		)
-		for i, additionalModules := range b.FlattenModules() {
+		for i, additionalModules := range b.FlattenedModules() {
 			modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("buildpack-%s-flatten", strconv.Itoa(i)))
 			if err := os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
 				return errors.Wrap(err, "creating flatten temp dir")
@@ -215,12 +215,12 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 		}
 	}
 
-	if !b.flattenAllBuildpacks || len(b.FlattenModules()) == 0 {
+	if !b.flattenAllBuildpacks || len(b.FlattenedModules()) == 0 {
 		individualBuildModules = append(individualBuildModules, b.buildpack)
 	}
 
 	// Let's create the tarball for each individual module
-	for _, bp := range append(b.dependencies.NonFlattenModules(), individualBuildModules...) {
+	for _, bp := range append(b.dependencies.ExplodedModules(), individualBuildModules...) {
 		bpLayerTar, err := ToLayerTar(tmpDir, bp)
 		if err != nil {
 			return err
@@ -247,7 +247,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 		module := collectionToAdd[key]
 		bp := module.module
 		addLayer := true
-		if b.MustBeFlatten(bp) {
+		if b.ShouldFlatten(bp) {
 			if _, ok := diffIDAdded[module.diffID]; !ok {
 				diffIDAdded[module.diffID] = module.tarPath
 			} else {

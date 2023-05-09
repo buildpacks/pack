@@ -1794,8 +1794,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("#FlattenedModules", func() {
 				it("it return one array with all buildpacks on it", func() {
-					h.AssertEq(t, len(bldr.FlattenModules(buildpack.KindBuildpack)), 1)
-					h.AssertEq(t, len(bldr.FlattenModules(buildpack.KindBuildpack)[0]), 3)
+					h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)), 1)
+					h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)[0]), 3)
 				})
 			})
 
