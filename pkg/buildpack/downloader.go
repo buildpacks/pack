@@ -198,7 +198,7 @@ func extractPackaged(ctx context.Context, kind string, pkgImageRef string, fetch
 	case KindBuildpack:
 		mainModule, depModules, err = extractBuildpacks(pkgImage)
 	case KindExtension:
-		return nil, nil, nil // TODO: add extractExtensions when `pack extension package` is supported in https://github.com/buildpacks/pack/issues/1489
+		mainModule, err = extractExtensions(pkgImage)
 	default:
 		return nil, nil, fmt.Errorf("unknown module kind: %s", kind)
 	}
