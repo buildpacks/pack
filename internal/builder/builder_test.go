@@ -1758,7 +1758,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("builder is flattened", func() {
+	when("flatten", func() {
 		var (
 			bldr         *builder.Builder
 			builderImage imgutil.Image
@@ -1781,7 +1781,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			builderImage = baseImage
 		})
 
-		when("flatten all", func() {
+		when("all", func() {
 			it.Before(func() {
 				var err error
 				bldr, err = builder.New(builderImage, "some-builder", builder.WithFlatten(-1, nil))
@@ -1813,6 +1813,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+		// TODO add tests for flatten with depth
 	})
 }
 

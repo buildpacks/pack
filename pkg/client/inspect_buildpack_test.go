@@ -397,7 +397,10 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, info, expectedInfo)
 			})
+
+			// TODO add test case when buildpack is flattened
 		})
+
 		when("inspecting local buildpack archive", func() {
 			it.Before(func() {
 				expectedInfo.Location = buildpack.URILocator
@@ -417,6 +420,8 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, info, expectedInfo)
 			})
+
+			// TODO add test case when buildpack is flattened
 		})
 
 		when("inspecting an image", func() {

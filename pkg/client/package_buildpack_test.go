@@ -423,7 +423,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			 *         /  \
 			 *        4     5
 			 *	          /  \
-			 *            6   7
+			 *           6   7
 			 */
 			var (
 				fakeLayerImage          *h.FakeAddedLayerImage
@@ -511,6 +511,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					layers := fakeLayerImage.AddedLayersOrder()
 					h.AssertEq(t, len(layers), 1)
 				})
+
+				// TODO add test case for flatten all with --flatten-exclude
 			})
 
 			when("with depth", func() {
@@ -535,6 +537,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, len(layers), 5)
 					})
 				})
+
+				// TODO add test case for flatten with --depth AND --flatten-exclude
 			})
 		})
 	})
