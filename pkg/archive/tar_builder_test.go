@@ -20,7 +20,6 @@ import (
 func TestTarBuilder(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "TarBuilder", testTarBuilder, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 

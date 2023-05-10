@@ -66,10 +66,6 @@ type Termui interface {
 	ReadLayers(reader io.ReadCloser) error
 }
 
-func init() {
-	rand.Seed(time.Now().UTC().UnixNano())
-}
-
 type LifecycleOptions struct {
 	AppPath              string
 	Image                name.Reference

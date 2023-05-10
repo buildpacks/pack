@@ -20,7 +20,6 @@ func TestProject(t *testing.T) {
 	h.RequireDocker(t)
 	color.Disable(true)
 	defer color.Disable(false)
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	spec.Run(t, "Provider", testProject, spec.Parallel(), spec.Report(report.Terminal{}))
 }

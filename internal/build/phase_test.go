@@ -43,8 +43,6 @@ var (
 
 // TestPhase is a integration test suite to ensure that the phase options are propagated to the container.
 func TestPhase(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	color.Disable(true)
 	defer color.Disable(false)
 

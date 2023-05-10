@@ -31,8 +31,6 @@ import (
 
 // TestContainerOperations are integration tests for the container operations against a docker daemon
 func TestContainerOperations(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	color.Disable(true)
 	defer color.Disable(false)
 
