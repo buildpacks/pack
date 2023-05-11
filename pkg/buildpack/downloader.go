@@ -96,7 +96,6 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 			return nil, nil, err
 		}
 	}
-
 	var mainBP BuildModule
 	var depBPs []BuildModule
 	switch locatorType {
@@ -205,6 +204,5 @@ func extractPackaged(ctx context.Context, kind string, pkgImageRef string, fetch
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "extracting %ss from %s", kind, style.Symbol(pkgImageRef))
 	}
-
 	return mainModule, depModules, nil
 }
