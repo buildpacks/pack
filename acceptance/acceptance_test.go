@@ -56,7 +56,6 @@ func TestAcceptance(t *testing.T) {
 	var err error
 
 	h.RequireDocker(t)
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	assert := h.NewAssertionManager(t)
 
