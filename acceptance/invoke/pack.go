@@ -231,6 +231,7 @@ const (
 	Cache
 	BuildImageExtensions
 	RunImageExtensions
+	StackValidation
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -245,6 +246,9 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	},
 	RunImageExtensions: func(i *PackInvoker) bool {
 		return i.laterThan("v0.29.0")
+	},
+	StackValidation: func(i *PackInvoker) bool {
+		return !i.atLeast("v0.30.0")
 	},
 }
 

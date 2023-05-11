@@ -240,7 +240,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		}
 
 		currentRunImage := l.runImageAfterExtensions()
-		if currentRunImage != l.opts.RunImage {
+		if currentRunImage != "" && currentRunImage != l.opts.RunImage {
 			if err := l.opts.FetchRunImage(currentRunImage); err != nil {
 				return err
 			}
@@ -839,8 +839,8 @@ type analyzedMD struct {
 	RunImage *runImage `toml:"run-image,omitempty"`
 }
 type runImage struct {
-	Extend    bool   `toml:"extend,omitempty"`
-	Reference string `toml:"reference"`
+	Extend bool   `toml:"extend,omitempty"`
+	Image  string `toml:"image"`
 }
 
 func (l *LifecycleExecution) hasExtensionsForRun() bool {
@@ -863,7 +863,7 @@ func (l *LifecycleExecution) runImageAfterExtensions() string {
 		// this shouldn't be reachable
 		return l.opts.RunImage
 	}
-	return amd.RunImage.Reference
+	return amd.RunImage.Image
 }
 
 func (l *LifecycleExecution) appendLayoutOperations(opts []PhaseConfigProviderOperation) ([]PhaseConfigProviderOperation, error) {

@@ -1557,10 +1557,18 @@ func testAcceptance(
 							var otherStackBuilderTgz string
 
 							it.Before(func() {
+								// The Platform API is new if pack is new AND the lifecycle is new
+								// Therefore skip if pack is old OR the lifecycle is old
+								h.SkipIf(t,
+									pack.SupportsFeature(invoke.StackValidation) ||
+										api.MustParse(lifecycle.LatestPlatformAPIVersion()).LessThan("0.12"), "")
 								otherStackBuilderTgz = h.CreateTGZ(t, filepath.Join(bpDir, "other-stack-buildpack"), "./", 0755)
 							})
 
 							it.After(func() {
+								h.SkipIf(t,
+									pack.SupportsFeature(invoke.StackValidation) ||
+										api.MustParse(lifecycle.LatestPlatformAPIVersion()).LessThan("0.12"), "")
 								assert.Succeeds(os.Remove(otherStackBuilderTgz))
 							})
 
@@ -1575,7 +1583,11 @@ func testAcceptance(
 
 							when("platform API < 0.12", func() {
 								it.Before(func() {
-									h.SkipIf(t, api.MustParse(lifecycle.LatestPlatformAPIVersion()).AtLeast("0.12"), "")
+									// The Platform API is old if pack is old OR the lifecycle is old
+									// Therefore skip if pack is new AND the lifecycle is new
+									h.SkipIf(t,
+										!pack.SupportsFeature(invoke.StackValidation) &&
+											api.MustParse(lifecycle.LatestPlatformAPIVersion()).AtLeast("0.12"), "")
 								})
 
 								it("errors", func() {

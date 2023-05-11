@@ -142,21 +142,21 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 		}
 		type runImage struct {
-			Extend    bool   `toml:"extend,omitempty"`
-			Reference string `toml:"reference"`
+			Extend bool   `toml:"extend,omitempty"`
+			Image  string `toml:"image"`
 		}
 		type analyzedMD struct {
 			RunImage *runImage `toml:"run-image,omitempty"`
 		}
 		amd := analyzedMD{RunImage: &runImage{
-			Extend:    false,
-			Reference: "",
+			Extend: false,
+			Image:  "",
 		}}
 		if extensionsForRun {
 			amd.RunImage.Extend = true
 		}
 		if extensionsRunImage != "" {
-			amd.RunImage.Reference = extensionsRunImage
+			amd.RunImage.Image = extensionsRunImage
 		}
 		f, err := os.Create(filepath.Join(tmpDir, "analyzed.toml"))
 		h.AssertNil(t, err)
