@@ -2,10 +2,8 @@ package cache_test
 
 import (
 	"context"
-	"math/rand"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/buildpacks/pack/pkg/cache"
 

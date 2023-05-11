@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
@@ -14,7 +13,6 @@ import (
 	"strconv"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/lifecycle/auth"

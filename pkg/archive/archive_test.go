@@ -3,14 +3,12 @@ package archive_test
 import (
 	"archive/tar"
 	"io/fs"
-	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/pkg/errors"
 

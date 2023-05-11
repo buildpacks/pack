@@ -2,11 +2,9 @@ package project
 
 import (
 	"log"
-	"math/rand"
 	"os"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"

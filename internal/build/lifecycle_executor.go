@@ -3,7 +3,6 @@ package build
 import (
 	"context"
 	"io"
-	"math/rand"
 	"os"
 	"time"
 

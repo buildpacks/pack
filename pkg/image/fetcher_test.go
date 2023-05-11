@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"

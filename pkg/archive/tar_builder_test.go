@@ -2,11 +2,9 @@ package archive_test
 
 import (
 	"archive/tar"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/buildpacks/pack/pkg/archive"
 

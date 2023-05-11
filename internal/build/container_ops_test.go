@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/api/types"

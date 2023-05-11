@@ -3,9 +3,7 @@ package build_test
 import (
 	"bytes"
 	"io"
-	"math/rand"
 	"testing"
-	"time"
 
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/docker/docker/api/types/container"
