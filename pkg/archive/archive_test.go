@@ -3,14 +3,12 @@ package archive_test
 import (
 	"archive/tar"
 	"io/fs"
-	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -25,7 +23,6 @@ import (
 func TestArchive(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "Archive", testArchive, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
