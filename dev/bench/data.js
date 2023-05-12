@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683864750426,
+  "lastUpdate": 1683899257937,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -250,6 +250,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Addtional_Buildpack",
             "value": 31700057682,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ec92a23ecaa4d025914ca107a541b729d05368a2",
+          "message": "Merge pull request #1758 from buildpacks/jkutner/deps\n\ndependency updates",
+          "timestamp": "2023-05-12T08:45:23-05:00",
+          "tree_id": "d63a7aa74a192ba928346d42a74411d602388b0f",
+          "url": "https://github.com/buildpacks/pack/commit/ec92a23ecaa4d025914ca107a541b729d05368a2"
+        },
+        "date": 1683899257301,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4489085536,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1204177127,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Addtional_Buildpack",
+            "value": 29849926779,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
