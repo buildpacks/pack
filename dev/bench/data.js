@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683298131322,
+  "lastUpdate": 1683864750426,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -208,6 +208,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Addtional_Buildpack",
             "value": 32321714674,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "881dd55d59f74928a4754e0b21abd58793a54db1",
+          "message": "Merge pull request #1735 from quantumsheep/patch-1\n\nWait for non-running state to prevent concurrency",
+          "timestamp": "2023-05-11T23:10:20-05:00",
+          "tree_id": "11d3980382a1e99f084608d2b40ed749baf5f543",
+          "url": "https://github.com/buildpacks/pack/commit/881dd55d59f74928a4754e0b21abd58793a54db1"
+        },
+        "date": 1683864749465,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6283298697,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1748158155,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Addtional_Buildpack",
+            "value": 31700057682,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
