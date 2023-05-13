@@ -120,6 +120,17 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 						h.AssertContains(t, outBuf.String(), "'.gz' is not a valid extension for a packaged buildpack. Packaged buildpacks must have a '.cnb' extension")
 					})
 				})
+				when("flatten is set to true", func() {
+					when("flatten exclude doesn't have format <buildpack>@<version>", func() {
+						it("errors with a descriptive message", func() {
+							cmd := packageCommand(withBuildpackPackager(fakeBuildpackPackager))
+							cmd.SetArgs([]string{"test", "-f", "file", "--flatten", "--flatten-exclude", "some-buildpack"})
+
+							err := cmd.Execute()
+							h.AssertError(t, err, fmt.Sprintf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", "some-buildpack"))
+						})
+					})
+				})
 			})
 
 			when("there is a path flag", func() {

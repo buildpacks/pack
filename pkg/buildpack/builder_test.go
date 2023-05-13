@@ -2,6 +2,7 @@ package buildpack_test
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
@@ -20,6 +22,9 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/pack/pkg/archive"
+	"github.com/buildpacks/pack/pkg/logging"
 
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/pkg/buildpack"
@@ -711,6 +716,165 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			_, err = builder.SaveAsImage("some/package", false, "windows")
 			h.AssertNil(t, err)
+		})
+
+		when("flatten is set", func() {
+			var (
+				buildpack1   buildpack.BuildModule
+				bp1          buildpack.BuildModule
+				compositeBP2 buildpack.BuildModule
+				bp21         buildpack.BuildModule
+				bp22         buildpack.BuildModule
+				compositeBP3 buildpack.BuildModule
+				bp31         buildpack.BuildModule
+				logger       logging.Logger
+				outBuf       bytes.Buffer
+				err          error
+			)
+			it.Before(func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
+
+				bp1, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					WithAPI: api.MustParse("0.2"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "buildpack-1-id",
+						Version: "buildpack-1-version",
+					},
+				}, 0644)
+				h.AssertNil(t, err)
+
+				bp21, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					WithAPI: api.MustParse("0.2"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "buildpack-21-id",
+						Version: "buildpack-21-version",
+					},
+				}, 0644)
+				h.AssertNil(t, err)
+
+				bp22, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					WithAPI: api.MustParse("0.2"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "buildpack-22-id",
+						Version: "buildpack-22-version",
+					},
+				}, 0644)
+				h.AssertNil(t, err)
+
+				bp31, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					WithAPI: api.MustParse("0.2"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "buildpack-31-id",
+						Version: "buildpack-31-version",
+					},
+				}, 0644)
+				h.AssertNil(t, err)
+
+				compositeBP3, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					WithAPI: api.MustParse("0.2"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "composite-buildpack-3-id",
+						Version: "composite-buildpack-3-version",
+					},
+					WithOrder: []dist.OrderEntry{{
+						Group: []dist.ModuleRef{
+							{
+								ModuleInfo: bp31.Descriptor().Info(),
+							},
+						},
+					}},
+				}, 0644)
+				h.AssertNil(t, err)
+
+				compositeBP2, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					WithAPI: api.MustParse("0.2"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "composite-buildpack-2-id",
+						Version: "composite-buildpack-2-version",
+					},
+					WithOrder: []dist.OrderEntry{{
+						Group: []dist.ModuleRef{
+							{
+								ModuleInfo: bp21.Descriptor().Info(),
+							},
+							{
+								ModuleInfo: bp22.Descriptor().Info(),
+							},
+							{
+								ModuleInfo: compositeBP3.Descriptor().Info(),
+							},
+						},
+					}},
+				}, 0644)
+				h.AssertNil(t, err)
+
+				buildpack1, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					WithAPI:    api.MustParse("0.2"),
+					WithInfo:   dist.ModuleInfo{ID: "bp.1.id", Version: "bp.1.version"},
+					WithStacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
+					WithOrder: []dist.OrderEntry{{
+						Group: []dist.ModuleRef{
+							{
+								ModuleInfo: bp1.Descriptor().Info(),
+							},
+							{
+								ModuleInfo: compositeBP2.Descriptor().Info(),
+							},
+						},
+					}},
+				}, 0644)
+				h.AssertNil(t, err)
+
+				logger = logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
+			})
+
+			when("flatten all", func() {
+				var builder *buildpack.PackageBuilder
+
+				when("no exclusions", func() {
+					it.Before(func() {
+						builder = buildpack.NewBuilder(mockImageFactory("linux"),
+							buildpack.WithFlatten(-1, nil),
+							buildpack.WithLogger(logger),
+							buildpack.WithLayerWriterFactory(archive.DefaultTarWriterFactory()))
+					})
+
+					it("flatten all buildpacks", func() {
+						builder.SetBuildpack(buildpack1)
+						builder.AddDependencies(bp1, nil)
+						builder.AddDependencies(compositeBP2, []buildpack.BuildModule{bp21, bp22, compositeBP3, bp31})
+
+						packageImage, err := builder.SaveAsImage("some/package", false, "linux")
+						h.AssertNil(t, err)
+
+						fakePackageImage := packageImage.(*fakes.Image)
+						h.AssertEq(t, fakePackageImage.NumberOfAddedLayers(), 1)
+					})
+				})
+
+				when("exclude buildpacks", func() {
+					it.Before(func() {
+						excluded := []string{bp31.Descriptor().Info().FullName()}
+
+						builder = buildpack.NewBuilder(mockImageFactory("linux"),
+							buildpack.WithFlatten(-1, excluded),
+							buildpack.WithLogger(logger),
+							buildpack.WithLayerWriterFactory(archive.DefaultTarWriterFactory()))
+					})
+
+					it("creates 2 layers", func() {
+						builder.SetBuildpack(buildpack1)
+						builder.AddDependencies(bp1, nil)
+						builder.AddDependencies(compositeBP2, []buildpack.BuildModule{bp21, bp22, compositeBP3, bp31})
+
+						packageImage, err := builder.SaveAsImage("some/package", false, "linux")
+						h.AssertNil(t, err)
+
+						fakePackageImage := packageImage.(*fakes.Image)
+						h.AssertEq(t, fakePackageImage.NumberOfAddedLayers(), 2)
+					})
+				})
+			})
 		})
 	})
 
