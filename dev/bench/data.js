@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1683899257937,
+  "lastUpdate": 1684005123172,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -292,6 +292,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Addtional_Buildpack",
             "value": 29849926779,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "987f4be996772e4aaa54857ba54bc4e877935ed2",
+          "message": "Merge pull request #1691 from buildpacks/enhancement/issue-1595-layer-compression-flattening\n\nAdd ` --flatten`, `--depth` and `flatten-exclude` flags to `pack builder create` and `pack buildpack package` command",
+          "timestamp": "2023-05-13T14:10:12-05:00",
+          "tree_id": "b61fe94422d9ba71f8d8c1d088c8daffd19a4d4f",
+          "url": "https://github.com/buildpacks/pack/commit/987f4be996772e4aaa54857ba54bc4e877935ed2"
+        },
+        "date": 1684005122085,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 9092852821,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2526395929,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Addtional_Buildpack",
+            "value": 40889148483,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
