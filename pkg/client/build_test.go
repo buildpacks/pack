@@ -7,14 +7,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
@@ -49,7 +47,6 @@ import (
 func TestBuild(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "build", testBuild, spec.Report(report.Terminal{}))
 }
 

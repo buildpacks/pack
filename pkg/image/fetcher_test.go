@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
@@ -27,8 +25,6 @@ var docker client.CommonAPIClient
 var registryConfig *h.TestRegistryConfig
 
 func TestFetcher(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	color.Disable(true)
 	defer color.Disable(false)
 
