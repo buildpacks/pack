@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -19,10 +20,13 @@ import (
 type BuildpackPackageFlags struct {
 	PackageTomlPath   string
 	Format            string
-	Publish           bool
 	Policy            string
 	BuildpackRegistry string
 	Path              string
+	FlattenExclude    []string
+	Publish           bool
+	Flatten           bool
+	Depth             int
 }
 
 // BuildpackPackager packages buildpacks
@@ -100,6 +104,9 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				Publish:         flags.Publish,
 				PullPolicy:      pullPolicy,
 				Registry:        flags.BuildpackRegistry,
+				Flatten:         flags.Flatten,
+				FlattenExclude:  flags.FlattenExclude,
+				Depth:           flags.Depth,
 			}); err != nil {
 				return err
 			}
@@ -124,7 +131,9 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to the Buildpack that needs to be packaged")
 	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")
-
+	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten the buildpack into a single layer")
+	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpacks to exclude from flattening, in the form of '<buildpack-id>@<buildpack-version>'")
+	cmd.Flags().IntVar(&flags.Depth, "depth", -1, "Max depth to flatten.\nOmission of this flag or values < 0 will flatten the entire tree.")
 	AddHelpFlag(cmd, "package")
 	return cmd
 }
@@ -137,5 +146,12 @@ func validateBuildpackPackageFlags(p *BuildpackPackageFlags) error {
 		return errors.Errorf("--config and --path cannot be used together. Please specify the relative path to the Buildpack directory in the package config file.")
 	}
 
+	if p.Flatten && len(p.FlattenExclude) > 0 {
+		for _, exclude := range p.FlattenExclude {
+			if strings.Count(exclude, "@") != 1 {
+				return errors.Errorf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", exclude)
+			}
+		}
+	}
 	return nil
 }

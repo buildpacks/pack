@@ -1757,6 +1757,64 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("flatten", func() {
+		var (
+			bldr         *builder.Builder
+			builderImage imgutil.Image
+		)
+
+		it.Before(func() {
+			h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
+			h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
+			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
+			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.mixins", `["mixinX", "mixinY", "build:mixinA"]`))
+			h.AssertNil(t, baseImage.SetLabel(
+				"io.buildpacks.builder.metadata",
+				`{"description": "some-description", "createdBy": {"name": "some-name", "version": "1.2.3"}, "buildpacks": [{"id": "buildpack-1-id"}, {"id": "buildpack-2-id"}], "groups": [{"buildpacks": [{"id": "buildpack-1-id", "version": "buildpack-1-version", "optional": false}, {"id": "buildpack-2-id", "version": "buildpack-2-version-1", "optional": true}]}], "stack": {"runImage": {"image": "prev/run", "mirrors": ["prev/mirror"]}}, "lifecycle": {"version": "6.6.6"}}`,
+			))
+			h.AssertNil(t, baseImage.SetLabel(
+				"io.buildpacks.buildpack.order",
+				`[{"group": [{"id": "buildpack-1-id", "optional": false}, {"id": "buildpack-2-id", "version": "buildpack-2-version-1", "optional": true}]}]`,
+			))
+
+			builderImage = baseImage
+		})
+
+		when("all", func() {
+			it.Before(func() {
+				var err error
+				bldr, err = builder.New(builderImage, "some-builder", builder.WithFlatten(-1, nil))
+				h.AssertNil(t, err)
+
+				// Let's add some buildpacks
+				deps := []buildpack.BuildModule{bp2v1, bp1v2}
+				bldr.AddBuildpacks(bp1v1, deps)
+			})
+
+			when("#FlattenedModules", func() {
+				it("it return one array with all buildpacks on it", func() {
+					h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)), 1)
+					h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)[0]), 3)
+				})
+			})
+
+			when("#AllModules", func() {
+				it("it returns each buildpack individually", func() {
+					h.AssertEq(t, len(bldr.AllModules(buildpack.KindBuildpack)), 3)
+				})
+			})
+
+			when("#ShouldFlatten", func() {
+				it("it returns true for each buildpack", func() {
+					h.AssertTrue(t, bldr.ShouldFlatten(bp1v1))
+					h.AssertTrue(t, bldr.ShouldFlatten(bp2v1))
+					h.AssertTrue(t, bldr.ShouldFlatten(bp1v2))
+				})
+			})
+		})
+		// TODO add tests for flatten with depth
+	})
 }
 
 func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp buildpack.BuildModule) {
