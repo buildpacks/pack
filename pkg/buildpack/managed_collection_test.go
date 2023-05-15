@@ -139,7 +139,7 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 	when("manager is configured in flatten mode", func() {
 		when("flatten all", func() {
 			it.Before(func() {
-				moduleManager = buildpack.NewModuleManager(true, buildpack.FlattenMaxDepth)
+				moduleManager = buildpack.NewModuleManager(true, buildpack.FlattenMaxDepth, nil)
 				moduleManager.AddModules(compositeBP1, []buildpack.BuildModule{bp1, compositeBP2, bp21, bp22, compositeBP3, bp31}...)
 			})
 
@@ -180,7 +180,7 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 
 		when("flatten with depth=1", func() {
 			it.Before(func() {
-				moduleManager = buildpack.NewModuleManager(true, 1)
+				moduleManager = buildpack.NewModuleManager(true, 1, nil)
 				moduleManager.AddModules(compositeBP1, []buildpack.BuildModule{bp1, compositeBP2, bp21, bp22, compositeBP3, bp31}...)
 			})
 
@@ -217,7 +217,7 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 
 		when("flatten with depth=2", func() {
 			it.Before(func() {
-				moduleManager = buildpack.NewModuleManager(true, 2)
+				moduleManager = buildpack.NewModuleManager(true, 2, nil)
 				moduleManager.AddModules(compositeBP1, []buildpack.BuildModule{bp1, compositeBP2, bp21, bp22, compositeBP3, bp31}...)
 			})
 
@@ -255,7 +255,7 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 
 	when("manager is not configured in flatten mode", func() {
 		it.Before(func() {
-			moduleManager = buildpack.NewModuleManager(false, buildpack.FlattenNone)
+			moduleManager = buildpack.NewModuleManager(false, buildpack.FlattenNone, nil)
 		})
 
 		when("#ExplodedModules", func() {

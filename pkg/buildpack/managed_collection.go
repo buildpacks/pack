@@ -12,16 +12,18 @@ const (
 type ManagedCollection struct {
 	explodedModules  []BuildModule
 	flattenedModules [][]BuildModule
+	excluded         map[string]struct{}
 	flatten          bool
 	maxDepth         int
 }
 
-func NewModuleManager(flatten bool, maxDepth int) *ManagedCollection {
+func NewModuleManager(flatten bool, maxDepth int, exclude []string) *ManagedCollection {
 	return &ManagedCollection{
 		flatten:          flatten,
 		maxDepth:         maxDepth,
 		explodedModules:  []BuildModule{},
 		flattenedModules: [][]BuildModule{},
+		excluded:         Set(exclude),
 	}
 }
 
@@ -54,12 +56,19 @@ func (f *ManagedCollection) AddModules(main BuildModule, deps ...BuildModule) {
 		// default behavior
 		f.explodedModules = append(f.explodedModules, append([]BuildModule{main}, deps...)...)
 	} else {
+		if _, ok := f.excluded[main.Descriptor().Info().FullName()]; ok {
+			f.explodesModules = append(f.explodesModules, append([]BuildModule{main}, deps...)...)
+			f.setExcludedModules(deps)
+			return
+		}
 		if f.maxDepth <= FlattenMaxDepth {
+			excluded, newDeps := f.calculateExcludeModules(deps...)
+			f.explodesModules = append(f.explodesModules, excluded...)
 			// flatten all
 			if len(f.flattenedModules) == 1 {
-				f.flattenedModules[0] = append(f.flattenedModules[0], append([]BuildModule{main}, deps...)...)
+				f.flattenedModules[0] = append(f.flattenedModules[0], append([]BuildModule{main}, newDeps...)...)
 			} else {
-				f.flattenedModules = append(f.flattenedModules, append([]BuildModule{main}, deps...))
+				f.flattenedModules = append(f.flattenedModules, append([]BuildModule{main}, newDeps...))
 			}
 		} else {
 			recurser := newFlattenModuleRecurser(f.maxDepth)
@@ -68,7 +77,9 @@ func (f *ManagedCollection) AddModules(main BuildModule, deps ...BuildModule) {
 				if len(modules) == 1 {
 					f.explodedModules = append(f.explodedModules, modules...)
 				} else {
-					f.flattenedModules = append(f.flattenedModules, modules)
+					excluded, newModules := f.calculateExcludeModules(modules...)
+					f.explodesModules = append(f.explodesModules, excluded...)
+					f.flattenedModules = append(f.flattenedModules, newModules)
 				}
 			}
 		}
@@ -87,6 +98,42 @@ func (f *ManagedCollection) ShouldFlatten(module BuildModule) bool {
 		}
 	}
 	return false
+}
+
+// calculateExcludeModules separates the given modules into two groups: excluded and not excluded.
+func (f *ManagedCollection) calculateExcludeModules(deps ...BuildModule) ([]BuildModule, []BuildModule) {
+	exclude := make([]BuildModule, 0)
+	newDeps := make([]BuildModule, 0)
+	for _, dep := range deps {
+		if _, ok := f.excluded[dep.Descriptor().Info().FullName()]; ok {
+			exclude = append(exclude, dep)
+		} else {
+			newDeps = append(newDeps, dep)
+		}
+	}
+	return exclude, newDeps
+}
+
+// setExcludedModules adds the given modules to the excluded map and removes the given dependencies from the flattened
+// modules if they were already added.
+func (f *ManagedCollection) setExcludedModules(deps []BuildModule) {
+	type void struct{}
+	var member void
+	for _, dep := range deps {
+		if _, ok := f.excluded[dep.Descriptor().Info().FullName()]; !ok {
+			f.excluded[dep.Descriptor().Info().FullName()] = member
+		}
+	}
+	for i, modules := range f.flattenedModules {
+		j := 0
+		for _, m := range modules {
+			if _, ok := f.excluded[m.Descriptor().Info().FullName()]; !ok {
+				modules[j] = m
+				j++
+			}
+		}
+		f.flattenedModules[i] = modules[:j]
+	}
 }
 
 type flattenModuleRecurser struct {
@@ -123,7 +170,8 @@ func (f *flattenModuleRecurser) calculateFlattenedModules(main BuildModule, deps
 	return modules
 }
 
-// buildpacksFromGroups
+// buildpacksFromGroups split the given dependencies into two groups: main buildpacks with those that belongs to the given group and
+// the rest of the dependencies.
 func buildpacksFromGroups(order dist.Order, deps []BuildModule) ([]BuildModule, []BuildModule) {
 	bps := make([]BuildModule, 0)
 	newDeps := make([]BuildModule, 0)

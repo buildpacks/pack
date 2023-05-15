@@ -82,14 +82,13 @@ type options struct {
 }
 
 type PackageBuilder struct {
-	buildpack                BuildModule
-	extension                BuildModule
-	logger                   logging.Logger
-	layerWriterFactory       archive.TarWriterFactory
-	dependencies             ManagedCollection
-	imageFactory             ImageFactory
-	flattenAllBuildpacks     bool
-	flattenExcludeBuildpacks []string
+	buildpack            BuildModule
+	extension            BuildModule
+	logger               logging.Logger
+	layerWriterFactory   archive.TarWriterFactory
+	dependencies         ManagedCollection
+	imageFactory         ImageFactory
+	flattenAllBuildpacks bool
 }
 
 // TODO: Rename to PackageBuilder
@@ -100,14 +99,13 @@ func NewBuilder(imageFactory ImageFactory, ops ...PackageBuilderOption) *Package
 			return nil
 		}
 	}
-	moduleManager := NewModuleManager(opts.flatten, opts.depth)
+	moduleManager := NewModuleManager(opts.flatten, opts.depth, opts.exclude)
 	return &PackageBuilder{
-		imageFactory:             imageFactory,
-		dependencies:             *moduleManager,
-		flattenAllBuildpacks:     opts.flatten && opts.depth < 0,
-		flattenExcludeBuildpacks: opts.exclude,
-		logger:                   opts.logger,
-		layerWriterFactory:       opts.factory,
+		imageFactory:         imageFactory,
+		dependencies:         *moduleManager,
+		flattenAllBuildpacks: opts.flatten && opts.depth < 0,
+		logger:               opts.logger,
+		layerWriterFactory:   opts.factory,
 	}
 }
 
@@ -179,7 +177,6 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 	// Let's create the tarball for each flatten module
 	if len(b.FlattenedModules()) > 0 {
 		buildModuleWriter := NewBuildModuleWriter(b.logger, b.layerWriterFactory)
-		excludedModules := Set(b.flattenExcludeBuildpacks)
 
 		var (
 			finalTarPath string
@@ -195,7 +192,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 				// include the buildpack itself
 				additionalModules = append(additionalModules, b.buildpack)
 			}
-			finalTarPath, individualBuildModules, err = buildModuleWriter.NToLayerTar(modFlattenTmpDir, fmt.Sprintf("buildpack-flatten-%s", strconv.Itoa(i)), additionalModules, excludedModules)
+			finalTarPath, err = buildModuleWriter.NToLayerTar(modFlattenTmpDir, fmt.Sprintf("buildpack-flatten-%s", strconv.Itoa(i)), additionalModules)
 			if err != nil {
 				return errors.Wrapf(err, "adding layer %s", finalTarPath)
 			}

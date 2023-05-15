@@ -30,14 +30,13 @@ func NewBuildModuleWriter(logger logging.Logger, factory archive.TarWriterFactor
 	}
 }
 
-// NToLayerTar creates a tar file containing the all the Buildpacks given, but excluding the ones which FullName() is
-// in the exclude list. It returns the path to the tar file, the list of Buildpacks that were excluded, and any error
-func (b *BuildModuleWriter) NToLayerTar(tarPath, filename string, modules []BuildModule, exclude map[string]struct{}) (string, []BuildModule, error) {
+// NToLayerTar creates a tar file containing the all the Buildpacks given. It returns the path to the tar file or any error
+func (b *BuildModuleWriter) NToLayerTar(tarPath, filename string, modules []BuildModule) (string, error) {
 	layerTar := filepath.Join(tarPath, fmt.Sprintf("%s.tar", filename))
 	tarFile, err := os.Create(layerTar)
 	b.logger.Debugf("creating file %s", style.Symbol(layerTar))
 	if err != nil {
-		return "", nil, errors.Wrap(err, "create file for tar")
+		return "", errors.Wrap(err, "create file for tar")
 	}
 
 	defer tarFile.Close()
@@ -47,31 +46,25 @@ func (b *BuildModuleWriter) NToLayerTar(tarPath, filename string, modules []Buil
 	parentFolderAdded := map[string]bool{}
 	duplicated := map[string]bool{}
 
-	var buildModuleExcluded []BuildModule
 	for _, module := range modules {
-		if _, ok := exclude[module.Descriptor().Info().FullName()]; !ok {
-			if !duplicated[module.Descriptor().Info().FullName()] {
-				duplicated[module.Descriptor().Info().FullName()] = true
-				b.logger.Debugf("adding %s", style.Symbol(module.Descriptor().Info().FullName()))
+		if !duplicated[module.Descriptor().Info().FullName()] {
+			duplicated[module.Descriptor().Info().FullName()] = true
+			b.logger.Debugf("adding %s", style.Symbol(module.Descriptor().Info().FullName()))
 
-				if err := b.writeBuildModuleToTar(tw, module, &parentFolderAdded); err != nil {
-					return "", nil, errors.Wrapf(err, "adding %s", style.Symbol(module.Descriptor().Info().FullName()))
-				}
-				rootPath := processRootPath(module)
-				if !parentFolderAdded[rootPath] {
-					parentFolderAdded[rootPath] = true
-				}
-			} else {
-				b.logger.Debugf("skipping %s, it was already added", style.Symbol(module.Descriptor().Info().FullName()))
+			if err := b.writeBuildModuleToTar(tw, module, &parentFolderAdded); err != nil {
+				return "", errors.Wrapf(err, "adding %s", style.Symbol(module.Descriptor().Info().FullName()))
+			}
+			rootPath := processRootPath(module)
+			if !parentFolderAdded[rootPath] {
+				parentFolderAdded[rootPath] = true
 			}
 		} else {
-			b.logger.Debugf("excluding %s from being flattened", style.Symbol(module.Descriptor().Info().FullName()))
-			buildModuleExcluded = append(buildModuleExcluded, module)
+			b.logger.Debugf("skipping %s, it was already added", style.Symbol(module.Descriptor().Info().FullName()))
 		}
 	}
 
 	b.logger.Debugf("%s was created successfully", style.Symbol(layerTar))
-	return layerTar, buildModuleExcluded, nil
+	return layerTar, nil
 }
 
 // writeBuildModuleToTar writes the content of the given tar file into the writer, skipping the folders that were already added
