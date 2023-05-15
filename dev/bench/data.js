@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684005123172,
+  "lastUpdate": 1684175645624,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -334,6 +334,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Addtional_Buildpack",
             "value": 40889148483,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c05a1ecd9df9f02c266be421ecafece5a37caee1",
+          "message": "Merge pull request #1762 from buildpacks/dependabot/go_modules/golang.org/x/crypto-0.9.0\n\nbuild(deps): bump golang.org/x/crypto from 0.8.0 to 0.9.0",
+          "timestamp": "2023-05-15T13:32:00-05:00",
+          "tree_id": "50c46acffc597201f6444425a9a433929058d2ab",
+          "url": "https://github.com/buildpacks/pack/commit/c05a1ecd9df9f02c266be421ecafece5a37caee1"
+        },
+        "date": 1684175645117,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4322177669,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1146795034,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Addtional_Buildpack",
+            "value": 28965464342,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
