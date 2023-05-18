@@ -62,12 +62,11 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 			ext, err := buildpack.ExtensionsFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "tree-extension.cnb")))
 			h.AssertNil(t, err)
 
-			h.AssertEq(t, ext.Descriptor().Info().ID, "samples/tree")
+			h.AssertEq(t, ext.Descriptor().Info().ID, "samples-tree")
 			h.AssertEq(t, ext.Descriptor().Info().Version, "0.0.1")
 		})
 
 		it("provides readable blobs", func() {
-			t.Skip("Skipping this test")
 			ext, err := buildpack.ExtensionsFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "tree-extension.cnb")))
 			h.AssertNil(t, err)
 			reader, err := ext.Open()

@@ -324,7 +324,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						PullPolicy:      image.PullAlways,
 					}
 					mainExt, _, _ := buildpackDownloader.Download(context.TODO(), "tree-extension.cnb", downloadOptions)
-					h.AssertEq(t, mainExt.Descriptor().Info().ID, "samples/tree")
+					h.AssertEq(t, mainExt.Descriptor().Info().ID, "samples-tree")
 				})
 			})
 		})
