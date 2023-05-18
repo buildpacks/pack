@@ -541,12 +541,13 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Layout:               opts.Layout(),
 	}
 
-	if useCreator {
+	switch {
+	case useCreator:
 		lifecycleOpts.UseCreator = true
-	} else if supportsLifecycleImage(lifecycleVersion) {
+	case supportsLifecycleImage(lifecycleVersion):
 		lifecycleOpts.LifecycleImage = lifecycleOptsLifecycleImage
 		lifecycleOpts.LifecycleApis = lifecycleAPIs
-	} else if !opts.TrustBuilder(opts.Builder) {
+	case !opts.TrustBuilder(opts.Builder):
 		return errors.Errorf("Lifecycle %s does not have an associated lifecycle image. Builder must be trusted.", lifecycleVersion.String())
 	}
 

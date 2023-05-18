@@ -3170,11 +3170,11 @@ func setAPIs(t *testing.T, image *fakes.Image, buildpackAPIs []string, platformA
 	h.AssertNil(t, image.SetLabel(builderMDLabelName, string(builderMDLabelBytes)))
 }
 
-type executeFailsLifecycle struct {
+type executeFailsLifecycle struct { //nolint
 	Opts build.LifecycleOptions
 }
 
-func (f *executeFailsLifecycle) Execute(_ context.Context, opts build.LifecycleOptions) error {
+func (f *executeFailsLifecycle) Execute(_ context.Context, opts build.LifecycleOptions) error { //nolint
 	f.Opts = opts
 	return errors.New("")
 }

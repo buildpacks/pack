@@ -71,12 +71,10 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 			Image:   md.RunImage.Image,
 			Mirrors: md.RunImage.Mirrors,
 		}
-	} else {
-		if md.Stack != nil {
-			runImageMD = builder.RunImageMetadata{
-				Image:   md.Stack.RunImage.Image,
-				Mirrors: md.Stack.RunImage.Mirrors,
-			}
+	} else if md.Stack != nil {
+		runImageMD = builder.RunImageMetadata{
+			Image:   md.Stack.RunImage.Image,
+			Mirrors: md.Stack.RunImage.Mirrors,
 		}
 	}
 	runImageName := c.resolveRunImage(
