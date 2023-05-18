@@ -175,10 +175,18 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		}
 		processDetails.OtherProcesses = append(processDetails.OtherProcesses, proc)
 	}
+
+	var stackCompat platform.StackMetadata
+	if layersMd.RunImage.Image != "" {
+		stackCompat = layersMd.RunImage.ToStackMetadata()
+	} else {
+		stackCompat = layersMd.Stack
+	}
+
 	if buildMD.Extensions != nil {
 		return &ImageInfo{
 			StackID:    stackID,
-			Stack:      layersMd.Stack,
+			Stack:      stackCompat,
 			Base:       layersMd.RunImage,
 			BOM:        buildMD.BOM,
 			Buildpacks: buildMD.Buildpacks,
@@ -189,7 +197,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 
 	return &ImageInfo{
 		StackID:    stackID,
-		Stack:      layersMd.Stack,
+		Stack:      stackCompat,
 		Base:       layersMd.RunImage,
 		BOM:        buildMD.BOM,
 		Buildpacks: buildMD.Buildpacks,

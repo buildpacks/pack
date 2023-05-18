@@ -18,8 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/pack/pkg/cache"
-
+	"github.com/buildpacks/lifecycle/api"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/ghodss/yaml"
@@ -35,6 +34,7 @@ import (
 	"github.com/buildpacks/pack/acceptance/managers"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
+	"github.com/buildpacks/pack/pkg/cache"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -761,8 +761,8 @@ func testAcceptance(
 
 				when("builder has extensions", func() {
 					it.Before(func() {
-						h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.Extensions), "")
-						h.SkipIf(t, !pack.SupportsFeature(invoke.Extensions), "")
+						h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.BuildImageExtensions), "")
+						h.SkipIf(t, !pack.SupportsFeature(invoke.BuildImageExtensions), "")
 						h.SkipIf(t, !lifecycle.SupportsFeature(config.BuildImageExtensions), "")
 						// create a task, handled by a 'task manager' which executes our pack commands during tests.
 						// looks like this is used to de-dup tasks
@@ -866,6 +866,7 @@ func testAcceptance(
 
 						when("there are run image extensions", func() {
 							it.Before(func() {
+								h.SkipIf(t, !pack.SupportsFeature(invoke.RunImageExtensions), "")
 								h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
 							})
 
@@ -1046,7 +1047,7 @@ func testAcceptance(
 						assertImage.HasBaseImage(repoName, runImage)
 
 						t.Log("sets the run image metadata")
-						assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"stack":{"runImage":{"image":"%s","mirrors":["%s"]}}}`, runImage, runImageMirror))
+						assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"pack-test/run","mirrors":["%s"]`, runImageMirror))
 
 						t.Log("sets the source metadata")
 						assertImage.HasLabelWithData(repoName, "io.buildpacks.project.metadata", (`{"source":{"type":"project","version":{"declared":"1.0.2"},"metadata":{"url":"https://github.com/buildpacks/pack"}}}`))
@@ -1554,24 +1555,51 @@ func testAcceptance(
 							var otherStackBuilderTgz string
 
 							it.Before(func() {
+								// The Platform API is new if pack is new AND the lifecycle is new
+								// Therefore skip if pack is old OR the lifecycle is old
+								h.SkipIf(t,
+									pack.SupportsFeature(invoke.StackValidation) ||
+										api.MustParse(lifecycle.LatestPlatformAPIVersion()).LessThan("0.12"), "")
 								otherStackBuilderTgz = h.CreateTGZ(t, filepath.Join(bpDir, "other-stack-buildpack"), "./", 0755)
 							})
 
 							it.After(func() {
+								h.SkipIf(t,
+									pack.SupportsFeature(invoke.StackValidation) ||
+										api.MustParse(lifecycle.LatestPlatformAPIVersion()).LessThan("0.12"), "")
 								assert.Succeeds(os.Remove(otherStackBuilderTgz))
 							})
 
-							it("errors", func() {
-								output, err := pack.Run(
+							it("succeeds", func() {
+								_, err := pack.Run(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--buildpack", otherStackBuilderTgz,
 								)
+								assert.Nil(err)
+							})
 
-								assert.NotNil(err)
-								assert.Contains(output, "other/stack/bp")
-								assert.Contains(output, "other-stack-version")
-								assert.Contains(output, "does not support stack 'pack.test.stack'")
+							when("platform API < 0.12", func() {
+								it.Before(func() {
+									// The Platform API is old if pack is old OR the lifecycle is old
+									// Therefore skip if pack is new AND the lifecycle is new
+									h.SkipIf(t,
+										!pack.SupportsFeature(invoke.StackValidation) &&
+											api.MustParse(lifecycle.LatestPlatformAPIVersion()).AtLeast("0.12"), "")
+								})
+
+								it("errors", func() {
+									output, err := pack.Run(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--buildpack", otherStackBuilderTgz,
+									)
+
+									assert.NotNil(err)
+									assert.Contains(output, "other/stack/bp")
+									assert.Contains(output, "other-stack-version")
+									assert.Contains(output, "does not support stack 'pack.test.stack'")
+								})
 							})
 						})
 					})
@@ -1905,7 +1933,6 @@ func testAcceptance(
 					when("--cache with options for build cache as image", func() {
 						var cacheImageName, cacheFlags string
 						it.Before(func() {
-							h.SkipIf(t, !pack.SupportsFeature(invoke.Cache), "")
 							cacheImageName = fmt.Sprintf("%s-cache", repoName)
 							cacheFlags = fmt.Sprintf("type=build;format=image;name=%s", cacheImageName)
 						})
@@ -1947,8 +1974,9 @@ func testAcceptance(
 						var bindCacheDir, cacheFlags string
 						it.Before(func() {
 							h.SkipIf(t, !pack.SupportsFeature(invoke.Cache), "")
-							cacheBindName := fmt.Sprintf("%s-bind", repoName)
-							bindCacheDir, err := os.MkdirTemp("", cacheBindName)
+							cacheBindName := strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%s-bind", repoName), string(filepath.Separator), "-"), ":", "-")
+							var err error
+							bindCacheDir, err = os.MkdirTemp("", cacheBindName)
 							assert.Nil(err)
 							cacheFlags = fmt.Sprintf("type=build;format=bind;source=%s", bindCacheDir)
 						})
@@ -2187,11 +2215,6 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					})
 
 					when("--creation-time", func() {
-						it.Before(func() {
-							h.SkipIf(t, !pack.SupportsFeature(invoke.CreationTime), "")
-							h.SkipIf(t, !lifecycle.SupportsFeature(config.CreationTime), "")
-						})
-
 						when("provided as 'now'", func() {
 							it("image has create time of the current time", func() {
 								expectedTime := time.Now()
