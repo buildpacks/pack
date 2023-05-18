@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -56,7 +55,6 @@ func TestAcceptance(t *testing.T) {
 	var err error
 
 	h.RequireDocker(t)
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	assert := h.NewAssertionManager(t)
 

@@ -3,7 +3,6 @@ package build
 import (
 	"context"
 	"io"
-	"math/rand"
 	"os"
 	"time"
 
@@ -64,10 +63,6 @@ type Termui interface {
 	Run(funk func()) error
 	Handler() container.Handler
 	ReadLayers(reader io.ReadCloser) error
-}
-
-func init() {
-	rand.Seed(time.Now().UTC().UnixNano())
 }
 
 type LifecycleOptions struct {

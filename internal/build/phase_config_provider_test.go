@@ -3,9 +3,7 @@ package build_test
 import (
 	"bytes"
 	"io"
-	"math/rand"
 	"testing"
-	"time"
 
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/docker/docker/api/types/container"
@@ -23,8 +21,6 @@ import (
 )
 
 func TestPhaseConfigProvider(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	color.Disable(true)
 	defer color.Disable(false)
 

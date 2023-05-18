@@ -540,6 +540,14 @@ version = "1.2.3"
 			h.AssertEq(t, match, false)
 		})
 	})
+
+	when("#Set", func() {
+		it("creates a set", func() {
+			values := []string{"a", "b", "c", "a"}
+			set := buildpack.Set(values)
+			h.AssertEq(t, len(set), 3)
+		})
+	})
 }
 
 type errorBlob struct {

@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -36,8 +35,6 @@ import (
 
 // TestLifecycleExecution are unit tests that test each possible phase to ensure they are executed with the proper parameters
 func TestLifecycleExecution(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	color.Disable(true)
 	defer color.Disable(false)
 

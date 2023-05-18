@@ -2,10 +2,8 @@ package cache_test
 
 import (
 	"context"
-	"math/rand"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/buildpacks/pack/pkg/cache"
 
@@ -25,7 +23,6 @@ func TestVolumeCache(t *testing.T) {
 	h.RequireDocker(t)
 	color.Disable(true)
 	defer color.Disable(false)
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	spec.Run(t, "VolumeCache", testCache, spec.Parallel(), spec.Report(report.Terminal{}))
 }
