@@ -246,7 +246,6 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 	if err != nil {
 		return errors.Wrapf(err, "getting OS from %s", style.Symbol(bldr.Image().Name()))
 	}
-
 	mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, config.URI, buildpack.DownloadOptions{
 		Daemon:          !opts.Publish,
 		ImageName:       config.ImageName,
