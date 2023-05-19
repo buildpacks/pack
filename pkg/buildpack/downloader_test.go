@@ -310,6 +310,23 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, mainExt.Descriptor().Info().ID, "ext.one")
 				})
 			})
+
+			when("kind == packagedExtension", func() {
+				it("succeeds", func() {
+					packagedExtensionPath := filepath.Join("testdata", "tree-extension.cnb")
+					packagedExtensionURI, _ := paths.FilePathToURI(packagedExtensionPath, "")
+					mockDownloader.EXPECT().Download(gomock.Any(), packagedExtensionURI).Return(blob.NewBlob(packagedExtensionPath), nil).AnyTimes()
+					downloadOptions = buildpack.DownloadOptions{
+						ImageOS:         "linux",
+						ModuleKind:      "extension",
+						RelativeBaseDir: "testdata",
+						Daemon:          true,
+						PullPolicy:      image.PullAlways,
+					}
+					mainExt, _, _ := buildpackDownloader.Download(context.TODO(), "tree-extension.cnb", downloadOptions)
+					h.AssertEq(t, mainExt.Descriptor().Info().ID, "samples-tree")
+				})
+			})
 		})
 
 		when("package image is not a valid package", func() {

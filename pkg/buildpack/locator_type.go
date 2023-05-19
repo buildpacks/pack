@@ -92,7 +92,6 @@ func parseNakedLocator(locator, relativeBaseDir string, buildpacksFromBuilder []
 	//   2. Does it match a buildpack ID in the builder
 	//   3. Does it look like a Buildpack Registry ID
 	//   4. Does it look like a Docker ref
-
 	if isLocalFile(locator, relativeBaseDir) {
 		return URILocator
 	}
