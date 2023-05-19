@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -19,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/lifecycle/api"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/ghodss/yaml"
@@ -32,9 +32,9 @@ import (
 	"github.com/buildpacks/pack/acceptance/config"
 	"github.com/buildpacks/pack/acceptance/invoke"
 	"github.com/buildpacks/pack/acceptance/managers"
-	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
+	"github.com/buildpacks/pack/pkg/cache"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -55,7 +55,6 @@ func TestAcceptance(t *testing.T) {
 	var err error
 
 	h.RequireDocker(t)
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	assert := h.NewAssertionManager(t)
 
@@ -498,7 +497,7 @@ func testWithoutSpecificBuilderRequirement(
 	when("config", func() {
 		when("default-builder", func() {
 			it("sets the default builder in ~/.pack/config.toml", func() {
-				builderName := "paketobuildpacks/builder:base"
+				builderName := "paketobuildpacks/builder-jammy-base"
 				output := pack.RunSuccessfully("config", "default-builder", builderName)
 
 				assertions.NewOutputAssertionManager(t, output).ReportsSettingDefaultBuilder(builderName)
@@ -576,7 +575,7 @@ func testWithoutSpecificBuilderRequirement(
 	when("report", func() {
 		when("default builder is set", func() {
 			it("redacts default builder", func() {
-				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder:base")
+				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder-jammy-base")
 
 				output := pack.RunSuccessfully("report")
 				version := pack.Version()
@@ -600,7 +599,7 @@ func testWithoutSpecificBuilderRequirement(
 			})
 
 			it("explicit mode doesn't redact", func() {
-				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder:base")
+				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder-jammy-base")
 
 				output := pack.RunSuccessfully("report", "--explicit")
 				version := pack.Version()
@@ -613,7 +612,7 @@ func testWithoutSpecificBuilderRequirement(
 				expectedOutput := pack.FixtureManager().TemplateFixture(
 					"report_output.txt",
 					map[string]interface{}{
-						"DefaultBuilder": "paketobuildpacks/builder:base",
+						"DefaultBuilder": "paketobuildpacks/builder-jammy-base",
 						"Version":        version,
 						"OS":             runtime.GOOS,
 						"Arch":           runtime.GOARCH,
@@ -762,9 +761,9 @@ func testAcceptance(
 
 				when("builder has extensions", func() {
 					it.Before(func() {
-						h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.Extensions), "")
-						h.SkipIf(t, !pack.SupportsFeature(invoke.Extensions), "")
-						h.SkipIf(t, !lifecycle.SupportsFeature(config.Extensions), "")
+						h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.BuildImageExtensions), "")
+						h.SkipIf(t, !pack.SupportsFeature(invoke.BuildImageExtensions), "")
+						h.SkipIf(t, !lifecycle.SupportsFeature(config.BuildImageExtensions), "")
 						// create a task, handled by a 'task manager' which executes our pack commands during tests.
 						// looks like this is used to de-dup tasks
 						key := taskKey(
@@ -798,12 +797,12 @@ func testAcceptance(
 					it("creates builder", func() {
 						// Linux containers (including Linux containers on Windows)
 						extSimpleLayersDiffID := "sha256:b9e4a0ddfb650c7aa71d1e6aceea1665365e409b3078bfdc1e51c2b07ab2b423"
-						extReadEnvDiffID := "sha256:b49f178f802bbeb04acf4776bd41dcea8c47504ce31b06b580ec697387629cf2"
+						extReadEnvDiffID := "sha256:ab7419c5e0b1a0789bd07cef2ed0573ec6e98eb05d7f05eb95d4f035243e331c"
 						bpSimpleLayersDiffID := "sha256:285ff6683c99e5ae19805f6a62168fb40dca64d813c53b782604c9652d745c70"
 						bpReadEnvDiffID := "sha256:dd1e0efcbf3f08b014ef6eff9cfe7a9eac1cf20bd9b6a71a946f0a74575aa56f"
 						if imageManager.HostOS() == "windows" { // Windows containers on Windows
 							extSimpleLayersDiffID = "sha256:a063cf949b9c267133e451ac8cd95b4e77571bb7c629dd817461dca769170810"
-							extReadEnvDiffID = "sha256:283db968a0d0908a454e0bd6388b08310d724b52e0619a0bec0b9e274d269454"
+							extReadEnvDiffID = "sha256:a4e7f114efa3692939974da9c9f08e47b3fdb5c779688dc8f5a950e0f804bef1"
 							bpSimpleLayersDiffID = "sha256:ccd1234cc5685e8a412b70c5f9a8e7b584b8e4f2a20c987ec242c9055de3e45e"
 							bpReadEnvDiffID = "sha256:8b22a7742ffdfbdd978787c6937456b68afb27c3585a3903048be7434d251e3f"
 						}
@@ -841,7 +840,7 @@ func testAcceptance(
 						})
 
 						when("builder is untrusted", func() {
-							it("uses the 5 phases, and runs the extender", func() {
+							it("uses the 5 phases, and runs the extender (build)", func() {
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
@@ -853,7 +852,38 @@ func testAcceptance(
 
 								assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
 								assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
-								assertOutput.IncludesSeparatePhasesWithExtension()
+								assertOutput.IncludesSeparatePhasesWithBuildExtension()
+
+								t.Log("inspecting image")
+								inspectCmd := "inspect"
+								if !pack.Supports("inspect") {
+									inspectCmd = "inspect-image"
+								}
+
+								output = pack.RunSuccessfully(inspectCmd, repoName)
+							})
+						})
+
+						when("there are run image extensions", func() {
+							it.Before(func() {
+								h.SkipIf(t, !pack.SupportsFeature(invoke.RunImageExtensions), "")
+								h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
+							})
+
+							it("uses the 5 phases, and runs the extender (run)", func() {
+								output := pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--network", "host", // export target is the daemon, but we need to be able to reach the registry where the builder image and run image are saved
+									"-B", builderName,
+									"--env", "EXT_RUN=1",
+								)
+
+								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+
+								assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
+								assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+								assertOutput.IncludesSeparatePhasesWithRunExtension()
 
 								t.Log("inspecting image")
 								inspectCmd := "inspect"
@@ -1017,7 +1047,7 @@ func testAcceptance(
 						assertImage.HasBaseImage(repoName, runImage)
 
 						t.Log("sets the run image metadata")
-						assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"stack":{"runImage":{"image":"%s","mirrors":["%s"]}}}`, runImage, runImageMirror))
+						assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"pack-test/run","mirrors":["%s"]`, runImageMirror))
 
 						t.Log("sets the source metadata")
 						assertImage.HasLabelWithData(repoName, "io.buildpacks.project.metadata", (`{"source":{"type":"project","version":{"declared":"1.0.2"},"metadata":{"url":"https://github.com/buildpacks/pack"}}}`))
@@ -1525,24 +1555,51 @@ func testAcceptance(
 							var otherStackBuilderTgz string
 
 							it.Before(func() {
+								// The Platform API is new if pack is new AND the lifecycle is new
+								// Therefore skip if pack is old OR the lifecycle is old
+								h.SkipIf(t,
+									pack.SupportsFeature(invoke.StackValidation) ||
+										api.MustParse(lifecycle.LatestPlatformAPIVersion()).LessThan("0.12"), "")
 								otherStackBuilderTgz = h.CreateTGZ(t, filepath.Join(bpDir, "other-stack-buildpack"), "./", 0755)
 							})
 
 							it.After(func() {
+								h.SkipIf(t,
+									pack.SupportsFeature(invoke.StackValidation) ||
+										api.MustParse(lifecycle.LatestPlatformAPIVersion()).LessThan("0.12"), "")
 								assert.Succeeds(os.Remove(otherStackBuilderTgz))
 							})
 
-							it("errors", func() {
-								output, err := pack.Run(
+							it("succeeds", func() {
+								_, err := pack.Run(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--buildpack", otherStackBuilderTgz,
 								)
+								assert.Nil(err)
+							})
 
-								assert.NotNil(err)
-								assert.Contains(output, "other/stack/bp")
-								assert.Contains(output, "other-stack-version")
-								assert.Contains(output, "does not support stack 'pack.test.stack'")
+							when("platform API < 0.12", func() {
+								it.Before(func() {
+									// The Platform API is old if pack is old OR the lifecycle is old
+									// Therefore skip if pack is new AND the lifecycle is new
+									h.SkipIf(t,
+										!pack.SupportsFeature(invoke.StackValidation) &&
+											api.MustParse(lifecycle.LatestPlatformAPIVersion()).AtLeast("0.12"), "")
+								})
+
+								it("errors", func() {
+									output, err := pack.Run(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--buildpack", otherStackBuilderTgz,
+									)
+
+									assert.NotNil(err)
+									assert.Contains(output, "other/stack/bp")
+									assert.Contains(output, "other-stack-version")
+									assert.Contains(output, "does not support stack 'pack.test.stack'")
+								})
 							})
 						})
 					})
@@ -1876,7 +1933,6 @@ func testAcceptance(
 					when("--cache with options for build cache as image", func() {
 						var cacheImageName, cacheFlags string
 						it.Before(func() {
-							h.SkipIf(t, !pack.SupportsFeature(invoke.Cache), "")
 							cacheImageName = fmt.Sprintf("%s-cache", repoName)
 							cacheFlags = fmt.Sprintf("type=build;format=image;name=%s", cacheImageName)
 						})
@@ -1918,8 +1974,9 @@ func testAcceptance(
 						var bindCacheDir, cacheFlags string
 						it.Before(func() {
 							h.SkipIf(t, !pack.SupportsFeature(invoke.Cache), "")
-							cacheBindName := fmt.Sprintf("%s-bind", repoName)
-							bindCacheDir, err := os.MkdirTemp("", cacheBindName)
+							cacheBindName := strings.ReplaceAll(strings.ReplaceAll(fmt.Sprintf("%s-bind", repoName), string(filepath.Separator), "-"), ":", "-")
+							var err error
+							bindCacheDir, err = os.MkdirTemp("", cacheBindName)
 							assert.Nil(err)
 							cacheFlags = fmt.Sprintf("type=build;format=bind;source=%s", bindCacheDir)
 						})
@@ -2158,11 +2215,6 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					})
 
 					when("--creation-time", func() {
-						it.Before(func() {
-							h.SkipIf(t, !pack.SupportsFeature(invoke.CreationTime), "")
-							h.SkipIf(t, !lifecycle.SupportsFeature(config.CreationTime), "")
-						})
-
 						when("provided as 'now'", func() {
 							it("image has create time of the current time", func() {
 								expectedTime := time.Now()

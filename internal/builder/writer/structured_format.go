@@ -38,13 +38,13 @@ type Stack struct {
 type BuilderInfo struct {
 	Description            string                  `json:"description,omitempty" yaml:"description,omitempty" toml:"description,omitempty"`
 	CreatedBy              builder.CreatorMetadata `json:"created_by" yaml:"created_by" toml:"created_by"`
-	Stack                  Stack                   `json:"stack" yaml:"stack" toml:"stack"`
+	Stack                  *Stack                  `json:"stack,omitempty" yaml:"stack,omitempty" toml:"stack,omitempty"`
 	Lifecycle              Lifecycle               `json:"lifecycle" yaml:"lifecycle" toml:"lifecycle"`
 	RunImages              []RunImage              `json:"run_images" yaml:"run_images" toml:"run_images"`
 	Buildpacks             []dist.ModuleInfo       `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
 	pubbldr.DetectionOrder `json:"detection_order" yaml:"detection_order" toml:"detection_order"`
-	Extensions             []dist.ModuleInfo      `json:"extensions" yaml:"extensions" toml:"extensions"`
-	OrderExtensions        pubbldr.DetectionOrder `json:"order_extensions" yaml:"order_extensions" toml:"order_extensions"`
+	Extensions             []dist.ModuleInfo      `json:"extensions,omitempty" yaml:"extensions,omitempty" toml:"extensions,omitempty"`
+	OrderExtensions        pubbldr.DetectionOrder `json:"order_extensions,omitempty" yaml:"order_extensions,omitempty" toml:"order_extensions,omitempty"`
 }
 
 type StructuredFormat struct {
@@ -69,7 +69,10 @@ func (w *StructuredFormat) Print(
 	outputInfo := InspectOutput{SharedBuilderInfo: builderInfo}
 
 	if local != nil {
-		stack := Stack{ID: local.Stack}
+		var stack *Stack
+		if local.Stack != "" {
+			stack = &Stack{ID: local.Stack}
+		}
 
 		if logger.IsVerbose() {
 			stack.Mixins = local.Mixins
@@ -84,7 +87,7 @@ func (w *StructuredFormat) Print(
 				BuildpackAPIs: local.Lifecycle.APIs.Buildpack,
 				PlatformAPIs:  local.Lifecycle.APIs.Platform,
 			},
-			RunImages:       runImages(local.RunImage, localRunImages, local.RunImageMirrors),
+			RunImages:       runImages(local.RunImages, localRunImages),
 			Buildpacks:      local.Buildpacks,
 			DetectionOrder:  local.Order,
 			Extensions:      local.Extensions,
@@ -93,7 +96,10 @@ func (w *StructuredFormat) Print(
 	}
 
 	if remote != nil {
-		stack := Stack{ID: remote.Stack}
+		var stack *Stack
+		if remote.Stack != "" {
+			stack = &Stack{ID: remote.Stack}
+		}
 
 		if logger.IsVerbose() {
 			stack.Mixins = remote.Mixins
@@ -108,7 +114,7 @@ func (w *StructuredFormat) Print(
 				BuildpackAPIs: remote.Lifecycle.APIs.Buildpack,
 				PlatformAPIs:  remote.Lifecycle.APIs.Platform,
 			},
-			RunImages:       runImages(remote.RunImage, localRunImages, remote.RunImageMirrors),
+			RunImages:       runImages(remote.RunImages, localRunImages),
 			Buildpacks:      remote.Buildpacks,
 			DetectionOrder:  remote.Order,
 			Extensions:      remote.Extensions,
@@ -133,23 +139,24 @@ func (w *StructuredFormat) Print(
 	return nil
 }
 
-func runImages(runImage string, localRunImages []config.RunImage, buildRunImages []string) []RunImage {
-	var images = []RunImage{}
+func runImages(runImages []pubbldr.RunImageConfig, localRunImages []config.RunImage) []RunImage {
+	images := []RunImage{}
 
 	for _, i := range localRunImages {
-		if i.Image == runImage {
-			for _, m := range i.Mirrors {
-				images = append(images, RunImage{Name: m, UserConfigured: true})
+		for _, runImage := range runImages {
+			if i.Image == runImage.Image {
+				for _, m := range i.Mirrors {
+					images = append(images, RunImage{Name: m, UserConfigured: true})
+				}
 			}
 		}
 	}
 
-	if runImage != "" {
-		images = append(images, RunImage{Name: runImage})
-	}
-
-	for _, m := range buildRunImages {
-		images = append(images, RunImage{Name: m})
+	for _, runImage := range runImages {
+		images = append(images, RunImage{Name: runImage.Image})
+		for _, m := range runImage.Mirrors {
+			images = append(images, RunImage{Name: m})
+		}
 	}
 
 	return images

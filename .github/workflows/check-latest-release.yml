@@ -11,7 +11,7 @@ jobs:
       - ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
           go-version-file: 'go.mod'
       - name: Read go versions
@@ -31,11 +31,11 @@ jobs:
           tar xzf out.tgz
           LATEST_RELEASE_GO_VERSION=$(go version ./pack | cut -d ' ' -f 2)
           
-          echo "::set-output name=latest-go-version::${LATEST_GO_VERSION}"
-          echo "::set-output name=latest-release-go-version::${LATEST_RELEASE_GO_VERSION}"
+          echo "latest-go-version=${LATEST_GO_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "latest-release-go-version=${LATEST_RELEASE_GO_VERSION}" >> "$GITHUB_OUTPUT"
           
           LATEST_RELEASE_VERSION=$(echo $LATEST_RELEASE_VERSION | cut -d \v -f 2)
-          echo "::set-output name=latest-release-version::${LATEST_RELEASE_VERSION}"
+          echo "latest-release-version=${LATEST_RELEASE_VERSION}" >> "$GITHUB_OUTPUT"
       - name: Create issue if needed
         if: ${{ steps.read-go.outputs.latest-go-version != steps.read-go.outputs.latest-release-go-version }}
         env:

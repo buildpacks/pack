@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
@@ -14,7 +13,6 @@ import (
 	"strconv"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/lifecycle/auth"
@@ -43,8 +41,6 @@ var (
 
 // TestPhase is a integration test suite to ensure that the phase options are propagated to the container.
 func TestPhase(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	color.Disable(true)
 	defer color.Disable(false)
 
@@ -140,7 +136,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 			it("runs the phase with provided handlers", func() {
 				var actual string
-				var handler container.Handler = func(bodyChan <-chan dcontainer.ContainerWaitOKBody, errChan <-chan error, reader io.Reader) error {
+				var handler container.Handler = func(bodyChan <-chan dcontainer.WaitResponse, errChan <-chan error, reader io.Reader) error {
 					data, _ := io.ReadAll(reader)
 					actual = string(data)
 					return nil
@@ -534,7 +530,7 @@ func CreateFakeLifecycleExecution(logger logging.Logger, docker client.CommonAPI
 		termui = &fakes.FakeTermui{HandlerFunc: handler[0]}
 	}
 
-	return build.NewLifecycleExecution(logger, docker, build.LifecycleOptions{
+	return build.NewLifecycleExecution(logger, docker, "some-temp-dir", build.LifecycleOptions{
 		AppPath:     appDir,
 		Builder:     fakeBuilder,
 		HTTPProxy:   "some-http-proxy",

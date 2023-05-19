@@ -16,7 +16,7 @@ on:
         default: false
 
 env:
-  BUILDER: "paketobuildpacks/builder:tiny"
+  BUILDER: "paketobuildpacks/builder-jammy-tiny"
   IMG_NAME: 'pack'
   USERNAME: 'buildpacksio'
 

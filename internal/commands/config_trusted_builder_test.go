@@ -59,9 +59,9 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				"gcr.io/buildpacks/builder:v1",
 				"heroku/builder:22",
 				"heroku/buildpacks:20",
-				"paketobuildpacks/builder:base",
-				"paketobuildpacks/builder:full",
-				"paketobuildpacks/builder:tiny",
+				"paketobuildpacks/builder-jammy-base",
+				"paketobuildpacks/builder-jammy-full",
+				"paketobuildpacks/builder-jammy-tiny",
 			)
 		})
 
@@ -73,9 +73,9 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				"gcr.io/buildpacks/builder:v1",
 				"heroku/builder:22",
 				"heroku/buildpacks:20",
-				"paketobuildpacks/builder:base",
-				"paketobuildpacks/builder:full",
-				"paketobuildpacks/builder:tiny",
+				"paketobuildpacks/builder-jammy-base",
+				"paketobuildpacks/builder-jammy-full",
+				"paketobuildpacks/builder-jammy-tiny",
 			)
 		})
 	})
@@ -94,9 +94,9 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				"gcr.io/buildpacks/builder:v1",
 				"heroku/builder:22",
 				"heroku/buildpacks:20",
-				"paketobuildpacks/builder:base",
-				"paketobuildpacks/builder:full",
-				"paketobuildpacks/builder:tiny",
+				"paketobuildpacks/builder-jammy-base",
+				"paketobuildpacks/builder-jammy-full",
+				"paketobuildpacks/builder-jammy-tiny",
 			)
 			outBuf.Reset()
 
@@ -111,9 +111,9 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				builderName,
 				"heroku/builder:22",
 				"heroku/buildpacks:20",
-				"paketobuildpacks/builder:base",
-				"paketobuildpacks/builder:full",
-				"paketobuildpacks/builder:tiny",
+				"paketobuildpacks/builder-jammy-base",
+				"paketobuildpacks/builder-jammy-full",
+				"paketobuildpacks/builder-jammy-tiny",
 			)
 		})
 	})
@@ -171,7 +171,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				it("does nothing", func() {
 					h.AssertNil(t, os.WriteFile(configPath, []byte(""), os.ModePerm))
 
-					command.SetArgs(append(args, "paketobuildpacks/builder:base"))
+					command.SetArgs(append(args, "paketobuildpacks/builder-jammy-base"))
 					h.AssertNil(t, command.Execute())
 					oldContents, err := os.ReadFile(configPath)
 					h.AssertNil(t, err)
@@ -266,7 +266,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("builder is a suggested builder", func() {
 			it("does nothing and reports that ", func() {
-				builder := "paketobuildpacks/builder:base"
+				builder := "paketobuildpacks/builder-jammy-base"
 				command := commands.ConfigTrustedBuilder(logger, config.Config{}, configPath)
 				command.SetArgs(append(args, builder))
 

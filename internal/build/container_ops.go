@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/errdefs"
 	darchive "github.com/docker/docker/pkg/archive"
 	"github.com/pkg/errors"
 
@@ -42,8 +43,44 @@ func CopyOut(handler func(closer io.ReadCloser) error, srcs ...string) Container
 	}
 }
 
+// CopyOutMaybe copies container directories to a handler function. The handler is responsible for closing the Reader.
+// CopyOutMaybe differs from CopyOut in that it will silently continue to the next source file if the file reader cannot be instantiated
+// because the source file does not exist in the container.
+func CopyOutMaybe(handler func(closer io.ReadCloser) error, srcs ...string) ContainerOperation {
+	return func(ctrClient DockerClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
+		for _, src := range srcs {
+			reader, _, err := ctrClient.CopyFromContainer(ctx, containerID, src)
+			if err != nil {
+				if errdefs.IsNotFound(err) {
+					continue
+				}
+				return err
+			}
+
+			err = handler(reader)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
 func CopyOutTo(src, dest string) ContainerOperation {
 	return CopyOut(func(reader io.ReadCloser) error {
+		info := darchive.CopyInfo{
+			Path:  src,
+			IsDir: true,
+		}
+
+		defer reader.Close()
+		return darchive.CopyTo(reader, info, dest)
+	}, src)
+}
+
+func CopyOutToMaybe(src, dest string) ContainerOperation {
+	return CopyOutMaybe(func(reader io.ReadCloser) error {
 		info := darchive.CopyInfo{
 			Path:  src,
 			IsDir: true,
@@ -206,6 +243,37 @@ func WriteStackToml(dstPath string, stack builder.StackMetadata, os string) Cont
 		err := toml.NewEncoder(buf).Encode(stack)
 		if err != nil {
 			return errors.Wrap(err, "marshaling stack metadata")
+		}
+
+		tarBuilder := archive.TarBuilder{}
+
+		tarPath := dstPath
+		if os == "windows" {
+			tarPath = paths.WindowsToSlash(dstPath)
+		}
+
+		tarBuilder.AddFile(tarPath, 0755, archive.NormalizedDateTime, buf.Bytes())
+		reader := tarBuilder.Reader(archive.DefaultTarWriterFactory())
+		defer reader.Close()
+
+		if os == "windows" {
+			dirName := paths.WindowsDir(dstPath)
+			return copyDirWindows(ctx, ctrClient, containerID, reader, dirName, stdout, stderr)
+		}
+
+		return ctrClient.CopyToContainer(ctx, containerID, "/", reader, types.CopyToContainerOptions{})
+	}
+}
+
+// WriteRunToml writes a `run.toml` based on the RunConfig provided to the destination path.
+func WriteRunToml(dstPath string, runImages []builder.RunImageMetadata, os string) ContainerOperation {
+	return func(ctrClient DockerClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
+		buf := &bytes.Buffer{}
+		err := toml.NewEncoder(buf).Encode(builder.RunImages{
+			Images: runImages,
+		})
+		if err != nil {
+			return errors.Wrap(err, "marshaling run metadata")
 		}
 
 		tarBuilder := archive.TarBuilder{}

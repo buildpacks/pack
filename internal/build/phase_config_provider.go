@@ -63,6 +63,7 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 		op(provider)
 	}
 
+	provider.ctrConf.Entrypoint = []string{""} // override entrypoint in case it is set
 	provider.ctrConf.Cmd = append([]string{"/cnb/lifecycle/" + name}, provider.ctrConf.Cmd...)
 
 	lifecycleExec.logger.Debugf("Running the %s on OS %s with:", style.Symbol(provider.Name()), style.Symbol(provider.os))

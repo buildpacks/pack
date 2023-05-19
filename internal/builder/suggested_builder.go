@@ -24,17 +24,22 @@ var SuggestedBuilders = []SuggestedBuilder{
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
-		Image:              "paketobuildpacks/builder:base",
-		DefaultDescription: "Small base image with buildpacks for Java, Node.js, Golang, & .NET Core",
+		Image:              "paketobuildpacks/builder-jammy-base",
+		DefaultDescription: "Small base image with buildpacks for Java, Node.js, Golang, .NET Core, Python & Ruby",
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
-		Image:              "paketobuildpacks/builder:full",
-		DefaultDescription: "Larger base image with buildpacks for Java, Node.js, Golang, .NET Core, & PHP",
+		Image:              "paketobuildpacks/builder-jammy-full",
+		DefaultDescription: "Larger base image with buildpacks for Java, Node.js, Golang, .NET Core, Python, Ruby, & PHP",
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
-		Image:              "paketobuildpacks/builder:tiny",
-		DefaultDescription: "Tiny base image (bionic build image, distroless run image) with buildpacks for Golang",
+		Image:              "paketobuildpacks/builder-jammy-tiny",
+		DefaultDescription: "Tiny base image (jammy build image, distroless run image) with buildpacks for Golang & Java",
+	},
+	{
+		Vendor:             "Paketo Buildpacks",
+		Image:              "paketobuildpacks/builder-jammy-buildpackless-static",
+		DefaultDescription: "Static base image (jammy build image, distroless run image) suitable for static binaries like Go or Rust",
 	},
 }

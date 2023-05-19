@@ -28,6 +28,8 @@ import (
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
+
+	lifecycleplatform "github.com/buildpacks/lifecycle/platform"
 )
 
 const (
@@ -38,6 +40,7 @@ const (
 
 	orderPath          = "/cnb/order.toml"
 	stackPath          = "/cnb/stack.toml"
+	runPath            = "/cnb/run.toml"
 	platformDir        = "/platform"
 	lifecycleDir       = "/cnb/lifecycle"
 	compatLifecycleDir = "/lifecycle"
@@ -61,21 +64,23 @@ const (
 
 // Builder represents a pack builder, used to build images
 type Builder struct {
-	baseImageName        string
-	image                imgutil.Image
-	layerWriterFactory   archive.TarWriterFactory
-	lifecycle            Lifecycle
-	lifecycleDescriptor  LifecycleDescriptor
-	additionalBuildpacks []buildpack.BuildModule
-	additionalExtensions []buildpack.BuildModule
-	metadata             Metadata
-	mixins               []string
-	env                  map[string]string
-	uid, gid             int
-	StackID              string
-	replaceOrder         bool
-	order                dist.Order
-	orderExtensions      dist.Order
+	baseImageName            string
+	image                    imgutil.Image
+	layerWriterFactory       archive.TarWriterFactory
+	lifecycle                Lifecycle
+	lifecycleDescriptor      LifecycleDescriptor
+	additionalBuildpacks     buildpack.ManagedCollection
+	additionalExtensions     buildpack.ManagedCollection
+	flattenExcludeBuildpacks []string
+	metadata                 Metadata
+	mixins                   []string
+	env                      map[string]string
+	uid, gid                 int
+	StackID                  string
+	replaceOrder             bool
+	order                    dist.Order
+	orderExtensions          dist.Order
+	validateMixins           bool
 }
 
 type orderTOML struct {
@@ -89,27 +94,39 @@ type toAdd struct {
 	module  buildpack.BuildModule
 }
 
+type BuilderOption func(*options) error
+
+type options struct {
+	flatten bool
+	depth   int
+	exclude []string
+}
+
 // FromImage constructs a builder from a builder image
 func FromImage(img imgutil.Image) (*Builder, error) {
-	var metadata Metadata
-	if ok, err := dist.GetLabel(img, metadataLabel, &metadata); err != nil {
-		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)
-	} else if !ok {
-		return nil, fmt.Errorf("builder %s missing label %s -- try recreating builder", style.Symbol(img.Name()), style.Symbol(metadataLabel))
-	}
-	return constructBuilder(img, "", metadata)
+	return constructBuilder(img, "", true)
 }
 
 // New constructs a new builder from a base image
-func New(baseImage imgutil.Image, name string) (*Builder, error) {
-	var metadata Metadata
-	if _, err := dist.GetLabel(baseImage, metadataLabel, &metadata); err != nil {
-		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)
-	}
-	return constructBuilder(baseImage, name, metadata)
+func New(baseImage imgutil.Image, name string, ops ...BuilderOption) (*Builder, error) {
+	return constructBuilder(baseImage, name, false, ops...)
 }
 
-func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Builder, error) {
+func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool, ops ...BuilderOption) (*Builder, error) {
+	var metadata Metadata
+	if ok, err := dist.GetLabel(img, metadataLabel, &metadata); err != nil {
+		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)
+	} else if !ok && errOnMissingLabel {
+		return nil, fmt.Errorf("builder %s missing label %s -- try recreating builder", style.Symbol(img.Name()), style.Symbol(metadataLabel))
+	}
+
+	opts := &options{}
+	for _, op := range ops {
+		if err := op(opts); err != nil {
+			return nil, err
+		}
+	}
+
 	imageOS, err := img.OS()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting image OS")
@@ -120,12 +137,16 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 	}
 
 	bldr := &Builder{
-		baseImageName:       img.Name(),
-		image:               img,
-		layerWriterFactory:  layerWriterFactory,
-		metadata:            metadata,
-		lifecycleDescriptor: constructLifecycleDescriptor(metadata),
-		env:                 map[string]string{},
+		baseImageName:            img.Name(),
+		image:                    img,
+		layerWriterFactory:       layerWriterFactory,
+		metadata:                 metadata,
+		lifecycleDescriptor:      constructLifecycleDescriptor(metadata),
+		env:                      map[string]string{},
+		validateMixins:           true,
+		additionalBuildpacks:     *buildpack.NewModuleManager(opts.flatten, opts.depth),
+		additionalExtensions:     *buildpack.NewModuleManager(opts.flatten, opts.depth),
+		flattenExcludeBuildpacks: opts.exclude,
 	}
 
 	if err := addImgLabelsToBuildr(bldr); err != nil {
@@ -137,6 +158,15 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 	}
 
 	return bldr, nil
+}
+
+func WithFlatten(depth int, exclude []string) BuilderOption {
+	return func(o *options) error {
+		o.flatten = true
+		o.depth = depth
+		o.exclude = exclude
+		return nil
+	}
 }
 
 func constructLifecycleDescriptor(metadata Metadata) LifecycleDescriptor {
@@ -159,9 +189,6 @@ func addImgLabelsToBuildr(bldr *Builder) error {
 	bldr.StackID, err = bldr.image.Label(stackLabel)
 	if err != nil {
 		return errors.Wrapf(err, "get label %s from image %s", style.Symbol(stackLabel), style.Symbol(bldr.image.Name()))
-	}
-	if bldr.StackID == "" {
-		return fmt.Errorf("image %s missing label %s", style.Symbol(bldr.image.Name()), style.Symbol(stackLabel))
 	}
 
 	if _, err = dist.GetLabel(bldr.image, stack.MixinsLabel, &bldr.mixins); err != nil {
@@ -236,6 +263,18 @@ func (b *Builder) Stack() StackMetadata {
 	return b.metadata.Stack
 }
 
+// RunImages returns all run image metadata
+func (b *Builder) RunImages() []RunImageMetadata {
+	return append(b.metadata.RunImages, b.Stack().RunImage)
+}
+
+// DefaultRunImage returns the default run image metadata
+func (b *Builder) DefaultRunImage() RunImageMetadata {
+	// run.images are ensured in builder.ValidateConfig()
+	// per the spec, we use the first one as the default
+	return b.RunImages()[0]
+}
+
 // Mixins returns the mixins of the builder
 func (b *Builder) Mixins() []string {
 	return b.mixins
@@ -251,17 +290,48 @@ func (b *Builder) GID() int {
 	return b.gid
 }
 
+func (b *Builder) AllModules(kind string) []buildpack.BuildModule {
+	return b.moduleManager(kind).AllModules()
+}
+
+func (b *Builder) moduleManager(kind string) *buildpack.ManagedCollection {
+	switch kind {
+	case buildpack.KindBuildpack:
+		return &b.additionalBuildpacks
+	case buildpack.KindExtension:
+		return &b.additionalExtensions
+	}
+	return &buildpack.ManagedCollection{}
+}
+
+func (b *Builder) FlattenedModules(kind string) [][]buildpack.BuildModule {
+	manager := b.moduleManager(kind)
+	return manager.FlattenedModules()
+}
+
+func (b *Builder) ShouldFlatten(module buildpack.BuildModule) bool {
+	return b.additionalBuildpacks.ShouldFlatten(module)
+}
+
 // Setters
 
 // AddBuildpack adds a buildpack to the builder
 func (b *Builder) AddBuildpack(bp buildpack.BuildModule) {
-	b.additionalBuildpacks = append(b.additionalBuildpacks, bp)
+	b.additionalBuildpacks.AddModules(bp)
 	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().Info())
+}
+
+func (b *Builder) AddBuildpacks(main buildpack.BuildModule, dependencies []buildpack.BuildModule) {
+	b.additionalBuildpacks.AddModules(main, dependencies...)
+	b.metadata.Buildpacks = append(b.metadata.Buildpacks, main.Descriptor().Info())
+	for _, dep := range dependencies {
+		b.metadata.Buildpacks = append(b.metadata.Buildpacks, dep.Descriptor().Info())
+	}
 }
 
 // AddExtension adds an extension to the builder
 func (b *Builder) AddExtension(bp buildpack.BuildModule) {
-	b.additionalExtensions = append(b.additionalExtensions, bp)
+	b.additionalExtensions.AddModules(bp)
 	b.metadata.Extensions = append(b.metadata.Extensions, bp.Descriptor().Info())
 }
 
@@ -310,6 +380,23 @@ func (b *Builder) SetStack(stackConfig builder.StackConfig) {
 	}
 }
 
+// SetRunImage sets the run image of the builder
+func (b *Builder) SetRunImage(runConfig builder.RunConfig) {
+	var runImages []RunImageMetadata
+	for _, i := range runConfig.Images {
+		runImages = append(runImages, RunImageMetadata{
+			Image:   i.Image,
+			Mirrors: i.Mirrors,
+		})
+	}
+	b.metadata.RunImages = runImages
+}
+
+// SetValidateMixins if true instructs the builder to validate mixins
+func (b *Builder) SetValidateMixins(to bool) {
+	b.validateMixins = to
+}
+
 // Save saves the builder
 func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) error {
 	logger.Debugf("Creating builder with the following buildpacks:")
@@ -345,11 +432,13 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		}
 	}
 
-	if err := validateBuildpacks(b.StackID, b.Mixins(), b.LifecycleDescriptor(), b.Buildpacks(), b.additionalBuildpacks); err != nil {
-		return errors.Wrap(err, "validating buildpacks")
+	if b.validateMixins {
+		if err := b.validateBuildpacks(); err != nil {
+			return errors.Wrap(err, "validating buildpacks")
+		}
 	}
 
-	if err := validateExtensions(b.lifecycleDescriptor, b.Extensions(), b.additionalExtensions); err != nil {
+	if err := validateExtensions(b.lifecycleDescriptor, b.Extensions(), b.AllModules(buildpack.KindExtension)); err != nil {
 		return errors.Wrap(err, "validating extensions")
 	}
 
@@ -357,7 +446,14 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	if _, err := dist.GetLabel(b.image, dist.BuildpackLayersLabel, &bpLayers); err != nil {
 		return errors.Wrapf(err, "getting label %s", dist.BuildpackLayersLabel)
 	}
-	err = b.addModules(buildpack.KindBuildpack, logger, tmpDir, b.image, b.additionalBuildpacks, bpLayers)
+
+	var excludedBuildpacks []buildpack.BuildModule
+	excludedBuildpacks, err = b.addFlattenedModules(buildpack.KindBuildpack, logger, tmpDir, b.image, b.additionalBuildpacks.FlattenedModules(), bpLayers)
+	if err != nil {
+		return err
+	}
+
+	err = b.addExplodedModules(buildpack.KindBuildpack, logger, tmpDir, b.image, append(b.additionalBuildpacks.ExplodedModules(), excludedBuildpacks...), bpLayers)
 	if err != nil {
 		return err
 	}
@@ -369,10 +465,18 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	if _, err := dist.GetLabel(b.image, dist.ExtensionLayersLabel, &extLayers); err != nil {
 		return errors.Wrapf(err, "getting label %s", dist.ExtensionLayersLabel)
 	}
-	err = b.addModules(buildpack.KindExtension, logger, tmpDir, b.image, b.additionalExtensions, extLayers)
+
+	var excludedExtensions []buildpack.BuildModule
+	excludedExtensions, err = b.addFlattenedModules(buildpack.KindExtension, logger, tmpDir, b.image, b.additionalExtensions.FlattenedModules(), extLayers)
 	if err != nil {
 		return err
 	}
+
+	err = b.addExplodedModules(buildpack.KindExtension, logger, tmpDir, b.image, append(b.additionalExtensions.ExplodedModules(), excludedExtensions...), extLayers)
+	if err != nil {
+		return err
+	}
+
 	if err := dist.SetLabel(b.image, dist.ExtensionLayersLabel, extLayers); err != nil {
 		return err
 	}
@@ -408,6 +512,14 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	}
 	if err := b.image.AddLayer(stackTar); err != nil {
 		return errors.Wrap(err, "adding stack.tar layer")
+	}
+
+	runImageTar, err := b.runImageLayer(tmpDir)
+	if err != nil {
+		return err
+	}
+	if err := b.image.AddLayer(runImageTar); err != nil {
+		return errors.Wrap(err, "adding run.tar layer")
 	}
 
 	if len(b.env) > 0 {
@@ -446,7 +558,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 // Helpers
 
-func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.ModuleLayers) error {
+func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.ModuleLayers) error {
 	collectionToAdd := map[string]toAdd{}
 
 	type modInfo struct {
@@ -556,6 +668,73 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 	return nil
 }
 
+func (b *Builder) addFlattenedModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, flattenModules [][]buildpack.BuildModule, layers dist.ModuleLayers) ([]buildpack.BuildModule, error) {
+	collectionToAdd := map[string]toAdd{}
+	var (
+		buildModuleExcluded []buildpack.BuildModule
+		finalTarPath        string
+		err                 error
+	)
+
+	buildModuleWriter := buildpack.NewBuildModuleWriter(logger, b.layerWriterFactory)
+	excludedModules := buildpack.Set(b.flattenExcludeBuildpacks)
+
+	for i, additionalModules := range flattenModules {
+		modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s-flatten", kind, strconv.Itoa(i)))
+		if err := os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
+			return nil, errors.Wrap(err, "creating flatten temp dir")
+		}
+
+		finalTarPath, buildModuleExcluded, err = buildModuleWriter.NToLayerTar(modFlattenTmpDir, fmt.Sprintf("%s-flatten-%s", kind, strconv.Itoa(i)), additionalModules, excludedModules)
+		if err != nil {
+			return nil, errors.Wrapf(err, "writing layer %s", finalTarPath)
+		}
+
+		diffID, err := dist.LayerDiffID(finalTarPath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "calculating diff layer %s", finalTarPath)
+		}
+
+		for _, module := range additionalModules {
+			collectionToAdd[module.Descriptor().Info().FullName()] = toAdd{
+				tarPath: finalTarPath,
+				diffID:  diffID.String(),
+				module:  module,
+			}
+		}
+	}
+
+	// Fixes 1453
+	keys := sortKeys(collectionToAdd)
+	diffIDAdded := map[string]string{}
+	for _, k := range keys {
+		module := collectionToAdd[k]
+		bp := module.module
+		addLayer := true
+		if b.ShouldFlatten(bp) {
+			if _, ok := diffIDAdded[module.diffID]; !ok {
+				diffIDAdded[module.diffID] = module.tarPath
+			} else {
+				addLayer = false
+				logger.Debugf("Squashing %s %s (diffID=%s)", kind, style.Symbol(bp.Descriptor().Info().FullName()), module.diffID)
+			}
+		}
+		if addLayer {
+			logger.Debugf("Adding %s %s (diffID=%s)", kind, style.Symbol(bp.Descriptor().Info().FullName()), module.diffID)
+			if err = image.AddLayerWithDiffID(module.tarPath, module.diffID); err != nil {
+				return nil, errors.Wrapf(err,
+					"adding layer tar for %s %s",
+					kind,
+					style.Symbol(module.module.Descriptor().Info().FullName()),
+				)
+			}
+		}
+		dist.AddToLayersMD(layers, bp.Descriptor(), module.diffID)
+	}
+
+	return buildModuleExcluded, nil
+}
+
 func processOrder(modulesOnBuilder []dist.ModuleInfo, order dist.Order, kind string) (dist.Order, error) {
 	resolved := dist.Order{}
 	for idx, g := range order {
@@ -610,24 +789,20 @@ func hasElementWithVersion(moduleList []dist.ModuleInfo, version string) bool {
 	return false
 }
 
-func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, allBuildpacks []dist.ModuleInfo, bpsToValidate []buildpack.BuildModule) error {
+func (b *Builder) validateBuildpacks() error {
 	bpLookup := map[string]interface{}{}
 
-	for _, bp := range allBuildpacks {
+	for _, bp := range b.Buildpacks() {
 		bpLookup[bp.FullName()] = nil
 	}
 
-	for _, bp := range bpsToValidate {
+	for _, bp := range b.AllModules(buildpack.KindBuildpack) {
 		bpd := bp.Descriptor()
-		if err := validateLifecycleCompat(bpd, lifecycleDescriptor); err != nil {
+		if err := validateLifecycleCompat(bpd, b.LifecycleDescriptor()); err != nil {
 			return err
 		}
 
-		if len(bpd.Stacks()) >= 1 { // standard buildpack
-			if err := bpd.EnsureStackSupport(stackID, mixins, false); err != nil {
-				return err
-			}
-		} else { // order buildpack
+		if len(bpd.Order()) > 0 { // order buildpack
 			for _, g := range bpd.Order() {
 				for _, r := range g.Group {
 					if _, ok := bpLookup[r.FullName()]; !ok {
@@ -638,6 +813,30 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 					}
 				}
 			}
+		} else if err := bpd.EnsureStackSupport(b.StackID, b.Mixins(), false); err != nil {
+			return err
+		} else {
+			buildOS, err := b.Image().OS()
+			if err != nil {
+				return err
+			}
+			buildArch, err := b.Image().Architecture()
+			if err != nil {
+				return err
+			}
+			buildDistroName, err := b.Image().Label(lifecycleplatform.OSDistributionNameLabel)
+			if err != nil {
+				return err
+			}
+			buildDistroVersion, err := b.Image().Label(lifecycleplatform.OSDistributionVersionLabel)
+			if err != nil {
+				return err
+			}
+			if err := bpd.EnsureTargetSupport(buildOS, buildArch, buildDistroName, buildDistroVersion); err != nil {
+				return err
+			}
+
+			// TODO ensure at least one run-image
 		}
 	}
 
@@ -662,7 +861,6 @@ func validateExtensions(lifecycleDescriptor LifecycleDescriptor, allExtensions [
 }
 
 func validateLifecycleCompat(descriptor buildpack.Descriptor, lifecycleDescriptor LifecycleDescriptor) error {
-	// TODO: Warn when Buildpack API is deprecated - https://github.com/buildpacks/pack/issues/788
 	compatible := false
 	for _, version := range append(lifecycleDescriptor.APIs.Buildpack.Supported, lifecycleDescriptor.APIs.Buildpack.Deprecated...) {
 		compatible = version.Compare(descriptor.API()) == 0
@@ -881,7 +1079,12 @@ func orderFileContents(order dist.Order, orderExt dist.Order) (string, error) {
 
 func (b *Builder) stackLayer(dest string) (string, error) {
 	buf := &bytes.Buffer{}
-	err := toml.NewEncoder(buf).Encode(b.metadata.Stack)
+	var err error
+	if b.metadata.Stack.RunImage.Image != "" {
+		err = toml.NewEncoder(buf).Encode(b.metadata.Stack)
+	} else if len(b.metadata.RunImages) > 0 {
+		err = toml.NewEncoder(buf).Encode(b.metadata.RunImages[0])
+	}
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to marshal stack.toml")
 	}
@@ -890,6 +1093,24 @@ func (b *Builder) stackLayer(dest string) (string, error) {
 	err = layer.CreateSingleFileTar(layerTar, stackPath, buf.String(), b.layerWriterFactory)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create stack.toml layer tar")
+	}
+
+	return layerTar, nil
+}
+
+func (b *Builder) runImageLayer(dest string) (string, error) {
+	buf := &bytes.Buffer{}
+	err := toml.NewEncoder(buf).Encode(RunImages{
+		Images: b.metadata.RunImages,
+	})
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to marshal run.toml")
+	}
+
+	layerTar := filepath.Join(dest, "run.tar")
+	err = layer.CreateSingleFileTar(layerTar, runPath, buf.String(), b.layerWriterFactory)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to create run.toml layer tar")
 	}
 
 	return layerTar, nil

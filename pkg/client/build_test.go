@@ -5,16 +5,15 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
@@ -49,7 +48,6 @@ import (
 func TestBuild(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "build", testBuild, spec.Report(report.Terminal{}))
 }
 
@@ -462,6 +460,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 						},
+						nil,
+						nil,
 						nil,
 						nil,
 						newLinuxImage,
@@ -1200,7 +1200,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
-				when("uri is a http url", func() {
+				when("uri is an http url", func() {
 					var server *ghttp.Server
 
 					it.Before(func() {
@@ -1429,16 +1429,32 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, fakeDefaultRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinX", "run:mixinZ"]`))
 					})
 
-					it("returns an error", func() {
-						err := subject.Build(context.TODO(), BuildOptions{
+					it("succeeds", func() {
+						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 							Image:   "some/app",
 							Builder: defaultBuilderName,
 							Buildpacks: []string{
 								buildpackTgz, // requires mixinA, build:mixinB, run:mixinC
 							},
+						}))
+					})
+
+					when("platform API < 0.12", func() {
+						it.Before(func() {
+							setAPIs(t, defaultBuilderImage, []string{"0.8"}, []string{"0.11"})
 						})
 
-						h.AssertError(t, err, "validating stack mixins: buildpack 'some-other-buildpack-id@some-other-buildpack-version' requires missing mixin(s): build:mixinB, mixinA, run:mixinC")
+						it("returns an error", func() {
+							err := subject.Build(context.TODO(), BuildOptions{
+								Image:   "some/app",
+								Builder: defaultBuilderName,
+								Buildpacks: []string{
+									buildpackTgz, // requires mixinA, build:mixinB, run:mixinC
+								},
+							})
+
+							h.AssertError(t, err, "validating stack mixins: buildpack 'some-other-buildpack-id@some-other-buildpack-version' requires missing mixin(s): build:mixinB, mixinA, run:mixinC")
+						})
 					})
 				})
 
@@ -1708,6 +1724,92 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("Extensions option", func() {
+			it.Before(func() {
+				subject.experimental = true
+				defaultBuilderImage.SetLabel("io.buildpacks.buildpack.order-extensions", `[{"group":[{"id":"extension.1.id","version":"extension.1.version"}]}, {"group":[{"id":"extension.2.id","version":"extension.2.version"}]}]`)
+				defaultWindowsBuilderImage.SetLabel("io.buildpacks.buildpack.order-extensions", `[{"group":[{"id":"extension.1.id","version":"extension.1.version"}]}, {"group":[{"id":"extension.2.id","version":"extension.2.version"}]}]`)
+			})
+
+			assertOrderEquals := func(content string) {
+				t.Helper()
+
+				orderLayer, err := defaultBuilderImage.FindLayerWithPath("/cnb/order.toml")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, orderLayer, "/cnb/order.toml", h.ContentEquals(content))
+			}
+
+			it("builder order-extensions is overwritten", func() {
+				additionalEx := ifakes.CreateExtensionTar(t, tmpDir, dist.ExtensionDescriptor{
+					WithAPI: api.MustParse("0.3"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "extension.add.1.id",
+						Version: "extension.add.1.version",
+					},
+				})
+
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:      "some/app",
+					Builder:    defaultBuilderName,
+					ClearCache: true,
+					Extensions: []string{additionalEx},
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+
+				assertOrderEquals(`[[order]]
+
+  [[order.group]]
+    id = "buildpack.1.id"
+    version = "buildpack.1.version"
+
+[[order]]
+
+  [[order.group]]
+    id = "buildpack.2.id"
+    version = "buildpack.2.version"
+
+[[order-extensions]]
+
+  [[order-extensions.group]]
+    id = "extension.add.1.id"
+    version = "extension.add.1.version"
+`)
+			})
+
+			when("id - no version is provided", func() {
+				it("resolves version", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    defaultBuilderName,
+						ClearCache: true,
+						Extensions: []string{"extension.1.id"},
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+
+					assertOrderEquals(`[[order]]
+
+  [[order.group]]
+    id = "buildpack.1.id"
+    version = "buildpack.1.version"
+
+[[order]]
+
+  [[order.group]]
+    id = "buildpack.2.id"
+    version = "buildpack.2.version"
+
+[[order-extensions]]
+
+  [[order-extensions.group]]
+    id = "extension.1.id"
+    version = "extension.1.version"
+`)
+				})
+			})
+		})
+
+		//TODO: "all buildpacks are added to ephemeral builder" test after extractPackaged() is completed.
+
 		when("ProjectDescriptor", func() {
 			when("project metadata", func() {
 				when("not experimental", func() {
@@ -1948,18 +2050,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, args.PullPolicy, image.PullAlways)
 							h.AssertEq(t, args.Platform, "linux/amd64")
 						})
-
-						it("suggests that being untrusted may be the root of a failure", func() {
-							subject.lifecycleExecutor = &executeFailsLifecycle{}
-							err := subject.Build(context.TODO(), BuildOptions{
-								Image:        "some/app",
-								Builder:      defaultBuilderName,
-								Publish:      false,
-								TrustBuilder: func(string) bool { return false },
-							})
-
-							h.AssertError(t, err, "may be the result of using an untrusted builder")
-						})
 					})
 
 					when("lifecycle image is not available", func() {
@@ -2171,6 +2261,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								},
 								nil,
 								nil,
+								nil,
+								nil,
 								newLinuxImage,
 							)
 
@@ -2219,6 +2311,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									},
 								},
 							},
+							nil,
+							nil,
 							nil,
 							nil,
 							newLinuxImage,
@@ -2273,6 +2367,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									},
 								},
 							},
+							nil,
+							nil,
 							nil,
 							nil,
 							newLinuxImage,
@@ -2331,6 +2427,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 							nil,
 							nil,
+							nil,
+							nil,
 							newLinuxImage,
 						)
 
@@ -2362,13 +2460,26 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, fakeDefaultRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinB"]`))
 				})
 
-				it("returns an error", func() {
-					err := subject.Build(context.TODO(), BuildOptions{
+				it("succeeds", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:   "some/app",
 						Builder: defaultBuilderName,
+					}))
+				})
+
+				when("platform API < 0.12", func() {
+					it.Before(func() {
+						setAPIs(t, defaultBuilderImage, []string{"0.8"}, []string{"0.11"})
 					})
 
-					h.AssertError(t, err, "validating stack mixins: 'default/run' missing required mixin(s): mixinA")
+					it("returns an error", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: defaultBuilderName,
+						})
+
+						h.AssertError(t, err, "validating stack mixins: 'default/run' missing required mixin(s): mixinA")
+					})
 				})
 			})
 
@@ -2378,13 +2489,26 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, fakeDefaultRunImage.SetLabel("io.buildpacks.stack.mixins", ""))
 				})
 
-				it("returns an error", func() {
-					err := subject.Build(context.TODO(), BuildOptions{
+				it("succeeds", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:   "some/app",
 						Builder: defaultBuilderName,
+					}))
+				})
+
+				when("platform API < 0.12", func() {
+					it.Before(func() {
+						setAPIs(t, defaultBuilderImage, []string{"0.8"}, []string{"0.11"})
 					})
 
-					h.AssertError(t, err, "validating stack mixins: buildpack 'buildpack.1.id@buildpack.1.version' requires missing mixin(s): build:mixinY, mixinX, run:mixinZ")
+					it("returns an error", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: defaultBuilderName,
+						})
+
+						h.AssertError(t, err, "validating stack mixins: buildpack 'buildpack.1.id@buildpack.1.version' requires missing mixin(s): build:mixinY, mixinX, run:mixinZ")
+					})
 				})
 			})
 		})
@@ -2901,6 +3025,14 @@ func newWindowsImage(name, topLayerSha string, identifier imgutil.Identifier) *f
 }
 
 func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackID, runImageName, lifecycleVersion string, osImageCreator ifakes.FakeImageCreator) *fakes.Image {
+	var supportedBuildpackAPIs builder.APISet
+	for _, v := range api.Buildpack.Supported {
+		supportedBuildpackAPIs = append(supportedBuildpackAPIs, v)
+	}
+	var supportedPlatformAPIs builder.APISet
+	for _, v := range api.Platform.Supported {
+		supportedPlatformAPIs = append(supportedPlatformAPIs, v)
+	}
 	return ifakes.NewFakeBuilderImage(t,
 		tmpDir,
 		builderName,
@@ -2911,6 +3043,10 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 			Buildpacks: []dist.ModuleInfo{
 				{ID: "buildpack.1.id", Version: "buildpack.1.version"},
 				{ID: "buildpack.2.id", Version: "buildpack.2.version"},
+			},
+			Extensions: []dist.ModuleInfo{
+				{ID: "extension.1.id", Version: "extension.1.version"},
+				{ID: "extension.2.id", Version: "extension.2.version"},
 			},
 			Stack: builder.StackMetadata{
 				RunImage: builder.RunImageMetadata{
@@ -2929,10 +3065,10 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 				},
 				APIs: builder.LifecycleAPIs{
 					Buildpack: builder.APIVersions{
-						Supported: builder.APISet{api.MustParse("0.2"), api.MustParse("0.3"), api.MustParse("0.4")},
+						Supported: supportedBuildpackAPIs,
 					},
 					Platform: builder.APIVersions{
-						Supported: builder.APISet{api.MustParse("0.3"), api.MustParse("0.4")},
+						Supported: supportedPlatformAPIs,
 					},
 				},
 			},
@@ -2976,15 +3112,69 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 				},
 			}},
 		}},
+		dist.ModuleLayers{
+			"extension.1.id": {
+				"extension.1.version": {
+					API: api.MustParse("0.3"),
+				},
+			},
+			"extension.2.id": {
+				"extension.2.version": {
+					API: api.MustParse("0.3"),
+				},
+			},
+		},
+		dist.Order{{
+			Group: []dist.ModuleRef{{
+				ModuleInfo: dist.ModuleInfo{
+					ID:      "extension.1.id",
+					Version: "extension.1.version",
+				},
+			}},
+		}, {
+			Group: []dist.ModuleRef{{
+				ModuleInfo: dist.ModuleInfo{
+					ID:      "extension.2.id",
+					Version: "extension.2.version",
+				},
+			}},
+		}},
 		osImageCreator,
 	)
 }
 
-type executeFailsLifecycle struct {
+func setAPIs(t *testing.T, image *fakes.Image, buildpackAPIs []string, platformAPIs []string) {
+	builderMDLabelName := "io.buildpacks.builder.metadata"
+	var supportedBuildpackAPIs builder.APISet
+	for _, v := range buildpackAPIs {
+		supportedBuildpackAPIs = append(supportedBuildpackAPIs, api.MustParse(v))
+	}
+	var supportedPlatformAPIs builder.APISet
+	for _, v := range platformAPIs {
+		supportedPlatformAPIs = append(supportedPlatformAPIs, api.MustParse(v))
+	}
+	builderMDLabel, err := image.Label(builderMDLabelName)
+	h.AssertNil(t, err)
+	var builderMD builder.Metadata
+	h.AssertNil(t, json.Unmarshal([]byte(builderMDLabel), &builderMD))
+	builderMD.Lifecycle.APIs = builder.LifecycleAPIs{
+		Buildpack: builder.APIVersions{
+			Supported: supportedBuildpackAPIs,
+		},
+		Platform: builder.APIVersions{
+			Supported: supportedPlatformAPIs,
+		},
+	}
+	builderMDLabelBytes, err := json.Marshal(&builderMD)
+	h.AssertNil(t, err)
+	h.AssertNil(t, image.SetLabel(builderMDLabelName, string(builderMDLabelBytes)))
+}
+
+type executeFailsLifecycle struct { //nolint
 	Opts build.LifecycleOptions
 }
 
-func (f *executeFailsLifecycle) Execute(_ context.Context, opts build.LifecycleOptions) error {
+func (f *executeFailsLifecycle) Execute(_ context.Context, opts build.LifecycleOptions) error { //nolint
 	f.Opts = opts
 	return errors.New("")
 }

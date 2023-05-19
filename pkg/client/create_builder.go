@@ -9,6 +9,8 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
@@ -39,6 +41,15 @@ type CreateBuilderOptions struct {
 
 	// Strategy for updating images before a build.
 	PullPolicy image.PullPolicy
+
+	// Flatten layers
+	Flatten bool
+
+	// Max depth for flattening compose buildpacks.
+	Depth int
+
+	// List of buildpack images to exclude from the package been flatten.
+	FlattenExclude []string
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.
@@ -63,7 +74,11 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 
 	bldr.SetOrder(opts.Config.Order)
 	bldr.SetOrderExtensions(opts.Config.OrderExtensions)
-	bldr.SetStack(opts.Config.Stack)
+
+	if opts.Config.Stack.ID != "" {
+		bldr.SetStack(opts.Config.Stack)
+	}
+	bldr.SetRunImage(opts.Config.Run)
 
 	return bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version})
 }
@@ -82,43 +97,47 @@ func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions) 
 
 func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOptions) error {
 	var runImages []imgutil.Image
-	for _, i := range append([]string{opts.Config.Stack.RunImage}, opts.Config.Stack.RunImageMirrors...) {
-		if !opts.Publish {
-			img, err := c.imageFetcher.Fetch(ctx, i, image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy})
+	for _, r := range opts.Config.Run.Images {
+		for _, i := range append([]string{r.Image}, r.Mirrors...) {
+			if !opts.Publish {
+				img, err := c.imageFetcher.Fetch(ctx, i, image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy})
+				if err != nil {
+					if errors.Cause(err) != image.ErrNotFound {
+						return errors.Wrap(err, "failed to fetch image")
+					}
+				} else {
+					runImages = append(runImages, img)
+					continue
+				}
+			}
+
+			img, err := c.imageFetcher.Fetch(ctx, i, image.FetchOptions{Daemon: false, PullPolicy: opts.PullPolicy})
 			if err != nil {
 				if errors.Cause(err) != image.ErrNotFound {
 					return errors.Wrap(err, "failed to fetch image")
 				}
+				c.logger.Warnf("run image %s is not accessible", style.Symbol(i))
 			} else {
 				runImages = append(runImages, img)
-				continue
 			}
-		}
-
-		img, err := c.imageFetcher.Fetch(ctx, i, image.FetchOptions{Daemon: false, PullPolicy: opts.PullPolicy})
-		if err != nil {
-			if errors.Cause(err) != image.ErrNotFound {
-				return errors.Wrap(err, "failed to fetch image")
-			}
-			c.logger.Warnf("run image %s is not accessible", style.Symbol(i))
-		} else {
-			runImages = append(runImages, img)
 		}
 	}
 
 	for _, img := range runImages {
-		stackID, err := img.Label("io.buildpacks.stack.id")
-		if err != nil {
-			return errors.Wrap(err, "failed to label image")
-		}
+		if opts.Config.Stack.ID != "" {
+			stackID, err := img.Label("io.buildpacks.stack.id")
+			if err != nil {
+				return errors.Wrap(err, "failed to label image")
+			}
 
-		if stackID != opts.Config.Stack.ID {
-			return fmt.Errorf(
-				"stack %s from builder config is incompatible with stack %s from run image %s",
-				style.Symbol(opts.Config.Stack.ID),
-				style.Symbol(stackID),
-				style.Symbol(img.Name()),
-			)
+			if stackID != opts.Config.Stack.ID {
+				return fmt.Errorf(
+					"stack %s from builder config is incompatible with stack %s from run image %s",
+					style.Symbol(opts.Config.Stack.ID),
+					style.Symbol(stackID),
+					style.Symbol(img.Name()),
+				)
+			}
 		}
 	}
 
@@ -126,13 +145,18 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 }
 
 func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOptions) (*builder.Builder, error) {
-	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Stack.BuildImage, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
+	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Build.Image, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
 	if err != nil {
 		return nil, errors.Wrap(err, "fetch build image")
 	}
 
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
-	bldr, err := builder.New(baseImage, opts.BuilderName)
+
+	var builderOpts []builder.BuilderOption
+	if opts.Flatten {
+		builderOpts = append(builderOpts, builder.WithFlatten(opts.Depth, opts.FlattenExclude))
+	}
+	bldr, err := builder.New(baseImage, opts.BuilderName, builderOpts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid build-image")
 	}
@@ -153,7 +177,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 
 	bldr.SetDescription(opts.Config.Description)
 
-	if bldr.StackID != opts.Config.Stack.ID {
+	if opts.Config.Stack.ID != "" && bldr.StackID != opts.Config.Stack.ID {
 		return nil, fmt.Errorf(
 			"stack %s from builder config is incompatible with stack %s from build image",
 			style.Symbol(opts.Config.Stack.ID),
@@ -260,7 +284,7 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 		if deprecatedAPI.Equal(bpDesc.API()) {
 			c.logger.Warnf(
 				"%s %s is using deprecated Buildpacks API version %s",
-				strings.Title(kind),
+				cases.Title(language.AmericanEnglish).String(kind),
 				style.Symbol(bpDesc.Info().FullName()),
 				style.Symbol(bpDesc.API().String()),
 			)
@@ -270,22 +294,21 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 
 	// Fixes 1453
 	sort.Slice(depBPs, func(i, j int) bool {
-		compareId := strings.Compare(depBPs[i].Descriptor().Info().ID, depBPs[j].Descriptor().Info().ID)
-		if compareId == 0 {
+		compareID := strings.Compare(depBPs[i].Descriptor().Info().ID, depBPs[j].Descriptor().Info().ID)
+		if compareID == 0 {
 			return strings.Compare(depBPs[i].Descriptor().Info().Version, depBPs[j].Descriptor().Info().Version) <= 0
 		}
-		return compareId < 0
+		return compareID < 0
 	})
 
-	for _, module := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
-		switch kind {
-		case buildpack.KindBuildpack:
-			bldr.AddBuildpack(module)
-		case buildpack.KindExtension:
-			bldr.AddExtension(module)
-		default:
-			return fmt.Errorf("unknown module kind: %s", kind)
-		}
+	switch kind {
+	case buildpack.KindBuildpack:
+		bldr.AddBuildpacks(mainBP, depBPs)
+	case buildpack.KindExtension:
+		// Extensions can't be composite
+		bldr.AddExtension(mainBP)
+	default:
+		return fmt.Errorf("unknown module kind: %s", kind)
 	}
 	return nil
 }

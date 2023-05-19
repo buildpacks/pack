@@ -34,11 +34,13 @@ type BuildModule interface {
 type Descriptor interface {
 	API() *api.Version
 	EnsureStackSupport(stackID string, providedMixins []string, validateRunStageMixins bool) error
+	EnsureTargetSupport(os, arch, distroName, distroVersion string) error
 	EscapedID() string
 	Info() dist.ModuleInfo
 	Kind() string
 	Order() dist.Order
 	Stacks() []dist.Stack
+	Targets() []dist.Target
 }
 
 type Blob interface {
@@ -72,6 +74,9 @@ func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 	descriptor := dist.BuildpackDescriptor{}
 	descriptor.WithAPI = api.MustParse(dist.AssumedBuildpackAPIVersion)
 	if err := readDescriptor(KindBuildpack, &descriptor, blob); err != nil {
+		return nil, err
+	}
+	if err := detectPlatformSpecificValues(&descriptor, blob); err != nil {
 		return nil, err
 	}
 	if err := validateBuildpackDescriptor(descriptor); err != nil {
@@ -115,6 +120,35 @@ func readDescriptor(kind string, descriptor interface{}, blob Blob) error {
 	}
 
 	return nil
+}
+
+func detectPlatformSpecificValues(descriptor *dist.BuildpackDescriptor, blob Blob) error {
+	if val, err := hasFile(blob, path.Join("bin", "build")); val {
+		descriptor.WithLinuxBuild = true
+	} else if err != nil {
+		return err
+	}
+	if val, err := hasFile(blob, path.Join("bin", "build.bat")); val {
+		descriptor.WithWindowsBuild = true
+	} else if err != nil {
+		return err
+	}
+	if val, err := hasFile(blob, path.Join("bin", "build.exe")); val {
+		descriptor.WithWindowsBuild = true
+	} else if err != nil {
+		return err
+	}
+	return nil
+}
+
+func hasFile(blob Blob, file string) (bool, error) {
+	rc, err := blob.Open()
+	if err != nil {
+		return false, errors.Wrapf(err, "open %s", "buildpack bin/")
+	}
+	defer rc.Close()
+	_, _, err = archive.ReadTarEntry(rc, file)
+	return err == nil, nil
 }
 
 func buildpackFrom(descriptor Descriptor, blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
@@ -245,19 +279,11 @@ func validateBuildpackDescriptor(bpd dist.BuildpackDescriptor) error {
 		return errors.Errorf("%s is required", style.Symbol("buildpack.version"))
 	}
 
-	if len(bpd.Order()) == 0 && len(bpd.Stacks()) == 0 {
+	if len(bpd.Order()) >= 1 && (len(bpd.Stacks()) >= 1 || len(bpd.Targets()) >= 1) {
 		return errors.Errorf(
-			"buildpack %s: must have either %s or an %s defined",
+			"buildpack %s: cannot have both %s/%s and an %s defined",
 			style.Symbol(bpd.Info().FullName()),
-			style.Symbol("stacks"),
-			style.Symbol("order"),
-		)
-	}
-
-	if len(bpd.Order()) >= 1 && len(bpd.Stacks()) >= 1 {
-		return errors.Errorf(
-			"buildpack %s: cannot have both %s and an %s defined",
-			style.Symbol(bpd.Info().FullName()),
+			style.Symbol("targets"),
 			style.Symbol("stacks"),
 			style.Symbol("order"),
 		)
@@ -298,4 +324,15 @@ func ToLayerTar(dest string, module BuildModule) (string, error) {
 	}
 
 	return layerTar, nil
+}
+
+// Set returns a set of the given string slice.
+func Set(exclude []string) map[string]struct{} {
+	type void struct{}
+	var member void
+	var excludedModules = make(map[string]struct{})
+	for _, fullName := range exclude {
+		excludedModules[fullName] = member
+	}
+	return excludedModules
 }

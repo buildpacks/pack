@@ -8,12 +8,13 @@ const (
 )
 
 type Metadata struct {
-	Description string            `json:"description"`
-	Buildpacks  []dist.ModuleInfo `json:"buildpacks"`
-	Extensions  []dist.ModuleInfo `json:"extensions"`
-	Stack       StackMetadata     `json:"stack"`
-	Lifecycle   LifecycleMetadata `json:"lifecycle"`
-	CreatedBy   CreatorMetadata   `json:"createdBy"`
+	Description string             `json:"description"`
+	Buildpacks  []dist.ModuleInfo  `json:"buildpacks"`
+	Extensions  []dist.ModuleInfo  `json:"extensions"`
+	Stack       StackMetadata      `json:"stack"`
+	Lifecycle   LifecycleMetadata  `json:"lifecycle"`
+	CreatedBy   CreatorMetadata    `json:"createdBy"`
+	RunImages   []RunImageMetadata `json:"images"`
 }
 
 type CreatorMetadata struct {
@@ -30,6 +31,10 @@ type LifecycleMetadata struct {
 
 type StackMetadata struct {
 	RunImage RunImageMetadata `json:"runImage" toml:"run-image"`
+}
+
+type RunImages struct {
+	Images []RunImageMetadata `json:"images" toml:"images"`
 }
 
 type RunImageMetadata struct {

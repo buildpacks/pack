@@ -1,7 +1,7 @@
 package buildpack_test
 
 import (
-	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -104,6 +104,8 @@ id = "some.stack.id"
 			)
 			h.AssertNil(t, err)
 
+			h.AssertNil(t, bp.Descriptor().EnsureTargetSupport(dist.DefaultTargetOSLinux, dist.DefaultTargetArch, "", ""))
+
 			tarPath := writeBlobToFile(bp)
 			defer os.Remove(tarPath)
 
@@ -143,6 +145,82 @@ id = "some.stack.id"
 			)
 		})
 
+		it("translates blob to windows bat distribution format", func() {
+			bp, err := buildpack.FromBuildpackRootBlob(
+				&readerBlob{
+					openFn: func() io.ReadCloser {
+						tarBuilder := archive.TarBuilder{}
+						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+api = "0.9"
+
+[buildpack]
+id = "bp.one"
+version = "1.2.3"
+`))
+
+						tarBuilder.AddDir("bin", 0700, time.Now())
+						tarBuilder.AddFile("bin/detect", 0700, time.Now(), []byte("detect-contents"))
+						tarBuilder.AddFile("bin/build.bat", 0700, time.Now(), []byte("build-contents"))
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
+					},
+				},
+				archive.DefaultTarWriterFactory(),
+			)
+			h.AssertNil(t, err)
+
+			bpDescriptor := bp.Descriptor().(*dist.BuildpackDescriptor)
+			h.AssertTrue(t, bpDescriptor.WithWindowsBuild)
+			h.AssertFalse(t, bpDescriptor.WithLinuxBuild)
+
+			tarPath := writeBlobToFile(bp)
+			defer os.Remove(tarPath)
+
+			h.AssertOnTarEntry(t, tarPath,
+				"/cnb/buildpacks/bp.one/1.2.3/bin/build.bat",
+				h.HasFileMode(0755),
+				h.HasModTime(archive.NormalizedDateTime),
+				h.ContentEquals("build-contents"),
+			)
+		})
+
+		it("translates blob to windows exe distribution format", func() {
+			bp, err := buildpack.FromBuildpackRootBlob(
+				&readerBlob{
+					openFn: func() io.ReadCloser {
+						tarBuilder := archive.TarBuilder{}
+						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+api = "0.3"
+
+[buildpack]
+id = "bp.one"
+version = "1.2.3"
+`))
+
+						tarBuilder.AddDir("bin", 0700, time.Now())
+						tarBuilder.AddFile("bin/detect", 0700, time.Now(), []byte("detect-contents"))
+						tarBuilder.AddFile("bin/build.exe", 0700, time.Now(), []byte("build-contents"))
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
+					},
+				},
+				archive.DefaultTarWriterFactory(),
+			)
+			h.AssertNil(t, err)
+
+			bpDescriptor := bp.Descriptor().(*dist.BuildpackDescriptor)
+			h.AssertTrue(t, bpDescriptor.WithWindowsBuild)
+			h.AssertFalse(t, bpDescriptor.WithLinuxBuild)
+
+			tarPath := writeBlobToFile(bp)
+			defer os.Remove(tarPath)
+
+			h.AssertOnTarEntry(t, tarPath,
+				"/cnb/buildpacks/bp.one/1.2.3/bin/build.exe",
+				h.HasFileMode(0755),
+				h.HasModTime(archive.NormalizedDateTime),
+				h.ContentEquals("build-contents"),
+			)
+		})
+
 		it("surfaces errors encountered while reading blob", func() {
 			realBlob := &readerBlob{
 				openFn: func() io.ReadCloser {
@@ -164,6 +242,7 @@ id = "some.stack.id"
 			bp, err := buildpack.FromBuildpackRootBlob(
 				&errorBlob{
 					realBlob: realBlob,
+					limit:    4,
 				},
 				archive.DefaultTarWriterFactory(),
 			)
@@ -173,7 +252,7 @@ id = "some.stack.id"
 			h.AssertNil(t, err)
 
 			_, err = io.Copy(io.Discard, bpReader)
-			h.AssertError(t, err, "error from errBlob")
+			h.AssertError(t, err, "error from errBlob (reached limit of 4)")
 		})
 
 		when("calculating permissions", func() {
@@ -228,6 +307,10 @@ id = "some.stack.id"
 						archive.DefaultTarWriterFactory(),
 					)
 					h.AssertNil(t, err)
+
+					bpDescriptor := bp.Descriptor().(*dist.BuildpackDescriptor)
+					h.AssertFalse(t, bpDescriptor.WithWindowsBuild)
+					h.AssertTrue(t, bpDescriptor.WithLinuxBuild)
 
 					tarPath := writeBlobToFile(bp)
 					defer os.Remove(tarPath)
@@ -401,12 +484,12 @@ id = "some.stack.id"
 					},
 					archive.DefaultTarWriterFactory(),
 				)
-				h.AssertError(t, err, "cannot have both 'stacks' and an 'order' defined")
+				h.AssertError(t, err, "cannot have both 'targets'/'stacks' and an 'order' defined")
 			})
 		})
 
 		when("missing stacks and order", func() {
-			it("returns error", func() {
+			it("does not return an error", func() {
 				_, err := buildpack.FromBuildpackRootBlob(
 					&readerBlob{
 						openFn: func() io.ReadCloser {
@@ -421,7 +504,7 @@ version = "1.2.3"
 					},
 					archive.DefaultTarWriterFactory(),
 				)
-				h.AssertError(t, err, "must have either 'stacks' or an 'order' defined")
+				h.AssertNil(t, err)
 			})
 		})
 	})
@@ -457,19 +540,28 @@ version = "1.2.3"
 			h.AssertEq(t, match, false)
 		})
 	})
+
+	when("#Set", func() {
+		it("creates a set", func() {
+			values := []string{"a", "b", "c", "a"}
+			set := buildpack.Set(values)
+			h.AssertEq(t, len(set), 3)
+		})
+	})
 }
 
 type errorBlob struct {
-	notFirst bool
+	count    int
+	limit    int
 	realBlob buildpack.Blob
 }
 
 func (e *errorBlob) Open() (io.ReadCloser, error) {
-	if !e.notFirst {
-		e.notFirst = true
+	if e.count < e.limit {
+		e.count += 1
 		return e.realBlob.Open()
 	}
-	return nil, errors.New("error from errBlob")
+	return nil, fmt.Errorf("error from errBlob (reached limit of %d)", e.limit)
 }
 
 type readerBlob struct {

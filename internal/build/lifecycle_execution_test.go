@@ -5,13 +5,15 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/buildpacks/pack/pkg/cache"
+
+	"github.com/BurntSushi/toml"
 	"github.com/apex/log"
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
@@ -26,7 +28,6 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
-	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -34,8 +35,6 @@ import (
 
 // TestLifecycleExecution are unit tests that test each possible phase to ensure they are executed with the proper parameters
 func TestLifecycleExecution(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	color.Disable(true)
 	defer color.Disable(false)
 
@@ -45,6 +44,7 @@ func TestLifecycleExecution(t *testing.T) {
 func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 	var (
 		dockerConfigDir string
+		tmpDir          string
 
 		// lifecycle options
 		providedClearCache     bool
@@ -71,7 +71,11 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		fakeLaunchCache  *fakes.FakeCache
 		fakePhase        *fakes.FakePhase
 		fakePhaseFactory *fakes.FakePhaseFactory
+		fakeFetcher      fakeImageFetcher
 		configProvider   *build.PhaseConfigProvider
+
+		extensionsForBuild, extensionsForRun bool
+		extensionsRunImage                   string
 	)
 
 	var configureDefaultTestLifecycle = func(opts *build.LifecycleOptions) {
@@ -113,9 +117,48 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			fakes.WithImage(image),
 		)
 		h.AssertNil(t, err)
-		lifecycleOps = append(lifecycleOps, fakes.WithBuilder(fakeBuilder))
+		fakeFetcher = fakeImageFetcher{
+			callCount:           0,
+			calledWithArgAtCall: make(map[int]string),
+		}
+		withFakeFetchRunImageFunc := func(opts *build.LifecycleOptions) {
+			opts.FetchRunImage = newFakeFetchRunImageFunc(&fakeFetcher)
+		}
+		lifecycleOps = append(lifecycleOps, fakes.WithBuilder(fakeBuilder), withFakeFetchRunImageFunc)
 
-		lifecycle = newTestLifecycleExec(t, true, lifecycleOps...)
+		tmpDir, err = os.MkdirTemp("", "pack.unit")
+		h.AssertNil(t, err)
+		lifecycle = newTestLifecycleExec(t, true, tmpDir, lifecycleOps...)
+
+		// construct fixtures for extensions
+		if extensionsForBuild {
+			// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
+			err = os.MkdirAll(filepath.Join(tmpDir, "build"), 0755)
+			h.AssertNil(t, err)
+			_, err = os.Create(filepath.Join(tmpDir, "build", "some-dockerfile"))
+			h.AssertNil(t, err)
+		}
+		type runImage struct {
+			Extend bool   `toml:"extend,omitempty"`
+			Image  string `toml:"image"`
+		}
+		type analyzedMD struct {
+			RunImage *runImage `toml:"run-image,omitempty"`
+		}
+		amd := analyzedMD{RunImage: &runImage{
+			Extend: false,
+			Image:  "",
+		}}
+		if extensionsForRun {
+			amd.RunImage.Extend = true
+		}
+		if extensionsRunImage != "" {
+			amd.RunImage.Image = extensionsRunImage
+		}
+		f, err := os.Create(filepath.Join(tmpDir, "analyzed.toml"))
+		h.AssertNil(t, err)
+		toml.NewEncoder(f).Encode(amd)
+		h.AssertNil(t, f.Close())
 
 		fakeLaunchCache = fakes.NewFakeCache()
 		fakeLaunchCache.ReturnForType = cache.Volume
@@ -128,6 +171,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 	it.After(func() {
 		h.AssertNil(t, os.Unsetenv("DOCKER_CONFIG"))
 		h.AssertNil(t, os.RemoveAll(dockerConfigDir))
+		_ = os.RemoveAll(tmpDir)
 	})
 
 	when("#NewLifecycleExecution", func() {
@@ -144,7 +188,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				}))
 				h.AssertNil(t, err)
 
-				lifecycleExec := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
+				lifecycleExec := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
 				h.AssertEq(t, lifecycleExec.PlatformAPI().String(), "0.8")
 			})
 		})
@@ -157,7 +201,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				)
 				h.AssertNil(t, err)
 
-				lifecycleExec := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
+				lifecycleExec := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
 				h.AssertEq(t, lifecycleExec.PlatformAPI().String(), "0.4")
 			})
 		})
@@ -169,7 +213,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				)
 				h.AssertNil(t, err)
 
-				_, err = newTestLifecycleExecErr(t, false, fakes.WithBuilder(fakeBuilder))
+				_, err = newTestLifecycleExecErr(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
 				h.AssertError(t, err, "unable to find a supported Platform API version")
 			})
 		})
@@ -254,7 +298,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					Termui:       fakeTermui,
 				}
 
-				lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+				lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 				h.AssertNil(t, err)
 				h.AssertEq(t, filepath.Base(lifecycle.AppDir()), "workspace")
 
@@ -286,7 +330,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						Termui:       fakeTermui,
 					}
 
-					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 					h.AssertNil(t, err)
 
 					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
@@ -355,7 +399,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						Termui:       fakeTermui,
 					}
 
-					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 					h.AssertNil(t, err)
 
 					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
@@ -389,7 +433,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						Termui:       fakeTermui,
 					}
 
-					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 					h.AssertNil(t, err)
 
 					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
@@ -419,7 +463,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					Termui:       fakeTermui,
 				}
 
-				lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+				lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 				h.AssertNil(t, err)
 
 				err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
@@ -453,7 +497,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						Termui:       fakeTermui,
 					}
 
-					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 					h.AssertNil(t, err)
 					h.AssertEq(t, filepath.Base(lifecycle.AppDir()), "app")
 
@@ -511,12 +555,57 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("extensions", func() {
-				when("present in the order", func() {
-					providedUseCreator = false
-					providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+				providedUseCreator = false
 
-					when("platform < 0.10", func() {
-						platformAPI = api.MustParse("0.9")
+				when("for build", func() {
+					when("present <layers>/generated/build", func() {
+						extensionsForBuild = true
+
+						when("platform < 0.10", func() {
+							platformAPI = api.MustParse("0.9")
+
+							it("runs the builder", func() {
+								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+									return fakePhaseFactory
+								})
+								h.AssertNil(t, err)
+
+								h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+
+								var found bool
+								for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+									if entry.Name() == "builder" {
+										found = true
+									}
+								}
+								h.AssertEq(t, found, true)
+							})
+						})
+
+						when("platform >= 0.10", func() {
+							platformAPI = api.MustParse("0.10")
+
+							it("runs the extender (build)", func() {
+								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+									return fakePhaseFactory
+								})
+								h.AssertNil(t, err)
+
+								h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+
+								var found bool
+								for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+									if entry.Name() == "extender" {
+										found = true
+									}
+								}
+								h.AssertEq(t, found, true)
+							})
+						})
+					})
+
+					when("not present in <layers>/generated/build", func() {
+						platformAPI = api.MustParse("0.10")
 
 						it("runs the builder", func() {
 							err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
@@ -526,83 +615,110 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 							h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
 
-							var foundBuilder bool
+							var found bool
 							for _, entry := range fakePhaseFactory.NewCalledWithProvider {
-								switch entry.Name() {
-								case "builder":
-									foundBuilder = true
-								case "exporter":
-									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
-								case "analyzer":
-									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
+								if entry.Name() == "builder" {
+									found = true
 								}
 							}
-							h.AssertEq(t, foundBuilder, true)
-						})
-					})
-
-					when("platform >= 0.10", func() {
-						platformAPI = api.MustParse("0.10")
-
-						it("runs the extender", func() {
-							err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
-								return fakePhaseFactory
-							})
-							h.AssertNil(t, err)
-
-							h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
-
-							var foundExtender bool
-							for _, entry := range fakePhaseFactory.NewCalledWithProvider {
-								switch entry.Name() {
-								case "extender":
-									foundExtender = true
-								case "exporter":
-									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
-								case "analyzer":
-									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
-								}
-							}
-							h.AssertEq(t, foundExtender, true)
-						})
-
-						when("windows", func() {
-							withOS = "windows"
-
-							it("errors", func() {
-								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
-									return fakePhaseFactory
-								})
-								h.AssertNotNil(t, err)
-							})
+							h.AssertEq(t, found, true)
 						})
 					})
 				})
 
-				when("not present in the order", func() {
-					providedUseCreator = false
-					platformAPI = api.MustParse("0.10")
-
-					it("runs the builder", func() {
-						err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
-							return fakePhaseFactory
+				when("for run", func() {
+					when("analyzed.toml run image", func() {
+						when("matches provided run image", func() {
+							it("does nothing", func() {
+								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+									return fakePhaseFactory
+								})
+								h.AssertNil(t, err)
+								h.AssertEq(t, fakeFetcher.callCount, 0)
+							})
 						})
-						h.AssertNil(t, err)
 
-						h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+						when("does not match provided run image", func() {
+							extensionsRunImage = "some-new-run-image"
 
-						var foundBuilder bool
-						for _, entry := range fakePhaseFactory.NewCalledWithProvider {
-							switch entry.Name() {
-							case "builder":
-								foundBuilder = true
-							case "exporter":
-								h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
-							case "analyzer":
-								h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
-							}
-						}
-						h.AssertEq(t, foundBuilder, true)
+							it("pulls the new run image", func() {
+								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+									return fakePhaseFactory
+								})
+								h.AssertNil(t, err)
+								h.AssertEq(t, fakeFetcher.calledWithArgAtCall[0], "some-new-run-image")
+								h.AssertEq(t, fakeFetcher.callCount, 1)
+							})
+						})
+					})
+
+					when("analyzed.toml run image extend", func() {
+						when("true", func() {
+							extensionsForRun = true
+
+							when("platform >= 0.12", func() {
+								platformAPI = api.MustParse("0.12")
+
+								it("runs the extender (run)", func() {
+									err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+										return fakePhaseFactory
+									})
+									h.AssertNil(t, err)
+
+									h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 6)
+
+									var found bool
+									for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+										if entry.Name() == "extender" {
+											found = true
+										}
+									}
+									h.AssertEq(t, found, true)
+								})
+							})
+
+							when("platform < 0.12", func() {
+								platformAPI = api.MustParse("0.11")
+
+								it("doesn't run the extender", func() {
+									err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+										return fakePhaseFactory
+									})
+									h.AssertNil(t, err)
+
+									h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+
+									var found bool
+									for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+										if entry.Name() == "extender" {
+											found = true
+										}
+									}
+									h.AssertEq(t, found, false)
+								})
+							})
+						})
+
+						when("false", func() {
+							platformAPI = api.MustParse("0.12")
+
+							it("doesn't run the extender", func() {
+								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+									return fakePhaseFactory
+								})
+								h.AssertNil(t, err)
+
+								h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+
+								var found bool
+								for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+									if entry.Name() == "extender" {
+										found = true
+									}
+								}
+								h.AssertEq(t, found, false)
+							})
+						})
 					})
 				})
 			})
@@ -623,7 +739,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						Termui:       fakeTermui,
 					}
 
-					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 					h.AssertNil(t, err)
 
 					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
@@ -651,7 +767,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						Termui: fakeTermui,
 					}
 
-					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
 					h.AssertNil(t, err)
 
 					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
@@ -858,7 +974,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("configures the phase with daemon access with inherited docker-host", func() {
-					lifecycle := newTestLifecycleExec(t, true, lifecycleOps...)
+					lifecycle := newTestLifecycleExec(t, true, "some-temp-dir", lifecycleOps...)
 					fakePhase := &fakes.FakePhase{}
 					fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 					err := lifecycle.Create(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
@@ -949,7 +1065,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						options.Image = imageName
 						options.PreviousImage = "some-previous-image"
 					})
-					lifecycle := newTestLifecycleExec(t, true, lifecycleOps...)
+					lifecycle := newTestLifecycleExec(t, true, "some-temp-dir", lifecycleOps...)
 
 					err = lifecycle.Create(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
 					h.AssertError(t, err, "invalid image name")
@@ -965,7 +1081,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						options.PreviousImage = "%%%"
 						options.Image = imageName
 					})
-					lifecycle := newTestLifecycleExec(t, true, lifecycleOps...)
+					lifecycle := newTestLifecycleExec(t, true, "some-temp-dir", lifecycleOps...)
 
 					err = lifecycle.Create(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
 					h.AssertError(t, err, "invalid previous image name")
@@ -1010,7 +1126,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							options.PreviousImage = "example.io/some/previous:latest"
 							options.Image = imageName
 						})
-						lifecycle := newTestLifecycleExec(t, true, lifecycleOps...)
+						lifecycle := newTestLifecycleExec(t, true, "some-temp-dir", lifecycleOps...)
 
 						err = lifecycle.Create(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
 						h.AssertError(t, err, fmt.Sprintf("%s", err))
@@ -1441,7 +1557,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						options.Image = imageName
 						options.PreviousImage = "some-previous-image"
 					})
-					lifecycle := newTestLifecycleExec(t, true, lifecycleOps...)
+					lifecycle := newTestLifecycleExec(t, true, "some-temp-dir", lifecycleOps...)
 
 					err = lifecycle.Analyze(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
 					h.AssertError(t, err, "invalid image name")
@@ -1458,7 +1574,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						options.PreviousImage = "%%%"
 						options.Image = imageName
 					})
-					lifecycle := newTestLifecycleExec(t, true, lifecycleOps...)
+					lifecycle := newTestLifecycleExec(t, true, "some-temp-dir", lifecycleOps...)
 
 					err = lifecycle.Analyze(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
 					h.AssertError(t, err, "invalid previous image name")
@@ -1509,7 +1625,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							options.PreviousImage = "example.io/some/previous:latest"
 							options.Image = imageName
 						})
-						lifecycle := newTestLifecycleExec(t, true, lifecycleOps...)
+						lifecycle := newTestLifecycleExec(t, true, "some-temp-dir", lifecycleOps...)
 
 						err = lifecycle.Analyze(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
 						h.AssertNotNil(t, err)
@@ -1624,35 +1740,69 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("extensions", func() {
-			when("present in the order", func() {
-				providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+			when("for build", func() {
+				when("present in <layers>/generated/build", func() {
+					extensionsForBuild = true
 
-				when("platform < 0.10", func() {
-					platformAPI = api.MustParse("0.9")
+					when("platform < 0.10", func() {
+						platformAPI = api.MustParse("0.9")
+
+						it("does not provide -build-image or /kaniko bind", func() {
+							h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-build-image")
+							h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+						})
+					})
+
+					when("platform >= 0.10", func() {
+						platformAPI = api.MustParse("0.10")
+
+						it("provides -build-image and /kaniko bind", func() {
+							h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-build-image", providedBuilderImage)
+							h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
+							h.AssertSliceContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+						})
+					})
+				})
+
+				when("not present in <layers>/generated/build", func() {
+					platformAPI = api.MustParse("0.10")
 
 					it("does not provide -build-image or /kaniko bind", func() {
 						h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-build-image")
 						h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
 					})
 				})
-
-				when("platform >= 0.10", func() {
-					platformAPI = api.MustParse("0.10")
-
-					it("provides -build-image and /kaniko bind", func() {
-						h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-build-image", providedBuilderImage)
-						h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
-						h.AssertSliceContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
-					})
-				})
 			})
 
-			when("not present in the order", func() {
-				platformAPI = api.MustParse("0.10")
+			when("for run", func() {
+				when("analyzed.toml extend", func() {
+					when("true", func() {
+						extensionsForRun = true
 
-				it("does not provide -build-image or /kaniko bind", func() {
-					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-build-image")
-					h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+						when("platform >= 0.12", func() {
+							platformAPI = api.MustParse("0.12")
+
+							it("provides /kaniko bind", func() {
+								h.AssertSliceContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+							})
+						})
+
+						when("platform < 0.12", func() {
+							platformAPI = api.MustParse("0.11")
+
+							it("does not provide /kaniko bind", func() {
+								h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+							})
+						})
+					})
+
+					when("false", func() {
+						platformAPI = api.MustParse("0.12")
+
+						it("does not provide /kaniko bind", func() {
+							h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+						})
+					})
 				})
 			})
 		})
@@ -1691,9 +1841,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("#Extend", func() {
+	when("#ExtendBuild", func() {
 		it.Before(func() {
-			err := lifecycle.Extend(context.Background(), fakeBuildCache, fakePhaseFactory)
+			err := lifecycle.ExtendBuild(context.Background(), fakeBuildCache, fakePhaseFactory)
 			h.AssertNil(t, err)
 
 			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1716,6 +1866,62 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		it("configures the phase with binds", func() {
 			expectedBinds := providedVolumes
 			expectedBinds = append(expectedBinds, "some-cache:/kaniko")
+
+			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
+		})
+
+		it("sets CNB_EXPERIMENTAL_MODE=warn in the environment", func() {
+			h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
+		})
+
+		it("configures the phase with the expected network mode", func() {
+			h.AssertEq(t, configProvider.HostConfig().NetworkMode, container.NetworkMode(providedNetworkMode))
+		})
+
+		it("configures the phase with root", func() {
+			h.AssertEq(t, configProvider.ContainerConfig().User, "root")
+		})
+	})
+
+	when("#ExtendRun", func() {
+		it.Before(func() {
+			err := lifecycle.ExtendRun(context.Background(), fakeBuildCache, fakePhaseFactory)
+			h.AssertNil(t, err)
+
+			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+			h.AssertNotEq(t, lastCallIndex, -1)
+
+			configProvider = fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+			h.AssertEq(t, configProvider.Name(), "extender")
+		})
+
+		it("creates a phase and then runs it", func() {
+			h.AssertEq(t, fakePhase.CleanupCallCount, 1)
+			h.AssertEq(t, fakePhase.RunCallCount, 1)
+		})
+
+		it("runs the phase with the run image", func() {
+			h.AssertEq(t, configProvider.ContainerConfig().Image, "some-run-image")
+		})
+
+		when("extensions change the run image", func() {
+			extensionsRunImage = "some-new-run-image"
+
+			it("runs the phase with the new run image", func() {
+				h.AssertEq(t, configProvider.ContainerConfig().Image, "some-new-run-image")
+			})
+		})
+
+		it("configures the phase with the expected arguments", func() {
+			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Entrypoint, "") // the run image may have an entrypoint configured, override it
+			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-log-level", "debug")
+			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-app", "/workspace")
+			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-kind", "run")
+		})
+
+		it("configures the phase with binds", func() {
+			expectedBinds := providedVolumes
+			expectedBinds = append(expectedBinds, "some-cache:/kaniko", fmt.Sprintf("%s:/cnb", filepath.Join(tmpDir, "cnb")))
 
 			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 		})
@@ -1756,8 +1962,32 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				[]string{"-log-level", "debug"},
 				[]string{"-cache-dir", "/cache"},
 				[]string{"-run-image", providedRunImage},
+				[]string{"-stack", "/layers/stack.toml"},
 				[]string{providedTargetImage},
 			)
+			h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-run")
+		})
+
+		when("platform >= 0.12", func() {
+			platformAPI = api.MustParse("0.12")
+
+			it("provides -run instead of -stack", func() {
+				h.AssertIncludeAllExpectedPatterns(t,
+					configProvider.ContainerConfig().Cmd,
+					[]string{"-run", "/layers/run.toml"},
+				)
+				h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-stack")
+			})
+
+			when("extensions", func() {
+				when("for run", func() {
+					extensionsForRun = true
+
+					it("sets CNB_EXPERIMENTAL_MODE=warn in the environment", func() {
+						h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
+					})
+				})
+			})
 		})
 
 		when("additional tags are specified", func() {
@@ -1838,9 +2068,10 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				expectedBinds := []string{"some-cache:/cache"}
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 
-				h.AssertEq(t, len(configProvider.ContainerOps()), 2)
+				h.AssertEq(t, len(configProvider.ContainerOps()), 3)
 				h.AssertFunctionName(t, configProvider.ContainerOps()[0], "WriteStackToml")
-				h.AssertFunctionName(t, configProvider.ContainerOps()[1], "WriteProjectMetadata")
+				h.AssertFunctionName(t, configProvider.ContainerOps()[1], "WriteRunToml")
+				h.AssertFunctionName(t, configProvider.ContainerOps()[2], "WriteProjectMetadata")
 			})
 
 			when("default process type", func() {
@@ -1945,9 +2176,10 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				expectedBinds := []string{"some-cache:/cache", "some-launch-cache:/launch-cache"}
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 
-				h.AssertEq(t, len(configProvider.ContainerOps()), 2)
+				h.AssertEq(t, len(configProvider.ContainerOps()), 3)
 				h.AssertFunctionName(t, configProvider.ContainerOps()[0], "WriteStackToml")
-				h.AssertFunctionName(t, configProvider.ContainerOps()[1], "WriteProjectMetadata")
+				h.AssertFunctionName(t, configProvider.ContainerOps()[1], "WriteRunToml")
+				h.AssertFunctionName(t, configProvider.ContainerOps()[2], "WriteProjectMetadata")
 			})
 
 			when("default process type", func() {
@@ -2110,7 +2342,24 @@ func newFakeImageCache() *fakes.FakeCache {
 	return c
 }
 
-func newTestLifecycleExecErr(t *testing.T, logVerbose bool, ops ...func(*build.LifecycleOptions)) (*build.LifecycleExecution, error) {
+func newFakeFetchRunImageFunc(f *fakeImageFetcher) func(name string) error {
+	return func(name string) error {
+		return f.fetchRunImage(name)
+	}
+}
+
+type fakeImageFetcher struct {
+	callCount           int
+	calledWithArgAtCall map[int]string
+}
+
+func (f *fakeImageFetcher) fetchRunImage(name string) error {
+	f.calledWithArgAtCall[f.callCount] = name
+	f.callCount++
+	return nil
+}
+
+func newTestLifecycleExecErr(t *testing.T, logVerbose bool, tmpDir string, ops ...func(*build.LifecycleOptions)) (*build.LifecycleExecution, error) {
 	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
 
@@ -2136,13 +2385,13 @@ func newTestLifecycleExecErr(t *testing.T, logVerbose bool, ops ...func(*build.L
 		op(&opts)
 	}
 
-	return build.NewLifecycleExecution(logger, docker, opts)
+	return build.NewLifecycleExecution(logger, docker, tmpDir, opts)
 }
 
-func newTestLifecycleExec(t *testing.T, logVerbose bool, ops ...func(*build.LifecycleOptions)) *build.LifecycleExecution {
+func newTestLifecycleExec(t *testing.T, logVerbose bool, tmpDir string, ops ...func(*build.LifecycleOptions)) *build.LifecycleExecution {
 	t.Helper()
 
-	lifecycleExec, err := newTestLifecycleExecErr(t, logVerbose, ops...)
+	lifecycleExec, err := newTestLifecycleExecErr(t, logVerbose, tmpDir, ops...)
 	h.AssertNil(t, err)
 	return lifecycleExec
 }

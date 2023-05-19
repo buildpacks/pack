@@ -4,17 +4,21 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"strconv"
 
+	"github.com/buildpacks/pack/pkg/cache"
+
+	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -35,9 +39,10 @@ type LifecycleExecution struct {
 	os           string
 	mountPaths   mountPaths
 	opts         LifecycleOptions
+	tmpDir       string
 }
 
-func NewLifecycleExecution(logger logging.Logger, docker DockerClient, opts LifecycleOptions) (*LifecycleExecution, error) {
+func NewLifecycleExecution(logger logging.Logger, docker DockerClient, tmpDir string, opts LifecycleOptions) (*LifecycleExecution, error) {
 	latestSupportedPlatformAPI, err := FindLatestSupported(append(
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Deprecated,
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Supported...,
@@ -60,6 +65,7 @@ func NewLifecycleExecution(logger logging.Logger, docker DockerClient, opts Life
 		opts:         opts,
 		os:           osType,
 		mountPaths:   mountPathsForOS(osType, opts.Workspace),
+		tmpDir:       tmpDir,
 	}
 
 	if opts.Interactive {
@@ -87,7 +93,7 @@ func apiIntersection(apisA, apisB []*api.Version) []*api.Version {
 	return apis
 }
 
-// public for unit test purposes but cmon you probably don't want to actually call this.
+// FindLatestSupported finds the latest Platform API version supported by both the builder and the lifecycle.
 func FindLatestSupported(builderapis []*api.Version, lifecycleapis []string) (*api.Version, error) {
 	var apis []*api.Version
 	// if a custom lifecycle image was used we need to take an intersection of its supported apis with the builder's supported apis.
@@ -220,19 +226,35 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			return err
 		}
 
-		if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
-			if l.os == "windows" {
-				return fmt.Errorf("builder has an order for extensions which is not supported for Windows builds")
-			}
-			l.logger.Info(style.Step("EXTENDING"))
-			if err := l.Extend(ctx, buildCache, phaseFactory); err != nil {
-				return err
-			}
+		group, _ := errgroup.WithContext(context.TODO())
+		if l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild() {
+			group.Go(func() error {
+				l.logger.Info(style.Step("EXTENDING (BUILD)"))
+				return l.ExtendBuild(ctx, buildCache, phaseFactory)
+			})
 		} else {
-			l.logger.Info(style.Step("BUILDING"))
-			if err := l.Build(ctx, phaseFactory); err != nil {
+			group.Go(func() error {
+				l.logger.Info(style.Step("BUILDING"))
+				return l.Build(ctx, phaseFactory)
+			})
+		}
+
+		currentRunImage := l.runImageAfterExtensions()
+		if currentRunImage != "" && currentRunImage != l.opts.RunImage {
+			if err := l.opts.FetchRunImage(currentRunImage); err != nil {
 				return err
 			}
+		}
+
+		if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {
+			group.Go(func() error {
+				l.logger.Info(style.Step("EXTENDING (RUN)"))
+				return l.ExtendRun(ctx, buildCache, phaseFactory)
+			})
+		}
+
+		if err := group.Wait(); err != nil {
+			return err
 		}
 
 		l.logger.Info(style.Step("EXPORTING"))
@@ -252,6 +274,9 @@ func (l *LifecycleExecution) Cleanup() error {
 	}
 	if err := l.docker.VolumeRemove(context.Background(), l.appVolume, true); err != nil {
 		reterr = errors.Wrapf(err, "failed to clean up app volume %s", l.appVolume)
+	}
+	if err := os.RemoveAll(l.tmpDir); err != nil {
+		reterr = errors.Wrapf(err, "failed to clean up working directory %s", l.tmpDir)
 	}
 	return reterr
 }
@@ -366,7 +391,7 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 	flags := []string{"-app", l.mountPaths.appDir()}
 
 	envOp := NullOp()
-	if l.hasExtensions() && l.platformAPI.AtLeast("0.10") {
+	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
 		envOp = WithEnv("CNB_EXPERIMENTAL_MODE=warn")
 	}
 
@@ -384,6 +409,10 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 			CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter),
 		),
 		WithFlags(flags...),
+		If(l.hasExtensions(), WithPostContainerRunOperations(
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.tmpDir))),
+		If(l.hasExtensions(), WithPostContainerRunOperations(
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.tmpDir))),
 		envOp,
 	)
 
@@ -418,9 +447,12 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, phas
 
 	// for kaniko
 	kanikoCacheBindOp := NullOp()
-	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
-		flags = append(flags, "-build-image", l.opts.BuilderImage)
-		registryImages = append(registryImages, l.opts.BuilderImage)
+	if (l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild()) ||
+		(l.platformAPI.AtLeast("0.12") && (l.hasExtensionsForBuild() || l.hasExtensionsForRun())) {
+		if l.hasExtensionsForBuild() {
+			flags = append(flags, "-build-image", l.opts.BuilderImage)
+			registryImages = append(registryImages, l.opts.BuilderImage)
+		}
 
 		switch buildCache.Type() {
 		case cache.Volume:
@@ -453,6 +485,8 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, phas
 			l.withLogLevel()...,
 		),
 		WithNetwork(l.opts.Network),
+		If(l.hasExtensionsForRun(), WithPostContainerRunOperations(
+			CopyOutToMaybe(l.mountPaths.cnbDir(), l.tmpDir))), // FIXME: this is hacky; we should get the lifecycle binaries from the lifecycle image
 		flagsOp,
 		cacheBindOp,
 		registryOp,
@@ -527,6 +561,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 	}
 
 	stackOp := NullOp()
+	runOp := NullOp()
 	if !platformAPILessThan07 {
 		for _, tag := range l.opts.AdditionalTags {
 			args = append([]string{"-tag", tag}, args...)
@@ -536,6 +571,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 		}
 		args = append([]string{"-stack", l.mountPaths.stackPath()}, args...)
 		stackOp = WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os))
+		runOp = WithContainerOperations(WriteRunToml(l.mountPaths.runPath(), l.opts.Builder.RunImages(), l.os))
 	}
 
 	flagsOp := WithFlags(flags...)
@@ -560,6 +596,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 			flagsOp,
 			cacheBindOp,
 			stackOp,
+			runOp,
 		)
 
 		analyze = phaseFactory.New(configProvider)
@@ -581,6 +618,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 			WithNetwork(l.opts.Network),
 			cacheBindOp,
 			stackOp,
+			runOp,
 		)
 
 		analyze = phaseFactory.New(configProvider)
@@ -607,7 +645,7 @@ func (l *LifecycleExecution) Build(ctx context.Context, phaseFactory PhaseFactor
 	return build.Run(ctx)
 }
 
-func (l *LifecycleExecution) Extend(ctx context.Context, buildCache Cache, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) ExtendBuild(ctx context.Context, buildCache Cache, phaseFactory PhaseFactory) error {
 	flags := []string{"-app", l.mountPaths.appDir()}
 
 	// set kaniko cache opt
@@ -622,13 +660,45 @@ func (l *LifecycleExecution) Extend(ctx context.Context, buildCache Cache, phase
 	configProvider := NewPhaseConfigProvider(
 		"extender",
 		l,
-		WithLogPrefix("extender"),
+		WithLogPrefix("extender (build)"),
 		WithArgs(l.withLogLevel()...),
 		WithBinds(l.opts.Volumes...),
 		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
 		WithFlags(flags...),
 		WithNetwork(l.opts.Network),
 		WithRoot(),
+		kanikoCacheBindOp,
+	)
+
+	extend := phaseFactory.New(configProvider)
+	defer extend.Cleanup()
+	return extend.Run(ctx)
+}
+
+func (l *LifecycleExecution) ExtendRun(ctx context.Context, buildCache Cache, phaseFactory PhaseFactory) error {
+	flags := []string{"-app", l.mountPaths.appDir(), "-kind", "run"}
+
+	// set kaniko cache opt
+	var kanikoCacheBindOp PhaseConfigProviderOperation
+	switch buildCache.Type() {
+	case cache.Volume:
+		kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.kanikoCacheDir()))
+	default:
+		return fmt.Errorf("build cache must be volume cache when building with extensions")
+	}
+
+	configProvider := NewPhaseConfigProvider(
+		"extender",
+		l,
+		WithLogPrefix("extender (run)"),
+		WithArgs(l.withLogLevel()...),
+		WithBinds(l.opts.Volumes...),
+		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
+		WithFlags(flags...),
+		WithNetwork(l.opts.Network),
+		WithRoot(),
+		WithImage(l.runImageAfterExtensions()),
+		WithBinds(fmt.Sprintf("%s:%s", filepath.Join(l.tmpDir, "cnb"), l.mountPaths.cnbDir())),
 		kanikoCacheBindOp,
 	)
 
@@ -651,13 +721,20 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 	flags := []string{
 		"-app", l.mountPaths.appDir(),
 		"-cache-dir", l.mountPaths.cacheDir(),
-		"-stack", l.mountPaths.stackPath(),
+	}
+
+	expEnv := NullOp()
+	if l.platformAPI.LessThan("0.12") {
+		flags = append(flags, "-stack", l.mountPaths.stackPath())
+	} else {
+		flags = append(flags, "-run", l.mountPaths.runPath())
+		if l.hasExtensionsForRun() {
+			expEnv = WithEnv("CNB_EXPERIMENTAL_MODE=warn")
+		}
 	}
 
 	if l.platformAPI.LessThan("0.7") {
-		flags = append(flags,
-			"-run-image", l.opts.RunImage,
-		)
+		flags = append(flags, "-run-image", l.opts.RunImage)
 	}
 	processType := determineDefaultProcessType(l.platformAPI, l.opts.DefaultProcessType)
 	if processType != "" {
@@ -675,9 +752,9 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		cacheBindOp = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
 
-	withEnv := NullOp()
+	epochEnv := NullOp()
 	if l.opts.CreationTime != nil && l.platformAPI.AtLeast("0.9") {
-		withEnv = WithEnv(fmt.Sprintf("%s=%s", sourceDateEpochEnv, strconv.Itoa(int(l.opts.CreationTime.Unix()))))
+		epochEnv = WithEnv(fmt.Sprintf("%s=%s", sourceDateEpochEnv, strconv.Itoa(int(l.opts.CreationTime.Unix()))))
 	}
 
 	opts := []PhaseConfigProviderOperation{
@@ -695,6 +772,7 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		WithNetwork(l.opts.Network),
 		cacheBindOp,
 		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os)),
+		WithContainerOperations(WriteRunToml(l.mountPaths.runPath(), l.opts.Builder.RunImages(), l.os)),
 		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
 		If(l.opts.SBOMDestinationDir != "", WithPostContainerRunOperations(
 			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
@@ -705,7 +783,8 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		If(l.opts.Interactive, WithPostContainerRunOperations(
 			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
 			CopyOut(l.opts.Termui.ReadLayers, l.mountPaths.layersDir(), l.mountPaths.appDir()))),
-		withEnv,
+		epochEnv,
+		expEnv,
 	}
 
 	var export RunnerCleaner
@@ -744,6 +823,47 @@ func (l *LifecycleExecution) withLogLevel(args ...string) []string {
 
 func (l *LifecycleExecution) hasExtensions() bool {
 	return len(l.opts.Builder.OrderExtensions()) > 0
+}
+
+func (l *LifecycleExecution) hasExtensionsForBuild() bool {
+	// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
+	fis, err := os.ReadDir(filepath.Join(l.tmpDir, "build"))
+	if err != nil {
+		return false
+	}
+	return len(fis) > 0
+}
+
+// FIXME: when lifecycle 0.17.0 is released, we can bump the library version imported by pack and use platform.AnalyzedMetadata directly
+type analyzedMD struct {
+	RunImage *runImage `toml:"run-image,omitempty"`
+}
+type runImage struct {
+	Extend bool   `toml:"extend,omitempty"`
+	Image  string `toml:"image"`
+}
+
+func (l *LifecycleExecution) hasExtensionsForRun() bool {
+	var amd analyzedMD
+	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
+		return false
+	}
+	if amd.RunImage == nil {
+		return false
+	}
+	return amd.RunImage.Extend
+}
+
+func (l *LifecycleExecution) runImageAfterExtensions() string {
+	var amd analyzedMD
+	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
+		return l.opts.RunImage
+	}
+	if amd.RunImage == nil {
+		// this shouldn't be reachable
+		return l.opts.RunImage
+	}
+	return amd.RunImage.Image
 }
 
 func (l *LifecycleExecution) appendLayoutOperations(opts []PhaseConfigProviderOperation) ([]PhaseConfigProviderOperation, error) {

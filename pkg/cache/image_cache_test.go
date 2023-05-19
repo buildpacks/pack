@@ -2,9 +2,9 @@ package cache_test
 
 import (
 	"context"
-	"math/rand"
 	"testing"
-	"time"
+
+	"github.com/buildpacks/pack/pkg/cache"
 
 	"github.com/buildpacks/imgutil/local"
 	"github.com/docker/docker/api/types"
@@ -15,7 +15,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/cache"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -23,7 +22,6 @@ func TestImageCache(t *testing.T) {
 	h.RequireDocker(t)
 	color.Disable(true)
 	defer color.Disable(false)
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	spec.Run(t, "ImageCache", testImageCache, spec.Parallel(), spec.Report(report.Terminal{}))
 }

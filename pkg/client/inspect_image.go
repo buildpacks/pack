@@ -42,7 +42,7 @@ type ImageInfo struct {
 	// the first 1 to k layers all belong to the run image,
 	// the last k+1 to n layers are added by buildpacks.
 	// the sum of all of these is our app image.
-	Base platform.RunImageMetadata
+	Base platform.RunImageForRebase
 
 	// BOM or Bill of materials, contains dependency and
 	// version information provided by each buildpack.
@@ -68,8 +68,8 @@ type ProcessDetails struct {
 
 // Deserialize just the subset of fields we need to avoid breaking changes
 type layersMetadata struct {
-	RunImage platform.RunImageMetadata `json:"runImage" toml:"run-image"`
-	Stack    platform.StackMetadata    `json:"stack" toml:"stack"`
+	RunImage platform.RunImageForRebase `json:"runImage" toml:"run-image"`
+	Stack    platform.StackMetadata     `json:"stack" toml:"stack"`
 }
 
 const (
@@ -175,10 +175,18 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		}
 		processDetails.OtherProcesses = append(processDetails.OtherProcesses, proc)
 	}
+
+	var stackCompat platform.StackMetadata
+	if layersMd.RunImage.Image != "" {
+		stackCompat = layersMd.RunImage.ToStackMetadata()
+	} else {
+		stackCompat = layersMd.Stack
+	}
+
 	if buildMD.Extensions != nil {
 		return &ImageInfo{
 			StackID:    stackID,
-			Stack:      layersMd.Stack,
+			Stack:      stackCompat,
 			Base:       layersMd.RunImage,
 			BOM:        buildMD.BOM,
 			Buildpacks: buildMD.Buildpacks,
@@ -189,7 +197,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 
 	return &ImageInfo{
 		StackID:    stackID,
-		Stack:      layersMd.Stack,
+		Stack:      stackCompat,
 		Base:       layersMd.RunImage,
 		BOM:        buildMD.BOM,
 		Buildpacks: buildMD.Buildpacks,

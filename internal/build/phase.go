@@ -19,7 +19,7 @@ type Phase struct {
 	handler             container.Handler
 	ctrConf             *dcontainer.Config
 	hostConf            *dcontainer.HostConfig
-	ctr                 dcontainer.ContainerCreateCreatedBody
+	ctr                 dcontainer.CreateResponse
 	uid, gid            int
 	appPath             string
 	containerOps        []ContainerOperation
