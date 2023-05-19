@@ -232,10 +232,12 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 				err := subject.Clear(ctx)
 				h.AssertNil(t, err)
 
-				volumes, err := dockerClient.VolumeList(context.TODO(), filters.NewArgs(filters.KeyValuePair{
-					Key:   "name",
-					Value: volumeName,
-				}))
+				volumes, err := dockerClient.VolumeList(context.TODO(), volume.ListOptions{
+					Filters: filters.NewArgs(filters.KeyValuePair{
+						Key:   "name",
+						Value: volumeName,
+					}),
+				})
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(volumes.Volumes), 0)
 			})

@@ -14,6 +14,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/docker/docker/api/types/volume"
+
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/lifecycle/auth"
 	dcontainer "github.com/docker/docker/api/types/container"
@@ -366,10 +368,10 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
 					h.AssertContains(t, outBuf.String(), "binds test")
-					body, err := docker.VolumeList(context.TODO(), filters.NewArgs(filters.KeyValuePair{
+					body, err := docker.VolumeList(context.TODO(), volume.ListOptions{Filters: filters.NewArgs(filters.KeyValuePair{
 						Key:   "name",
 						Value: "some-volume",
-					}))
+					})})
 					h.AssertNil(t, err)
 					h.AssertEq(t, len(body.Volumes), 1)
 				})
@@ -459,21 +461,21 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should delete the layers volume", func() {
-			body, err := docker.VolumeList(context.TODO(),
-				filters.NewArgs(filters.KeyValuePair{
+			body, err := docker.VolumeList(context.TODO(), volume.ListOptions{
+				Filters: filters.NewArgs(filters.KeyValuePair{
 					Key:   "name",
 					Value: lifecycleExec.LayersVolume(),
-				}))
+				})})
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(body.Volumes), 0)
 		})
 
 		it("should delete the app volume", func() {
-			body, err := docker.VolumeList(context.TODO(),
-				filters.NewArgs(filters.KeyValuePair{
+			body, err := docker.VolumeList(context.TODO(), volume.ListOptions{
+				Filters: filters.NewArgs(filters.KeyValuePair{
 					Key:   "name",
 					Value: lifecycleExec.AppVolume(),
-				}))
+				})})
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(body.Volumes), 0)
 		})
