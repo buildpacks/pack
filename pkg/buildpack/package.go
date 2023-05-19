@@ -98,6 +98,63 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 	return mainBP, depBPs, nil
 }
 
+func extractExtensions(pkg Package) (mainExt BuildModule, err error) {
+	pkg = &syncPkg{pkg: pkg}
+	md := &Metadata{}
+	if found, err := dist.GetLabel(pkg, MetadataLabel, md); err != nil {
+		return nil, err
+	} else if !found {
+		return nil, errors.Errorf(
+			"could not find label %s",
+			style.Symbol(MetadataLabel),
+		)
+	}
+
+	pkgLayers := dist.ModuleLayers{}
+	ok, err := dist.GetLabel(pkg, dist.ExtensionLayersLabel, &pkgLayers)
+	if err != nil {
+		return nil, err
+	}
+
+	if !ok {
+		return nil, errors.Errorf(
+			"could not find label %s",
+			style.Symbol(dist.ExtensionLayersLabel),
+		)
+	}
+	for extID, v := range pkgLayers {
+		for extVersion, extInfo := range v {
+			desc := dist.ExtensionDescriptor{
+				WithAPI: extInfo.API,
+				WithInfo: dist.ModuleInfo{
+					ID:       extID,
+					Version:  extVersion,
+					Homepage: extInfo.Homepage,
+					Name:     extInfo.Name,
+				},
+			}
+
+			diffID := extInfo.LayerDiffID // Allow use in closure
+			b := &openerBlob{
+				opener: func() (io.ReadCloser, error) {
+					rc, err := pkg.GetLayer(diffID)
+					if err != nil {
+						return nil, errors.Wrapf(err,
+							"extracting extension %s layer (diffID %s)",
+							style.Symbol(desc.Info().FullName()),
+							style.Symbol(diffID),
+						)
+					}
+					return rc, nil
+				},
+			}
+
+			mainExt = FromBlob(&desc, b)
+		}
+	}
+	return mainExt, nil
+}
+
 type openerBlob struct {
 	opener func() (io.ReadCloser, error)
 }
