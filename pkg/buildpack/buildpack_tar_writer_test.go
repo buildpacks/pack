@@ -25,8 +25,6 @@ func TestBuildModuleWriter(t *testing.T) {
 	spec.Run(t, "testBuildModuleWriter", testBuildModuleWriter, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-type void struct{}
-
 func testBuildModuleWriter(t *testing.T, when spec.G, it spec.S) {
 	var (
 		outBuf            bytes.Buffer

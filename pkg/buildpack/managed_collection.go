@@ -102,8 +102,20 @@ func (f *ManagedCollection) ShouldFlatten(module BuildModule) bool {
 
 // calculateExcludeModules separates the given modules into two groups: excluded and not excluded.
 func (f *ManagedCollection) calculateExcludeModules(deps ...BuildModule) ([]BuildModule, []BuildModule) {
+	if len(f.excluded) == 0 {
+		return nil, deps
+	}
 	exclude := make([]BuildModule, 0)
 	newDeps := make([]BuildModule, 0)
+
+	// update excluded modules with dependencies from composite buildpacks
+	for _, dep := range deps {
+		if _, ok := f.excluded[dep.Descriptor().Info().FullName()]; ok {
+			if len(dep.Descriptor().Order()) > 0 {
+				updateSetFromGroups(f.excluded, dep.Descriptor().Order())
+			}
+		}
+	}
 	for _, dep := range deps {
 		if _, ok := f.excluded[dep.Descriptor().Info().FullName()]; ok {
 			exclude = append(exclude, dep)
@@ -111,6 +123,7 @@ func (f *ManagedCollection) calculateExcludeModules(deps ...BuildModule) ([]Buil
 			newDeps = append(newDeps, dep)
 		}
 	}
+	f.removeExcludedFromFlattenModules()
 	return exclude, newDeps
 }
 
@@ -124,6 +137,10 @@ func (f *ManagedCollection) setExcludedModules(deps []BuildModule) {
 			f.excluded[dep.Descriptor().Info().FullName()] = member
 		}
 	}
+	f.removeExcludedFromFlattenModules()
+}
+
+func (f *ManagedCollection) removeExcludedFromFlattenModules() {
 	for i, modules := range f.flattenedModules {
 		j := 0
 		for _, m := range modules {
@@ -176,15 +193,8 @@ func buildpacksFromGroups(order dist.Order, deps []BuildModule) ([]BuildModule, 
 	bps := make([]BuildModule, 0)
 	newDeps := make([]BuildModule, 0)
 
-	type void struct{}
-	var member void
-	set := make(map[string]void)
-	for _, groups := range order {
-		for _, group := range groups.Group {
-			set[group.FullName()] = member
-		}
-	}
-
+	set := make(map[string]struct{})
+	updateSetFromGroups(set, order)
 	for _, dep := range deps {
 		if _, ok := set[dep.Descriptor().Info().FullName()]; ok {
 			bps = append(bps, dep)
@@ -194,4 +204,18 @@ func buildpacksFromGroups(order dist.Order, deps []BuildModule) ([]BuildModule, 
 	}
 
 	return bps, newDeps
+}
+
+// updateSetFromGroups adds the buildpacks FullName() from the Order to the given set
+func updateSetFromGroups(set map[string]struct{}, order dist.Order) {
+	type void struct{}
+	var member void
+
+	for _, groups := range order {
+		for _, group := range groups.Group {
+			if _, ok := set[group.FullName()]; !ok {
+				set[group.FullName()] = member
+			}
+		}
+	}
 }
