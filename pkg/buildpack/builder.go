@@ -221,18 +221,11 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 
 	// Let's create the tarball for each individual module
 	for _, bp := range append(b.dependencies.ExplodedModules(), individualBuildModules...) {
-		bpLayerTar, err := ToLayerTar(tmpDir, bp)
+		diffID, bpLayerTar, err := ToLayerTar(tmpDir, bp)
 		if err != nil {
 			return err
 		}
 
-		diffID, err := dist.LayerDiffID(bpLayerTar)
-		if err != nil {
-			return errors.Wrapf(err,
-				"getting content hashes for buildpack %s",
-				style.Symbol(bp.Descriptor().Info().FullName()),
-			)
-		}
 		collectionToAdd[bp.Descriptor().Info().FullName()] = toAdd{
 			tarPath: bpLayerTar,
 			diffID:  diffID.String(),
@@ -278,17 +271,9 @@ func (b *PackageBuilder) finalizeExtensionImage(image WorkableImage, tmpDir stri
 	}
 
 	exLayers := dist.ModuleLayers{}
-	exLayerTar, err := ToLayerTar(tmpDir, b.extension)
+	diffID, exLayerTar, err := ToLayerTar(tmpDir, b.extension)
 	if err != nil {
 		return err
-	}
-
-	diffID, err := dist.LayerDiffID(exLayerTar)
-	if err != nil {
-		return errors.Wrapf(err,
-			"getting content hashes for extension %s",
-			style.Symbol(b.extension.Descriptor().Info().FullName()),
-		)
 	}
 
 	if err := image.AddLayerWithDiffID(exLayerTar, diffID.String()); err != nil {

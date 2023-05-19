@@ -2,11 +2,15 @@ package buildpack
 
 import (
 	"archive/tar"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
+
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle/api"
@@ -304,26 +308,41 @@ func validateExtensionDescriptor(extd dist.ExtensionDescriptor) error {
 	return nil
 }
 
-func ToLayerTar(dest string, module BuildModule) (string, error) {
-	descriptor := module.Descriptor()
+func ToLayerTar(dest string, module BuildModule) (v1.Hash, string, error) {
 	modReader, err := module.Open()
 	if err != nil {
-		return "", errors.Wrap(err, "opening blob")
+		return v1.Hash{}, "", errors.Wrap(err, "opening blob")
 	}
 	defer modReader.Close()
 
-	layerTar := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", descriptor.EscapedID(), descriptor.Info().Version))
-	fh, err := os.Create(layerTar)
-	if err != nil {
-		return "", errors.Wrap(err, "create file for tar")
-	}
-	defer fh.Close()
+	hasher := sha256.New()
+	var layerTar string
+	file, ok := modReader.(*os.File)
+	if ok {
+		layerTar = file.Name()
+		if _, err = io.Copy(hasher, modReader); err != nil {
+			return v1.Hash{}, "", errors.Wrap(err, "writing diffID")
+		}
+	} else {
+		descriptor := module.Descriptor()
+		layerTar = filepath.Join(dest, fmt.Sprintf("%s.%s.tar", descriptor.EscapedID(), descriptor.Info().Version))
+		fh, err := os.Create(layerTar)
+		if err != nil {
+			return v1.Hash{}, "", errors.Wrap(err, "create file for tar")
+		}
+		defer fh.Close()
 
-	if _, err := io.Copy(fh, modReader); err != nil {
-		return "", errors.Wrap(err, "writing blob to tar")
+		writer := io.MultiWriter(fh, hasher)
+
+		if _, err = io.Copy(writer, modReader); err != nil {
+			return v1.Hash{}, "", errors.Wrap(err, "writing blob to tar")
+		}
 	}
 
-	return layerTar, nil
+	return v1.Hash{
+		Algorithm: "sha256",
+		Hex:       hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size()))),
+	}, layerTar, nil
 }
 
 // Set returns a set of the given string slice.

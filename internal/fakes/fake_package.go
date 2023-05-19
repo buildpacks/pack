@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/go-containerregistry/pkg/v1/tarball"
-
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 )
@@ -28,17 +26,7 @@ type fakePackage struct {
 
 func NewPackage(tmpDir string, name string, buildpacks []buildpack.BuildModule) (Package, error) {
 	processBuildpack := func(bp buildpack.BuildModule) (tarFile string, diffID string, err error) {
-		tarFile, err = buildpack.ToLayerTar(tmpDir, bp)
-		if err != nil {
-			return "", "", err
-		}
-
-		layer, err := tarball.LayerFromFile(tarFile)
-		if err != nil {
-			return "", "", err
-		}
-
-		hash, err := layer.DiffID()
+		hash, tarFile, err := buildpack.ToLayerTar(tmpDir, bp)
 		if err != nil {
 			return "", "", err
 		}

@@ -1,9 +1,6 @@
 package dist
 
 import (
-	"os"
-	"path/filepath"
-
 	"github.com/buildpacks/lifecycle/api"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
@@ -19,12 +16,6 @@ type Descriptor interface {
 }
 
 func LayerDiffID(layerTarPath string) (v1.Hash, error) {
-	fh, err := os.Open(filepath.Clean(layerTarPath))
-	if err != nil {
-		return v1.Hash{}, errors.Wrap(err, "opening tar file")
-	}
-	defer fh.Close()
-
 	layer, err := tarball.LayerFromFile(layerTarPath)
 	if err != nil {
 		return v1.Hash{}, errors.Wrap(err, "reading layer tar")

@@ -582,21 +582,13 @@ func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir 
 			}
 
 			// create tar file
-			layerTar, err := buildpack.ToLayerTar(modTmpDir, module)
+			diffID, layerTar, err := buildpack.ToLayerTar(modTmpDir, module)
 			if err != nil {
 				lids[i] <- modInfo{err: err}
 			}
 
 			// generate diff id
-			diffID, err := dist.LayerDiffID(layerTar)
 			info := module.Descriptor().Info()
-			if err != nil {
-				lids[i] <- modInfo{err: errors.Wrapf(err,
-					"getting content hashes for %s %s",
-					kind,
-					style.Symbol(info.FullName()),
-				)}
-			}
 			lids[i] <- modInfo{
 				info:     info,
 				layerTar: layerTar,
