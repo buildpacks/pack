@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684450795942,
+  "lastUpdate": 1684513328055,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -418,6 +418,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Addtional_Buildpack",
             "value": 27770099418,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aded3164af3d2b846cbb3088722732376b179b2f",
+          "message": "Merge pull request #1757 from itsdarshankumar/extension-downloader\n\nAdd support for extensions in pack Buildpack downloader",
+          "timestamp": "2023-05-19T11:20:59-05:00",
+          "tree_id": "d0778fe18bcb669a656917d5b6ec60c76bc8aaeb",
+          "url": "https://github.com/buildpacks/pack/commit/aded3164af3d2b846cbb3088722732376b179b2f"
+        },
+        "date": 1684513327483,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4799995008,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1247404290,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Addtional_Buildpack",
+            "value": 27995589323,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
