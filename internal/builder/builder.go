@@ -71,8 +71,8 @@ type Builder struct {
 	lifecycleDescriptor      LifecycleDescriptor
 	additionalBuildpacks     buildpack.ManagedCollection
 	additionalExtensions     buildpack.ManagedCollection
-	metadata                 Metadata
 	flattenExcludeBuildpacks []string
+	metadata                 Metadata
 	mixins                   []string
 	env                      map[string]string
 	uid, gid                 int
@@ -80,6 +80,7 @@ type Builder struct {
 	replaceOrder             bool
 	order                    dist.Order
 	orderExtensions          dist.Order
+	validateMixins           bool
 }
 
 type orderTOML struct {
@@ -142,6 +143,7 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 		metadata:                 metadata,
 		lifecycleDescriptor:      constructLifecycleDescriptor(metadata),
 		env:                      map[string]string{},
+		validateMixins:           true,
 		additionalBuildpacks:     *buildpack.NewModuleManager(opts.flatten, opts.depth),
 		additionalExtensions:     *buildpack.NewModuleManager(opts.flatten, opts.depth),
 		flattenExcludeBuildpacks: opts.exclude,
@@ -390,6 +392,11 @@ func (b *Builder) SetRunImage(runConfig builder.RunConfig) {
 	b.metadata.RunImages = runImages
 }
 
+// SetValidateMixins if true instructs the builder to validate mixins
+func (b *Builder) SetValidateMixins(to bool) {
+	b.validateMixins = to
+}
+
 // Save saves the builder
 func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) error {
 	logger.Debugf("Creating builder with the following buildpacks:")
@@ -425,8 +432,10 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		}
 	}
 
-	if err := b.validateBuildpacks(); err != nil {
-		return errors.Wrap(err, "validating buildpacks")
+	if b.validateMixins {
+		if err := b.validateBuildpacks(); err != nil {
+			return errors.Wrap(err, "validating buildpacks")
+		}
 	}
 
 	if err := validateExtensions(b.lifecycleDescriptor, b.Extensions(), b.AllModules(buildpack.KindExtension)); err != nil {

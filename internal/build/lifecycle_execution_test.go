@@ -71,9 +71,11 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		fakeLaunchCache  *fakes.FakeCache
 		fakePhase        *fakes.FakePhase
 		fakePhaseFactory *fakes.FakePhaseFactory
+		fakeFetcher      fakeImageFetcher
 		configProvider   *build.PhaseConfigProvider
 
 		extensionsForBuild, extensionsForRun bool
+		extensionsRunImage                   string
 	)
 
 	var configureDefaultTestLifecycle = func(opts *build.LifecycleOptions) {
@@ -115,37 +117,48 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			fakes.WithImage(image),
 		)
 		h.AssertNil(t, err)
-		lifecycleOps = append(lifecycleOps, fakes.WithBuilder(fakeBuilder))
+		fakeFetcher = fakeImageFetcher{
+			callCount:           0,
+			calledWithArgAtCall: make(map[int]string),
+		}
+		withFakeFetchRunImageFunc := func(opts *build.LifecycleOptions) {
+			opts.FetchRunImage = newFakeFetchRunImageFunc(&fakeFetcher)
+		}
+		lifecycleOps = append(lifecycleOps, fakes.WithBuilder(fakeBuilder), withFakeFetchRunImageFunc)
 
 		tmpDir, err = os.MkdirTemp("", "pack.unit")
 		h.AssertNil(t, err)
-
 		lifecycle = newTestLifecycleExec(t, true, tmpDir, lifecycleOps...)
 
-		// set working directory to be a directory that we control so that we can put fixtures into it
-		if extensionsForBuild || extensionsForRun {
-			if extensionsForBuild {
-				// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
-				err = os.MkdirAll(filepath.Join(tmpDir, "build"), 0755)
-				h.AssertNil(t, err)
-				_, err = os.Create(filepath.Join(tmpDir, "build", "some-dockerfile"))
-				h.AssertNil(t, err)
-			}
-			if extensionsForRun {
-				type runImage struct {
-					Extend bool `toml:"extend,omitempty"`
-				}
-				type analyzedMD struct {
-					RunImage *runImage `toml:"run-image,omitempty"`
-				}
-				var amd analyzedMD
-				amd.RunImage = &runImage{Extend: true}
-				f, err := os.Create(filepath.Join(tmpDir, "analyzed.toml"))
-				h.AssertNil(t, err)
-				toml.NewEncoder(f).Encode(amd)
-				h.AssertNil(t, f.Close())
-			}
+		// construct fixtures for extensions
+		if extensionsForBuild {
+			// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
+			err = os.MkdirAll(filepath.Join(tmpDir, "build"), 0755)
+			h.AssertNil(t, err)
+			_, err = os.Create(filepath.Join(tmpDir, "build", "some-dockerfile"))
+			h.AssertNil(t, err)
 		}
+		type runImage struct {
+			Extend bool   `toml:"extend,omitempty"`
+			Image  string `toml:"image"`
+		}
+		type analyzedMD struct {
+			RunImage *runImage `toml:"run-image,omitempty"`
+		}
+		amd := analyzedMD{RunImage: &runImage{
+			Extend: false,
+			Image:  "",
+		}}
+		if extensionsForRun {
+			amd.RunImage.Extend = true
+		}
+		if extensionsRunImage != "" {
+			amd.RunImage.Image = extensionsRunImage
+		}
+		f, err := os.Create(filepath.Join(tmpDir, "analyzed.toml"))
+		h.AssertNil(t, err)
+		toml.NewEncoder(f).Encode(amd)
+		h.AssertNil(t, f.Close())
 
 		fakeLaunchCache = fakes.NewFakeCache()
 		fakeLaunchCache.ReturnForType = cache.Volume
@@ -614,7 +627,32 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("for run", func() {
-					when("analyzed.toml extend", func() {
+					when("analyzed.toml run image", func() {
+						when("matches provided run image", func() {
+							it("does nothing", func() {
+								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+									return fakePhaseFactory
+								})
+								h.AssertNil(t, err)
+								h.AssertEq(t, fakeFetcher.callCount, 0)
+							})
+						})
+
+						when("does not match provided run image", func() {
+							extensionsRunImage = "some-new-run-image"
+
+							it("pulls the new run image", func() {
+								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+									return fakePhaseFactory
+								})
+								h.AssertNil(t, err)
+								h.AssertEq(t, fakeFetcher.calledWithArgAtCall[0], "some-new-run-image")
+								h.AssertEq(t, fakeFetcher.callCount, 1)
+							})
+						})
+					})
+
+					when("analyzed.toml run image extend", func() {
 						when("true", func() {
 							extensionsForRun = true
 
@@ -1866,6 +1904,14 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, configProvider.ContainerConfig().Image, "some-run-image")
 		})
 
+		when("extensions change the run image", func() {
+			extensionsRunImage = "some-new-run-image"
+
+			it("runs the phase with the new run image", func() {
+				h.AssertEq(t, configProvider.ContainerConfig().Image, "some-new-run-image")
+			})
+		})
+
 		it("configures the phase with the expected arguments", func() {
 			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Entrypoint, "") // the run image may have an entrypoint configured, override it
 			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-log-level", "debug")
@@ -2294,6 +2340,23 @@ func newFakeImageCache() *fakes.FakeCache {
 	c.ReturnForType = cache.Image
 	c.ReturnForName = "some-cache-image"
 	return c
+}
+
+func newFakeFetchRunImageFunc(f *fakeImageFetcher) func(name string) error {
+	return func(name string) error {
+		return f.fetchRunImage(name)
+	}
+}
+
+type fakeImageFetcher struct {
+	callCount           int
+	calledWithArgAtCall map[int]string
+}
+
+func (f *fakeImageFetcher) fetchRunImage(name string) error {
+	f.calledWithArgAtCall[f.callCount] = name
+	f.callCount++
+	return nil
 }
 
 func newTestLifecycleExecErr(t *testing.T, logVerbose bool, tmpDir string, ops ...func(*build.LifecycleOptions)) (*build.LifecycleExecution, error) {

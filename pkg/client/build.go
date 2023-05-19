@@ -362,8 +362,79 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	if err := c.validateMixins(fetchedBPs, bldr, runImageName, runMixins); err != nil {
-		return errors.Wrap(err, "validating stack mixins")
+	imgOS, err := rawBuilderImage.OS()
+	if err != nil {
+		return errors.Wrapf(err, "getting builder OS")
+	}
+
+	// Default mode: if the TrustBuilder option is not set, trust the suggested builders.
+	if opts.TrustBuilder == nil {
+		opts.TrustBuilder = IsSuggestedBuilderFunc
+	}
+
+	// Ensure the builder's platform APIs are supported
+	var builderPlatformAPIs builder.APISet
+	builderPlatformAPIs = append(builderPlatformAPIs, bldr.LifecycleDescriptor().APIs.Platform.Deprecated...)
+	builderPlatformAPIs = append(builderPlatformAPIs, bldr.LifecycleDescriptor().APIs.Platform.Supported...)
+	if !supportsPlatformAPI(builderPlatformAPIs) {
+		c.logger.Debugf("pack %s supports Platform API(s): %s", c.version, strings.Join(build.SupportedPlatformAPIVersions.AsStrings(), ", "))
+		c.logger.Debugf("Builder %s supports Platform API(s): %s", style.Symbol(opts.Builder), strings.Join(builderPlatformAPIs.AsStrings(), ", "))
+		return errors.Errorf("Builder %s is incompatible with this version of pack", style.Symbol(opts.Builder))
+	}
+
+	// Get the platform API version to use
+	lifecycleVersion := bldr.LifecycleDescriptor().Info.Version
+	useCreator := supportsCreator(lifecycleVersion) && opts.TrustBuilder(opts.Builder)
+	var (
+		lifecycleOptsLifecycleImage string
+		lifecycleAPIs               []string
+	)
+	if !(useCreator) {
+		// fetch the lifecycle image
+		if supportsLifecycleImage(lifecycleVersion) {
+			lifecycleImageName := opts.LifecycleImage
+			if lifecycleImageName == "" {
+				lifecycleImageName = fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, lifecycleVersion.String())
+			}
+
+			imgArch, err := rawBuilderImage.Architecture()
+			if err != nil {
+				return errors.Wrapf(err, "getting builder architecture")
+			}
+
+			lifecycleImage, err := c.imageFetcher.Fetch(
+				ctx,
+				lifecycleImageName,
+				image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy, Platform: fmt.Sprintf("%s/%s", imgOS, imgArch)},
+			)
+			if err != nil {
+				return fmt.Errorf("fetching lifecycle image: %w", err)
+			}
+
+			lifecycleOptsLifecycleImage = lifecycleImage.Name()
+			labels, err := lifecycleImage.Labels()
+			if err != nil {
+				return fmt.Errorf("reading labels of lifecycle image: %w", err)
+			}
+
+			lifecycleAPIs, err = extractSupportedLifecycleApis(labels)
+			if err != nil {
+				return fmt.Errorf("reading api versions of lifecycle image: %w", err)
+			}
+		}
+	}
+
+	usingPlatformAPI, err := build.FindLatestSupported(append(
+		bldr.LifecycleDescriptor().APIs.Platform.Deprecated,
+		bldr.LifecycleDescriptor().APIs.Platform.Supported...),
+		lifecycleAPIs)
+	if err != nil {
+		return fmt.Errorf("finding latest supported Platform API: %w", err)
+	}
+	if usingPlatformAPI.LessThan("0.12") {
+		if err = c.validateMixins(fetchedBPs, bldr, runImageName, runMixins); err != nil {
+			return fmt.Errorf("validating stack mixins: %w", err)
+		}
 	}
 
 	buildEnvs := map[string]string{}
@@ -375,26 +446,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		buildEnvs[k] = v
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, orderExtensions, fetchedExs)
+	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, orderExtensions, fetchedExs, usingPlatformAPI.LessThan("0.12"))
 	if err != nil {
 		return err
 	}
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
-
-	var builderPlatformAPIs builder.APISet
-	builderPlatformAPIs = append(builderPlatformAPIs, ephemeralBuilder.LifecycleDescriptor().APIs.Platform.Deprecated...)
-	builderPlatformAPIs = append(builderPlatformAPIs, ephemeralBuilder.LifecycleDescriptor().APIs.Platform.Supported...)
-
-	if !supportsPlatformAPI(builderPlatformAPIs) {
-		c.logger.Debugf("pack %s supports Platform API(s): %s", c.version, strings.Join(build.SupportedPlatformAPIVersions.AsStrings(), ", "))
-		c.logger.Debugf("Builder %s supports Platform API(s): %s", style.Symbol(opts.Builder), strings.Join(builderPlatformAPIs.AsStrings(), ", "))
-		return errors.Errorf("Builder %s is incompatible with this version of pack", style.Symbol(opts.Builder))
-	}
-
-	imgOS, err := rawBuilderImage.OS()
-	if err != nil {
-		return errors.Wrapf(err, "getting builder OS")
-	}
 
 	if len(bldr.OrderExtensions()) > 0 {
 		if !c.experimental {
@@ -446,11 +502,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		}
 	}
 
-	// Default mode: if the TrustBuilder option is not set, trust the suggested builders.
-	if opts.TrustBuilder == nil {
-		opts.TrustBuilder = IsSuggestedBuilderFunc
+	fetchRunImage := func(name string) error {
+		_, err := c.imageFetcher.Fetch(ctx, name, fetchOptions)
+		return err
 	}
-
 	lifecycleOpts := build.LifecycleOptions{
 		AppPath:              appPath,
 		Image:                imageRef,
@@ -458,11 +513,12 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		BuilderImage:         builderRef.Name(),
 		LifecycleImage:       ephemeralBuilder.Name(),
 		RunImage:             runImageName,
+		FetchRunImage:        fetchRunImage,
 		ProjectMetadata:      projectMetadata,
 		ClearCache:           opts.ClearCache,
 		Publish:              opts.Publish,
 		TrustBuilder:         opts.TrustBuilder(opts.Builder),
-		UseCreator:           false,
+		UseCreator:           useCreator,
 		DockerHost:           opts.DockerHost,
 		Cache:                opts.Cache,
 		CacheImage:           opts.CacheImage,
@@ -485,61 +541,19 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Layout:               opts.Layout(),
 	}
 
-	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
-	// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
-	// have bugs that make using the creator problematic.
-	lifecycleSupportsCreator := !lifecycleVersion.LessThan(semver.MustParse(minLifecycleVersionSupportingCreator))
-
-	if lifecycleSupportsCreator && opts.TrustBuilder(opts.Builder) {
+	switch {
+	case useCreator:
 		lifecycleOpts.UseCreator = true
-		// no need to fetch a lifecycle image, it won't be used
-		if err := c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
-			return errors.Wrap(err, "executing lifecycle")
-		}
-
-		return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
+	case supportsLifecycleImage(lifecycleVersion):
+		lifecycleOpts.LifecycleImage = lifecycleOptsLifecycleImage
+		lifecycleOpts.LifecycleApis = lifecycleAPIs
+	case !opts.TrustBuilder(opts.Builder):
+		return errors.Errorf("Lifecycle %s does not have an associated lifecycle image. Builder must be trusted.", lifecycleVersion.String())
 	}
 
-	if !opts.TrustBuilder(opts.Builder) {
-		if lifecycleImageSupported(imgOS, lifecycleVersion) {
-			lifecycleImageName := opts.LifecycleImage
-			if lifecycleImageName == "" {
-				lifecycleImageName = fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, lifecycleVersion.String())
-			}
-
-			imgArch, err := rawBuilderImage.Architecture()
-			if err != nil {
-				return errors.Wrapf(err, "getting builder architecture")
-			}
-
-			lifecycleImage, err := c.imageFetcher.Fetch(
-				ctx,
-				lifecycleImageName,
-				image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy, Platform: fmt.Sprintf("%s/%s", imgOS, imgArch)},
-			)
-			if err != nil {
-				return errors.Wrap(err, "fetching lifecycle image")
-			}
-
-			lifecycleOpts.LifecycleImage = lifecycleImage.Name()
-			labels, err := lifecycleImage.Labels()
-			if err != nil {
-				return errors.Wrap(err, "reading labels of lifecycle image")
-			}
-
-			lifecycleOpts.LifecycleApis, err = extractSupportedLifecycleApis(labels)
-			if err != nil {
-				return errors.Wrap(err, "reading api versions of lifecycle image")
-			}
-		} else {
-			return errors.Errorf("Lifecycle %s does not have an associated lifecycle image. Builder must be trusted.", lifecycleVersion.String())
-		}
+	if err = c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
+		return fmt.Errorf("executing lifecycle: %w", err)
 	}
-
-	if err := c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
-		return errors.Wrap(err, "executing lifecycle. This may be the result of using an untrusted builder")
-	}
-
 	return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
 }
 
@@ -580,7 +594,13 @@ func getFileFilter(descriptor projectTypes.Descriptor) (func(string) bool, error
 	return nil, nil
 }
 
-func lifecycleImageSupported(builderOS string, lifecycleVersion *builder.Version) bool {
+func supportsCreator(lifecycleVersion *builder.Version) bool {
+	// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
+	// have bugs that make using the creator problematic.
+	return !lifecycleVersion.LessThan(semver.MustParse(minLifecycleVersionSupportingCreator))
+}
+
+func supportsLifecycleImage(lifecycleVersion *builder.Version) bool {
 	return lifecycleVersion.Equal(builder.VersionMustParse(prevLifecycleVersionSupportingImage)) ||
 		!lifecycleVersion.LessThan(semver.MustParse(minLifecycleVersionSupportingImage))
 }
@@ -1106,7 +1126,15 @@ func (c *Client) processExtensions(ctx context.Context, builderImage imgutil.Ima
 	return fetchedExs, orderExtensions, nil
 }
 
-func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []buildpack.BuildModule, orderExtensions dist.Order, extensions []buildpack.BuildModule) (*builder.Builder, error) {
+func (c *Client) createEphemeralBuilder(
+	rawBuilderImage imgutil.Image,
+	env map[string]string,
+	order dist.Order,
+	buildpacks []buildpack.BuildModule,
+	orderExtensions dist.Order,
+	extensions []buildpack.BuildModule,
+	validateMixins bool,
+) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
 	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {
@@ -1133,6 +1161,8 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 		c.logger.Debug("Setting custom order for extensions")
 		bldr.SetOrderExtensions(orderExtensions)
 	}
+
+	bldr.SetValidateMixins(validateMixins)
 
 	if err := bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version}); err != nil {
 		return nil, err
@@ -1200,12 +1230,12 @@ func (c *Client) logImageNameAndSha(ctx context.Context, publish bool, imageRef 
 
 	img, err := c.imageFetcher.Fetch(ctx, imageRef.Name(), image.FetchOptions{Daemon: !publish, PullPolicy: image.PullNever})
 	if err != nil {
-		return errors.Wrap(err, "fetching built image")
+		return fmt.Errorf("fetching built image: %w", err)
 	}
 
 	id, err := img.Identifier()
 	if err != nil {
-		return errors.Wrap(err, "reading image sha")
+		return fmt.Errorf("reading image sha: %w", err)
 	}
 
 	// Remove tag, if it exists, from the image name

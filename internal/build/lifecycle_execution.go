@@ -93,7 +93,7 @@ func apiIntersection(apisA, apisB []*api.Version) []*api.Version {
 	return apis
 }
 
-// public for unit test purposes but cmon you probably don't want to actually call this.
+// FindLatestSupported finds the latest Platform API version supported by both the builder and the lifecycle.
 func FindLatestSupported(builderapis []*api.Version, lifecycleapis []string) (*api.Version, error) {
 	var apis []*api.Version
 	// if a custom lifecycle image was used we need to take an intersection of its supported apis with the builder's supported apis.
@@ -237,6 +237,13 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 				l.logger.Info(style.Step("BUILDING"))
 				return l.Build(ctx, phaseFactory)
 			})
+		}
+
+		currentRunImage := l.runImageAfterExtensions()
+		if currentRunImage != "" && currentRunImage != l.opts.RunImage {
+			if err := l.opts.FetchRunImage(currentRunImage); err != nil {
+				return err
+			}
 		}
 
 		if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {
@@ -832,8 +839,8 @@ type analyzedMD struct {
 	RunImage *runImage `toml:"run-image,omitempty"`
 }
 type runImage struct {
-	Extend    bool   `toml:"extend,omitempty"`
-	Reference string `toml:"reference"`
+	Extend bool   `toml:"extend,omitempty"`
+	Image  string `toml:"image"`
 }
 
 func (l *LifecycleExecution) hasExtensionsForRun() bool {
@@ -847,7 +854,6 @@ func (l *LifecycleExecution) hasExtensionsForRun() bool {
 	return amd.RunImage.Extend
 }
 
-// TODO: we might need to pull the run image at this stage, see https://github.com/buildpacks/pack/issues/1686
 func (l *LifecycleExecution) runImageAfterExtensions() string {
 	var amd analyzedMD
 	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
@@ -857,7 +863,7 @@ func (l *LifecycleExecution) runImageAfterExtensions() string {
 		// this shouldn't be reachable
 		return l.opts.RunImage
 	}
-	return amd.RunImage.Reference
+	return amd.RunImage.Image
 }
 
 func (l *LifecycleExecution) appendLayoutOperations(opts []PhaseConfigProviderOperation) ([]PhaseConfigProviderOperation, error) {
