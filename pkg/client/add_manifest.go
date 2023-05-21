@@ -16,12 +16,12 @@ type AddManifestOptions struct {
 func (c *Client) AddManifest(ctx context.Context, opts AddManifestOptions) error {
 	indexManifest, err := local.GetIndexManifest(opts.Index, opts.Path)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	idx, err := local.NewIndex(opts.Index, opts.Path, local.WithManifest(indexManifest))
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = idx.AppendManifest(opts.Manifest)

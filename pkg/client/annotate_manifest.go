@@ -18,12 +18,12 @@ type AnnotateManifestOptions struct {
 func (c *Client) AnnotateManifest(ctx context.Context, opts AnnotateManifestOptions) error {
 	indexManifest, err := local.GetIndexManifest(opts.Index, opts.Path)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	idx, err := local.NewIndex(opts.Index, opts.Path, local.WithManifest(indexManifest))
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = idx.AnnotateManifest(
