@@ -24,7 +24,14 @@ func (c *Client) AddManifest(ctx context.Context, opts AddManifestOptions) error
 		return err
 	}
 
-	err = idx.AppendManifest(opts.Manifest)
+	// Append manifest to local index
+	err = idx.Add(opts.Manifest)
+	if err != nil {
+		return err
+	}
+
+	// Store index in local storage
+	err = idx.Save()
 	if err != nil {
 		return err
 	}
