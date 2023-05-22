@@ -22,12 +22,13 @@ import (
 )
 
 var (
-	baseImg             string
-	trustedImg          string
-	builder             string
-	mockAppPath         string
-	paketoBuilder       string
-	additionalBuildapck string
+	baseImg               string
+	trustedImg            string
+	builder               string
+	mockAppPath           string
+	paketoBuilder         string
+	additionalMockAppPath string
+	additionalBuildapck   string
 )
 
 func BenchmarkBuild(b *testing.B) {
@@ -63,10 +64,10 @@ func BenchmarkBuild(b *testing.B) {
 		}
 	})
 
-	b.Run("with Addtional Buildpack", func(b *testing.B) {
+	b.Run("with Additional Buildpack", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			// perform the operation we're analyzing
-			cmd.SetArgs([]string{fmt.Sprintf("%s%d", trustedImg, i), "-p", mockAppPath, "-B", paketoBuilder, "--buildpack", additionalBuildapck})
+			cmd.SetArgs([]string{fmt.Sprintf("%s%d", trustedImg, i), "-p", additionalMockAppPath, "-B", paketoBuilder, "--buildpack", additionalBuildapck})
 			if err = cmd.Execute(); err != nil {
 				b.Error(errors.Wrapf(err, "running build #%d", i))
 			}
@@ -113,7 +114,10 @@ func setEnv() {
 	if paketoBuilder = os.Getenv("paketoBuilder"); paketoBuilder == "" {
 		paketoBuilder = "paketobuildpacks/builder-jammy-base"
 	}
+	if additionalMockAppPath = os.Getenv("additionalMockAppPath"); additionalMockAppPath == "" {
+		additionalMockAppPath = filepath.Join("..", "samples", "apps", "java-maven")
+	}
 	if additionalBuildapck = os.Getenv("additionalBuildapck"); additionalBuildapck == "" {
-		additionalBuildapck = "docker://cnbs/sample-package:hello-universe"
+		additionalBuildapck = "paketobuildpacks/java:latest"
 	}
 }
