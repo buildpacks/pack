@@ -35,14 +35,9 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 				return err
 			}
 
-			mediaType := imgutil.DockerTypes
-			format := flags.Format
-			if format == "oci" {
-				mediaType = imgutil.OCITypes
-			} else if format == "v2s2" || format == "" {
-				mediaType = imgutil.DockerTypes
-			} else {
-				return errors.Errorf("unsupported media type given for --format")
+			mediaType, err := validateMediaTypeFlag(flags.Format)
+			if err != nil {
+				return err
 			}
 
 			packHome, err := config.PackHome()
@@ -73,7 +68,7 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry`)
 	cmd.Flags().BoolVar(&flags.Insecure, "insecure", false, `Allow publishing to insecure registry`)
-	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save image index as ("OCI" or "V2S2")`)
+	cmd.Flags().StringVarP(&flags.Format, "format", "f", "v2s2", `Format to save image index as ("OCI" or "V2S2")`)
 	cmd.Flags().StringVarP(&flags.Registry, "registry", "r", "", `Registry URL to publish the image index`)
 
 	AddHelpFlag(cmd, "create")
@@ -81,5 +76,22 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 }
 
 func validateManifestCreateFlags(p *ManifestCreateFlags) error {
+	if p.Format == "" {
+		return errors.Errorf("--format flag received an empty value")
+	}
 	return nil
+}
+
+func validateMediaTypeFlag(format string) (imgutil.MediaTypes, error) {
+	var mediaType imgutil.MediaTypes
+
+	if format == "oci" {
+		mediaType = imgutil.OCITypes
+	} else if format == "v2s2" {
+		mediaType = imgutil.DockerTypes
+	} else {
+		return imgutil.MissingTypes, errors.Errorf("unsupported media type given for --format")
+	}
+
+	return mediaType, nil
 }
