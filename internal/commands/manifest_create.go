@@ -64,10 +64,10 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 			}); err != nil {
 				return err
 			}
-			logger.Infof("Successfully created image index %s", style.Symbol(indexName))
-			// logging.Tip(logger, "Run %s to use this builder", style.Symbol(fmt.Sprintf("pack build <image-name> --builder %s", imageName)))
-			return nil
 
+			logger.Infof("Successfully created image index %s", style.Symbol(indexName))
+
+			return nil
 		}),
 	}
 
