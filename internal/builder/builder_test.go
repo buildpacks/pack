@@ -1794,38 +1794,280 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("all", func() {
-			it.Before(func() {
-				var err error
-				bldr, err = builder.New(builderImage, "some-builder", builder.WithFlatten(-1, nil))
-				h.AssertNil(t, err)
+			when("no exclusions", func() {
+				it.Before(func() {
+					var err error
+					bldr, err = builder.New(builderImage, "some-builder", builder.WithFlatten(buildpack.FlattenMaxDepth, nil))
+					h.AssertNil(t, err)
 
-				// Let's add some buildpacks
-				deps := []buildpack.BuildModule{bp2v1, bp1v2}
-				bldr.AddBuildpacks(bp1v1, deps)
-			})
+					// Let's add some buildpacks
+					deps := []buildpack.BuildModule{bp2v1, bp1v2}
+					bldr.AddBuildpacks(bp1v1, deps)
+				})
 
-			when("#FlattenedModules", func() {
-				it("it return one array with all buildpacks on it", func() {
-					h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)), 1)
-					h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)[0]), 3)
+				when("#FlattenedModules", func() {
+					it("it return one array with all buildpacks on it", func() {
+						h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)), 1)
+						h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)[0]), 3)
+					})
+				})
+
+				when("#AllModules", func() {
+					it("it returns each buildpack individually", func() {
+						h.AssertEq(t, len(bldr.AllModules(buildpack.KindBuildpack)), 3)
+					})
+				})
+
+				when("#ShouldFlatten", func() {
+					it("it returns true for each buildpack", func() {
+						h.AssertTrue(t, bldr.ShouldFlatten(bp1v1))
+						h.AssertTrue(t, bldr.ShouldFlatten(bp2v1))
+						h.AssertTrue(t, bldr.ShouldFlatten(bp1v2))
+					})
 				})
 			})
 
-			when("#AllModules", func() {
-				it("it returns each buildpack individually", func() {
-					h.AssertEq(t, len(bldr.AllModules(buildpack.KindBuildpack)), 3)
-				})
-			})
+			when("some exclusions", func() {
+				it.Before(func() {
+					var err error
+					exclude := []string{bp1v2.Descriptor().Info().FullName()}
+					bldr, err = builder.New(builderImage, "some-builder", builder.WithFlatten(buildpack.FlattenMaxDepth, exclude))
+					h.AssertNil(t, err)
 
-			when("#ShouldFlatten", func() {
-				it("it returns true for each buildpack", func() {
-					h.AssertTrue(t, bldr.ShouldFlatten(bp1v1))
-					h.AssertTrue(t, bldr.ShouldFlatten(bp2v1))
-					h.AssertTrue(t, bldr.ShouldFlatten(bp1v2))
+					// Let's add some buildpacks
+					deps := []buildpack.BuildModule{bp2v1, bp1v2}
+					bldr.AddBuildpacks(bp1v1, deps)
+				})
+
+				when("#FlattenedModules", func() {
+					it("it return one array with all buildpacks on it", func() {
+						h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)), 1)
+						h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)[0]), 2)
+					})
+				})
+
+				when("#AllModules", func() {
+					it("it returns each buildpack individually", func() {
+						h.AssertEq(t, len(bldr.AllModules(buildpack.KindBuildpack)), 3)
+					})
+				})
+
+				when("#ShouldFlatten", func() {
+					it("it returns true for each flatten buildpack", func() {
+						h.AssertTrue(t, bldr.ShouldFlatten(bp1v1))
+						h.AssertTrue(t, bldr.ShouldFlatten(bp2v1))
+					})
+
+					it("it returns false for each excluded buildpack", func() {
+						h.AssertFalse(t, bldr.ShouldFlatten(bp1v2))
+					})
 				})
 			})
 		})
-		// TODO add tests for flatten with depth
+
+		when("depth", func() {
+			/* compositeBP1
+			 *    /    \
+			 *   bp1   compositeBP2
+			 *           /   |    \
+			 *	      bp21 bp22 compositeBP3
+			 *			          |
+			 *		            bp31
+			 */
+			var (
+				compositeBP1 buildpack.BuildModule
+				bp1          buildpack.BuildModule
+				compositeBP2 buildpack.BuildModule
+				bp21         buildpack.BuildModule
+				bp22         buildpack.BuildModule
+				compositeBP3 buildpack.BuildModule
+				bp31         buildpack.BuildModule
+				depth        int
+				err          error
+			)
+
+			it.Before(func() {
+				bp1, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					WithAPI: api.MustParse("0.2"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "buildpack-1-id",
+						Version: "buildpack-1-version",
+					},
+				}, 0644)
+				h.AssertNil(t, err)
+
+				bp21, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					WithAPI: api.MustParse("0.2"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "buildpack-21-id",
+						Version: "buildpack-21-version",
+					},
+				}, 0644)
+				h.AssertNil(t, err)
+
+				bp22, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					WithAPI: api.MustParse("0.2"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "buildpack-22-id",
+						Version: "buildpack-22-version",
+					},
+				}, 0644)
+				h.AssertNil(t, err)
+
+				bp31, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					WithAPI: api.MustParse("0.2"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "buildpack-31-id",
+						Version: "buildpack-31-version",
+					},
+				}, 0644)
+				h.AssertNil(t, err)
+
+				compositeBP3, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					WithAPI: api.MustParse("0.2"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "composite-buildpack-3-id",
+						Version: "composite-buildpack-3-version",
+					},
+					WithOrder: []dist.OrderEntry{{
+						Group: []dist.ModuleRef{
+							{
+								ModuleInfo: bp31.Descriptor().Info(),
+							},
+						},
+					}},
+				}, 0644)
+				h.AssertNil(t, err)
+
+				compositeBP2, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					WithAPI: api.MustParse("0.2"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "composite-buildpack-2-id",
+						Version: "composite-buildpack-2-version",
+					},
+					WithOrder: []dist.OrderEntry{{
+						Group: []dist.ModuleRef{
+							{
+								ModuleInfo: bp21.Descriptor().Info(),
+							},
+							{
+								ModuleInfo: bp22.Descriptor().Info(),
+							},
+							{
+								ModuleInfo: compositeBP3.Descriptor().Info(),
+							},
+						},
+					}},
+				}, 0644)
+				h.AssertNil(t, err)
+
+				compositeBP1, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					WithAPI: api.MustParse("0.2"),
+					WithInfo: dist.ModuleInfo{
+						ID:      "composite-buildpack-1-id",
+						Version: "composite-buildpack-1-version",
+					},
+					WithOrder: []dist.OrderEntry{{
+						Group: []dist.ModuleRef{
+							{
+								ModuleInfo: bp1.Descriptor().Info(),
+							},
+							{
+								ModuleInfo: compositeBP2.Descriptor().Info(),
+							},
+						},
+					}},
+				}, 0644)
+				h.AssertNil(t, err)
+			})
+
+			when("with depth = 1", func() {
+				it.Before(func() {
+					depth = 1
+				})
+
+				when("no exclusions", func() {
+					it.Before(func() {
+						var err error
+						bldr, err = builder.New(builderImage, "some-builder", builder.WithFlatten(depth, nil))
+						h.AssertNil(t, err)
+
+						// Let's add some buildpacks
+						deps := []buildpack.BuildModule{bp1, compositeBP2, bp21, bp22, compositeBP3, bp31}
+						bldr.AddBuildpacks(compositeBP1, deps)
+					})
+
+					when("#FlattenedModules", func() {
+						it("returns 1 flatten module with [compositeBP2, bp21, bp22, compositeBP3, bp31]", func() {
+							h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)), 1)
+							h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)[0]), 5)
+						})
+					})
+
+					when("#AllModules", func() {
+						it("it returns each buildpack individually", func() {
+							h.AssertEq(t, len(bldr.AllModules(buildpack.KindBuildpack)), 7)
+						})
+					})
+
+					when("#ShouldFlatten", func() {
+						it("returns true for flatten explodesModules", func() {
+							h.AssertTrue(t, bldr.ShouldFlatten(compositeBP2))
+							h.AssertTrue(t, bldr.ShouldFlatten(bp21))
+							h.AssertTrue(t, bldr.ShouldFlatten(bp22))
+							h.AssertTrue(t, bldr.ShouldFlatten(compositeBP3))
+							h.AssertTrue(t, bldr.ShouldFlatten(bp31))
+						})
+
+						it("returns false for no flatten explodesModules", func() {
+							h.AssertFalse(t, bldr.ShouldFlatten(bp1))
+							h.AssertFalse(t, bldr.ShouldFlatten(compositeBP1))
+						})
+					})
+				})
+
+				when("some exclusions", func() {
+					it.Before(func() {
+						var err error
+						exclude := []string{compositeBP3.Descriptor().Info().FullName()}
+						bldr, err = builder.New(builderImage, "some-builder", builder.WithFlatten(depth, exclude))
+						h.AssertNil(t, err)
+
+						// Let's add some buildpacks
+						deps := []buildpack.BuildModule{bp1, compositeBP2, bp21, bp22, compositeBP3, bp31}
+						bldr.AddBuildpacks(compositeBP1, deps)
+					})
+
+					when("#FlattenedModules", func() {
+						it("returns 1 flatten module with [compositeBP2, bp21, bp22]", func() {
+							h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)), 1)
+							h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)[0]), 3)
+						})
+					})
+
+					when("#AllModules", func() {
+						it("it returns each buildpack individually", func() {
+							h.AssertEq(t, len(bldr.AllModules(buildpack.KindBuildpack)), 7)
+						})
+					})
+
+					when("#ShouldFlatten", func() {
+						it("returns true for flatten explodesModules", func() {
+							h.AssertTrue(t, bldr.ShouldFlatten(compositeBP2))
+							h.AssertTrue(t, bldr.ShouldFlatten(bp21))
+							h.AssertTrue(t, bldr.ShouldFlatten(bp22))
+						})
+
+						it("returns false for no flatten explodesModules", func() {
+							h.AssertFalse(t, bldr.ShouldFlatten(bp1))
+							h.AssertFalse(t, bldr.ShouldFlatten(compositeBP1))
+							h.AssertFalse(t, bldr.ShouldFlatten(compositeBP3))
+							h.AssertFalse(t, bldr.ShouldFlatten(bp31))
+						})
+					})
+				})
+			})
+		})
 	})
 }
 
