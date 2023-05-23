@@ -33,11 +33,6 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 
 			indexName := args[0]
 			manifest := args[1]
-			all := false
-
-			if flags.All {
-				all = flags.All
-			}
 
 			packHome, err := config.PackHome()
 			if err != nil {
@@ -50,7 +45,7 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 				Index:    indexName,
 				Path:     manifestDir,
 				Manifest: manifest,
-				All:      all,
+				All:      flags.All,
 			}); err != nil {
 				return err
 			}
