@@ -24,9 +24,6 @@ type CreateManifestOptions struct {
 	Registry string
 
 	// Directory to store OCI layout
-	LayoutDir string
-
-	// Directory to store OCI layout
 	ManifestDir string
 }
 

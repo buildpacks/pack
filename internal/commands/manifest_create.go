@@ -14,11 +14,10 @@ import (
 )
 
 type ManifestCreateFlags struct {
-	Publish   bool
-	Insecure  bool
-	Registry  string
-	Format    string
-	LayoutDir string
+	Publish  bool
+	Insecure bool
+	Registry string
+	Format   string
 }
 
 func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
@@ -46,16 +45,6 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 				return errors.Errorf("unsupported media type given for --format")
 			}
 
-			layoutDir := "./oci-layout"
-			if flags.LayoutDir != "" {
-				layoutDir = flags.LayoutDir
-			}
-
-			layoutDir, err := filepath.Abs(filepath.Dir(layoutDir))
-			if err != nil {
-				return errors.Wrap(err, "getting absolute layout path")
-			}
-
 			packHome, err := config.PackHome()
 			if err != nil {
 				return err
@@ -71,7 +60,6 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 				MediaType:    mediaType,
 				Publish:      flags.Publish,
 				Registry:     flags.Registry,
-				LayoutDir:    layoutDir,
 				ManifestDir:  manifestDir,
 			}); err != nil {
 				return err
@@ -87,7 +75,6 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.Insecure, "insecure", false, `Allow publishing to insecure registry`)
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save image index as ("OCI" or "V2S2")`)
 	cmd.Flags().StringVarP(&flags.Registry, "registry", "r", "", `Registry URL to publish the image index`)
-	cmd.Flags().StringVarP(&flags.LayoutDir, "layout", "o", "", `Relative directory path to save the OCI layout`)
 
 	AddHelpFlag(cmd, "create")
 	return cmd
