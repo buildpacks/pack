@@ -22,7 +22,7 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 		Use:     "annotate [OPTIONS] <manifest-list> <manifest>",
 		Short:   "Annotate a manifest list",
 		Args:    cobra.MatchAll(cobra.ExactArgs(2)),
-		Example: `pack manifest annotate paketobuildpacks/builder:full-1.0.0 \ paketobuildpacks/builder:full-linux-amd64`,
+		Example: `pack manifest annotate cnbs/sample-package:hello-universe-multiarch \ cnbs/sample-package:hello-universe --arch amd64`,
 		Long:    "manifest annotate modifies a manifest list (Image index) and update the platform information for an image included in the manifest list.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if err := validateManifestAnnotateFlags(&flags); err != nil {
