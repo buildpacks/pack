@@ -110,7 +110,7 @@ func testBuildModuleWriter(t *testing.T, when spec.G, it spec.S) {
 			when("there are not duplicated buildpacks", func() {
 				it("creates a tar", func() {
 					bpModules := []buildpack.BuildModule{bp1v1, bp2v1, bp3v1}
-					tarFile, bpExcluded, err := buildModuleWriter.NToLayerTar(tmpDir, "test-file-1", bpModules, nil)
+					_, tarFile, bpExcluded, err := buildModuleWriter.NToLayerTar(tmpDir, "test-file-1", bpModules, nil)
 
 					h.AssertNil(t, err)
 					h.AssertTrue(t, len(bpExcluded) == 0)
@@ -122,7 +122,7 @@ func testBuildModuleWriter(t *testing.T, when spec.G, it spec.S) {
 			when("there are duplicated buildpacks", func() {
 				it("creates a tar skipping root folder from duplicated buildpacks", func() {
 					bpModules := []buildpack.BuildModule{bp1v1, bp1v2, bp2v1, bp3v1}
-					tarFile, bpExcluded, err := buildModuleWriter.NToLayerTar(tmpDir, "test-file-2", bpModules, nil)
+					_, tarFile, bpExcluded, err := buildModuleWriter.NToLayerTar(tmpDir, "test-file-2", bpModules, nil)
 
 					h.AssertNil(t, err)
 					h.AssertTrue(t, len(bpExcluded) == 0)
@@ -142,7 +142,7 @@ func testBuildModuleWriter(t *testing.T, when spec.G, it spec.S) {
 			when("there are not duplicated buildpacks", func() {
 				it("creates a tar skipping excluded buildpacks", func() {
 					bpModules := []buildpack.BuildModule{bp1v1, bp2v1, bp3v1}
-					tarFile, bpExcluded, err := buildModuleWriter.NToLayerTar(tmpDir, "test-file-3", bpModules, exclude)
+					_, tarFile, bpExcluded, err := buildModuleWriter.NToLayerTar(tmpDir, "test-file-3", bpModules, exclude)
 					h.AssertNil(t, err)
 					h.AssertTrue(t, len(bpExcluded) == 1)
 					h.AssertNotNil(t, tarFile)
@@ -154,7 +154,7 @@ func testBuildModuleWriter(t *testing.T, when spec.G, it spec.S) {
 			when("there are duplicated buildpacks", func() {
 				it("creates a tar skipping excluded buildpacks and root folder from duplicated buildpacks", func() {
 					bpModules := []buildpack.BuildModule{bp1v1, bp1v2, bp2v1, bp3v1}
-					tarFile, bpExcluded, err := buildModuleWriter.NToLayerTar(tmpDir, "test-file-4", bpModules, exclude)
+					_, tarFile, bpExcluded, err := buildModuleWriter.NToLayerTar(tmpDir, "test-file-4", bpModules, exclude)
 					h.AssertNil(t, err)
 					h.AssertTrue(t, len(bpExcluded) == 1)
 					h.AssertNotNil(t, tarFile)

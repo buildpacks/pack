@@ -663,6 +663,7 @@ func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir 
 func (b *Builder) addFlattenedModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, flattenModules [][]buildpack.BuildModule, layers dist.ModuleLayers) ([]buildpack.BuildModule, error) {
 	collectionToAdd := map[string]toAdd{}
 	var (
+		diffID              v1.Hash
 		buildModuleExcluded []buildpack.BuildModule
 		finalTarPath        string
 		err                 error
@@ -671,21 +672,44 @@ func (b *Builder) addFlattenedModules(kind string, logger logging.Logger, tmpDir
 	buildModuleWriter := buildpack.NewBuildModuleWriter(logger, b.layerWriterFactory)
 	excludedModules := buildpack.Set(b.flattenExcludeBuildpacks)
 
+	type modInfo struct {
+		finalTarPath string
+		diffID       v1.Hash
+		err          error
+	}
+
+	lids := make([]chan modInfo, len(flattenModules))
+	for i := range lids {
+		lids[i] = make(chan modInfo, 1)
+	}
+
 	for i, additionalModules := range flattenModules {
-		modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s-flatten", kind, strconv.Itoa(i)))
-		if err := os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
-			return nil, errors.Wrap(err, "creating flatten temp dir")
-		}
+		go func(i int, additionalModules []buildpack.BuildModule) {
+			// create directory
+			modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s-flatten", kind, strconv.Itoa(i)))
+			if err := os.MkdirAll(modFlattenTmpDir, os.ModePerm); err != nil {
+				lids[i] <- modInfo{err: errors.Wrap(err, "creating flatten temp dir")}
+			}
 
-		finalTarPath, buildModuleExcluded, err = buildModuleWriter.NToLayerTar(modFlattenTmpDir, fmt.Sprintf("%s-flatten-%s", kind, strconv.Itoa(i)), additionalModules, excludedModules)
-		if err != nil {
-			return nil, errors.Wrapf(err, "writing layer %s", finalTarPath)
-		}
+			diffID, finalTarPath, buildModuleExcluded, err = buildModuleWriter.NToLayerTar(modFlattenTmpDir, fmt.Sprintf("%s-flatten-%s", kind, strconv.Itoa(i)), additionalModules, excludedModules)
+			if err != nil {
+				lids[i] <- modInfo{err: errors.Wrapf(err, "writing layer %s", finalTarPath)}
+			}
 
-		diffID, err := dist.LayerDiffID(finalTarPath)
-		if err != nil {
-			return nil, errors.Wrapf(err, "calculating diff layer %s", finalTarPath)
+			// generate diff id
+			lids[i] <- modInfo{
+				finalTarPath: finalTarPath,
+				diffID:       diffID,
+			}
+		}(i, additionalModules)
+	}
+
+	for i, additionalModules := range flattenModules {
+		mi := <-lids[i]
+		if mi.err != nil {
+			return nil, mi.err
 		}
+		diffID, finalTarPath := mi.diffID, mi.finalTarPath
 
 		for _, module := range additionalModules {
 			collectionToAdd[module.Descriptor().Info().FullName()] = toAdd{

@@ -184,6 +184,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 		var (
 			finalTarPath string
 			err          error
+			diffID       v1.Hash
 		)
 		for i, additionalModules := range b.FlattenedModules() {
 			modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("buildpack-%s-flatten", strconv.Itoa(i)))
@@ -195,14 +196,9 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 				// include the buildpack itself
 				additionalModules = append(additionalModules, b.buildpack)
 			}
-			finalTarPath, individualBuildModules, err = buildModuleWriter.NToLayerTar(modFlattenTmpDir, fmt.Sprintf("buildpack-flatten-%s", strconv.Itoa(i)), additionalModules, excludedModules)
+			diffID, finalTarPath, individualBuildModules, err = buildModuleWriter.NToLayerTar(modFlattenTmpDir, fmt.Sprintf("buildpack-flatten-%s", strconv.Itoa(i)), additionalModules, excludedModules)
 			if err != nil {
 				return errors.Wrapf(err, "adding layer %s", finalTarPath)
-			}
-
-			diffID, err := dist.LayerDiffID(finalTarPath)
-			if err != nil {
-				return errors.Wrapf(err, "calculating diffID for layer %s", finalTarPath)
 			}
 
 			for _, module := range additionalModules {

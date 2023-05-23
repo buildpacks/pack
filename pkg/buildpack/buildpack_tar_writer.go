@@ -2,12 +2,16 @@ package buildpack
 
 import (
 	"archive/tar"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/pkg/errors"
@@ -34,17 +38,14 @@ func NewBuildModuleWriter(logger logging.Logger, factory archive.TarWriterFactor
 
 // NToLayerTar creates a tar file containing the all the Buildpacks given, but excluding the ones which FullName() is
 // in the exclude list. It returns the path to the tar file, the list of Buildpacks that were excluded, and any error
-func (b *BuildModuleWriter) NToLayerTar(tarPath, filename string, modules []BuildModule, exclude map[string]struct{}) (string, []BuildModule, error) {
+func (b *BuildModuleWriter) NToLayerTar(tarPath, filename string, modules []BuildModule, exclude map[string]struct{}) (v1.Hash, string, []BuildModule, error) {
 	layerTar := filepath.Join(tarPath, fmt.Sprintf("%s.tar", filename))
 	tarFile, err := os.Create(layerTar)
 	b.logger.Debugf("creating file %s", style.Symbol(layerTar))
 	if err != nil {
-		return "", nil, errors.Wrap(err, "create file for tar")
+		return v1.Hash{}, "", nil, errors.Wrap(err, "create file for tar")
 	}
-
-	defer tarFile.Close()
 	tw := b.factory.NewWriter(tarFile)
-	defer tw.Close()
 
 	parentFolderAdded := map[string]bool{}
 	duplicated := map[string]bool{}
@@ -56,8 +57,9 @@ func (b *BuildModuleWriter) NToLayerTar(tarPath, filename string, modules []Buil
 				duplicated[module.Descriptor().Info().FullName()] = true
 				b.logger.Debugf("adding %s", style.Symbol(module.Descriptor().Info().FullName()))
 
-				if err := b.writeBuildModuleToTar(tw, module, &parentFolderAdded); err != nil {
-					return "", nil, errors.Wrapf(err, "adding %s", style.Symbol(module.Descriptor().Info().FullName()))
+				err := b.writeBuildModuleToTar(tw, module, &parentFolderAdded)
+				if err != nil {
+					return v1.Hash{}, "", nil, errors.Wrapf(err, "adding %s", style.Symbol(module.Descriptor().Info().FullName()))
 				}
 				rootPath := processRootPath(module)
 				if !parentFolderAdded[rootPath] {
@@ -73,7 +75,21 @@ func (b *BuildModuleWriter) NToLayerTar(tarPath, filename string, modules []Buil
 	}
 
 	b.logger.Debugf("%s was created successfully", style.Symbol(layerTar))
-	return layerTar, buildModuleExcluded, nil
+	tarFile.Close()
+	tw.Close()
+
+	// calculate diffID
+	hasher := sha256.New()
+	if tarFile, err = os.Open(layerTar); err != nil {
+		return v1.Hash{}, "", nil, errors.Wrap(err, "open tar")
+	}
+	if _, err = io.Copy(hasher, tarFile); err != nil {
+		return v1.Hash{}, "", nil, errors.Wrap(err, "writing diffID")
+	}
+	return v1.Hash{
+		Algorithm: "sha256",
+		Hex:       hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size()))),
+	}, layerTar, buildModuleExcluded, nil
 }
 
 // writeBuildModuleToTar writes the content of the given tar file into the writer, skipping the folders that were already added
@@ -109,12 +125,7 @@ func (b *BuildModuleWriter) writeBuildModuleToTar(tw archive.TarWriter, module B
 			return errors.Wrapf(err, "failed to write header for '%s'", header.Name)
 		}
 
-		buf, err := io.ReadAll(tr)
-		if err != nil {
-			return errors.Wrapf(err, "failed to read contents of '%s'", header.Name)
-		}
-
-		_, err = tw.Write(buf)
+		_, err = io.Copy(tw, tr)
 		if err != nil {
 			return errors.Wrapf(err, "failed to write contents to '%s'", header.Name)
 		}
