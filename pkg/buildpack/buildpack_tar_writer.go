@@ -91,6 +91,7 @@ func (b *BuildModuleWriter) writeBuildModuleToTar(tw archive.TarWriter, module B
 			return errors.Wrap(err, "failed to get next tar entry")
 		}
 
+		b.logger.Debugf("header.Name = %s", header.Name)
 		if (*parentFolderAdded)[header.Name] {
 			b.logger.Debugf("folder %s was already added, skipping it", style.Symbol(header.Name))
 			continue
