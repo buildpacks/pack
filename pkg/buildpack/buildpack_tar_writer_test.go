@@ -112,12 +112,13 @@ func testBuildModuleWriter(t *testing.T, when spec.G, it spec.S) {
 
 		when("there are duplicated buildpacks", func() {
 			it("creates a tar skipping root folder from duplicated buildpacks", func() {
+				expectedMessage := fmt.Sprintf("folder '%s' was already added, skipping it", "/cnb/buildpacks/buildpack-1-id")
 				bpModules := []buildpack.BuildModule{bp1v1, bp1v2, bp2v1, bp3v1}
 				tarFile, err := buildModuleWriter.NToLayerTar(tmpDir, "test-file-2", bpModules)
 				h.AssertNil(t, err)
 				h.AssertNotNil(t, tarFile)
 				assertBuildpackModuleWritten(t, tarFile, bpModules)
-				h.AssertContains(t, outBuf.String(), fmt.Sprintf("folder '%s' was already added, skipping it", "/cnb/buildpacks/buildpack-1-id"))
+				h.AssertContains(t, outBuf.String(), expectedMessage)
 			})
 		})
 	})
