@@ -612,6 +612,13 @@ func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir 
 		}
 		info, diffID, layerTar := mi.info, mi.diffID, mi.layerTar
 
+		// skip if empty
+		if diffID.String() == "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" {
+			// tar is empty
+			logger.Debugf("%s %s is a component of a flattened buildpack that will be added elsewhere, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
+			continue
+		}
+
 		// check against builder layers
 		if existingInfo, ok := layers[info.ID][info.Version]; ok {
 			if existingInfo.LayerDiffID == diffID.String() {
