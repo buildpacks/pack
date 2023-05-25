@@ -121,13 +121,25 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 				when("flatten is set to true", func() {
-					when("flatten exclude doesn't have format <buildpack>@<version>", func() {
+					when("experimental is true", func() {
+						when("flatten exclude doesn't have format <buildpack>@<version>", func() {
+							it("errors with a descriptive message", func() {
+								cmd := packageCommand(withClientConfig(config.Config{Experimental: true}), withBuildpackPackager(fakeBuildpackPackager))
+								cmd.SetArgs([]string{"test", "-f", "file", "--flatten", "--flatten-exclude", "some-buildpack"})
+
+								err := cmd.Execute()
+								h.AssertError(t, err, fmt.Sprintf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", "some-buildpack"))
+							})
+						})
+					})
+
+					when("experimental is false", func() {
 						it("errors with a descriptive message", func() {
-							cmd := packageCommand(withBuildpackPackager(fakeBuildpackPackager))
-							cmd.SetArgs([]string{"test", "-f", "file", "--flatten", "--flatten-exclude", "some-buildpack"})
+							cmd := packageCommand(withClientConfig(config.Config{Experimental: false}), withBuildpackPackager(fakeBuildpackPackager))
+							cmd.SetArgs([]string{"test", "-f", "file", "--flatten"})
 
 							err := cmd.Execute()
-							h.AssertError(t, err, fmt.Sprintf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", "some-buildpack"))
+							h.AssertError(t, err, "Flattening a buildpack package currently experimental.")
 						})
 					})
 				})
