@@ -2,6 +2,7 @@ package buildpack
 
 import (
 	"io"
+	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -57,6 +58,35 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 		)
 	}
 
+	// Example `dist.ModuleLayers{}`:
+	//
+	//{
+	//  "samples/hello-moon": {
+	//    "0.0.1": {
+	//      "api": "0.2",
+	//      "stacks": [
+	//        {
+	//          "id": "io.buildpacks.samples.stacks.jammy"
+	//        },
+	//        {
+	//          "id": "io.buildpacks.samples.stacks.alpine"
+	//        },
+	//        {
+	//          "id": "io.buildpacks.stacks.jammy"
+	//        },
+	//        {
+	//          "id": "*"
+	//        }
+	//      ],
+	//      "layerDiffID": "sha256:37ab46923c181aa5fb27c9a23479a38aec2679237f35a0ea4115e5ae81a17bba",
+	//      "homepage": "https://github.com/buildpacks/samples/tree/main/buildpacks/hello-moon",
+	//      "name": "Hello Moon Buildpack"
+	//    }
+	//  }
+	//}
+
+	var seenDiffIDs []string
+
 	for bpID, v := range pkgLayers {
 		for bpVersion, bpInfo := range v {
 			desc := dist.BuildpackDescriptor{
@@ -73,8 +103,14 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 			}
 
 			diffID := bpInfo.LayerDiffID // Allow use in closure
-			b := &openerBlob{
-				opener: func() (io.ReadCloser, error) {
+
+			var openerFunc func() (io.ReadCloser, error)
+			if includes(seenDiffIDs, diffID) {
+				openerFunc = func() (io.ReadCloser, error) {
+					return io.NopCloser(strings.NewReader("")), nil
+				}
+			} else {
+				openerFunc = func() (io.ReadCloser, error) {
 					rc, err := pkg.GetLayer(diffID)
 					if err != nil {
 						return nil, errors.Wrapf(err,
@@ -84,7 +120,12 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 						)
 					}
 					return rc, nil
-				},
+				}
+				seenDiffIDs = append(seenDiffIDs, diffID)
+			}
+
+			b := &openerBlob{
+				opener: openerFunc,
 			}
 
 			if desc.Info().Match(md.ModuleInfo) { // This is the order buildpack of the package
@@ -96,6 +137,15 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 	}
 
 	return mainBP, depBPs, nil
+}
+
+func includes(diffIDs []string, diffID string) bool {
+	for _, id := range diffIDs {
+		if id == diffID {
+			return true
+		}
+	}
+	return false
 }
 
 func extractExtensions(pkg Package) (mainExt BuildModule, err error) {
