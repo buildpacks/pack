@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1684783841859,
+  "lastUpdate": 1685046270291,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -586,6 +586,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Addtional_Buildpack",
             "value": 27451175651,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "52902b093e04f3c37479def536cfaa54cc24ce17",
+          "message": "Merge pull request #1773 from edithwuly/main\n\nchange additional buildpack to java",
+          "timestamp": "2023-05-25T15:21:36-05:00",
+          "tree_id": "6505dd72e40c0b97573499c681b1ffee59ecaf9c",
+          "url": "https://github.com/buildpacks/pack/commit/52902b093e04f3c37479def536cfaa54cc24ce17"
+        },
+        "date": 1685046269206,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7277842363,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2097120663,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 95257960642,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
