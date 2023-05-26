@@ -326,6 +326,46 @@ func ToLayerTar(dest string, module BuildModule) (string, error) {
 	return layerTar, nil
 }
 
+func ToNLayerTar(dest string, module BuildModule) ([]string, error) {
+	descriptor := module.Descriptor()
+	modReader, err := module.Open()
+	if err != nil {
+		return "", errors.Wrap(err, "opening blob")
+	}
+	defer modReader.Close()
+
+	layerTar := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", descriptor.EscapedID(), descriptor.Info().Version))
+	fh, err := os.Create(layerTar)
+	if err != nil {
+		return "", errors.Wrap(err, "create file for tar")
+	}
+	defer fh.Close()
+
+	// the build module __could__ have more than one buildpack on it,
+	// if we detect multiple buildpacks, explode them
+	tr := tar.NewReader(fh)
+	var bps []string                // id:version
+	layerTars := []string{layerTar} // maybe more will be added
+	for {
+		hdr, err := tr.Next()
+		if err != nil {
+			panic(err) // TODO
+		}
+		bp := parseBpIDAndVersion(hdr) // looks for /cnb/buildpacks/bp-id/bp-version header
+		if newBp(bp) {
+			// start a new tar file `layerTar2`
+		} else {
+			// write to `layerTar`
+		}
+	}
+
+	//if _, err := io.Copy(fh, modReader); err != nil {
+	//	return "", errors.Wrap(err, "writing blob to tar")
+	//}
+
+	return layerTars, nil
+}
+
 // Set returns a set of the given string slice.
 func Set(exclude []string) map[string]struct{} {
 	type void struct{}

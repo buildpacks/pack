@@ -562,10 +562,10 @@ func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir 
 	collectionToAdd := map[string]toAdd{}
 
 	type modInfo struct {
-		info     dist.ModuleInfo
-		layerTar string
-		diffID   v1.Hash
-		err      error
+		infos     []dist.ModuleInfo
+		layerTars []string
+		diffIDs   []v1.Hash
+		err       error
 	}
 
 	lids := make([]chan modInfo, len(additionalModules))
@@ -582,25 +582,32 @@ func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir 
 			}
 
 			// create tar file
-			layerTar, err := buildpack.ToLayerTar(modTmpDir, module)
-			if err != nil {
-				lids[i] <- modInfo{err: err}
+			//layerTar, err := buildpack.ToLayerTar(modTmpDir, module)
+			//if err != nil {
+			//	lids[i] <- modInfo{err: err}
+			//}
+			layerTars, _ := buildpack.ToNLayerTar(modTmpDir, module)
+			var diffIDs []v1.Hash
+			var infos []dist.ModuleInfo // only id & version will be populated
+			for _, lt := range layerTars {
+				// generate diff id
+				diffID, err := dist.LayerDiffID(lt)
+				diffIDs = append(diffIDs, diffID)
+				info := parseSparseModuleInfo(lt)
+				infos = append(infos, info)
+				if err != nil {
+					lids[i] <- modInfo{err: errors.Wrapf(err,
+						"getting content hashes for %s %s",
+						kind,
+						style.Symbol(info.FullName()),
+					)}
+				}
 			}
 
-			// generate diff id
-			diffID, err := dist.LayerDiffID(layerTar)
-			info := module.Descriptor().Info()
-			if err != nil {
-				lids[i] <- modInfo{err: errors.Wrapf(err,
-					"getting content hashes for %s %s",
-					kind,
-					style.Symbol(info.FullName()),
-				)}
-			}
 			lids[i] <- modInfo{
-				info:     info,
-				layerTar: layerTar,
-				diffID:   diffID,
+				infos:     infos,
+				layerTars: layerTars,
+				diffIDs:   diffIDs,
 			}
 		}(i, module)
 	}
@@ -610,49 +617,53 @@ func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir 
 		if mi.err != nil {
 			return mi.err
 		}
-		info, diffID, layerTar := mi.info, mi.diffID, mi.layerTar
+		// maybe we got multiple modules back
 
-		// skip if empty
-		if diffID.String() == "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" {
-			// tar is empty
-			logger.Debugf("%s %s is a component of a flattened buildpack that will be added elsewhere, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
-			continue
-		}
+		for idx := range mi.layerTars {
+			info, diffID, layerTar := mi.infos[idx], mi.diffIDs[idx], mi.layerTars[idx]
 
-		// check against builder layers
-		if existingInfo, ok := layers[info.ID][info.Version]; ok {
-			if existingInfo.LayerDiffID == diffID.String() {
-				logger.Debugf("%s %s already exists on builder with same contents, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
-				continue
-			} else {
-				whiteoutsTar, err := b.whiteoutLayer(tmpDir, i, info)
-				if err != nil {
-					return err
-				}
-
-				if err := image.AddLayer(whiteoutsTar); err != nil {
-					return errors.Wrap(err, "adding whiteout layer tar")
-				}
-			}
-
-			logger.Debugf(ModuleOnBuilderMessage, kind, style.Symbol(info.FullName()), style.Symbol(existingInfo.LayerDiffID), style.Symbol(diffID.String()))
-		}
-
-		// check against other modules to be added
-		if otherAdditionalMod, ok := collectionToAdd[info.FullName()]; ok {
-			if otherAdditionalMod.diffID == diffID.String() {
-				logger.Debugf("%s %s with same contents is already being added, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
+			// skip if empty
+			if diffID.String() == "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" {
+				// tar is empty
+				logger.Debugf("%s %s is a component of a flattened buildpack that will be added elsewhere, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
 				continue
 			}
 
-			logger.Debugf(ModulePreviouslyDefinedMessage, kind, style.Symbol(info.FullName()), style.Symbol(otherAdditionalMod.diffID), style.Symbol(diffID.String()))
-		}
+			// check against builder layers
+			if existingInfo, ok := layers[info.ID][info.Version]; ok {
+				if existingInfo.LayerDiffID == diffID.String() {
+					logger.Debugf("%s %s already exists on builder with same contents, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
+					continue
+				} else {
+					whiteoutsTar, err := b.whiteoutLayer(tmpDir, i, info)
+					if err != nil {
+						return err
+					}
 
-		// note: if same id@version is in additionalModules, last one wins (see warnings above)
-		collectionToAdd[info.FullName()] = toAdd{
-			tarPath: layerTar,
-			diffID:  diffID.String(),
-			module:  module,
+					if err := image.AddLayer(whiteoutsTar); err != nil {
+						return errors.Wrap(err, "adding whiteout layer tar")
+					}
+				}
+
+				logger.Debugf(ModuleOnBuilderMessage, kind, style.Symbol(info.FullName()), style.Symbol(existingInfo.LayerDiffID), style.Symbol(diffID.String()))
+			}
+
+			// check against other modules to be added
+			if otherAdditionalMod, ok := collectionToAdd[info.FullName()]; ok {
+				if otherAdditionalMod.diffID == diffID.String() {
+					logger.Debugf("%s %s with same contents is already being added, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
+					continue
+				}
+
+				logger.Debugf(ModulePreviouslyDefinedMessage, kind, style.Symbol(info.FullName()), style.Symbol(otherAdditionalMod.diffID), style.Symbol(diffID.String()))
+			}
+
+			// note: if same id@version is in additionalModules, last one wins (see warnings above)
+			collectionToAdd[info.FullName()] = toAdd{
+				tarPath: layerTar,
+				diffID:  diffID.String(),
+				module:  module,
+			}
 		}
 	}
 
