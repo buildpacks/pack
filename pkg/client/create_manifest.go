@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/pkg/errors"
 )
 
 type CreateManifestOptions struct {
@@ -32,21 +33,29 @@ func (c *Client) CreateManifest(ctx context.Context, opts CreateManifestOptions)
 	indexCreator := c.indexFactory
 	idx, err := indexCreator.NewIndex(opts)
 	if err != nil {
-		return err
+		if opts.Publish {
+			return errors.Wrapf(err, "Failed to create remote index '%s'", opts.ManifestName)
+		} else {
+			return errors.Wrapf(err, "Failed to create local index '%s'", opts.ManifestName)
+		}
 	}
 
 	// Add every manifest to image index
 	for _, j := range opts.Manifests {
 		err := idx.Add(j)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "Appending manifest to index '%s'", opts.ManifestName)
 		}
 	}
 
 	// Store index
 	err = idx.Save()
 	if err != nil {
-		return err
+		if opts.Publish {
+			return errors.Wrapf(err, "Storing index '%s' in registry.", opts.ManifestName)
+		} else {
+			return errors.Wrapf(err, "Save local index '%s' at '%s' path", opts.ManifestName, opts.ManifestDir)
+		}
 	}
 
 	return nil
