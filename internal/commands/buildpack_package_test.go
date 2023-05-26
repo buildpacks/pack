@@ -131,6 +131,23 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 								h.AssertError(t, err, fmt.Sprintf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", "some-buildpack"))
 							})
 						})
+
+						when("no exclusions", func() {
+							it("creates package with correct image name and warns flatten is being used", func() {
+								cmd := packageCommand(
+									withClientConfig(config.Config{Experimental: true}),
+									withBuildpackPackager(fakeBuildpackPackager),
+									withLogger(logger),
+								)
+								cmd.SetArgs([]string{"my-flatten-image", "-f", "file", "--flatten"})
+								err := cmd.Execute()
+								h.AssertNil(t, err)
+
+								receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
+								h.AssertEq(t, receivedOptions.Name, "my-flatten-image.cnb")
+								h.AssertContains(t, outBuf.String(), "Flattening a buildpack package could break the distribution specification. Please use it with caution.")
+							})
+						})
 					})
 
 					when("experimental is false", func() {
@@ -139,7 +156,7 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 							cmd.SetArgs([]string{"test", "-f", "file", "--flatten"})
 
 							err := cmd.Execute()
-							h.AssertError(t, err, "Flattening a buildpack package currently experimental.")
+							h.AssertError(t, err, "Flattening a buildpack package is currently experimental.")
 						})
 					})
 				})
