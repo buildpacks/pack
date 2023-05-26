@@ -2736,6 +2736,91 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					})
 				})
 			})
+
+			when("pack build --buildpack <flattened buildpack>", func() {
+				when("package", func() {
+					var (
+						tmpDir                         string
+						buildpackManager               buildpacks.BuildModuleManager
+						simplePackageConfigFixtureName = "package.toml"
+					)
+
+					it.Before(func() {
+						var err error
+						tmpDir, err = os.MkdirTemp("", "buildpack-package-tests")
+						assert.Nil(err)
+
+						buildpackManager = buildpacks.NewBuildModuleManager(t, assert)
+						buildpackManager.PrepareBuildModules(tmpDir, buildpacks.BpSimpleLayersParent, buildpacks.BpSimpleLayers)
+					})
+
+					it.After(func() {
+						assert.Nil(os.RemoveAll(tmpDir))
+					})
+
+					generateAggregatePackageToml := func(buildpackURI, nestedPackageName, operatingSystem string) string {
+						t.Helper()
+						packageTomlFile, err := os.CreateTemp(tmpDir, "package_aggregate-*.toml")
+						assert.Nil(err)
+
+						pack.FixtureManager().TemplateFixtureToFile(
+							"package_aggregate.toml",
+							packageTomlFile,
+							map[string]interface{}{
+								"BuildpackURI": buildpackURI,
+								"PackageName":  nestedPackageName,
+								"OS":           operatingSystem,
+							},
+						)
+
+						assert.Nil(packageTomlFile.Close())
+
+						return packageTomlFile.Name()
+					}
+
+					when.Focus("--flatten", func() {
+						it("creates the package as a single layer", func() {
+							//h.SkipIf(t, !pack.SupportsFeature(invoke.BuildpackFlatten), "")
+
+							packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+							nestedPackageName := "test/package-" + h.RandString(10)
+
+							nestedPackage := buildpacks.NewPackageImage(
+								t,
+								pack,
+								nestedPackageName,
+								packageTomlPath,
+								buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayers),
+							)
+							buildpackManager.PrepareBuildModules(tmpDir, nestedPackage)
+							assertImage.ExistsLocally(nestedPackageName)
+
+							aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
+							packageName := "test/package-" + h.RandString(10)
+
+							_ = pack.RunSuccessfully(
+								"buildpack", "package", packageName,
+								"-c", aggregatePackageToml,
+								"--flatten",
+							)
+							defer imageManager.CleanupImages(packageName)
+
+							assertImage.ExistsLocally(packageName)
+							assertImage.HasLengthLayers(packageName, 1)
+
+							repoName := "some-org/" + h.RandString(10) // TODO: cleanup
+							output := pack.RunSuccessfully(
+								"build", repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--buildpack", fmt.Sprintf("docker://%s", packageName),
+								"--builder", builderName,
+							)
+
+							h.AssertContains(t, output, "Buildpack 'simple/layers@simple-layers-version' is a component of a flattened buildpack that will be added elsewhere, skipping...")
+						})
+					})
+				})
+			})
 		})
 	})
 }
