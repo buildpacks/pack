@@ -12,11 +12,12 @@ import (
 
 func ManifestRemove(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "remove [manifest-list] [manifest-list...]",
-		Short:   "Delete one or more manifest lists from local storage",
-		Args:    cobra.MatchAll(cobra.ExactArgs(2)),
-		Example: `pack manifest delete cnbs/sample-package:hello-multiarch-universe`,
-		Long:    "Delete one or more manifest lists from local storage",
+		Use:   "rm [manifest-list] [manifest]",
+		Short: "Remove an image manifest from index",
+		Args:  cobra.MatchAll(cobra.ExactArgs(2)),
+		Example: `pack manifest rm cnbs/sample-package:hello-multiarch-universe \
+					cnbs/sample-package:hello-universe-windows`,
+		Long: "manifest remove will remove the specified image manifest if it is already referenced in the index",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			indexName := args[0]
 			manifest := args[1]
@@ -35,13 +36,13 @@ func ManifestRemove(logger logging.Logger, pack PackClient) *cobra.Command {
 			}); err != nil {
 				return err
 			}
-			logger.Infof("Successfully removed the image index %s", style.Symbol(indexName))
+			logger.Infof("Successfully removed the manifest '%s' from image index %s", style.Symbol(manifest), style.Symbol(indexName))
 
 			return nil
 
 		}),
 	}
 
-	AddHelpFlag(cmd, "remove")
+	AddHelpFlag(cmd, "rm")
 	return cmd
 }
