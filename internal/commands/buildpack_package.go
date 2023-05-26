@@ -97,7 +97,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				}
 			}
 			if flags.Flatten {
-				logger.Warn("Creating a flattened Buildpack package could break the distribution specification. Please use it with caution.")
+				logger.Warn("Flattening a buildpack package could break the distribution specification. Please use it with caution.")
 			}
 
 			if err := packager.PackageBuildpack(cmd.Context(), client.PackageBuildpackOptions{
@@ -157,7 +157,7 @@ func validateBuildpackPackageFlags(cfg config.Config, p *BuildpackPackageFlags) 
 
 	if p.Flatten {
 		if !cfg.Experimental {
-			return client.NewExperimentError("Flattening a buildpack package currently experimental.")
+			return client.NewExperimentError("Flattening a buildpack package is currently experimental.")
 		}
 
 		if len(p.FlattenExclude) > 0 {
