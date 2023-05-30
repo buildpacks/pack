@@ -97,3 +97,7 @@ func (b *fakeExtension) Open() (io.ReadCloser, error) {
 
 	return tarBuilder.Reader(archive.DefaultTarWriterFactory()), nil
 }
+
+func (b *fakeExtension) ContainsFlattenedModules() bool {
+	return false
+}

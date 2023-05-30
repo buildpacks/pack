@@ -1,16 +1,22 @@
 package buildpack_test
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/pack/pkg/logging"
 
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/buildpack"
@@ -25,6 +31,15 @@ func TestBuildpack(t *testing.T) {
 }
 
 func testBuildpack(t *testing.T, when spec.G, it spec.S) {
+	var (
+		outBuf bytes.Buffer
+		logger logging.Logger
+	)
+
+	it.Before(func() {
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
+	})
+
 	var writeBlobToFile = func(bp buildpack.BuildModule) string {
 		t.Helper()
 
@@ -548,6 +563,172 @@ version = "1.2.3"
 			h.AssertEq(t, len(set), 3)
 		})
 	})
+
+	when("#ToNLayerTar", func() {
+		var (
+			tmpDir string
+			err    error
+		)
+
+		it.Before(func() {
+			tmpDir, err = os.MkdirTemp("", "")
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			err := os.RemoveAll(tmpDir)
+			if runtime.GOOS != "windows" {
+				// avoid "The process cannot access the file because it is being used by another process"
+				// error on Windows
+				h.AssertNil(t, err)
+			}
+		})
+
+		when("BuildModule contains N flattened buildpack", func() {
+			it("returns N tar files", func() {
+				bp := buildpack.FromBlob(
+					&dist.BuildpackDescriptor{
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
+							ID:      "buildpack-1-id",
+							Version: "buildpack-1-version-1",
+							Name:    "buildpack-1",
+						},
+					},
+					&readerBlob{
+						openFn: func() io.ReadCloser {
+							tarBuilder := archive.TarBuilder{}
+
+							// Buildpack 1
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id", 0700, time.Now())
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/buildpack.toml", 0700, time.Now(), []byte(`
+api = "0.3"
+
+[buildpack]
+id = "buildpack-1-id"
+version = "buildpack-1-version-1"
+
+`))
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/detect", 0700, time.Now(), []byte("detect-contents"))
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/build", 0700, time.Now(), []byte("build-contents"))
+
+							// Buildpack 2
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-2-id", 0700, time.Now())
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/buildpack.toml", 0700, time.Now(), []byte(`
+api = "0.3"
+
+[buildpack]
+id = "buildpack-2-id"
+version = "buildpack-2-version-1"
+
+`))
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin/detect", 0700, time.Now(), []byte("detect-contents"))
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin/build", 0700, time.Now(), []byte("build-contents"))
+
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
+						},
+					},
+					buildpack.Flattened(),
+				)
+
+				tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp, logger)
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(tarPaths), 2)
+				for _, tarPath := range tarPaths {
+					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s", tarPath.Info().ID),
+						h.IsDirectory(),
+					)
+					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s", tarPath.Info().ID, tarPath.Info().Version),
+						h.IsDirectory(),
+					)
+					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin", tarPath.Info().ID, tarPath.Info().Version),
+						h.IsDirectory(),
+					)
+					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/build", tarPath.Info().ID, tarPath.Info().Version),
+						h.HasFileMode(0700),
+					)
+					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/detect", tarPath.Info().ID, tarPath.Info().Version),
+						h.HasFileMode(0700),
+					)
+					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml", tarPath.Info().ID, tarPath.Info().Version),
+						h.HasFileMode(0700),
+					)
+				}
+			})
+		})
+
+		when("BuildModule contains only an individual buildpack (default)", func() {
+			it("returns 1 tar files", func() {
+				bp := buildpack.FromBlob(
+					&dist.BuildpackDescriptor{
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
+							ID:      "buildpack-1-id",
+							Version: "buildpack-1-version-1",
+							Name:    "buildpack-1",
+						},
+					},
+					&readerBlob{
+						openFn: func() io.ReadCloser {
+							tarBuilder := archive.TarBuilder{}
+
+							// Buildpack 1
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id", 0700, time.Now())
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/buildpack.toml", 0700, time.Now(), []byte(`
+api = "0.3"
+
+[buildpack]
+id = "buildpack-1-id"
+version = "buildpack-1-version-1"
+
+`))
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/detect", 0700, time.Now(), []byte("detect-contents"))
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/build", 0700, time.Now(), []byte("build-contents"))
+
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
+						},
+					},
+				)
+
+				tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp, logger)
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(tarPaths), 1)
+				for _, tarPath := range tarPaths {
+					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s", tarPath.Info().ID),
+						h.IsDirectory(),
+					)
+					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s", tarPath.Info().ID, tarPath.Info().Version),
+						h.IsDirectory(),
+					)
+					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin", tarPath.Info().ID, tarPath.Info().Version),
+						h.IsDirectory(),
+					)
+					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/build", tarPath.Info().ID, tarPath.Info().Version),
+						h.HasFileMode(0700),
+					)
+					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/detect", tarPath.Info().ID, tarPath.Info().Version),
+						h.HasFileMode(0700),
+					)
+					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml", tarPath.Info().ID, tarPath.Info().Version),
+						h.HasFileMode(0700),
+					)
+				}
+			})
+		})
+
+		when("BuildModule could not be read", func() {
+			it("surfaces errors encountered while reading blob", func() {
+				_, err = buildpack.ToNLayerTar(tmpDir, &errorBuildModule{flattened: true}, logger)
+				h.AssertError(t, err, "opening blob")
+			})
+		})
+	})
 }
 
 type errorBlob struct {
@@ -570,4 +751,20 @@ type readerBlob struct {
 
 func (r *readerBlob) Open() (io.ReadCloser, error) {
 	return r.openFn(), nil
+}
+
+type errorBuildModule struct {
+	flattened bool
+}
+
+func (eb *errorBuildModule) Open() (io.ReadCloser, error) {
+	return nil, errors.New("something happened opening the build module")
+}
+
+func (eb *errorBuildModule) Descriptor() buildpack.Descriptor {
+	return nil
+}
+
+func (eb *errorBuildModule) ContainsFlattenedModules() bool {
+	return eb.flattened
 }
