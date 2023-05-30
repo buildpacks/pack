@@ -94,6 +94,13 @@ type toAdd struct {
 	module  buildpack.BuildModule
 }
 
+type explodedBuildModule struct {
+	module    buildpack.BuildModule
+	moduleTar buildpack.ModuleTar
+	diffIDs   v1.Hash
+	err       error
+}
+
 type BuilderOption func(*options) error
 
 type options struct {
@@ -560,110 +567,48 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.ModuleLayers) error {
 	collectionToAdd := map[string]toAdd{}
+	explodedAdditionalModules := explodeBuildModules(kind, tmpDir, additionalModules, logger)
 
-	type modInfo struct {
-		infos     []dist.ModuleInfo
-		layerTars []string
-		diffIDs   []v1.Hash
-		err       error
-	}
-
-	lids := make([]chan modInfo, len(additionalModules))
-	for i := range lids {
-		lids[i] = make(chan modInfo, 1)
-	}
-
-	for i, module := range additionalModules {
-		go func(i int, module buildpack.BuildModule) {
-			// create directory
-			modTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s", kind, strconv.Itoa(i)))
-			if err := os.MkdirAll(modTmpDir, os.ModePerm); err != nil {
-				lids[i] <- modInfo{err: errors.Wrapf(err, "creating %s temp dir", kind)}
-			}
-
-			// create tar file
-			//layerTar, err := buildpack.ToLayerTar(modTmpDir, module)
-			//if err != nil {
-			//	lids[i] <- modInfo{err: err}
-			//}
-			layerTars, _ := buildpack.ToNLayerTar(modTmpDir, module)
-			var diffIDs []v1.Hash
-			var infos []dist.ModuleInfo // only id & version will be populated
-			for _, lt := range layerTars {
-				// generate diff id
-				diffID, err := dist.LayerDiffID(lt)
-				diffIDs = append(diffIDs, diffID)
-				info := parseSparseModuleInfo(lt)
-				infos = append(infos, info)
-				if err != nil {
-					lids[i] <- modInfo{err: errors.Wrapf(err,
-						"getting content hashes for %s %s",
-						kind,
-						style.Symbol(info.FullName()),
-					)}
-				}
-			}
-
-			lids[i] <- modInfo{
-				infos:     infos,
-				layerTars: layerTars,
-				diffIDs:   diffIDs,
-			}
-		}(i, module)
-	}
-
-	for i, module := range additionalModules {
-		mi := <-lids[i]
+	for i, mi := range explodedAdditionalModules {
 		if mi.err != nil {
 			return mi.err
 		}
-		// maybe we got multiple modules back
+		info, diffID, layerTar, module := mi.module.Descriptor().Info(), mi.diffIDs, mi.moduleTar.Path(), mi.module
 
-		for idx := range mi.layerTars {
-			info, diffID, layerTar := mi.infos[idx], mi.diffIDs[idx], mi.layerTars[idx]
+		// check against builder layers
+		if existingInfo, ok := layers[info.ID][info.Version]; ok {
+			if existingInfo.LayerDiffID == diffID.String() {
+				logger.Debugf("%s %s already exists on builder with same contents, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
+				continue
+			} else {
+				whiteoutsTar, err := b.whiteoutLayer(tmpDir, i, info)
+				if err != nil {
+					return err
+				}
 
-			// skip if empty
-			if diffID.String() == "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" {
-				// tar is empty
-				logger.Debugf("%s %s is a component of a flattened buildpack that will be added elsewhere, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
+				if err := image.AddLayer(whiteoutsTar); err != nil {
+					return errors.Wrap(err, "adding whiteout layer tar")
+				}
+			}
+
+			logger.Debugf(ModuleOnBuilderMessage, kind, style.Symbol(info.FullName()), style.Symbol(existingInfo.LayerDiffID), style.Symbol(diffID.String()))
+		}
+
+		// check against other modules to be added
+		if otherAdditionalMod, ok := collectionToAdd[info.FullName()]; ok {
+			if otherAdditionalMod.diffID == diffID.String() {
+				logger.Debugf("%s %s with same contents is already being added, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
 				continue
 			}
 
-			// check against builder layers
-			if existingInfo, ok := layers[info.ID][info.Version]; ok {
-				if existingInfo.LayerDiffID == diffID.String() {
-					logger.Debugf("%s %s already exists on builder with same contents, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
-					continue
-				} else {
-					whiteoutsTar, err := b.whiteoutLayer(tmpDir, i, info)
-					if err != nil {
-						return err
-					}
+			logger.Debugf(ModulePreviouslyDefinedMessage, kind, style.Symbol(info.FullName()), style.Symbol(otherAdditionalMod.diffID), style.Symbol(diffID.String()))
+		}
 
-					if err := image.AddLayer(whiteoutsTar); err != nil {
-						return errors.Wrap(err, "adding whiteout layer tar")
-					}
-				}
-
-				logger.Debugf(ModuleOnBuilderMessage, kind, style.Symbol(info.FullName()), style.Symbol(existingInfo.LayerDiffID), style.Symbol(diffID.String()))
-			}
-
-			// check against other modules to be added
-			if otherAdditionalMod, ok := collectionToAdd[info.FullName()]; ok {
-				if otherAdditionalMod.diffID == diffID.String() {
-					logger.Debugf("%s %s with same contents is already being added, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
-					continue
-				}
-
-				logger.Debugf(ModulePreviouslyDefinedMessage, kind, style.Symbol(info.FullName()), style.Symbol(otherAdditionalMod.diffID), style.Symbol(diffID.String()))
-			}
-
-			// note: if same id@version is in additionalModules, last one wins (see warnings above)
-			collectionToAdd[info.FullName()] = toAdd{
-				tarPath: layerTar,
-				diffID:  diffID.String(),
-				module:  module,
-			}
+		// note: if same id@version is in additionalModules, last one wins (see warnings above)
+		collectionToAdd[info.FullName()] = toAdd{
+			tarPath: layerTar,
+			diffID:  diffID.String(),
+			module:  module,
 		}
 	}
 
@@ -1200,4 +1145,104 @@ func sortKeys(collection map[string]toAdd) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// explodeBuildModules takes the given Build Modules and parallelize the reading operation of their internal tar files. In
+// case a flattened module if found, it will split each flattened buildpack into an individual module and skip all the empty ones
+// returns an explodedBuildModule array with the Build Module information but also the diffId and the tar file on disk
+func explodeBuildModules(kind, tmpDir string, additionalModules []buildpack.BuildModule, logger logging.Logger) []explodedBuildModule {
+	type modInfo struct {
+		moduleTars []buildpack.ModuleTar
+		err        error
+	}
+
+	lids := make([]chan modInfo, len(additionalModules))
+	for i := range lids {
+		lids[i] = make(chan modInfo, 1)
+	}
+
+	for i, module := range additionalModules {
+		go func(i int, module buildpack.BuildModule) {
+			// create directory
+			modTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s", kind, strconv.Itoa(i)))
+			if err := os.MkdirAll(modTmpDir, os.ModePerm); err != nil {
+				moduleTar := &errModuleTar{
+					module: module,
+				}
+				lids[i] <- modInfo{moduleTars: []buildpack.ModuleTar{moduleTar}, err: errors.Wrapf(err, "creating %s temp dir", kind)}
+			}
+			moduleTars, err := buildpack.ToNLayerTar(modTmpDir, module, logger)
+			if err != nil {
+				moduleTar := &errModuleTar{
+					module: module,
+				}
+				lids[i] <- modInfo{moduleTars: []buildpack.ModuleTar{moduleTar}, err: errors.Wrapf(err, "creating %s tar file", module.Descriptor().Info().FullName())}
+			}
+			lids[i] <- modInfo{moduleTars: moduleTars}
+		}(i, module)
+	}
+
+	var result []explodedBuildModule
+
+	// maybe we got multiple modules back, we need to skip the empty ones
+	for i, module := range additionalModules {
+		mi := <-lids[i]
+		if mi.err != nil {
+			// it means an individual or flattened Buildpack throw an error
+			eBM := explodedBuildModule{
+				moduleTar: mi.moduleTars[0], // we know it is associated with just one
+				err:       mi.err,
+			}
+			result = append(result, eBM)
+		} else {
+			for _, moduleTar := range mi.moduleTars {
+				// it could be an individual Buildpack or flattened Buildpack that writes an empty tar on disk
+				eBM := explodedBuildModule{moduleTar: moduleTar}
+				diffID, err := dist.LayerDiffID(moduleTar.Path())
+				if err != nil {
+					eBM.err = err
+				}
+				if diffID.String() == "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" {
+					logger.Debugf("%s %s is a component of a flattened buildpack that will be added elsewhere, skipping...", istrings.Title(kind), style.Symbol(moduleTar.Info().FullName()))
+					continue // we don't need to keep empty tars
+				}
+				// it is an individual buildpack
+				eBM.diffIDs = diffID
+				if moduleTar.Info().FullName() == fmt.Sprintf("%s@%s", module.Descriptor().EscapedID(), module.Descriptor().Info().Version) ||
+					moduleTar.Info().FullName() == module.Descriptor().Info().FullName() {
+					eBM.module = module
+				}
+				result = append(result, eBM)
+			}
+		}
+	}
+
+	// we need to match the exploded modules with its corresponding BuildModule.
+	// this is important when flattened modules where included
+	for i, eBM := range result {
+		if eBM.module == nil {
+			for _, module := range additionalModules {
+				if eBM.moduleTar.Info().FullName() == fmt.Sprintf("%s@%s", module.Descriptor().EscapedID(), module.Descriptor().Info().Version) ||
+					eBM.moduleTar.Info().FullName() == module.Descriptor().Info().FullName() {
+					eBM.module = module
+					result[i] = eBM
+					break
+				}
+			}
+		}
+	}
+
+	return result
+}
+
+type errModuleTar struct {
+	module buildpack.BuildModule
+}
+
+func (e *errModuleTar) Info() dist.ModuleInfo {
+	return e.module.Descriptor().Info()
+}
+
+func (e *errModuleTar) Path() string {
+	return ""
 }

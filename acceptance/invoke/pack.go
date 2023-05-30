@@ -252,7 +252,7 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 		return !i.atLeast("v0.30.0")
 	},
 	BuildpackFlatten: func(i *PackInvoker) bool {
-		return !i.atLeast("v0.30.0")
+		return i.atLeast("v0.30.0")
 	},
 }
 
