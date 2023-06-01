@@ -37,6 +37,7 @@ type PackClient interface {
 	AddManifest(context.Context, client.AddManifestOptions) error
 	PushManifest(context.Context, client.PushManifestOptions) error
 	RemoveManifest(context.Context, client.RemoveManifestOptions) error
+	DeleteManifest(context.Context, client.DeleteManifestOptions) error
 }
 
 func AddHelpFlag(cmd *cobra.Command, commandName string) {
