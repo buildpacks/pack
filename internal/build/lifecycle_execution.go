@@ -7,10 +7,13 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
+
+	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/pack/pkg/cache"
 
-	"github.com/BurntSushi/toml"
+	// "github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -247,10 +250,17 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		}
 
 		if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {
-			group.Go(func() error {
-				l.logger.Info(style.Step("EXTENDING (RUN)"))
-				return l.ExtendRun(ctx, buildCache, phaseFactory)
-			})
+			if l.opts.Publish {
+				group.Go(func() error {
+					l.logger.Info(style.Step("EXTENDING (RUN)"))
+					return l.ExtendRun(ctx, buildCache, phaseFactory)
+				})
+			} else {
+				group.Go(func() error {
+					l.logger.Info(style.Step("EXTENDING (RUN) BY DAEMON"))
+					return l.ExtendRunByDaemon(ctx)
+				})
+			}
 		}
 
 		if err := group.Wait(); err != nil {
@@ -413,6 +423,10 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.tmpDir))),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
 			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.tmpDir))),
+		If(l.hasExtensions(), WithPostContainerRunOperations(
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated", "run"), l.tmpDir))),
+		If(l.hasExtensions(), WithPostContainerRunOperations(
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "group.toml"), l.tmpDir))),
 		envOp,
 	)
 
@@ -705,6 +719,22 @@ func (l *LifecycleExecution) ExtendRun(ctx context.Context, buildCache Cache, ph
 	extend := phaseFactory.New(configProvider)
 	defer extend.Cleanup()
 	return extend.Run(ctx)
+}
+
+func (l *LifecycleExecution) ExtendRunByDaemon(ctx context.Context) error {
+	var extensions Extensions
+	l.logger.Debugf("extending run image %s", l.opts.RunImage)
+	fmt.Println("tmpDir: ", l.tmpDir)
+	extensions.SetExtensions(l.tmpDir, l.logger)
+	dockerfiles, err := extensions.DockerFiles(DockerfileKindRun, l.tmpDir, l.logger)
+	if err != nil {
+		return fmt.Errorf("getting %s.Dockerfiles: %w", DockerfileKindRun, err)
+	}
+	fmt.Println("Dockerfiles: ", dockerfiles)
+	fmt.Println("extend: ", dockerfiles[1].Extend)
+	time.Sleep(10 * time.Minute)
+	return nil
+	// buildContest := archive.ReadDirAsTar(filepath.Join(l.tmpDir,"generated","run"),"/",0,0,-1,true,false)
 }
 
 func determineDefaultProcessType(platformAPI *api.Version, providedValue string) string {
