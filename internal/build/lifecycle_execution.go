@@ -3,19 +3,20 @@ package build
 import (
 	"context"
 	"fmt"
+	"io"
+
 	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/BurntSushi/toml"
 
 	"github.com/buildpacks/pack/pkg/cache"
 
-	// "github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
+	"github.com/docker/docker/api/types"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -24,6 +25,7 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -258,11 +260,10 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			} else {
 				group.Go(func() error {
 					l.logger.Info(style.Step("EXTENDING (RUN) BY DAEMON"))
-					return l.ExtendRunByDaemon(ctx)
+					return l.ExtendRunByDaemon(ctx, &currentRunImage)
 				})
 			}
 		}
-
 		if err := group.Wait(); err != nil {
 			return err
 		}
@@ -721,9 +722,10 @@ func (l *LifecycleExecution) ExtendRun(ctx context.Context, buildCache Cache, ph
 	return extend.Run(ctx)
 }
 
-func (l *LifecycleExecution) ExtendRunByDaemon(ctx context.Context) error {
+func (l *LifecycleExecution) ExtendRunByDaemon(ctx context.Context, currentRunImage *string) error {
+	defaultFilterFunc := func(file string) bool { return true }
 	var extensions Extensions
-	l.logger.Debugf("extending run image %s", l.opts.RunImage)
+	l.logger.Debugf("extending run image %s", *currentRunImage)
 	fmt.Println("tmpDir: ", l.tmpDir)
 	extensions.SetExtensions(l.tmpDir, l.logger)
 	dockerfiles, err := extensions.DockerFiles(DockerfileKindRun, l.tmpDir, l.logger)
@@ -732,9 +734,36 @@ func (l *LifecycleExecution) ExtendRunByDaemon(ctx context.Context) error {
 	}
 	fmt.Println("Dockerfiles: ", dockerfiles)
 	fmt.Println("extend: ", dockerfiles[1].Extend)
-	time.Sleep(10 * time.Minute)
+	for _, dockerfile := range dockerfiles {
+		if dockerfile.Extend {
+			fmt.Println("dockerfile: ", dockerfile)
+			fmt.Println("dockerfile.Path dir: ", filepath.Dir(dockerfile.Path))
+			buildContext := archive.ReadDirAsTar(filepath.Dir(dockerfile.Path), "/", 0, 0, -1, true, false, defaultFilterFunc)
+			fmt.Println("buildContext: ", buildContext)
+			buildArguments := map[string]*string{}
+			if dockerfile.WithBase == "" {
+				buildArguments["base_image"] = currentRunImage
+			}
+			buildOptions := types.ImageBuildOptions{
+				Context:    buildContext,
+				Dockerfile: "Dockerfile",
+				Tags:       []string{"run-image"},
+				Remove:     true,
+				BuildArgs:  buildArguments,
+			}
+			response, err := l.docker.ImageBuild(ctx, buildContext, buildOptions)
+			if err != nil {
+				return err
+			}
+			defer response.Body.Close()
+			_, err = io.Copy(os.Stdout, response.Body)
+			if err != nil {
+				return err
+			}
+			l.logger.Debugf("build response for the extend: %v", response)
+		}
+	}
 	return nil
-	// buildContest := archive.ReadDirAsTar(filepath.Join(l.tmpDir,"generated","run"),"/",0,0,-1,true,false)
 }
 
 func determineDefaultProcessType(platformAPI *api.Version, providedValue string) string {
