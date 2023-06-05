@@ -3,11 +3,12 @@ package commands
 import (
 	"path/filepath"
 
+	"github.com/spf13/cobra"
+
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
-	"github.com/spf13/cobra"
 )
 
 type ManifestPushFlags struct {

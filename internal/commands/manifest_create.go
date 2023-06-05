@@ -4,11 +4,12 @@ import (
 	"path/filepath"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/pkg/errors"
+
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
-	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 )

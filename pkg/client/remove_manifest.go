@@ -4,8 +4,9 @@ import (
 	"context"
 
 	"github.com/buildpacks/imgutil/local"
-	"github.com/buildpacks/pack/internal/style"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/style"
 )
 
 type DeleteManifestOptions struct {

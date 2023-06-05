@@ -1,8 +1,9 @@
 package commands
 
 import (
-	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/spf13/cobra"
+
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 func NewManifestCommand(logger logging.Logger, client PackClient) *cobra.Command {
