@@ -25,6 +25,7 @@ jobs:
         shell: bash
       - name: Run benchmark
         run: |
+             git clone https://github.com/buildpacks/samples.git
              mkdir out || (exit 0)
              go test -bench=. -benchtime=1s ./benchmarks/... -tags=benchmarks | tee ./out/benchmark.txt
 
