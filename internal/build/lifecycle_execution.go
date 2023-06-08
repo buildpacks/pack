@@ -572,8 +572,10 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 		if l.platformAPI.LessThan("0.12") {
 			args = append([]string{"-stack", l.mountPaths.stackPath()}, args...)
 			stackOp = WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os))
+		} else {
+			args = append([]string{"-run", l.mountPaths.runPath()}, args...)
+			runOp = WithContainerOperations(WriteRunToml(l.mountPaths.runPath(), l.opts.Builder.RunImages(), l.os))
 		}
-		runOp = WithContainerOperations(WriteRunToml(l.mountPaths.runPath(), l.opts.Builder.RunImages(), l.os))
 	}
 
 	flagsOp := WithFlags(flags...)
