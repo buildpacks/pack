@@ -22,4 +22,6 @@ type DockerClient interface {
 	ContainerRemove(ctx context.Context, container string, options types.ContainerRemoveOptions) error
 	CopyToContainer(ctx context.Context, container, path string, content io.Reader, options types.CopyToContainerOptions) error
 	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
+	ImageInspectWithRaw(ctx context.Context, image string) (types.ImageInspect, []byte, error)
+	ImageSave(ctx context.Context, imageIDs []string) (io.ReadCloser, error)
 }
