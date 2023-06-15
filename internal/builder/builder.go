@@ -1178,6 +1178,7 @@ func explodeBuildModules(kind, tmpDir string, additionalModules []buildpack.Buil
 				}
 				lids[i] <- modInfo{moduleTars: []buildpack.ModuleTar{moduleTar}, err: errors.Wrapf(err, "creating %s tar file", module.Descriptor().Info().FullName())}
 			}
+			logger.Debugf("ToNLayerTar returned %d modules", len(moduleTars))
 			lids[i] <- modInfo{moduleTars: moduleTars}
 		}(i, module)
 	}
@@ -1195,6 +1196,7 @@ func explodeBuildModules(kind, tmpDir string, additionalModules []buildpack.Buil
 			}
 			result = append(result, eBM)
 		} else {
+			logger.Debugf("Processing i=%d, module=%s, moduleTar size=%d", i, module.Descriptor().Info().FullName(), len(mi.moduleTars))
 			for _, moduleTar := range mi.moduleTars {
 				// it could be an individual Buildpack or flattened Buildpack that writes an empty tar on disk
 				eBM := explodedBuildModule{moduleTar: moduleTar}
