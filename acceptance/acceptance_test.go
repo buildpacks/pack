@@ -2282,6 +2282,8 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					it.Before(func() {
 						h.SkipIf(t, !pack.SupportsFeature(invoke.BuildpackFlatten), "")
+						h.SkipIf(t, imageManager.HostOS() == "windows", "buildpack directories not supported on windows")
+
 						var err error
 						tmpDir, err = os.MkdirTemp("", "buildpack-package-flattened-tests")
 						assert.Nil(err)
@@ -2322,8 +2324,6 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					when("--flatten", func() {
 						it("creates the package as a single layer and then use it to run pack build -b", func() {
-							h.SkipIf(t, imageManager.HostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
-
 							output := pack.RunSuccessfully(
 								"build", repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
