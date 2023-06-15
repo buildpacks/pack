@@ -1166,19 +1166,18 @@ func explodeBuildModules(kind, tmpDir string, additionalModules []buildpack.Buil
 			// create directory
 			modTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s", kind, strconv.Itoa(i)))
 			if err := os.MkdirAll(modTmpDir, os.ModePerm); err != nil {
-				moduleTar := &errModuleTar{
+				moduleTar := errModuleTar{
 					module: module,
 				}
 				lids[i] <- modInfo{moduleTars: []buildpack.ModuleTar{moduleTar}, err: errors.Wrapf(err, "creating %s temp dir", kind)}
 			}
 			moduleTars, err := buildpack.ToNLayerTar(modTmpDir, module, logger)
 			if err != nil {
-				moduleTar := &errModuleTar{
+				moduleTar := errModuleTar{
 					module: module,
 				}
 				lids[i] <- modInfo{moduleTars: []buildpack.ModuleTar{moduleTar}, err: errors.Wrapf(err, "creating %s tar file", module.Descriptor().Info().FullName())}
 			}
-			logger.Debugf("ToNLayerTar returned %d modules", len(moduleTars))
 			lids[i] <- modInfo{moduleTars: moduleTars}
 		}(i, module)
 	}
@@ -1196,7 +1195,6 @@ func explodeBuildModules(kind, tmpDir string, additionalModules []buildpack.Buil
 			}
 			result = append(result, eBM)
 		} else {
-			logger.Debugf("Processing i=%d, module=%s, moduleTar size=%d", i, module.Descriptor().Info().FullName(), len(mi.moduleTars))
 			for _, moduleTar := range mi.moduleTars {
 				// it could be an individual Buildpack or flattened Buildpack that writes an empty tar on disk
 				eBM := explodedBuildModule{moduleTar: moduleTar}
@@ -1208,28 +1206,22 @@ func explodeBuildModules(kind, tmpDir string, additionalModules []buildpack.Buil
 					logger.Debugf("%s %s is a component of a flattened buildpack that will be added elsewhere, skipping...", istrings.Title(kind), style.Symbol(moduleTar.Info().FullName()))
 					continue // we don't need to keep empty tars
 				}
-				// it is an individual buildpack
 				eBM.diffIDs = diffID
 				if moduleTar.Info().FullName() == fmt.Sprintf("%s@%s", module.Descriptor().EscapedID(), module.Descriptor().Info().Version) ||
 					moduleTar.Info().FullName() == module.Descriptor().Info().FullName() {
 					eBM.module = module
+				} else {
+					// we need to match the exploded modules with its corresponding BuildModule.
+					// this is important when flattened modules where included
+					for _, aModule := range additionalModules {
+						if moduleTar.Info().FullName() == fmt.Sprintf("%s@%s", aModule.Descriptor().EscapedID(), aModule.Descriptor().Info().Version) ||
+							moduleTar.Info().FullName() == aModule.Descriptor().Info().FullName() {
+							eBM.module = aModule
+							break
+						}
+					}
 				}
 				result = append(result, eBM)
-			}
-		}
-	}
-
-	// we need to match the exploded modules with its corresponding BuildModule.
-	// this is important when flattened modules where included
-	for i, eBM := range result {
-		if eBM.module == nil {
-			for _, module := range additionalModules {
-				if eBM.moduleTar.Info().FullName() == fmt.Sprintf("%s@%s", module.Descriptor().EscapedID(), module.Descriptor().Info().Version) ||
-					eBM.moduleTar.Info().FullName() == module.Descriptor().Info().FullName() {
-					eBM.module = module
-					result[i] = eBM
-					break
-				}
 			}
 		}
 	}
@@ -1241,10 +1233,10 @@ type errModuleTar struct {
 	module buildpack.BuildModule
 }
 
-func (e *errModuleTar) Info() dist.ModuleInfo {
+func (e errModuleTar) Info() dist.ModuleInfo {
 	return e.module.Descriptor().Info()
 }
 
-func (e *errModuleTar) Path() string {
+func (e errModuleTar) Path() string {
 	return ""
 }
