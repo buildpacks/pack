@@ -46,6 +46,7 @@ type InfoDisplay struct {
 	Buildpacks      []dist.ModuleInfo       `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
 	Extensions      []dist.ModuleInfo       `json:"extensions" yaml:"extensions" toml:"extensions"`
 	Processes       []ProcessDisplay        `json:"processes" yaml:"processes" toml:"processes"`
+	Rebasable       bool                    `json:"rebasable" yaml:"rebasable" toml:"rebasable"`
 }
 
 type InspectOutput struct {
@@ -74,6 +75,7 @@ func NewInfoDisplay(info *client.ImageInfo, generalInfo GeneralInfo) *InfoDispla
 		RunImageMirrors: displayMirrors(info, generalInfo),
 		Buildpacks:      displayBuildpacks(info.Buildpacks),
 		Processes:       displayProcesses(info.Processes),
+		Rebasable:       info.Rebasable,
 	}
 }
 

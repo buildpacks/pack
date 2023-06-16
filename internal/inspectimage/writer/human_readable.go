@@ -58,13 +58,15 @@ func writeImageInfo(
 		Funcs(template.FuncMap{"StringsJoin": strings.Join}).
 		Funcs(template.FuncMap{"StringsValueOrDefault": strs.ValueOrDefault}).
 		Parse(runImagesTemplate))
-	imgTpl = template.Must(imgTpl.New("buildpacks").
-		Parse(buildpacksTemplate))
+	imgTpl = template.Must(imgTpl.New("buildpacks").Parse(buildpacksTemplate))
 	if info != nil && info.Extensions != nil {
 		imgTpl = template.Must(imgTpl.New("extensions").Parse(extensionsTemplate))
 	}
 	imgTpl = template.Must(imgTpl.New("processes").
 		Parse(processesTemplate))
+
+	imgTpl = template.Must(imgTpl.New("rebasable").Parse(rebasableTemplate))
+
 	if info != nil && info.Extensions != nil {
 		imgTpl = template.Must(imgTpl.New("image").
 			Parse(imageWithExtensionTemplate))
@@ -72,6 +74,7 @@ func writeImageInfo(
 		imgTpl = template.Must(imgTpl.New("image").
 			Parse(imageTemplate))
 	}
+
 	if err != nil {
 		logger.Errorf("%s\n", err)
 		return nil
@@ -158,6 +161,12 @@ Processes:
   {{- end }}
 {{- end }}`
 
+var rebasableTemplate = `
+{{- if .Info.Rebasable -}}
+{{- "\n\n" -}}
+Rebasable: true
+{{- end -}}`
+
 var imageTemplate = `
 Stack: {{ .Info.StackID }}
 
@@ -167,6 +176,7 @@ Base Image:
 {{- end}}
   Top Layer: {{ .Info.Base.TopLayer }}
 {{ template "runImages" . }}
+{{- template "rebasable" . }}
 {{ template "buildpacks" . }}{{ template "processes" . }}`
 
 var imageWithExtensionTemplate = `

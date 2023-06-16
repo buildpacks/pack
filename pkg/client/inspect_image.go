@@ -55,6 +55,9 @@ type ImageInfo struct {
 
 	// Processes lists all processes contributed by buildpacks.
 	Processes ProcessDetails
+
+	// If the image can be rebased
+	Rebasable bool
 }
 
 // ProcessDetails is a collection of all start command metadata
