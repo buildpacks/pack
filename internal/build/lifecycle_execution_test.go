@@ -1401,6 +1401,21 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("platform >= 0.12", func() {
+			platformAPI = api.MustParse("0.12")
+
+			it("passes run", func() {
+				h.AssertIncludeAllExpectedPatterns(t,
+					configProvider.ContainerConfig().Cmd,
+					[]string{"-run", "/layers/run.toml"},
+				)
+				h.AssertSliceNotContains(t,
+					configProvider.ContainerConfig().Cmd,
+					"-stack",
+				)
+			})
+		})
+
 		when("publish", func() {
 			providedPublish = true
 
