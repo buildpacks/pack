@@ -1153,6 +1153,7 @@ func testAcceptance(
 									"hello_args":             helloArgs,
 									"hello_args_prefix":      helloArgsPrefix,
 									"image_workdir":          imageWorkdir,
+									"rebasable":              false,
 								},
 							)
 
@@ -1826,6 +1827,7 @@ func testAcceptance(
 										"hello_args":           helloArgs,
 										"hello_args_prefix":    helloArgsPrefix,
 										"image_workdir":        imageWorkdir,
+										"rebasable":            false,
 									},
 								)
 

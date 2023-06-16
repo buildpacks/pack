@@ -123,6 +123,11 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		return nil, err
 	}
 
+	var rebasable bool
+	if _, err := dist.GetLabel(img, platform.RebaseableLabel, &rebasable); err != nil {
+		return nil, err
+	}
+
 	platformAPI, err := img.Env(platformAPIEnv)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading platform api")
@@ -196,6 +201,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 			Buildpacks: buildMD.Buildpacks,
 			Extensions: buildMD.Extensions,
 			Processes:  processDetails,
+			Rebasable:  rebasable,
 		}, nil
 	}
 
@@ -206,5 +212,6 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		BOM:        buildMD.BOM,
 		Buildpacks: buildMD.Buildpacks,
 		Processes:  processDetails,
+		Rebasable:  rebasable,
 	}, nil
 }
