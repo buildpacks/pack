@@ -32,9 +32,10 @@ func testHumanReadable(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf bytes.Buffer
 
-		remoteInfo             *client.ImageInfo
-		localInfo              *client.ImageInfo
-		localInfoWithRebasable *client.ImageInfo
+		remoteInfo              *client.ImageInfo
+		remoteInfoWithRebasable *client.ImageInfo
+		localInfo               *client.ImageInfo
+		localInfoWithRebasable  *client.ImageInfo
 
 		remoteWithExtensionInfo *client.ImageInfo
 		localWithExtensionInfo  *client.ImageInfo
@@ -52,6 +53,33 @@ Run Images:
   some-remote-run-image
   some-remote-mirror
   other-remote-mirror
+
+Buildpacks:
+  ID                          VERSION        HOMEPAGE
+  test.bp.one.remote          1.0.0          https://some-homepage-one
+  test.bp.two.remote          2.0.0          https://some-homepage-two
+  test.bp.three.remote        3.0.0          -
+
+Processes:
+  TYPE                              SHELL        COMMAND                      ARGS                     WORK DIR
+  some-remote-type (default)        bash         /some/remote command         some remote args         /some-test-work-dir
+  other-remote-type                              /other/remote/command        other remote args        /other-test-work-dir`
+
+		expectedRemoteOutputWithRebasable = `REMOTE:
+
+Stack: test.stack.id.remote
+
+Base Image:
+  Reference: some-remote-run-image-reference
+  Top Layer: some-remote-top-layer
+
+Run Images:
+  user-configured-mirror-for-remote        (user-configured)
+  some-remote-run-image
+  some-remote-mirror
+  other-remote-mirror
+
+Rebasable: true
 
 Buildpacks:
   ID                          VERSION        HOMEPAGE
@@ -246,6 +274,63 @@ Processes:
 						},
 					},
 				},
+			}
+
+			remoteInfoWithRebasable = &client.ImageInfo{
+				StackID: "test.stack.id.remote",
+				Buildpacks: []buildpack.GroupElement{
+					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
+					{ID: "test.bp.three.remote", Version: "3.0.0"},
+				},
+				Base: platform.RunImageForRebase{
+					TopLayer:  "some-remote-top-layer",
+					Reference: "some-remote-run-image-reference",
+				},
+				Stack: platform.StackMetadata{
+					RunImage: platform.RunImageForExport{
+						Image:   "some-remote-run-image",
+						Mirrors: []string{"some-remote-mirror", "other-remote-mirror"},
+					},
+				},
+				BOM: []buildpack.BOMEntry{{
+					Require: buildpack.Require{
+						Name:    "name-1",
+						Version: "version-1",
+						Metadata: map[string]interface{}{
+							"RemoteData": someData{
+								String: "aString",
+								Bool:   true,
+								Int:    123,
+								Nested: struct {
+									String string
+								}{
+									String: "anotherString",
+								},
+							},
+						},
+					},
+					Buildpack: buildpack.GroupElement{ID: "test.bp.one.remote", Version: "1.0.0"},
+				}},
+				Processes: client.ProcessDetails{
+					DefaultProcess: &launch.Process{
+						Type:             "some-remote-type",
+						Command:          launch.RawCommand{Entries: []string{"/some/remote command"}},
+						Args:             []string{"some", "remote", "args"},
+						Direct:           false,
+						WorkingDirectory: "/some-test-work-dir",
+					},
+					OtherProcesses: []launch.Process{
+						{
+							Type:             "other-remote-type",
+							Command:          launch.RawCommand{Entries: []string{"/other/remote/command"}},
+							Args:             []string{"other", "remote", "args"},
+							Direct:           true,
+							WorkingDirectory: "/other-test-work-dir",
+						},
+					},
+				},
+				Rebasable: true,
 			}
 
 			localInfo = &client.ImageInfo{
@@ -648,6 +733,34 @@ Processes:
 
 				assert.NotContains(outBuf.String(), expectedLocalOutput)
 				assert.Contains(outBuf.String(), expectedRemoteOutput)
+			})
+			it("prints remote rebasable image info in a human readable format", func() {
+				runImageMirrors := []config.RunImage{
+					{
+						Image:   "un-used-run-image",
+						Mirrors: []string{"un-used"},
+					},
+					{
+						Image:   "some-local-run-image",
+						Mirrors: []string{"user-configured-mirror-for-local"},
+					},
+					{
+						Image:   "some-remote-run-image",
+						Mirrors: []string{"user-configured-mirror-for-remote"},
+					},
+				}
+				sharedImageInfo := inspectimage.GeneralInfo{
+					Name:            "test-image",
+					RunImageMirrors: runImageMirrors,
+				}
+				humanReadableWriter := writer.NewHumanReadable()
+
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
+				err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteInfoWithRebasable, nil, nil)
+				assert.Nil(err)
+
+				assert.Contains(outBuf.String(), expectedRemoteOutputWithRebasable)
+				assert.NotContains(outBuf.String(), expectedLocalOutput)
 			})
 
 			when("buildpack metadata is missing", func() {
