@@ -195,7 +195,6 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 	}
 
 	launchCache := cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Launch, "launch", l.docker)
-	kanikoCache := cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Kaniko, "kaniko", l.docker)
 
 	if !l.opts.UseCreator {
 		if l.platformAPI.LessThan("0.7") {
@@ -217,6 +216,27 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			l.logger.Info(style.Step("DETECTING"))
 			if err := l.Detect(ctx, phaseFactory); err != nil {
 				return err
+			}
+		}
+
+		var kanikoCache Cache
+		if l.PlatformAPI().AtLeast("0.12") {
+			// lifecycle 0.17.0 (introduces support for Platform API 0.12) and above will ensure that
+			// this volume is owned by the CNB user,
+			// and hence the restorer (after dropping privileges) will be able to write to it.
+			kanikoCache = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Kaniko, "kaniko", l.docker)
+		} else {
+			switch {
+			case buildCache.Type() == cache.Volume:
+				// Re-use the build cache as the kaniko cache. Earlier versions of the lifecycle (0.16.x and below)
+				// already ensure this volume is owned by the CNB user.
+				kanikoCache = buildCache
+			case l.hasExtensionsForBuild():
+				// We need a usable kaniko cache, so error in this case.
+				return fmt.Errorf("build cache must be volume cache when building with extensions")
+			default:
+				// The kaniko cache is unused, so it doesn't matter that it's not usable.
+				kanikoCache = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Kaniko, "kaniko", l.docker)
 			}
 		}
 
