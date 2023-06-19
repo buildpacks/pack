@@ -67,6 +67,7 @@ func NewInfoDisplay(info *client.ImageInfo, generalInfo GeneralInfo) *InfoDispla
 			Buildpacks:      displayBuildpacks(info.Buildpacks),
 			Extensions:      displayExtensions(info.Extensions),
 			Processes:       displayProcesses(info.Processes),
+			Rebasable:       info.Rebasable,
 		}
 	}
 	return &InfoDisplay{

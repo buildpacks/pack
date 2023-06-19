@@ -228,6 +228,7 @@ Base Image:
 {{- end}}
   Top Layer: {{ .Info.Base.TopLayer }}
 {{ template "runImages" . }}
+{{- template "rebasable" . }}
 {{ template "buildpacks" . }}
 {{ template "extensions" . }}
 {{ template "processes" . }}`

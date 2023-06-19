@@ -32,13 +32,15 @@ func testHumanReadable(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf bytes.Buffer
 
-		remoteInfo              *client.ImageInfo
-		remoteInfoWithRebasable *client.ImageInfo
-		localInfo               *client.ImageInfo
-		localInfoWithRebasable  *client.ImageInfo
+		remoteInfo                          *client.ImageInfo
+		remoteInfoWithRebasable             *client.ImageInfo
+		remoteWithExtensionInfo             *client.ImageInfo
+		remoteWithExtensionAndRebasableInfo *client.ImageInfo
 
-		remoteWithExtensionInfo *client.ImageInfo
-		localWithExtensionInfo  *client.ImageInfo
+		localInfo                          *client.ImageInfo
+		localInfoWithRebasable             *client.ImageInfo
+		localWithExtensionInfo             *client.ImageInfo
+		localWithExtensionAndRebasableInfo *client.ImageInfo
 
 		expectedRemoteOutput = `REMOTE:
 
@@ -86,6 +88,72 @@ Buildpacks:
   test.bp.one.remote          1.0.0          https://some-homepage-one
   test.bp.two.remote          2.0.0          https://some-homepage-two
   test.bp.three.remote        3.0.0          -
+
+Processes:
+  TYPE                              SHELL        COMMAND                      ARGS                     WORK DIR
+  some-remote-type (default)        bash         /some/remote command         some remote args         /some-test-work-dir
+  other-remote-type                              /other/remote/command        other remote args        /other-test-work-dir`
+
+		expectedRemoteWithExtensionOutput = `REMOTE:
+
+Stack: test.stack.id.remote
+
+Base Image:
+  Reference: some-remote-run-image-reference
+  Top Layer: some-remote-top-layer
+
+Run Images:
+  user-configured-mirror-for-remote        (user-configured)
+  some-remote-run-image
+  some-remote-mirror
+  other-remote-mirror
+
+Buildpacks:
+  ID                          VERSION        HOMEPAGE
+  test.bp.one.remote          1.0.0          https://some-homepage-one
+  test.bp.two.remote          2.0.0          https://some-homepage-two
+  test.bp.three.remote        3.0.0          -
+
+Extensions:
+  ID                          VERSION        HOMEPAGE
+  test.bp.one.remote          1.0.0          https://some-homepage-one
+  test.bp.two.remote          2.0.0          https://some-homepage-two
+  test.bp.three.remote        3.0.0          -
+
+
+Processes:
+  TYPE                              SHELL        COMMAND                      ARGS                     WORK DIR
+  some-remote-type (default)        bash         /some/remote command         some remote args         /some-test-work-dir
+  other-remote-type                              /other/remote/command        other remote args        /other-test-work-dir`
+
+		expectedRemoteWithExtensionAndRebasableOutput = `REMOTE:
+
+Stack: test.stack.id.remote
+
+Base Image:
+  Reference: some-remote-run-image-reference
+  Top Layer: some-remote-top-layer
+
+Run Images:
+  user-configured-mirror-for-remote        (user-configured)
+  some-remote-run-image
+  some-remote-mirror
+  other-remote-mirror
+
+Rebasable: true
+
+Buildpacks:
+  ID                          VERSION        HOMEPAGE
+  test.bp.one.remote          1.0.0          https://some-homepage-one
+  test.bp.two.remote          2.0.0          https://some-homepage-two
+  test.bp.three.remote        3.0.0          -
+
+Extensions:
+  ID                          VERSION        HOMEPAGE
+  test.bp.one.remote          1.0.0          https://some-homepage-one
+  test.bp.two.remote          2.0.0          https://some-homepage-two
+  test.bp.three.remote        3.0.0          -
+
 
 Processes:
   TYPE                              SHELL        COMMAND                      ARGS                     WORK DIR
@@ -144,38 +212,6 @@ Processes:
   some-local-type (default)        bash         /some/local command         some local args         /some-test-work-dir
   other-local-type                              /other/local/command        other local args        /other-test-work-dir`
 
-		expectedRemoteWithExtensionOutput = `REMOTE:
-
-Stack: test.stack.id.remote
-
-Base Image:
-  Reference: some-remote-run-image-reference
-  Top Layer: some-remote-top-layer
-
-Run Images:
-  user-configured-mirror-for-remote        (user-configured)
-  some-remote-run-image
-  some-remote-mirror
-  other-remote-mirror
-
-Buildpacks:
-  ID                          VERSION        HOMEPAGE
-  test.bp.one.remote          1.0.0          https://some-homepage-one
-  test.bp.two.remote          2.0.0          https://some-homepage-two
-  test.bp.three.remote        3.0.0          -
-
-Extensions:
-  ID                          VERSION        HOMEPAGE
-  test.bp.one.remote          1.0.0          https://some-homepage-one
-  test.bp.two.remote          2.0.0          https://some-homepage-two
-  test.bp.three.remote        3.0.0          -
-
-
-Processes:
-  TYPE                              SHELL        COMMAND                      ARGS                     WORK DIR
-  some-remote-type (default)        bash         /some/remote command         some remote args         /some-test-work-dir
-  other-remote-type                              /other/remote/command        other remote args        /other-test-work-dir`
-
 		expectedLocalWithExtensionOutput = `LOCAL:
 
 Stack: test.stack.id.local
@@ -207,18 +243,53 @@ Processes:
   TYPE                             SHELL        COMMAND                     ARGS                    WORK DIR
   some-local-type (default)        bash         /some/local command         some local args         /some-test-work-dir
   other-local-type                              /other/local/command        other local args        /other-test-work-dir`
+
+		expectedLocalWithExtensionAndRebasableOutput = `LOCAL:
+
+Stack: test.stack.id.local
+
+Base Image:
+  Reference: some-local-run-image-reference
+  Top Layer: some-local-top-layer
+
+Run Images:
+  user-configured-mirror-for-local        (user-configured)
+  some-local-run-image
+  some-local-mirror
+  other-local-mirror
+
+Rebasable: true
+
+Buildpacks:
+  ID                         VERSION        HOMEPAGE
+  test.bp.one.local          1.0.0          https://some-homepage-one
+  test.bp.two.local          2.0.0          https://some-homepage-two
+  test.bp.three.local        3.0.0          -
+
+Extensions:
+  ID                         VERSION        HOMEPAGE
+  test.bp.one.local          1.0.0          https://some-homepage-one
+  test.bp.two.local          2.0.0          https://some-homepage-two
+  test.bp.three.local        3.0.0          -
+
+
+Processes:
+  TYPE                             SHELL        COMMAND                     ARGS                    WORK DIR
+  some-local-type (default)        bash         /some/local command         some local args         /some-test-work-dir
+  other-local-type                              /other/local/command        other local args        /other-test-work-dir`
 	)
 
 	when("Print", func() {
 		it.Before(func() {
-
 			remoteInfo = getRemoteBasicImageInfo()
 			remoteInfoWithRebasable = getRemoteImageInfoWithRebasable()
 			remoteWithExtensionInfo = getRemoteImageInfoWithExtension()
+			remoteWithExtensionAndRebasableInfo = getRemoteImageInfoWithExtensionAndRebasable()
 
 			localInfo = getBasicLocalImageInfo()
 			localInfoWithRebasable = getLocalImageInfoWithRebasable()
 			localWithExtensionInfo = getLocalImageInfoWithExtension()
+			localWithExtensionAndRebasableInfo = getLocalImageInfoWithExtensionAndRebasable()
 
 			outBuf = bytes.Buffer{}
 		})
@@ -373,6 +444,34 @@ Processes:
 				assert.Contains(outBuf.String(), expectedLocalWithExtensionOutput)
 				assert.NotContains(outBuf.String(), expectedRemoteWithExtensionOutput)
 			})
+			it("prints localWithExtension and localWithRebasable image info in a human readable format", func() {
+				runImageMirrors := []config.RunImage{
+					{
+						Image:   "un-used-run-image",
+						Mirrors: []string{"un-used"},
+					},
+					{
+						Image:   "some-local-run-image",
+						Mirrors: []string{"user-configured-mirror-for-local"},
+					},
+					{
+						Image:   "some-remote-run-image",
+						Mirrors: []string{"user-configured-mirror-for-remote"},
+					},
+				}
+				sharedImageInfo := inspectimage.GeneralInfo{
+					Name:            "test-image",
+					RunImageMirrors: runImageMirrors,
+				}
+				humanReadableWriter := writer.NewHumanReadable()
+
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
+				err := humanReadableWriter.Print(logger, sharedImageInfo, localWithExtensionAndRebasableInfo, nil, nil, nil)
+				assert.Nil(err)
+
+				assert.Contains(outBuf.String(), expectedLocalWithExtensionAndRebasableOutput)
+				assert.NotContains(outBuf.String(), expectedRemoteWithExtensionOutput)
+			})
 		})
 
 		when("only remote image exists", func() {
@@ -502,6 +601,34 @@ Processes:
 
 				assert.NotContains(outBuf.String(), expectedLocalWithExtensionOutput)
 				assert.Contains(outBuf.String(), expectedRemoteWithExtensionOutput)
+			})
+			it("prints remoteWithExtension and remoteWithRebasable image info in a human readable format", func() {
+				runImageMirrors := []config.RunImage{
+					{
+						Image:   "un-used-run-image",
+						Mirrors: []string{"un-used"},
+					},
+					{
+						Image:   "some-local-run-image",
+						Mirrors: []string{"user-configured-mirror-for-local"},
+					},
+					{
+						Image:   "some-remote-run-image",
+						Mirrors: []string{"user-configured-mirror-for-remote"},
+					},
+				}
+				sharedImageInfo := inspectimage.GeneralInfo{
+					Name:            "test-image",
+					RunImageMirrors: runImageMirrors,
+				}
+				humanReadableWriter := writer.NewHumanReadable()
+
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
+				err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteWithExtensionAndRebasableInfo, nil, nil)
+				assert.Nil(err)
+
+				assert.NotContains(outBuf.String(), expectedLocalOutput)
+				assert.Contains(outBuf.String(), expectedRemoteWithExtensionAndRebasableOutput)
 			})
 
 			when("buildpack metadata is missing", func() {
@@ -714,6 +841,10 @@ func getRemoteImageInfoWithRebasable() *client.ImageInfo {
 	return getRemoteImageInfo(false, true)
 }
 
+func getRemoteImageInfoWithExtensionAndRebasable() *client.ImageInfo {
+	return getRemoteImageInfo(true, true)
+}
+
 func getRemoteImageInfo(extension bool, rebasable bool) *client.ImageInfo {
 	mockedStackID := "test.stack.id.remote"
 
@@ -789,36 +920,24 @@ func getRemoteImageInfo(extension bool, rebasable bool) *client.ImageInfo {
 		{ID: "test.bp.three.remote", Version: "3.0.0"},
 	}
 
-	if extension {
-		return &client.ImageInfo{
-			StackID:    mockedStackID,
-			Buildpacks: mockedBuildpacks,
-			Base:       mockedBase,
-			Stack:      mockedStack,
-			BOM:        mockedBOM,
-			Processes:  mockedProcesses,
-			Extensions: mockedExtension,
-		}
-	} else if rebasable {
-		return &client.ImageInfo{
-			StackID:    mockedStackID,
-			Buildpacks: mockedBuildpacks,
-			Base:       mockedBase,
-			Stack:      mockedStack,
-			BOM:        mockedBOM,
-			Processes:  mockedProcesses,
-			Rebasable:  true,
-		}
-	} else {
-		return &client.ImageInfo{
-			StackID:    mockedStackID,
-			Buildpacks: mockedBuildpacks,
-			Base:       mockedBase,
-			Stack:      mockedStack,
-			BOM:        mockedBOM,
-			Processes:  mockedProcesses,
-		}
+	imageInfo := &client.ImageInfo{
+		StackID:    mockedStackID,
+		Buildpacks: mockedBuildpacks,
+		Base:       mockedBase,
+		Stack:      mockedStack,
+		BOM:        mockedBOM,
+		Processes:  mockedProcesses,
 	}
+
+	if extension {
+		imageInfo.Extensions = mockedExtension
+	}
+
+	if rebasable {
+		imageInfo.Rebasable = true
+	}
+
+	return imageInfo
 }
 
 func getBasicLocalImageInfo() *client.ImageInfo {
@@ -831,6 +950,10 @@ func getLocalImageInfoWithExtension() *client.ImageInfo {
 
 func getLocalImageInfoWithRebasable() *client.ImageInfo {
 	return getLocalImageInfo(false, true)
+}
+
+func getLocalImageInfoWithExtensionAndRebasable() *client.ImageInfo {
+	return getLocalImageInfo(true, true)
 }
 
 func getLocalImageInfo(extension bool, rebasable bool) *client.ImageInfo {
@@ -903,34 +1026,22 @@ func getLocalImageInfo(extension bool, rebasable bool) *client.ImageInfo {
 		{ID: "test.bp.three.local", Version: "3.0.0"},
 	}
 
-	if extension {
-		return &client.ImageInfo{
-			StackID:    mockedStackID,
-			Buildpacks: mockedBuildpacks,
-			Base:       mockedBase,
-			Stack:      mockedPlatform,
-			BOM:        mockedBOM,
-			Processes:  mockedProcesses,
-			Extensions: mockedExtension,
-		}
-	} else if rebasable {
-		return &client.ImageInfo{
-			StackID:    mockedStackID,
-			Buildpacks: mockedBuildpacks,
-			Base:       mockedBase,
-			Stack:      mockedPlatform,
-			BOM:        mockedBOM,
-			Processes:  mockedProcesses,
-			Rebasable:  true,
-		}
-	} else {
-		return &client.ImageInfo{
-			StackID:    mockedStackID,
-			Buildpacks: mockedBuildpacks,
-			Base:       mockedBase,
-			Stack:      mockedPlatform,
-			BOM:        mockedBOM,
-			Processes:  mockedProcesses,
-		}
+	imageInfo := &client.ImageInfo{
+		StackID:    mockedStackID,
+		Buildpacks: mockedBuildpacks,
+		Base:       mockedBase,
+		Stack:      mockedPlatform,
+		BOM:        mockedBOM,
+		Processes:  mockedProcesses,
 	}
+
+	if extension {
+		imageInfo.Extensions = mockedExtension
+	}
+
+	if rebasable {
+		imageInfo.Rebasable = true
+	}
+
+	return imageInfo
 }
