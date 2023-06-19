@@ -30,20 +30,67 @@ func (h *HumanReadable) Print(
 	if local == nil && remote == nil {
 		return fmt.Errorf("unable to find image '%s' locally or remotely", generalInfo.Name)
 	}
-	localDisplay := inspectimage.NewInfoDisplay(local, generalInfo)
-	remoteDisplay := inspectimage.NewInfoDisplay(remote, generalInfo)
 
 	logger.Infof("Inspecting image: %s\n", style.Symbol(generalInfo.Name))
 
-	logger.Info("\nREMOTE:\n")
-	err := writeImageInfo(logger, remoteDisplay, remoteErr)
-	if err != nil {
-		return fmt.Errorf("writing remote builder info: %w", err)
+	if err := writeRemoteImageInfo(logger, generalInfo, remote, remoteErr); err != nil {
+		return err
 	}
+
+	if err := writeLocalImageInfo(logger, generalInfo, local, localErr); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writeLocalImageInfo(
+	logger logging.Logger,
+	generalInfo inspectimage.GeneralInfo,
+	local *client.ImageInfo,
+	localErr error) error {
 	logger.Info("\nLOCAL:\n")
-	err = writeImageInfo(logger, localDisplay, localErr)
+
+	if localErr != nil {
+		logger.Errorf("%s\n", localErr)
+		return nil
+	}
+
+	localDisplay := inspectimage.NewInfoDisplay(local, generalInfo)
+	if localDisplay == nil {
+		logger.Info("(not present)\n")
+		return nil
+	}
+
+	err := writeImageInfo(logger, localDisplay)
 	if err != nil {
 		return fmt.Errorf("writing local builder info: %w", err)
+	}
+
+	return nil
+}
+
+func writeRemoteImageInfo(
+	logger logging.Logger,
+	generalInfo inspectimage.GeneralInfo,
+	remote *client.ImageInfo,
+	remoteErr error) error {
+	logger.Info("\nREMOTE:\n")
+
+	if remoteErr != nil {
+		logger.Errorf("%s\n", remoteErr)
+		return nil
+	}
+
+	remoteDisplay := inspectimage.NewInfoDisplay(remote, generalInfo)
+	if remoteDisplay == nil {
+		logger.Info("(not present)\n")
+		return nil
+	}
+
+	err := writeImageInfo(logger, remoteDisplay)
+	if err != nil {
+		return fmt.Errorf("writing remote builder info: %w", err)
 	}
 
 	return nil
@@ -52,48 +99,41 @@ func (h *HumanReadable) Print(
 func writeImageInfo(
 	logger logging.Logger,
 	info *inspectimage.InfoDisplay,
-	err error,
 ) error {
+	imgTpl := getImageTemplate(info)
+	remoteOutput, err := getInspectImageOutput(imgTpl, info)
+	if err != nil {
+		logger.Error(err.Error())
+		return err
+	} else {
+		logger.Info(remoteOutput.String())
+		return nil
+	}
+}
+
+func getImageTemplate(info *inspectimage.InfoDisplay) *template.Template {
 	imgTpl := template.Must(template.New("runImages").
 		Funcs(template.FuncMap{"StringsJoin": strings.Join}).
 		Funcs(template.FuncMap{"StringsValueOrDefault": strs.ValueOrDefault}).
 		Parse(runImagesTemplate))
 	imgTpl = template.Must(imgTpl.New("buildpacks").Parse(buildpacksTemplate))
-	if info != nil && info.Extensions != nil {
-		imgTpl = template.Must(imgTpl.New("extensions").Parse(extensionsTemplate))
-	}
-	imgTpl = template.Must(imgTpl.New("processes").
-		Parse(processesTemplate))
+
+	imgTpl = template.Must(imgTpl.New("processes").Parse(processesTemplate))
 
 	imgTpl = template.Must(imgTpl.New("rebasable").Parse(rebasableTemplate))
 
 	if info != nil && info.Extensions != nil {
-		imgTpl = template.Must(imgTpl.New("image").
-			Parse(imageWithExtensionTemplate))
+		imgTpl = template.Must(imgTpl.New("extensions").Parse(extensionsTemplate))
+		imgTpl = template.Must(imgTpl.New("image").Parse(imageWithExtensionTemplate))
 	} else {
-		imgTpl = template.Must(imgTpl.New("image").
-			Parse(imageTemplate))
+		imgTpl = template.Must(imgTpl.New("image").Parse(imageTemplate))
 	}
-
-	if err != nil {
-		logger.Errorf("%s\n", err)
-		return nil
-	}
-
-	if info == nil {
-		logger.Info("(not present)\n")
-		return nil
-	}
-	remoteOutput, err := inspectImageOutput(info, imgTpl)
-	if err != nil {
-		logger.Error(err.Error())
-	} else {
-		logger.Info(remoteOutput.String())
-	}
-	return nil
+	return imgTpl
 }
 
-func inspectImageOutput(info *inspectimage.InfoDisplay, tpl *template.Template) (*bytes.Buffer, error) {
+func getInspectImageOutput(
+	tpl *template.Template,
+	info *inspectimage.InfoDisplay) (*bytes.Buffer, error) {
 	if info == nil {
 		return bytes.NewBuffer([]byte("(not present)")), nil
 	}
