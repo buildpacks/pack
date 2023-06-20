@@ -47,6 +47,8 @@ const (
 	workspaceDir       = "/workspace"
 	layersDir          = "/layers"
 
+	emptyTarDiffID = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
 	metadataLabel = "io.buildpacks.builder.metadata"
 	stackLabel    = "io.buildpacks.stack.id"
 
@@ -1145,31 +1147,32 @@ func sortKeys(collection map[string]moduleWithDiffID) []string {
 // case a flattened module is found, it will split each flattened buildpack into an individual module and skip all the empty ones
 // returns an explodedBuildModule array with the Build Module information but also the diffId and the tar file on disk
 func splitBuildModules(kind, tmpDir string, additionalModules []buildpack.BuildModule, logger logging.Logger) ([]moduleWithDiffID, []error) {
-	lids := make([]chan modInfo, len(additionalModules))
-	for i := range lids {
-		lids[i] = make(chan modInfo, 1)
+	modInfoChans := make([]chan modInfo, len(additionalModules))
+	for i := range modInfoChans {
+		modInfoChans[i] = make(chan modInfo, 1)
 	}
 
 	for i, module := range additionalModules {
 		go func(i int, module buildpack.BuildModule) {
 			modTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s", kind, strconv.Itoa(i)))
 			if err := os.MkdirAll(modTmpDir, os.ModePerm); err != nil {
-				lids[i] <- handleError(module, err, fmt.Sprintf("creating %s temp dir %s", kind, modTmpDir))
+				modInfoChans[i] <- handleError(module, err, fmt.Sprintf("creating %s temp dir %s", kind, modTmpDir))
 			}
 			moduleTars, err := buildpack.ToNLayerTar(modTmpDir, module, logger)
 			if err != nil {
-				lids[i] <- handleError(module, err, fmt.Sprintf("creating %s tar file at path %s", module.Descriptor().Info().FullName(), modTmpDir))
+				modInfoChans[i] <- handleError(module, err, fmt.Sprintf("creating %s tar file at path %s", module.Descriptor().Info().FullName(), modTmpDir))
 			}
-			lids[i] <- modInfo{moduleTars: moduleTars}
+			modInfoChans[i] <- modInfo{moduleTars: moduleTars}
 		}(i, module)
 	}
 
 	var result []moduleWithDiffID
 	var errs []error
 
-	// maybe we got multiple modules back, we need to skip the empty ones
+	// skip the flattened buildpacks that returned an empty tar file, their contents
+	// are included in a different Build Module that was split
 	for i, module := range additionalModules {
-		mi := <-lids[i]
+		mi := <-modInfoChans[i]
 		if mi.err != nil {
 			errs = append(errs, mi.err)
 			continue
@@ -1182,7 +1185,7 @@ func splitBuildModules(kind, tmpDir string, additionalModules []buildpack.BuildM
 				errs = append(errs, errors.Wrapf(err, "calculating layer diffID for path %s", moduleTar.Path()))
 				continue
 			}
-			if diffID.String() == "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" {
+			if diffID.String() == emptyTarDiffID {
 				logger.Debugf("%s %s is a component of a flattened buildpack that will be added elsewhere, skipping...", istrings.Title(kind), style.Symbol(moduleTar.Info().FullName()))
 				continue // we don't need to keep empty tars
 			}
