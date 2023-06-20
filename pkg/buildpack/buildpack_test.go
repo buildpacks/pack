@@ -566,8 +566,9 @@ version = "1.2.3"
 
 	when("#ToNLayerTar", func() {
 		var (
-			tmpDir string
-			err    error
+			tmpDir     string
+			expectedBP []expectedBuildpack
+			err        error
 		)
 
 		it.Before(func() {
@@ -585,6 +586,19 @@ version = "1.2.3"
 		})
 
 		when("BuildModule contains N flattened buildpacks", func() {
+			it.Before(func() {
+				expectedBP = []expectedBuildpack{
+					{
+						id:      "buildpack-1-id",
+						version: "buildpack-1-version-1",
+					},
+					{
+						id:      "buildpack-2-id",
+						version: "buildpack-2-version-1",
+					},
+				}
+			})
+
 			it("returns N tar files", func() {
 				bp := buildpack.FromBlob(
 					&dist.BuildpackDescriptor{
@@ -638,30 +652,20 @@ version = "buildpack-2-version-1"
 				tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp, logger)
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(tarPaths), 2)
-				for _, tarPath := range tarPaths {
-					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s", tarPath.Info().ID),
-						h.IsDirectory(),
-					)
-					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s", tarPath.Info().ID, tarPath.Info().Version),
-						h.IsDirectory(),
-					)
-					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin", tarPath.Info().ID, tarPath.Info().Version),
-						h.IsDirectory(),
-					)
-					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/build", tarPath.Info().ID, tarPath.Info().Version),
-						h.HasFileMode(0700),
-					)
-					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/detect", tarPath.Info().ID, tarPath.Info().Version),
-						h.HasFileMode(0700),
-					)
-					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml", tarPath.Info().ID, tarPath.Info().Version),
-						h.HasFileMode(0700),
-					)
-				}
+				assertBuildpacksToTar(t, tarPaths, expectedBP)
 			})
 		})
 
 		when("BuildModule contains only an individual buildpack (default)", func() {
+			it.Before(func() {
+				expectedBP = []expectedBuildpack{
+					{
+						id:      "buildpack-1-id",
+						version: "buildpack-1-version-1",
+					},
+				}
+			})
+
 			it("returns 1 tar files", func() {
 				bp := buildpack.FromBlob(
 					&dist.BuildpackDescriptor{
@@ -699,26 +703,7 @@ version = "buildpack-1-version-1"
 				tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp, logger)
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(tarPaths), 1)
-				for _, tarPath := range tarPaths {
-					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s", tarPath.Info().ID),
-						h.IsDirectory(),
-					)
-					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s", tarPath.Info().ID, tarPath.Info().Version),
-						h.IsDirectory(),
-					)
-					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin", tarPath.Info().ID, tarPath.Info().Version),
-						h.IsDirectory(),
-					)
-					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/build", tarPath.Info().ID, tarPath.Info().Version),
-						h.HasFileMode(0700),
-					)
-					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/detect", tarPath.Info().ID, tarPath.Info().Version),
-						h.HasFileMode(0700),
-					)
-					h.AssertOnTarEntry(t, tarPath.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml", tarPath.Info().ID, tarPath.Info().Version),
-						h.HasFileMode(0700),
-					)
-				}
+				assertBuildpacksToTar(t, tarPaths, expectedBP)
 			})
 		})
 
@@ -767,4 +752,43 @@ func (eb *errorBuildModule) Descriptor() buildpack.Descriptor {
 
 func (eb *errorBuildModule) ContainsFlattenedModules() bool {
 	return eb.flattened
+}
+
+type expectedBuildpack struct {
+	id      string
+	version string
+}
+
+func assertBuildpacksToTar(t *testing.T, actual []buildpack.ModuleTar, expected []expectedBuildpack) {
+	t.Helper()
+	for _, expectedBP := range expected {
+		found := false
+		for _, moduleTar := range actual {
+			if expectedBP.id == moduleTar.Info().ID && expectedBP.version == moduleTar.Info().Version {
+				found = true
+			}
+		}
+		h.AssertTrue(t, found)
+	}
+
+	for _, moduleTar := range actual {
+		h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s", moduleTar.Info().ID),
+			h.IsDirectory(),
+		)
+		h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s", moduleTar.Info().ID, moduleTar.Info().Version),
+			h.IsDirectory(),
+		)
+		h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin", moduleTar.Info().ID, moduleTar.Info().Version),
+			h.IsDirectory(),
+		)
+		h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/build", moduleTar.Info().ID, moduleTar.Info().Version),
+			h.HasFileMode(0700),
+		)
+		h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/detect", moduleTar.Info().ID, moduleTar.Info().Version),
+			h.HasFileMode(0700),
+		)
+		h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml", moduleTar.Info().ID, moduleTar.Info().Version),
+			h.HasFileMode(0700),
+		)
+	}
 }
