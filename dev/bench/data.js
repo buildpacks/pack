@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1685046270291,
+  "lastUpdate": 1687276493277,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -628,6 +628,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 95257960642,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5a61950135e4fffc8c9d32a61a4476b2a6254f9d",
+          "message": "Merge pull request #1783 from buildpacks/enhancement/flatten-buildpackage-experimental\n\nFlatten buildpack package is move to be experimental",
+          "timestamp": "2023-06-20T08:52:07-07:00",
+          "tree_id": "027168901f55a4d8caefa8fd65aceb39c3f3636e",
+          "url": "https://github.com/buildpacks/pack/commit/5a61950135e4fffc8c9d32a61a4476b2a6254f9d"
+        },
+        "date": 1687276492652,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4328260096,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1159780380,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 68885053280,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
