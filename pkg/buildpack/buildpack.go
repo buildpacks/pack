@@ -370,8 +370,6 @@ func ToNLayerTar(dest string, module BuildModule, logger logging.Logger) ([]Modu
 	tarCollection := newModuleTarCollection(dest)
 	rootFolderHeaders := map[string]*tar.Header{}
 
-	// the build module __could__ have more than one buildpack on it,
-	// if we detect multiple buildpacks, explode them
 	tr := tar.NewReader(modReader)
 	headersProcessed := 0
 	for {

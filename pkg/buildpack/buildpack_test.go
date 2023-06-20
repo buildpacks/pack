@@ -584,7 +584,7 @@ version = "1.2.3"
 			}
 		})
 
-		when("BuildModule contains N flattened buildpack", func() {
+		when("BuildModule contains N flattened buildpacks", func() {
 			it("returns N tar files", func() {
 				bp := buildpack.FromBlob(
 					&dist.BuildpackDescriptor{
