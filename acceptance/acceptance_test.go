@@ -2330,8 +2330,12 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 								"--buildpack", fmt.Sprintf("docker://%s", flattenedPackageName),
 								"--builder", builderName,
 							)
-
+							// buildpack returning an empty tar file is non-deterministic,
+							// but we expect one of them to throw the warning
 							h.AssertContainsMatch(t, output, "Buildpack '(simple/layers@simple-layers-version|simple/layers/parent@simple-layers-parent-version)' is a component of a flattened buildpack that will be added elsewhere, skipping...")
+
+							// simple/layers BP exists on the builder and in the flattened buildpack
+							h.AssertContainsMatch(t, output, "Buildpack 'simple/layers@simple-layers-version' already exists on builder with same contents, skipping...")
 						})
 					})
 				})
