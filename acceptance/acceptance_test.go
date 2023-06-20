@@ -2323,7 +2323,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					})
 
 					when("--flatten", func() {
-						it("creates the package as a single layer and then use it to run pack build -b", func() {
+						it("does not write duplicate tar files when creating the ephemeral builder", func() {
 							output := pack.RunSuccessfully(
 								"build", repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
