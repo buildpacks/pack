@@ -54,7 +54,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			"and they can be included in the configs used in `pack builder create` and `pack buildpack package`. For more " +
 			"on how to package a buildpack, see: https://buildpacks.io/docs/buildpack-author-guide/package-a-buildpack/.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := validateBuildpackPackageFlags(&flags); err != nil {
+			if err := validateBuildpackPackageFlags(cfg, &flags); err != nil {
 				return err
 			}
 
@@ -96,6 +96,10 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 					logger.Warnf("%s is not a valid extension for a packaged buildpack. Packaged buildpacks must have a %s extension", style.Symbol(ext), style.Symbol(client.CNBExtension))
 				}
 			}
+			if flags.Flatten {
+				logger.Warn("Flattening a buildpack package could break the distribution specification. Please use it with caution.")
+			}
+
 			if err := packager.PackageBuildpack(cmd.Context(), client.PackageBuildpackOptions{
 				RelativeBaseDir: relativeBaseDir,
 				Name:            name,
@@ -134,11 +138,16 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten the buildpack into a single layer")
 	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpacks to exclude from flattening, in the form of '<buildpack-id>@<buildpack-version>'")
 	cmd.Flags().IntVar(&flags.Depth, "depth", -1, "Max depth to flatten.\nOmission of this flag or values < 0 will flatten the entire tree.")
+	if !cfg.Experimental {
+		cmd.Flags().MarkHidden("flatten")
+		cmd.Flags().MarkHidden("depth")
+		cmd.Flags().MarkHidden("flatten-exclude")
+	}
 	AddHelpFlag(cmd, "package")
 	return cmd
 }
 
-func validateBuildpackPackageFlags(p *BuildpackPackageFlags) error {
+func validateBuildpackPackageFlags(cfg config.Config, p *BuildpackPackageFlags) error {
 	if p.Publish && p.Policy == image.PullNever.String() {
 		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
 	}
@@ -146,10 +155,16 @@ func validateBuildpackPackageFlags(p *BuildpackPackageFlags) error {
 		return errors.Errorf("--config and --path cannot be used together. Please specify the relative path to the Buildpack directory in the package config file.")
 	}
 
-	if p.Flatten && len(p.FlattenExclude) > 0 {
-		for _, exclude := range p.FlattenExclude {
-			if strings.Count(exclude, "@") != 1 {
-				return errors.Errorf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", exclude)
+	if p.Flatten {
+		if !cfg.Experimental {
+			return client.NewExperimentError("Flattening a buildpack package is currently experimental.")
+		}
+
+		if len(p.FlattenExclude) > 0 {
+			for _, exclude := range p.FlattenExclude {
+				if strings.Count(exclude, "@") != 1 {
+					return errors.Errorf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", exclude)
+				}
 			}
 		}
 	}
