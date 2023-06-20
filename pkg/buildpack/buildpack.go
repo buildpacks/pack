@@ -556,7 +556,8 @@ func (m *moduleTarCollection) get(id, version string) (moduleTar, error) {
 func (m *moduleTarCollection) getModules() []ModuleTar {
 	var modulesTar []ModuleTar
 	for _, v := range m.modules {
-		vv := &v // TODO check this, its a hack for lint
+		v := v
+		vv := &v
 		modulesTar = append(modulesTar, vv)
 	}
 	return modulesTar
