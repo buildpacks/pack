@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687276493277,
+  "lastUpdate": 1687278512573,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -670,6 +670,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 68885053280,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1f35e858e39a56fcb834e4bcedeebec0a1b64900",
+          "message": "Merge pull request #1788 from buildpacks/fix/stack-toml-from-run-table\n\nFix: deriving stack.toml from the new run image information",
+          "timestamp": "2023-06-20T09:24:53-07:00",
+          "tree_id": "ccd17db03add4857df00b998606abce1e04e72d7",
+          "url": "https://github.com/buildpacks/pack/commit/1f35e858e39a56fcb834e4bcedeebec0a1b64900"
+        },
+        "date": 1687278511910,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4214796243,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1157737807,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 68012786292,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
