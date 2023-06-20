@@ -1583,6 +1583,18 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				)
 			})
 
+			it("adds the stack.toml to the image", func() {
+				layerTar, err := baseImage.FindLayerWithPath("/cnb/stack.toml")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, "/cnb/stack.toml",
+					h.ContentEquals(`[run-image]
+  image = "some/run"
+  mirrors = ["some/mirror", "other/mirror"]
+`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
+			})
+
 			it("adds the run image to the metadata", func() {
 				label, err := baseImage.Label("io.buildpacks.builder.metadata")
 				h.AssertNil(t, err)
