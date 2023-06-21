@@ -30,15 +30,15 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf bytes.Buffer
 
-		remoteInfo              *client.ImageInfo
-		remoteInfoWithRebasable *client.ImageInfo
-		localInfo               *client.ImageInfo
-		localInfoWithRebasable  *client.ImageInfo
+		remoteInfo            *client.ImageInfo
+		remoteInfoNoRebasable *client.ImageInfo
+		localInfo             *client.ImageInfo
+		localInfoNoRebasable  *client.ImageInfo
 
 		expectedLocalOutput = `---
 local_info:
   stack: test.stack.id.local
-  rebasable: false
+  rebasable: true
   base_image:
     top_layer: some-local-top-layer
     reference: some-local-run-image-reference
@@ -76,10 +76,10 @@ local_info:
     - args
     working-dir: /other-test-work-dir
 `
-		expectedLocalOutputWithRebasable = `---
+		expectedLocalNoRebasableOutput = `---
 local_info:
   stack: test.stack.id.local
-  rebasable: true
+  rebasable: false
   base_image:
     top_layer: some-local-top-layer
     reference: some-local-run-image-reference
@@ -120,7 +120,7 @@ local_info:
 		expectedRemoteOutput = `---
 remote_info:
   stack: test.stack.id.remote
-  rebasable: false
+  rebasable: true
   base_image:
     top_layer: some-remote-top-layer
     reference: some-remote-run-image-reference
@@ -158,10 +158,10 @@ remote_info:
     - args
     working-dir: /other-test-work-dir
 `
-		expectedRemoteOutputWithRebasable = `---
+		expectedRemoteNoRebasableOutput = `---
 remote_info:
   stack: test.stack.id.remote
-  rebasable: true
+  rebasable: false
   base_image:
     top_layer: some-remote-top-layer
     reference: some-remote-run-image-reference
@@ -265,20 +265,20 @@ remote_info:
 						},
 					},
 				},
+				Rebasable: true,
 			}
-
-			remoteInfoWithRebasable = &client.ImageInfo{
+			remoteInfoNoRebasable = &client.ImageInfo{
 				StackID: "test.stack.id.remote",
 				Buildpacks: []buildpack.GroupElement{
 					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
-				Base: platform.RunImageForRebase{
+				Base: files.RunImageForRebase{
 					TopLayer:  "some-remote-top-layer",
 					Reference: "some-remote-run-image-reference",
 				},
-				Stack: platform.StackMetadata{
-					RunImage: platform.RunImageForExport{
+				Stack: files.Stack{
+					RunImage: files.RunImageForExport{
 						Image:   "some-remote-run-image",
 						Mirrors: []string{"some-remote-mirror", "other-remote-mirror"},
 					},
@@ -320,7 +320,7 @@ remote_info:
 						},
 					},
 				},
-				Rebasable: true,
+				Rebasable: false,
 			}
 
 			localInfo = &client.ImageInfo{
@@ -370,20 +370,20 @@ remote_info:
 						},
 					},
 				},
+				Rebasable: true,
 			}
-
-			localInfoWithRebasable = &client.ImageInfo{
+			localInfoNoRebasable = &client.ImageInfo{
 				StackID: "test.stack.id.local",
 				Buildpacks: []buildpack.GroupElement{
 					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
-				Base: platform.RunImageForRebase{
+				Base: files.RunImageForRebase{
 					TopLayer:  "some-local-top-layer",
 					Reference: "some-local-run-image-reference",
 				},
-				Stack: platform.StackMetadata{
-					RunImage: platform.RunImageForExport{
+				Stack: files.Stack{
+					RunImage: files.RunImageForExport{
 						Image:   "some-local-run-image",
 						Mirrors: []string{"some-local-mirror", "other-local-mirror"},
 					},
@@ -419,7 +419,7 @@ remote_info:
 						},
 					},
 				},
-				Rebasable: true,
+				Rebasable: false,
 			}
 
 			outBuf = bytes.Buffer{}
@@ -455,6 +455,35 @@ remote_info:
 				assert.ContainsYAML(outBuf.String(), expectedLocalOutput)
 				assert.ContainsYAML(outBuf.String(), expectedRemoteOutput)
 			})
+			it("prints both local and remote no rebasable images info in a YAML format", func() {
+				runImageMirrors := []config.RunImage{
+					{
+						Image:   "un-used-run-image",
+						Mirrors: []string{"un-used"},
+					},
+					{
+						Image:   "some-local-run-image",
+						Mirrors: []string{"user-configured-mirror-for-local"},
+					},
+					{
+						Image:   "some-remote-run-image",
+						Mirrors: []string{"user-configured-mirror-for-remote"},
+					},
+				}
+				sharedImageInfo := inspectimage.GeneralInfo{
+					Name:            "test-image",
+					RunImageMirrors: runImageMirrors,
+				}
+				yamlWriter := writer.NewYAML()
+
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
+				err := yamlWriter.Print(logger, sharedImageInfo, localInfoNoRebasable, remoteInfoNoRebasable, nil, nil)
+				assert.Nil(err)
+
+				assert.ContainsYAML(outBuf.String(), `"image_name": "test-image"`)
+				assert.ContainsYAML(outBuf.String(), expectedLocalNoRebasableOutput)
+				assert.ContainsYAML(outBuf.String(), expectedRemoteNoRebasableOutput)
+			})
 		})
 
 		when("only local image exists", func() {
@@ -485,35 +514,6 @@ remote_info:
 
 				assert.ContainsYAML(outBuf.String(), `"image_name": "test-image"`)
 				assert.ContainsYAML(outBuf.String(), expectedLocalOutput)
-				assert.NotContains(outBuf.String(), "test.stack.id.remote")
-			})
-			it("prints local rebasable image info in YAML format", func() {
-				runImageMirrors := []config.RunImage{
-					{
-						Image:   "un-used-run-image",
-						Mirrors: []string{"un-used"},
-					},
-					{
-						Image:   "some-local-run-image",
-						Mirrors: []string{"user-configured-mirror-for-local"},
-					},
-					{
-						Image:   "some-remote-run-image",
-						Mirrors: []string{"user-configured-mirror-for-remote"},
-					},
-				}
-				sharedImageInfo := inspectimage.GeneralInfo{
-					Name:            "test-image",
-					RunImageMirrors: runImageMirrors,
-				}
-				yamlWriter := writer.NewYAML()
-
-				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := yamlWriter.Print(logger, sharedImageInfo, localInfoWithRebasable, nil, nil, nil)
-				assert.Nil(err)
-
-				assert.ContainsYAML(outBuf.String(), `"image_name": "test-image"`)
-				assert.ContainsYAML(outBuf.String(), expectedLocalOutputWithRebasable)
 				assert.NotContains(outBuf.String(), "test.stack.id.remote")
 			})
 		})
@@ -547,35 +547,6 @@ remote_info:
 				assert.ContainsYAML(outBuf.String(), `"image_name": "test-image"`)
 				assert.NotContains(outBuf.String(), "test.stack.id.local")
 				assert.ContainsYAML(outBuf.String(), expectedRemoteOutput)
-			})
-			it("prints remote rebasable image info in YAML format", func() {
-				runImageMirrors := []config.RunImage{
-					{
-						Image:   "un-used-run-image",
-						Mirrors: []string{"un-used"},
-					},
-					{
-						Image:   "some-local-run-image",
-						Mirrors: []string{"user-configured-mirror-for-local"},
-					},
-					{
-						Image:   "some-remote-run-image",
-						Mirrors: []string{"user-configured-mirror-for-remote"},
-					},
-				}
-				sharedImageInfo := inspectimage.GeneralInfo{
-					Name:            "test-image",
-					RunImageMirrors: runImageMirrors,
-				}
-				yamlWriter := writer.NewYAML()
-
-				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := yamlWriter.Print(logger, sharedImageInfo, nil, remoteInfoWithRebasable, nil, nil)
-				assert.Nil(err)
-
-				assert.ContainsYAML(outBuf.String(), `"image_name": "test-image"`)
-				assert.ContainsYAML(outBuf.String(), expectedRemoteOutputWithRebasable)
-				assert.NotContains(outBuf.String(), "test.stack.id.local")
 			})
 		})
 	})

@@ -202,10 +202,11 @@ Processes:
 {{- end }}`
 
 var rebasableTemplate = `
-{{- if .Info.Rebasable -}}
-{{- "\n\n" -}}
-Rebasable: {{ .Info.Rebasable }}
-{{- end -}}`
+
+Rebasable: 
+{{- if or .Info.Rebasable (eq .Info.Rebasable true)  }} true 
+{{- else }} false 
+{{- end }}`
 
 var imageTemplate = `
 Stack: {{ .Info.StackID }}
@@ -230,5 +231,5 @@ Base Image:
 {{ template "runImages" . }}
 {{- template "rebasable" . }}
 {{ template "buildpacks" . }}
-{{ template "extensions" . }}
+{{ template "extensions" . -}}
 {{ template "processes" . }}`

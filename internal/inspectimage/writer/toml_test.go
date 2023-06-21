@@ -30,14 +30,14 @@ func testTOML(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf bytes.Buffer
 
-		remoteInfo              *client.ImageInfo
-		remoteInfoWithRebasable *client.ImageInfo
-		localInfo               *client.ImageInfo
-		localInfoWithRebasable  *client.ImageInfo
+		remoteInfo            *client.ImageInfo
+		remoteInfoNoRebasable *client.ImageInfo
+		localInfo             *client.ImageInfo
+		localInfoNoRebasable  *client.ImageInfo
 
 		expectedLocalOutput = `[local_info]
 stack = 'test.stack.id.local'
-rebasable = false
+rebasable = true
 
 [local_info.base_image]
 top_layer = 'some-local-top-layer'
@@ -90,10 +90,9 @@ args = [
 ]
 working-dir = "/other-test-work-dir"
 `
-
-		expectedLocalOutputWithRebasable = `[local_info]
+		expectedLocalNoRebasableOutput = `[local_info]
 stack = 'test.stack.id.local'
-rebasable = true
+rebasable = false
 
 [local_info.base_image]
 top_layer = 'some-local-top-layer'
@@ -150,7 +149,7 @@ working-dir = "/other-test-work-dir"
 		expectedRemoteOutput = `
 [remote_info]
 stack = 'test.stack.id.remote'
-rebasable = false
+rebasable = true
 
 [remote_info.base_image]
 top_layer = 'some-remote-top-layer'
@@ -203,11 +202,10 @@ args = [
 ]
 working-dir = "/other-test-work-dir"
 `
-
-		expectedRemoteOutputWithRebasable = `
+		expectedRemoteNoRebasableOutput = `
 [remote_info]
 stack = 'test.stack.id.remote'
-rebasable = true
+rebasable = false
 
 [remote_info.base_image]
 top_layer = 'some-remote-top-layer'
@@ -326,19 +324,20 @@ working-dir = "/other-test-work-dir"
 						},
 					},
 				},
+				Rebasable: true,
 			}
-			remoteInfoWithRebasable = &client.ImageInfo{
+			remoteInfoNoRebasable = &client.ImageInfo{
 				StackID: "test.stack.id.remote",
 				Buildpacks: []buildpack.GroupElement{
 					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
-				Base: platform.RunImageForRebase{
+				Base: files.RunImageForRebase{
 					TopLayer:  "some-remote-top-layer",
 					Reference: "some-remote-run-image-reference",
 				},
-				Stack: platform.StackMetadata{
-					RunImage: platform.RunImageForExport{
+				Stack: files.Stack{
+					RunImage: files.RunImageForExport{
 						Image:   "some-remote-run-image",
 						Mirrors: []string{"some-remote-mirror", "other-remote-mirror"},
 					},
@@ -380,7 +379,7 @@ working-dir = "/other-test-work-dir"
 						},
 					},
 				},
-				Rebasable: true,
+				Rebasable: false,
 			}
 
 			localInfo = &client.ImageInfo{
@@ -430,20 +429,20 @@ working-dir = "/other-test-work-dir"
 						},
 					},
 				},
+				Rebasable: true,
 			}
-
-			localInfoWithRebasable = &client.ImageInfo{
+			localInfoNoRebasable = &client.ImageInfo{
 				StackID: "test.stack.id.local",
 				Buildpacks: []buildpack.GroupElement{
 					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
-				Base: platform.RunImageForRebase{
+				Base: files.RunImageForRebase{
 					TopLayer:  "some-local-top-layer",
 					Reference: "some-local-run-image-reference",
 				},
-				Stack: platform.StackMetadata{
-					RunImage: platform.RunImageForExport{
+				Stack: files.Stack{
+					RunImage: files.RunImageForExport{
 						Image:   "some-local-run-image",
 						Mirrors: []string{"some-local-mirror", "other-local-mirror"},
 					},
@@ -479,7 +478,7 @@ working-dir = "/other-test-work-dir"
 						},
 					},
 				},
-				Rebasable: true,
+				Rebasable: false,
 			}
 
 			outBuf = bytes.Buffer{}
@@ -515,6 +514,35 @@ working-dir = "/other-test-work-dir"
 				assert.ContainsTOML(outBuf.String(), expectedLocalOutput)
 				assert.ContainsTOML(outBuf.String(), expectedRemoteOutput)
 			})
+			it("prints both local and remote no rebasable images info in a TOML format", func() {
+				runImageMirrors := []config.RunImage{
+					{
+						Image:   "un-used-run-image",
+						Mirrors: []string{"un-used"},
+					},
+					{
+						Image:   "some-local-run-image",
+						Mirrors: []string{"user-configured-mirror-for-local"},
+					},
+					{
+						Image:   "some-remote-run-image",
+						Mirrors: []string{"user-configured-mirror-for-remote"},
+					},
+				}
+				sharedImageInfo := inspectimage.GeneralInfo{
+					Name:            "test-image",
+					RunImageMirrors: runImageMirrors,
+				}
+				tomlWriter := writer.NewTOML()
+
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
+				err := tomlWriter.Print(logger, sharedImageInfo, localInfoNoRebasable, remoteInfoNoRebasable, nil, nil)
+				assert.Nil(err)
+
+				assert.ContainsTOML(outBuf.String(), `image_name = "test-image"`)
+				assert.ContainsTOML(outBuf.String(), expectedLocalNoRebasableOutput)
+				assert.ContainsTOML(outBuf.String(), expectedRemoteNoRebasableOutput)
+			})
 		})
 
 		when("only local image exists", func() {
@@ -547,35 +575,6 @@ working-dir = "/other-test-work-dir"
 				assert.NotContains(outBuf.String(), "test.stack.id.remote")
 				assert.ContainsTOML(outBuf.String(), expectedLocalOutput)
 			})
-			it("prints local rebasable image info in TOML format", func() {
-				runImageMirrors := []config.RunImage{
-					{
-						Image:   "un-used-run-image",
-						Mirrors: []string{"un-used"},
-					},
-					{
-						Image:   "some-local-run-image",
-						Mirrors: []string{"user-configured-mirror-for-local"},
-					},
-					{
-						Image:   "some-remote-run-image",
-						Mirrors: []string{"user-configured-mirror-for-remote"},
-					},
-				}
-				sharedImageInfo := inspectimage.GeneralInfo{
-					Name:            "test-image",
-					RunImageMirrors: runImageMirrors,
-				}
-				tomlWriter := writer.NewTOML()
-
-				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := tomlWriter.Print(logger, sharedImageInfo, localInfoWithRebasable, nil, nil, nil)
-				assert.Nil(err)
-
-				assert.ContainsTOML(outBuf.String(), `image_name = "test-image"`)
-				assert.NotContains(outBuf.String(), "test.stack.id.remote")
-				assert.ContainsTOML(outBuf.String(), expectedLocalOutputWithRebasable)
-			})
 		})
 
 		when("only remote image exists", func() {
@@ -607,35 +606,6 @@ working-dir = "/other-test-work-dir"
 				assert.ContainsTOML(outBuf.String(), `image_name = "test-image"`)
 				assert.NotContains(outBuf.String(), "test.stack.id.local")
 				assert.ContainsTOML(outBuf.String(), expectedRemoteOutput)
-			})
-			it("prints remote rebasable image info in TOML format", func() {
-				runImageMirrors := []config.RunImage{
-					{
-						Image:   "un-used-run-image",
-						Mirrors: []string{"un-used"},
-					},
-					{
-						Image:   "some-local-run-image",
-						Mirrors: []string{"user-configured-mirror-for-local"},
-					},
-					{
-						Image:   "some-remote-run-image",
-						Mirrors: []string{"user-configured-mirror-for-remote"},
-					},
-				}
-				sharedImageInfo := inspectimage.GeneralInfo{
-					Name:            "test-image",
-					RunImageMirrors: runImageMirrors,
-				}
-				tomlWriter := writer.NewTOML()
-
-				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-				err := tomlWriter.Print(logger, sharedImageInfo, nil, remoteInfoWithRebasable, nil, nil)
-				assert.Nil(err)
-
-				assert.ContainsTOML(outBuf.String(), `image_name = "test-image"`)
-				assert.NotContains(outBuf.String(), "test.stack.id.local")
-				assert.ContainsTOML(outBuf.String(), expectedRemoteOutputWithRebasable)
 			})
 		})
 	})

@@ -124,7 +124,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 	}
 
 	var rebasable bool
-	if _, err := dist.GetLabel(img, platform.RebaseableLabel, &rebasable); err != nil {
+	if _, err := dist.GetLabel(img, platform.RebasableLabel, &rebasable); err != nil {
 		return nil, err
 	}
 
