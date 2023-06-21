@@ -204,7 +204,7 @@ Processes:
 var rebasableTemplate = `
 {{- if .Info.Rebasable -}}
 {{- "\n\n" -}}
-Rebasable: true
+Rebasable: {{ .Info.Rebasable }}
 {{- end -}}`
 
 var imageTemplate = `
