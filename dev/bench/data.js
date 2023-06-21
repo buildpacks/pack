@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687364658440,
+  "lastUpdate": 1687366471070,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -754,6 +754,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 72281377615,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "21b9a3a05c39e3de2ccab446ba2e491ab2ac38e4",
+          "message": "Merge pull request #1789 from buildpacks/fix/kaniko-cache\n\nStack fix & create new volume cache for kaniko instead of re-using build cache",
+          "timestamp": "2023-06-21T11:52:26-05:00",
+          "tree_id": "71e6a368137129914e93e466f1a798454fb49e04",
+          "url": "https://github.com/buildpacks/pack/commit/21b9a3a05c39e3de2ccab446ba2e491ab2ac38e4"
+        },
+        "date": 1687366470312,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5536493932,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1318828091,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 81757948320,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
