@@ -66,15 +66,6 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 	//      "api": "0.2",
 	//      "stacks": [
 	//        {
-	//          "id": "io.buildpacks.samples.stacks.jammy"
-	//        },
-	//        {
-	//          "id": "io.buildpacks.samples.stacks.alpine"
-	//        },
-	//        {
-	//          "id": "io.buildpacks.stacks.jammy"
-	//        },
-	//        {
 	//          "id": "*"
 	//        }
 	//      ],
