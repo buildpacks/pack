@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687278512573,
+  "lastUpdate": 1687364658440,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -712,6 +712,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 68012786292,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1e2da27c055eaadadd16ed60a2b8c37cba8af35d",
+          "message": "Merge pull request #1803 from buildpacks/fix/bom-display\n\nFix small issue with deprecated BOM display",
+          "timestamp": "2023-06-21T11:22:29-05:00",
+          "tree_id": "10acb5fc9bee1a7dc44884f45b5deae36fdb62b9",
+          "url": "https://github.com/buildpacks/pack/commit/1e2da27c055eaadadd16ed60a2b8c37cba8af35d"
+        },
+        "date": 1687364657773,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4788794230,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1183258058,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 72281377615,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
