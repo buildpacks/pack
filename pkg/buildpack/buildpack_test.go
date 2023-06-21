@@ -766,29 +766,27 @@ func assertBuildpacksToTar(t *testing.T, actual []buildpack.ModuleTar, expected 
 		for _, moduleTar := range actual {
 			if expectedBP.id == moduleTar.Info().ID && expectedBP.version == moduleTar.Info().Version {
 				found = true
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s", expectedBP.id),
+					h.IsDirectory(),
+				)
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s", expectedBP.id, expectedBP.version),
+					h.IsDirectory(),
+				)
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin", expectedBP.id, expectedBP.version),
+					h.IsDirectory(),
+				)
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/build", expectedBP.id, expectedBP.version),
+					h.HasFileMode(0700),
+				)
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/detect", expectedBP.id, expectedBP.version),
+					h.HasFileMode(0700),
+				)
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml", expectedBP.id, expectedBP.version),
+					h.HasFileMode(0700),
+				)
+				break
 			}
 		}
 		h.AssertTrue(t, found)
-	}
-
-	for _, moduleTar := range actual {
-		h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s", moduleTar.Info().ID),
-			h.IsDirectory(),
-		)
-		h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s", moduleTar.Info().ID, moduleTar.Info().Version),
-			h.IsDirectory(),
-		)
-		h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin", moduleTar.Info().ID, moduleTar.Info().Version),
-			h.IsDirectory(),
-		)
-		h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/build", moduleTar.Info().ID, moduleTar.Info().Version),
-			h.HasFileMode(0700),
-		)
-		h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/detect", moduleTar.Info().ID, moduleTar.Info().Version),
-			h.HasFileMode(0700),
-		)
-		h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml", moduleTar.Info().ID, moduleTar.Info().Version),
-			h.HasFileMode(0700),
-		)
 	}
 }
