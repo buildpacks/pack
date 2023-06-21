@@ -18,6 +18,7 @@ type CacheInfo struct {
 type CacheOpts struct {
 	Build  CacheInfo
 	Launch CacheInfo
+	Kaniko CacheInfo
 }
 
 const (
@@ -139,22 +140,21 @@ func sanitize(c *CacheOpts) error {
 		}
 	}
 
-	if c.Build.Format == CacheBind || c.Launch.Format == CacheBind {
-		var (
-			resolvedPath string
-			err          error
-		)
-		if c.Build.Format == CacheBind {
-			if resolvedPath, err = filepath.Abs(c.Build.Source); err != nil {
-				return errors.Wrap(err, "resolve absolute path")
-			}
-			c.Build.Source = filepath.Join(resolvedPath, "build-cache")
-		} else {
-			if resolvedPath, err = filepath.Abs(c.Launch.Source); err != nil {
-				return errors.Wrap(err, "resolve absolute path")
-			}
-			c.Launch.Source = filepath.Join(resolvedPath, "launch-cache")
+	var (
+		resolvedPath string
+		err          error
+	)
+	if c.Build.Format == CacheBind {
+		if resolvedPath, err = filepath.Abs(c.Build.Source); err != nil {
+			return errors.Wrap(err, "resolve absolute path")
 		}
+		c.Build.Source = filepath.Join(resolvedPath, "build-cache")
+	}
+	if c.Launch.Format == CacheBind {
+		if resolvedPath, err = filepath.Abs(c.Launch.Source); err != nil {
+			return errors.Wrap(err, "resolve absolute path")
+		}
+		c.Launch.Source = filepath.Join(resolvedPath, "launch-cache")
 	}
 	return nil
 }
