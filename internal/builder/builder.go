@@ -1158,7 +1158,7 @@ func splitBuildModules(kind, tmpDir string, additionalModules []buildpack.BuildM
 			if err := os.MkdirAll(modTmpDir, os.ModePerm); err != nil {
 				modInfoChans[i] <- handleError(module, err, fmt.Sprintf("creating %s temp dir %s", kind, modTmpDir))
 			}
-			moduleTars, err := buildpack.ToNLayerTar(modTmpDir, module, logger)
+			moduleTars, err := buildpack.ToNLayerTar(modTmpDir, module)
 			if err != nil {
 				modInfoChans[i] <- handleError(module, err, fmt.Sprintf("creating %s tar file at path %s", module.Descriptor().Info().FullName(), modTmpDir))
 			}
@@ -1177,8 +1177,9 @@ func splitBuildModules(kind, tmpDir string, additionalModules []buildpack.BuildM
 			errs = append(errs, mi.err)
 			continue
 		}
+		// moduleTar could be an individual Buildpack or flattened Buildpack that writes an empty tar on disk
 		for _, moduleTar := range mi.moduleTars {
-			// it could be an individual Buildpack or flattened Buildpack that writes an empty tar on disk
+			// eBM stands for exploded build module (module written on disk)
 			eBM := moduleWithDiffID{tarPath: moduleTar.Path()}
 			diffID, err := dist.LayerDiffID(moduleTar.Path())
 			if err != nil {
@@ -1196,10 +1197,9 @@ func splitBuildModules(kind, tmpDir string, additionalModules []buildpack.BuildM
 			} else {
 				// we need to match the exploded modules with its corresponding BuildModule.
 				// this is important when flattened modules where included
-				for _, aModule := range additionalModules {
-					if moduleTar.Info().FullName() == fmt.Sprintf("%s@%s", aModule.Descriptor().EscapedID(), aModule.Descriptor().Info().Version) ||
-						moduleTar.Info().FullName() == aModule.Descriptor().Info().FullName() {
-						eBM.module = aModule
+				for _, additionalModule := range additionalModules {
+					if namesMatch(additionalModule, moduleTar) {
+						eBM.module = additionalModule
 						break
 					}
 				}
@@ -1216,6 +1216,11 @@ func handleError(module buildpack.BuildModule, err error, message string) modInf
 		module: module,
 	}
 	return modInfo{moduleTars: []buildpack.ModuleTar{moduleTar}, err: errors.Wrap(err, message)}
+}
+
+func namesMatch(module buildpack.BuildModule, moduleOnDisk buildpack.ModuleTar) bool {
+	return moduleOnDisk.Info().FullName() == fmt.Sprintf("%s@%s", module.Descriptor().EscapedID(), module.Descriptor().Info().Version) ||
+		moduleOnDisk.Info().FullName() == module.Descriptor().Info().FullName()
 }
 
 type modInfo struct {

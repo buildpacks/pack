@@ -13,8 +13,6 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/pkg/logging"
-
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/dist"
@@ -356,7 +354,7 @@ func ToLayerTar(dest string, module BuildModule) (string, error) {
 	return layerTar, nil
 }
 
-func ToNLayerTar(dest string, module BuildModule, logger logging.Logger) ([]ModuleTar, error) {
+func ToNLayerTar(dest string, module BuildModule) ([]ModuleTar, error) {
 	if !module.ContainsFlattenedModules() {
 		return handleSingleOrEmptyModule(dest, module)
 	}
@@ -381,12 +379,11 @@ func ToNLayerTar(dest string, module BuildModule, logger logging.Logger) ([]Modu
 
 	// the original version should be blank because the first header should look like "/cnb/buildpacks/<buildpack-id>"
 	origID, origVersion := parseBpIDAndVersion(header)
-	logger.Debugf("initial header parse: %s, %s", origID, origVersion)
 	if origVersion != "" {
 		return nil, fmt.Errorf("first header '%s' contained unexpected version", header.Name)
 	}
 
-	if err := toNLayerTar(origID, origVersion, header, tr, tarCollection, logger); err != nil {
+	if err := toNLayerTar(origID, origVersion, header, tr, tarCollection); err != nil {
 		return nil, err
 	}
 
@@ -395,10 +392,10 @@ func ToNLayerTar(dest string, module BuildModule, logger logging.Logger) ([]Modu
 		return nil, errors.New("closing files")
 	}
 
-	return tarCollection.getModules(), nil
+	return tarCollection.moduleTars(), nil
 }
 
-func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Reader, tc *moduleTarCollection, logger logging.Logger) error {
+func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Reader, tc *moduleTarCollection) error {
 	toWrite := []*tar.Header{firstHeader}
 	if origVersion == "" { // TODO: test flattened module that contains buildpacks with same ID but different versions
 		// the first header only contains the id - e.g., /cnb/buildpacks/<buildpack-id>,
@@ -442,7 +439,7 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 		nextID, nextVersion := parseBpIDAndVersion(header)
 		if nextID != origID || nextVersion != origVersion {
 			// we found a new module, recurse
-			return toNLayerTar(nextID, nextVersion, header, tr, tc, logger)
+			return toNLayerTar(nextID, nextVersion, header, tr, tc)
 		}
 
 		err = mt.writer.WriteHeader(header)
@@ -566,7 +563,7 @@ func (m *moduleTarCollection) get(id, version string) (moduleTar, error) {
 	return m.modules[key], nil
 }
 
-func (m *moduleTarCollection) getModules() []ModuleTar {
+func (m *moduleTarCollection) moduleTars() []ModuleTar {
 	var modulesTar []ModuleTar
 	for _, v := range m.modules {
 		v := v
