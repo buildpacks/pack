@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -468,6 +469,9 @@ func parseBpIDAndVersion(hdr *tar.Header) (id, version string) {
 	// [4] = "{version}"
 	// ...
 	parts := strings.Split(hdr.Name, "/")
+	if runtime.GOOS == "windows" {
+		parts = strings.Split(hdr.Name, "\\")
+	}
 	size := len(parts)
 	switch {
 	case size < 4:

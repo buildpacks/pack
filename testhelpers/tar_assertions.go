@@ -27,7 +27,7 @@ func AssertOnTarEntry(t *testing.T, tarPath, entryPath string, assertFns ...TarE
 	AssertNil(t, err)
 	defer tarFile.Close()
 
-	header, data, err := readTarFileEntry(tarFile, entryPath)
+	header, data, err := readTarFileEntry(tarFile, filepath.Clean(entryPath))
 	AssertNil(t, err)
 
 	for _, fn := range assertFns {
