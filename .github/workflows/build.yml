@@ -130,7 +130,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./out/tests/coverage-unit.txt
           flags: unit,os_${{ matrix.os }}
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           verbose: true
       - name: Prepare Codecov
         if: matrix.os == 'windows'
