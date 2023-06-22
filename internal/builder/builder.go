@@ -1042,7 +1042,7 @@ func (b *Builder) stackLayer(dest string) (string, error) {
 	if b.metadata.Stack.RunImage.Image != "" {
 		err = toml.NewEncoder(buf).Encode(b.metadata.Stack)
 	} else if len(b.metadata.RunImages) > 0 {
-		err = toml.NewEncoder(buf).Encode(b.metadata.RunImages[0])
+		err = toml.NewEncoder(buf).Encode(StackMetadata{RunImage: b.metadata.RunImages[0]})
 	}
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to marshal stack.toml")

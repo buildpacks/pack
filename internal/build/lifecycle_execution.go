@@ -219,10 +219,31 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			}
 		}
 
+		var kanikoCache Cache
+		if l.PlatformAPI().AtLeast("0.12") {
+			// lifecycle 0.17.0 (introduces support for Platform API 0.12) and above will ensure that
+			// this volume is owned by the CNB user,
+			// and hence the restorer (after dropping privileges) will be able to write to it.
+			kanikoCache = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Kaniko, "kaniko", l.docker)
+		} else {
+			switch {
+			case buildCache.Type() == cache.Volume:
+				// Re-use the build cache as the kaniko cache. Earlier versions of the lifecycle (0.16.x and below)
+				// already ensure this volume is owned by the CNB user.
+				kanikoCache = buildCache
+			case l.hasExtensionsForBuild():
+				// We need a usable kaniko cache, so error in this case.
+				return fmt.Errorf("build cache must be volume cache when building with extensions")
+			default:
+				// The kaniko cache is unused, so it doesn't matter that it's not usable.
+				kanikoCache = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Kaniko, "kaniko", l.docker)
+			}
+		}
+
 		l.logger.Info(style.Step("RESTORING"))
 		if l.opts.ClearCache && l.PlatformAPI().LessThan("0.10") {
 			l.logger.Info("Skipping 'restore' due to clearing cache")
-		} else if err := l.Restore(ctx, buildCache, phaseFactory); err != nil {
+		} else if err := l.Restore(ctx, buildCache, kanikoCache, phaseFactory); err != nil {
 			return err
 		}
 
@@ -230,7 +251,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		if l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild() {
 			group.Go(func() error {
 				l.logger.Info(style.Step("EXTENDING (BUILD)"))
-				return l.ExtendBuild(ctx, buildCache, phaseFactory)
+				return l.ExtendBuild(ctx, kanikoCache, phaseFactory)
 			})
 		} else {
 			group.Go(func() error {
@@ -249,7 +270,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {
 			group.Go(func() error {
 				l.logger.Info(style.Step("EXTENDING (RUN)"))
-				return l.ExtendRun(ctx, buildCache, phaseFactory)
+				return l.ExtendRun(ctx, kanikoCache, phaseFactory)
 			})
 		}
 
@@ -258,7 +279,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		}
 
 		l.logger.Info(style.Step("EXPORTING"))
-		return l.Export(ctx, buildCache, launchCache, phaseFactory)
+		return l.Export(ctx, buildCache, launchCache, kanikoCache, phaseFactory)
 	}
 
 	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
@@ -421,7 +442,7 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 	return detect.Run(ctx)
 }
 
-func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kanikoCache Cache, phaseFactory PhaseFactory) error {
 	// build up flags and ops
 	var flags []string
 	if l.opts.ClearCache {
@@ -454,12 +475,7 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, phas
 			registryImages = append(registryImages, l.opts.BuilderImage)
 		}
 
-		switch buildCache.Type() {
-		case cache.Volume:
-			kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.kanikoCacheDir()))
-		default:
-			return fmt.Errorf("build cache must be volume cache when building with extensions")
-		}
+		kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir()))
 	}
 
 	// for auths
@@ -569,9 +585,13 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 		if l.opts.RunImage != "" {
 			args = append([]string{"-run-image", l.opts.RunImage}, args...)
 		}
-		args = append([]string{"-stack", l.mountPaths.stackPath()}, args...)
-		stackOp = WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os))
-		runOp = WithContainerOperations(WriteRunToml(l.mountPaths.runPath(), l.opts.Builder.RunImages(), l.os))
+		if l.platformAPI.LessThan("0.12") {
+			args = append([]string{"-stack", l.mountPaths.stackPath()}, args...)
+			stackOp = WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os))
+		} else {
+			args = append([]string{"-run", l.mountPaths.runPath()}, args...)
+			runOp = WithContainerOperations(WriteRunToml(l.mountPaths.runPath(), l.opts.Builder.RunImages(), l.os))
+		}
 	}
 
 	flagsOp := WithFlags(flags...)
@@ -645,17 +665,8 @@ func (l *LifecycleExecution) Build(ctx context.Context, phaseFactory PhaseFactor
 	return build.Run(ctx)
 }
 
-func (l *LifecycleExecution) ExtendBuild(ctx context.Context, buildCache Cache, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory) error {
 	flags := []string{"-app", l.mountPaths.appDir()}
-
-	// set kaniko cache opt
-	var kanikoCacheBindOp PhaseConfigProviderOperation
-	switch buildCache.Type() {
-	case cache.Volume:
-		kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.kanikoCacheDir()))
-	default:
-		return fmt.Errorf("build cache must be volume cache when building with extensions")
-	}
 
 	configProvider := NewPhaseConfigProvider(
 		"extender",
@@ -667,7 +678,7 @@ func (l *LifecycleExecution) ExtendBuild(ctx context.Context, buildCache Cache, 
 		WithFlags(flags...),
 		WithNetwork(l.opts.Network),
 		WithRoot(),
-		kanikoCacheBindOp,
+		WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir())),
 	)
 
 	extend := phaseFactory.New(configProvider)
@@ -675,17 +686,8 @@ func (l *LifecycleExecution) ExtendBuild(ctx context.Context, buildCache Cache, 
 	return extend.Run(ctx)
 }
 
-func (l *LifecycleExecution) ExtendRun(ctx context.Context, buildCache Cache, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) ExtendRun(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory) error {
 	flags := []string{"-app", l.mountPaths.appDir(), "-kind", "run"}
-
-	// set kaniko cache opt
-	var kanikoCacheBindOp PhaseConfigProviderOperation
-	switch buildCache.Type() {
-	case cache.Volume:
-		kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.kanikoCacheDir()))
-	default:
-		return fmt.Errorf("build cache must be volume cache when building with extensions")
-	}
 
 	configProvider := NewPhaseConfigProvider(
 		"extender",
@@ -699,7 +701,7 @@ func (l *LifecycleExecution) ExtendRun(ctx context.Context, buildCache Cache, ph
 		WithRoot(),
 		WithImage(l.runImageAfterExtensions()),
 		WithBinds(fmt.Sprintf("%s:%s", filepath.Join(l.tmpDir, "cnb"), l.mountPaths.cnbDir())),
-		kanikoCacheBindOp,
+		WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir())),
 	)
 
 	extend := phaseFactory.New(configProvider)
@@ -717,19 +719,21 @@ func determineDefaultProcessType(platformAPI *api.Version, providedValue string)
 	return providedValue
 }
 
-func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache Cache, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache, kanikoCache Cache, phaseFactory PhaseFactory) error {
 	flags := []string{
 		"-app", l.mountPaths.appDir(),
 		"-cache-dir", l.mountPaths.cacheDir(),
 	}
 
 	expEnv := NullOp()
+	kanikoCacheBindOp := NullOp()
 	if l.platformAPI.LessThan("0.12") {
 		flags = append(flags, "-stack", l.mountPaths.stackPath())
 	} else {
 		flags = append(flags, "-run", l.mountPaths.runPath())
 		if l.hasExtensionsForRun() {
 			expEnv = WithEnv("CNB_EXPERIMENTAL_MODE=warn")
+			kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir()))
 		}
 	}
 
@@ -771,6 +775,7 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		WithRoot(),
 		WithNetwork(l.opts.Network),
 		cacheBindOp,
+		kanikoCacheBindOp,
 		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os)),
 		WithContainerOperations(WriteRunToml(l.mountPaths.runPath(), l.opts.Builder.RunImages(), l.os)),
 		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),

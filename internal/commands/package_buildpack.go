@@ -33,7 +33,7 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, packager Buildpa
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			deprecationWarning(logger, "package-buildpack", "buildpack package")
 
-			if err := validateBuildpackPackageFlags(&flags); err != nil {
+			if err := validateBuildpackPackageFlags(cfg, &flags); err != nil {
 				return err
 			}
 
