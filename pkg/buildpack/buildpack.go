@@ -368,67 +368,26 @@ func ToNLayerTar(dest string, module BuildModule, logger logging.Logger) ([]Modu
 	defer modReader.Close()
 
 	tarCollection := newModuleTarCollection(dest)
-	rootFolderHeaders := map[string]*tar.Header{}
-
 	tr := tar.NewReader(modReader)
-	headersProcessed := 0
-	for {
-		header, err := tr.Next()
-		if err != nil {
-			if err == io.EOF {
-				if headersProcessed == 0 {
-					// If the reader was empty, we need to write an empty tar on disk
-					return handleSingleOrEmptyModule(dest, module)
-				}
-				break
-			}
-			return nil, errors.Wrapf(err, "failed to read next data '%s'", header.Name)
-		}
 
-		id, version := parseBpIDAndVersion(header)
-		if !matchIDVersion(module.Descriptor(), id, version) {
-			if version == "" && header.Typeflag == tar.TypeDir {
-				// we need to save it and write it later
-				if _, ok := rootFolderHeaders[id]; !ok {
-					rootFolderHeaders[id] = header
-					continue
-				}
-			}
-		} else {
-			id = module.Descriptor().EscapedID()
-			version = module.Descriptor().Info().Version
+	// read the first header
+	header, err := tr.Next()
+	if err != nil {
+		if err == io.EOF {
+			return handleSingleOrEmptyModule(dest, module)
 		}
+		return nil, fmt.Errorf("failed to read first header '%s': %w", header.Name, err)
+	}
 
-		bpTar, err := tarCollection.get(id, version)
-		if err != nil {
-			return nil, err
-		}
+	// the original version should be blank because the first header should look like "/cnb/buildpacks/<buildpack-id>"
+	origID, origVersion := parseBpIDAndVersion(header)
+	logger.Debugf("initial header parse: %s, %s", origID, origVersion)
+	if origVersion != "" {
+		return nil, fmt.Errorf("first header '%s' contained unexpected version", header.Name)
+	}
 
-		if rootHeader, ok := rootFolderHeaders[id]; ok {
-			err = bpTar.writer.WriteHeader(rootHeader)
-			logger.Debugf("writing root folder %s into module tar with id=%s", rootHeader.Name, id)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to write root header for '%s'", rootHeader.Name)
-			}
-			delete(rootFolderHeaders, id)
-		}
-
-		logger.Debugf("writing %s into module tar with id=%s, version=%s", header.Name, id, version)
-		err = bpTar.writer.WriteHeader(header)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to write header for '%s'", header.Name)
-		}
-
-		buf, err := io.ReadAll(tr)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to read contents of '%s'", header.Name)
-		}
-
-		_, err = bpTar.writer.Write(buf)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to write contents to '%s'", header.Name)
-		}
-		headersProcessed++
+	if err := toNLayerTar(origID, origVersion, header, tr, tarCollection, logger); err != nil {
+		return nil, err
 	}
 
 	errs := tarCollection.close()
@@ -439,12 +398,68 @@ func ToNLayerTar(dest string, module BuildModule, logger logging.Logger) ([]Modu
 	return tarCollection.getModules(), nil
 }
 
-func matchIDVersion(desc Descriptor, id, version string) bool {
-	sameID := id == desc.EscapedID() || id == desc.Info().ID
-	if version == "" {
-		return sameID
+func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Reader, tc *moduleTarCollection, logger logging.Logger) error {
+	toWrite := []*tar.Header{firstHeader}
+	if origVersion == "" { // TODO: test flattened module that contains buildpacks with same ID but different versions
+		// the first header only contains the id - e.g., /cnb/buildpacks/<buildpack-id>,
+		// read the next header to get the version
+		secondHeader, err := tr.Next()
+		if err != nil {
+			return err
+		}
+		nextID, nextVersion := parseBpIDAndVersion(secondHeader)
+		if nextID != origID || nextVersion == "" {
+			return fmt.Errorf("second header '%s' contained unexpected id or missing version", secondHeader.Name)
+		}
+		origVersion = nextVersion
+		toWrite = append(toWrite, secondHeader)
+	} else {
+		// the first header contains id and version - e.g., /cnb/buildpacks/<buildpack-id>/<buildpack-version>,
+		// we need to write the parent header - e.g., /cnb/buildpacks/<buildpack-id>
+		realFirstHeader := *firstHeader
+		realFirstHeader.Name = filepath.Dir(firstHeader.Name)
+		toWrite = append([]*tar.Header{&realFirstHeader}, toWrite...)
 	}
-	return sameID && version == desc.Info().Version
+	mt, err := tc.get(origID, origVersion)
+	if err != nil {
+		return err
+	}
+	for _, h := range toWrite {
+		if err := mt.writer.WriteHeader(h); err != nil {
+			return fmt.Errorf("failed to write header '%s': %w", h.Name, err)
+		}
+	}
+	// write the rest of the package
+	var header *tar.Header
+	for {
+		header, err = tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		nextID, nextVersion := parseBpIDAndVersion(header)
+		if nextID != origID || nextVersion != origVersion {
+			// we found a new module, recurse
+			return toNLayerTar(nextID, nextVersion, header, tr, tc, logger)
+		}
+
+		err = mt.writer.WriteHeader(header)
+		if err != nil {
+			return errors.Wrapf(err, "failed to write header for '%s'", header.Name)
+		}
+
+		buf, err := io.ReadAll(tr)
+		if err != nil {
+			return errors.Wrapf(err, "failed to read contents of '%s'", header.Name)
+		}
+
+		_, err = mt.writer.Write(buf)
+		if err != nil {
+			return errors.Wrapf(err, "failed to write contents to '%s'", header.Name)
+		}
+	}
 }
 
 func parseBpIDAndVersion(hdr *tar.Header) (id, version string) {
