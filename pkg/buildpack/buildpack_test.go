@@ -1,7 +1,6 @@
 package buildpack_test
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -16,8 +15,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/pkg/logging"
-
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
@@ -31,15 +28,6 @@ func TestBuildpack(t *testing.T) {
 }
 
 func testBuildpack(t *testing.T, when spec.G, it spec.S) {
-	var (
-		outBuf bytes.Buffer
-		logger logging.Logger
-	)
-
-	it.Before(func() {
-		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
-	})
-
 	var writeBlobToFile = func(bp buildpack.BuildModule) string {
 		t.Helper()
 
@@ -649,7 +637,7 @@ version = "buildpack-2-version-1"
 					buildpack.Flattened(),
 				)
 
-				tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp, logger)
+				tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp)
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(tarPaths), 2)
 				assertBuildpacksToTar(t, tarPaths, expectedBP)
@@ -700,7 +688,7 @@ version = "buildpack-1-version-1"
 					},
 				)
 
-				tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp, logger)
+				tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp)
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(tarPaths), 1)
 				assertBuildpacksToTar(t, tarPaths, expectedBP)
@@ -721,7 +709,7 @@ version = "buildpack-1-version-1"
 				}
 			})
 
-			it("returns N tar files", func() {
+			it("returns N tar files one per each version", func() {
 				bp := buildpack.FromBlob(
 					&dist.BuildpackDescriptor{
 						WithAPI: api.MustParse("0.3"),
@@ -770,8 +758,7 @@ version = "buildpack-2-version-1"
 					buildpack.Flattened(),
 				)
 
-				tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp, logger)
-				fmt.Println(outBuf.String())
+				tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp)
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(tarPaths), 2)
 				assertBuildpacksToTar(t, tarPaths, expectedBP)
@@ -780,7 +767,7 @@ version = "buildpack-2-version-1"
 
 		when("BuildModule could not be read", func() {
 			it("surfaces errors encountered while reading blob", func() {
-				_, err = buildpack.ToNLayerTar(tmpDir, &errorBuildModule{flattened: true}, logger)
+				_, err = buildpack.ToNLayerTar(tmpDir, &errorBuildModule{flattened: true})
 				h.AssertError(t, err, "opening blob")
 			})
 		})
