@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"io"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/pkg/errors"
@@ -27,7 +26,7 @@ type fileEntry struct {
 func (t *TarBuilder) AddFile(path string, mode int64, modTime time.Time, contents []byte) {
 	t.files = append(t.files, fileEntry{
 		typeFlag: tar.TypeReg,
-		path:     filepath.Clean(path),
+		path:     path,
 		mode:     mode,
 		modTime:  modTime,
 		contents: contents,
@@ -37,7 +36,7 @@ func (t *TarBuilder) AddFile(path string, mode int64, modTime time.Time, content
 func (t *TarBuilder) AddDir(path string, mode int64, modTime time.Time) {
 	t.files = append(t.files, fileEntry{
 		typeFlag: tar.TypeDir,
-		path:     filepath.Clean(path),
+		path:     path,
 		mode:     mode,
 		modTime:  modTime,
 	})
@@ -57,7 +56,7 @@ func (t *TarBuilder) Reader(twf TarWriterFactory) io.ReadCloser {
 }
 
 func (t *TarBuilder) WriteToPath(path string, twf TarWriterFactory) error {
-	fh, err := os.Create(filepath.Clean(path))
+	fh, err := os.Create(path)
 	if err != nil {
 		return errors.Wrapf(err, "create file for tar: %s", style.Symbol(path))
 	}
