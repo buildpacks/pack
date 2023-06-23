@@ -437,7 +437,7 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 		// the first header contains id and version - e.g., /cnb/buildpacks/<buildpack-id>/<buildpack-version>,
 		// we need to write the parent header - e.g., /cnb/buildpacks/<buildpack-id>
 		realFirstHeader := *firstHeader
-		realFirstHeader.Name = filepath.Dir(firstHeader.Name)
+		realFirstHeader.Name = filepath.ToSlash(filepath.Dir(firstHeader.Name))
 		toWrite = append([]*tar.Header{&realFirstHeader}, toWrite...)
 	}
 	mt, err := tc.get(origID, origVersion)
