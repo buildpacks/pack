@@ -1179,8 +1179,7 @@ func splitBuildModules(kind, tmpDir string, additionalModules []buildpack.BuildM
 		}
 		// moduleTar could be an individual Buildpack or flattened Buildpack that writes an empty tar on disk
 		for _, moduleTar := range mi.moduleTars {
-			// eBM stands for exploded build module (module written on disk)
-			eBM := moduleWithDiffID{tarPath: moduleTar.Path()}
+			explodedMod := moduleWithDiffID{tarPath: moduleTar.Path()}
 			diffID, err := dist.LayerDiffID(moduleTar.Path())
 			if err != nil {
 				errs = append(errs, errors.Wrapf(err, "calculating layer diffID for path %s", moduleTar.Path()))
@@ -1190,21 +1189,21 @@ func splitBuildModules(kind, tmpDir string, additionalModules []buildpack.BuildM
 				logger.Debugf("%s %s is a component of a flattened buildpack that will be added elsewhere, skipping...", istrings.Title(kind), style.Symbol(moduleTar.Info().FullName()))
 				continue // we don't need to keep empty tars
 			}
-			eBM.diffID = diffID.String()
+			explodedMod.diffID = diffID.String()
 			if moduleTar.Info().FullName() == fmt.Sprintf("%s@%s", module.Descriptor().EscapedID(), module.Descriptor().Info().Version) ||
 				moduleTar.Info().FullName() == module.Descriptor().Info().FullName() {
-				eBM.module = module
+				explodedMod.module = module
 			} else {
 				// we need to match the exploded modules with its corresponding BuildModule.
 				// this is important when flattened modules where included
 				for _, additionalModule := range additionalModules {
 					if namesMatch(additionalModule, moduleTar) {
-						eBM.module = additionalModule
+						explodedMod.module = additionalModule
 						break
 					}
 				}
 			}
-			result = append(result, eBM)
+			result = append(result, explodedMod)
 		}
 	}
 
