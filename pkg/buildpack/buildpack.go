@@ -398,6 +398,28 @@ func ToNLayerTar(dest string, module BuildModule) ([]ModuleTar, error) {
 
 func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Reader, tc *moduleTarCollection) error {
 	toWrite := []*tar.Header{firstHeader}
+	if runtime.GOOS == "windows" && !strings.Contains(firstHeader.Name, "/cnb/buildpacks/") {
+		// On windows we can see the following headers before finding */cnb/buildpacks/<buildpack-id>/*
+		// Files
+		// Hives
+		// Files/cnb
+		// Files/cnb/buildpacks
+		for {
+			next, err := tr.Next()
+			if err != nil {
+				return err
+			}
+			if !strings.Contains(next.Name, "/cnb/buildpacks/") {
+				toWrite = append(toWrite, next)
+			} else {
+				origID, origVersion = parseBpIDAndVersion(next)
+				tc.buffer = toWrite
+				toWrite = []*tar.Header{next}
+				break
+			}
+		}
+	}
+
 	if origVersion == "" { // TODO: test flattened module that contains buildpacks with same ID but different versions
 		// the first header only contains the id - e.g., /cnb/buildpacks/<buildpack-id>,
 		// read the next header to get the version
@@ -422,6 +444,12 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 	if err != nil {
 		return err
 	}
+	for _, h := range tc.buffer {
+		if err := mt.writer.WriteHeader(h); err != nil {
+			return fmt.Errorf("failed to write header '%s': %w", h.Name, err)
+		}
+	}
+
 	for _, h := range toWrite {
 		if err := mt.writer.WriteHeader(h); err != nil {
 			return fmt.Errorf("failed to write header '%s': %w", h.Name, err)
@@ -462,16 +490,13 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 
 func parseBpIDAndVersion(hdr *tar.Header) (id, version string) {
 	// splitting "/cnb/buildpacks/{ID}/{version}/*" returns
-	// [0] = "" -> first element is empty
+	// [0] = "" -> first element is empty or "Files" in windows
 	// [1] = "cnb"
 	// [2] = "buildpacks"
 	// [3] = "{ID}"
 	// [4] = "{version}"
 	// ...
 	parts := strings.Split(hdr.Name, "/")
-	if runtime.GOOS == "windows" {
-		parts = strings.Split(hdr.Name, "\\")
-	}
 	size := len(parts)
 	switch {
 	case size < 4:
@@ -546,12 +571,14 @@ func newModuleTar(dest, id, version string) (moduleTar, error) {
 type moduleTarCollection struct {
 	rootPath string
 	modules  map[string]moduleTar
+	buffer   []*tar.Header
 }
 
 func newModuleTarCollection(rootPath string) *moduleTarCollection {
 	return &moduleTarCollection{
 		rootPath: rootPath,
 		modules:  map[string]moduleTar{},
+		buffer:   []*tar.Header{},
 	}
 }
 

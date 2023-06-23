@@ -602,9 +602,9 @@ version = "1.2.3"
 							tarBuilder := archive.TarBuilder{}
 
 							// Buildpack 1
-							tarBuilder.AddDir(filepath.Clean("/cnb/buildpacks/buildpack-1-id"), 0700, time.Now())
-							tarBuilder.AddDir(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1"), 0700, time.Now())
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/buildpack.toml"), 0700, time.Now(), []byte(`
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id", 0700, time.Now())
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/buildpack.toml", 0700, time.Now(), []byte(`
 api = "0.3"
 
 [buildpack]
@@ -612,14 +612,14 @@ id = "buildpack-1-id"
 version = "buildpack-1-version-1"
 
 `))
-							tarBuilder.AddDir(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin"), 0700, time.Now())
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/detect"), 0700, time.Now(), []byte("detect-contents"))
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/build"), 0700, time.Now(), []byte("build-contents"))
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/detect", 0700, time.Now(), []byte("detect-contents"))
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/build", 0700, time.Now(), []byte("build-contents"))
 
 							// Buildpack 2
-							tarBuilder.AddDir(filepath.Clean("/cnb/buildpacks/buildpack-2-id"), 0700, time.Now())
-							tarBuilder.AddDir(filepath.Clean("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1"), 0700, time.Now())
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/buildpack.toml"), 0700, time.Now(), []byte(`
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-2-id", 0700, time.Now())
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/buildpack.toml", 0700, time.Now(), []byte(`
 api = "0.3"
 
 [buildpack]
@@ -627,9 +627,9 @@ id = "buildpack-2-id"
 version = "buildpack-2-version-1"
 
 `))
-							tarBuilder.AddDir(filepath.Clean("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin"), 0700, time.Now())
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin/detect"), 0700, time.Now(), []byte("detect-contents"))
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin/build"), 0700, time.Now(), []byte("build-contents"))
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin/detect", 0700, time.Now(), []byte("detect-contents"))
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin/build", 0700, time.Now(), []byte("build-contents"))
 
 							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 						},
@@ -669,9 +669,9 @@ version = "buildpack-2-version-1"
 							tarBuilder := archive.TarBuilder{}
 
 							// Buildpack 1
-							tarBuilder.AddDir(filepath.Clean("/cnb/buildpacks/buildpack-1-id"), 0700, time.Now())
-							tarBuilder.AddDir(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1"), 0700, time.Now())
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/buildpack.toml"), 0700, time.Now(), []byte(`
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id", 0700, time.Now())
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/buildpack.toml", 0700, time.Now(), []byte(`
 api = "0.3"
 
 [buildpack]
@@ -679,9 +679,9 @@ id = "buildpack-1-id"
 version = "buildpack-1-version-1"
 
 `))
-							tarBuilder.AddDir(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin"), 0700, time.Now())
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/detect"), 0700, time.Now(), []byte("detect-contents"))
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/build"), 0700, time.Now(), []byte("build-contents"))
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/detect", 0700, time.Now(), []byte("detect-contents"))
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/build", 0700, time.Now(), []byte("build-contents"))
 
 							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 						},
@@ -724,9 +724,9 @@ version = "buildpack-1-version-1"
 							tarBuilder := archive.TarBuilder{}
 
 							// Buildpack 1
-							tarBuilder.AddDir(filepath.Clean("/cnb/buildpacks/buildpack-1-id"), 0700, time.Now())
-							tarBuilder.AddDir(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1"), 0700, time.Now())
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/buildpack.toml"), 0700, time.Now(), []byte(`
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id", 0700, time.Now())
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/buildpack.toml", 0700, time.Now(), []byte(`
 api = "0.3"
 
 [buildpack]
@@ -734,13 +734,13 @@ id = "buildpack-1-id"
 version = "buildpack-1-version-1"
 
 `))
-							tarBuilder.AddDir(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin"), 0700, time.Now())
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/detect"), 0700, time.Now(), []byte("detect-contents"))
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/build"), 0700, time.Now(), []byte("build-contents"))
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/detect", 0700, time.Now(), []byte("detect-contents"))
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/build", 0700, time.Now(), []byte("build-contents"))
 
 							// Buildpack 2 same as before but with different version
-							tarBuilder.AddDir(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-2"), 0700, time.Now())
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-2/buildpack.toml"), 0700, time.Now(), []byte(`
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-2", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-2/buildpack.toml", 0700, time.Now(), []byte(`
 api = "0.3"
 
 [buildpack]
@@ -748,9 +748,9 @@ id = "buildpack-2-id"
 version = "buildpack-2-version-1"
 
 `))
-							tarBuilder.AddDir(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-2/bin"), 0700, time.Now())
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-2/bin/detect"), 0700, time.Now(), []byte("detect-contents"))
-							tarBuilder.AddFile(filepath.Clean("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-2/bin/build"), 0700, time.Now(), []byte("build-contents"))
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-2/bin", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-2/bin/detect", 0700, time.Now(), []byte("detect-contents"))
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-2/bin/build", 0700, time.Now(), []byte("build-contents"))
 
 							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 						},
@@ -824,22 +824,22 @@ func assertBuildpacksToTar(t *testing.T, actual []buildpack.ModuleTar, expected 
 		for _, moduleTar := range actual {
 			if expectedBP.id == moduleTar.Info().ID && expectedBP.version == moduleTar.Info().Version {
 				found = true
-				h.AssertOnTarEntry(t, moduleTar.Path(), filepath.Clean(fmt.Sprintf("/cnb/buildpacks/%s", expectedBP.id)),
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s", expectedBP.id),
 					h.IsDirectory(),
 				)
-				h.AssertOnTarEntry(t, moduleTar.Path(), filepath.Clean(fmt.Sprintf("/cnb/buildpacks/%s/%s", expectedBP.id, expectedBP.version)),
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s", expectedBP.id, expectedBP.version),
 					h.IsDirectory(),
 				)
-				h.AssertOnTarEntry(t, moduleTar.Path(), filepath.Clean(fmt.Sprintf("/cnb/buildpacks/%s/%s/bin", expectedBP.id, expectedBP.version)),
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin", expectedBP.id, expectedBP.version),
 					h.IsDirectory(),
 				)
-				h.AssertOnTarEntry(t, moduleTar.Path(), filepath.Clean(fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/build", expectedBP.id, expectedBP.version)),
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/build", expectedBP.id, expectedBP.version),
 					h.HasFileMode(0700),
 				)
-				h.AssertOnTarEntry(t, moduleTar.Path(), filepath.Clean(fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/detect", expectedBP.id, expectedBP.version)),
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/bin/detect", expectedBP.id, expectedBP.version),
 					h.HasFileMode(0700),
 				)
-				h.AssertOnTarEntry(t, moduleTar.Path(), filepath.Clean(fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml", expectedBP.id, expectedBP.version)),
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml", expectedBP.id, expectedBP.version),
 					h.HasFileMode(0700),
 				)
 				break
