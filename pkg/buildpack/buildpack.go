@@ -420,7 +420,7 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 		}
 	}
 
-	if origVersion == "" { // TODO: test flattened module that contains buildpacks with same ID but different versions
+	if origVersion == "" {
 		// the first header only contains the id - e.g., /cnb/buildpacks/<buildpack-id>,
 		// read the next header to get the version
 		secondHeader, err := tr.Next()

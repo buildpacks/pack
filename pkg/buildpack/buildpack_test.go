@@ -573,77 +573,6 @@ version = "1.2.3"
 			}
 		})
 
-		when("BuildModule contains N flattened buildpacks", func() {
-			it.Before(func() {
-				expectedBP = []expectedBuildpack{
-					{
-						id:      "buildpack-1-id",
-						version: "buildpack-1-version-1",
-					},
-					{
-						id:      "buildpack-2-id",
-						version: "buildpack-2-version-1",
-					},
-				}
-			})
-
-			it("returns N tar files", func() {
-				bp := buildpack.FromBlob(
-					&dist.BuildpackDescriptor{
-						WithAPI: api.MustParse("0.3"),
-						WithInfo: dist.ModuleInfo{
-							ID:      "buildpack-1-id",
-							Version: "buildpack-1-version-1",
-							Name:    "buildpack-1",
-						},
-					},
-					&readerBlob{
-						openFn: func() io.ReadCloser {
-							tarBuilder := archive.TarBuilder{}
-
-							// Buildpack 1
-							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id", 0700, time.Now())
-							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1", 0700, time.Now())
-							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/buildpack.toml", 0700, time.Now(), []byte(`
-api = "0.3"
-
-[buildpack]
-id = "buildpack-1-id"
-version = "buildpack-1-version-1"
-
-`))
-							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin", 0700, time.Now())
-							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/detect", 0700, time.Now(), []byte("detect-contents"))
-							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/build", 0700, time.Now(), []byte("build-contents"))
-
-							// Buildpack 2
-							tarBuilder.AddDir("/cnb/buildpacks/buildpack-2-id", 0700, time.Now())
-							tarBuilder.AddDir("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1", 0700, time.Now())
-							tarBuilder.AddFile("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/buildpack.toml", 0700, time.Now(), []byte(`
-api = "0.3"
-
-[buildpack]
-id = "buildpack-2-id"
-version = "buildpack-2-version-1"
-
-`))
-							tarBuilder.AddDir("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin", 0700, time.Now())
-							tarBuilder.AddFile("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin/detect", 0700, time.Now(), []byte("detect-contents"))
-							tarBuilder.AddFile("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin/build", 0700, time.Now(), []byte("build-contents"))
-
-							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-						},
-					},
-					buildpack.Flattened(),
-				)
-
-				tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp)
-				h.AssertNil(t, err)
-				h.AssertEq(t, len(tarPaths), 2)
-				assertBuildpacksToTar(t, tarPaths, expectedBP)
-			})
-		})
-
 		when("BuildModule contains only an individual buildpack (default)", func() {
 			it.Before(func() {
 				expectedBP = []expectedBuildpack{
@@ -692,6 +621,143 @@ version = "buildpack-1-version-1"
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(tarPaths), 1)
 				assertBuildpacksToTar(t, tarPaths, expectedBP)
+			})
+		})
+
+		when("BuildModule contains N flattened buildpacks", func() {
+			it.Before(func() {
+				expectedBP = []expectedBuildpack{
+					{
+						id:      "buildpack-1-id",
+						version: "buildpack-1-version-1",
+					},
+					{
+						id:      "buildpack-2-id",
+						version: "buildpack-2-version-1",
+					},
+				}
+			})
+			when("not running o windows", func() {
+				it("returns N tar files", func() {
+					h.SkipIf(t, runtime.GOOS == "windows", "")
+					bp := buildpack.FromBlob(
+						&dist.BuildpackDescriptor{
+							WithAPI: api.MustParse("0.3"),
+							WithInfo: dist.ModuleInfo{
+								ID:      "buildpack-1-id",
+								Version: "buildpack-1-version-1",
+								Name:    "buildpack-1",
+							},
+						},
+						&readerBlob{
+							openFn: func() io.ReadCloser {
+								tarBuilder := archive.TarBuilder{}
+
+								// Buildpack 1
+								tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id", 0700, time.Now())
+								tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1", 0700, time.Now())
+								tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/buildpack.toml", 0700, time.Now(), []byte(`
+api = "0.3"
+
+[buildpack]
+id = "buildpack-1-id"
+version = "buildpack-1-version-1"
+
+`))
+								tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin", 0700, time.Now())
+								tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/detect", 0700, time.Now(), []byte("detect-contents"))
+								tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/build", 0700, time.Now(), []byte("build-contents"))
+
+								// Buildpack 2
+								tarBuilder.AddDir("/cnb/buildpacks/buildpack-2-id", 0700, time.Now())
+								tarBuilder.AddDir("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1", 0700, time.Now())
+								tarBuilder.AddFile("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/buildpack.toml", 0700, time.Now(), []byte(`
+api = "0.3"
+
+[buildpack]
+id = "buildpack-2-id"
+version = "buildpack-2-version-1"
+
+`))
+								tarBuilder.AddDir("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin", 0700, time.Now())
+								tarBuilder.AddFile("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin/detect", 0700, time.Now(), []byte("detect-contents"))
+								tarBuilder.AddFile("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin/build", 0700, time.Now(), []byte("build-contents"))
+
+								return tarBuilder.Reader(archive.DefaultTarWriterFactory())
+							},
+						},
+						buildpack.Flattened(),
+					)
+
+					tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp)
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(tarPaths), 2)
+					assertBuildpacksToTar(t, tarPaths, expectedBP)
+				})
+			})
+
+			when("running on windows", func() {
+				it("returns N tar files", func() {
+					h.SkipIf(t, runtime.GOOS != "windows", "")
+					bp := buildpack.FromBlob(
+						&dist.BuildpackDescriptor{
+							WithAPI: api.MustParse("0.3"),
+							WithInfo: dist.ModuleInfo{
+								ID:      "buildpack-1-id",
+								Version: "buildpack-1-version-1",
+								Name:    "buildpack-1",
+							},
+						},
+						&readerBlob{
+							openFn: func() io.ReadCloser {
+								tarBuilder := archive.TarBuilder{}
+								// Windows tar format
+								tarBuilder.AddDir("Files", 0700, time.Now())
+								tarBuilder.AddDir("Hives", 0700, time.Now())
+								tarBuilder.AddDir("Files/cnb", 0700, time.Now())
+								tarBuilder.AddDir("Files/cnb/builpacks", 0700, time.Now())
+
+								// Buildpack 1
+								tarBuilder.AddDir("Files/cnb/buildpacks/buildpack-1-id", 0700, time.Now())
+								tarBuilder.AddDir("Files/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1", 0700, time.Now())
+								tarBuilder.AddFile("Files/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/buildpack.toml", 0700, time.Now(), []byte(`
+api = "0.3"
+
+[buildpack]
+id = "buildpack-1-id"
+version = "buildpack-1-version-1"
+
+`))
+								tarBuilder.AddDir("Files/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin", 0700, time.Now())
+								tarBuilder.AddFile("Files/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/detect.bat", 0700, time.Now(), []byte("detect-contents"))
+								tarBuilder.AddFile("Files/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/bin/build.bat", 0700, time.Now(), []byte("build-contents"))
+
+								// Buildpack 2
+								tarBuilder.AddDir("Files/cnb/buildpacks/buildpack-2-id", 0700, time.Now())
+								tarBuilder.AddDir("Files/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1", 0700, time.Now())
+								tarBuilder.AddFile("Files/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/buildpack.toml", 0700, time.Now(), []byte(`
+api = "0.3"
+
+[buildpack]
+id = "buildpack-2-id"
+version = "buildpack-2-version-1"
+
+`))
+								tarBuilder.AddDir("Files/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin", 0700, time.Now())
+								tarBuilder.AddFile("Files/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin/detect.bat", 0700, time.Now(), []byte("detect-contents"))
+								tarBuilder.AddFile("Files/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1/bin/build.bat", 0700, time.Now(), []byte("build-contents"))
+
+								return tarBuilder.Reader(archive.DefaultTarWriterFactory())
+							},
+						},
+						buildpack.Flattened(),
+					)
+
+					tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp)
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(tarPaths), 2)
+					assertWindowsBuildpacksToTar(t, tarPaths, expectedBP)
+				})
 			})
 		})
 
@@ -840,6 +906,38 @@ func assertBuildpacksToTar(t *testing.T, actual []buildpack.ModuleTar, expected 
 					h.HasFileMode(0700),
 				)
 				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml", expectedBP.id, expectedBP.version),
+					h.HasFileMode(0700),
+				)
+				break
+			}
+		}
+		h.AssertTrue(t, found)
+	}
+}
+
+func assertWindowsBuildpacksToTar(t *testing.T, actual []buildpack.ModuleTar, expected []expectedBuildpack) {
+	t.Helper()
+	for _, expectedBP := range expected {
+		found := false
+		for _, moduleTar := range actual {
+			if expectedBP.id == moduleTar.Info().ID && expectedBP.version == moduleTar.Info().Version {
+				found = true
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("Files/cnb/buildpacks/%s", expectedBP.id),
+					h.IsDirectory(),
+				)
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("Files/cnb/buildpacks/%s/%s", expectedBP.id, expectedBP.version),
+					h.IsDirectory(),
+				)
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("Files/cnb/buildpacks/%s/%s/bin", expectedBP.id, expectedBP.version),
+					h.IsDirectory(),
+				)
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("Files/cnb/buildpacks/%s/%s/bin/build.bat", expectedBP.id, expectedBP.version),
+					h.HasFileMode(0700),
+				)
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("Files/cnb/buildpacks/%s/%s/bin/detect.bat", expectedBP.id, expectedBP.version),
+					h.HasFileMode(0700),
+				)
+				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("Files/cnb/buildpacks/%s/%s/buildpack.toml", expectedBP.id, expectedBP.version),
 					h.HasFileMode(0700),
 				)
 				break
