@@ -174,10 +174,13 @@ func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int
 			Name:     basePath,
 			Mode:     mode,
 		}
-		if rootHeader.Mode == -1 {
-			rootHeader.Mode = int64(fs.ModePerm &^ Umask)
+
+		if mode == -1 {
+			mode = int64(fs.ModePerm)
 		}
+
 		finalizeHeader(rootHeader, uid, gid, mode, normalizeModTime)
+
 		if err := tw.WriteHeader(rootHeader); err != nil {
 			return err
 		}
