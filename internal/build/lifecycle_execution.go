@@ -240,9 +240,14 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 					return l.ExtendBuild(ctx, buildCache, phaseFactory)
 				})
 			} else {
+				start := time.Now()
+				defer func() {
+					elapsed := time.Since(start)
+					l.logger.Debugf("EXTENDING (BUILD) took %s", elapsed)
+				}()
 				group.Go(func() error {
 					l.logger.Info(style.Step("EXTENDING (BUILD) BY DAEMON"))
-					if err := l.ExtendBuildByDaemon(ctx, group); err != nil {
+					if err := l.ExtendBuildByDaemon(ctx); err != nil {
 						return err
 					}
 					return l.Build(ctx, phaseFactory)
@@ -739,19 +744,20 @@ func (l *LifecycleExecution) ExtendRun(ctx context.Context, buildCache Cache, ph
 	defer extend.Cleanup()
 	return extend.Run(ctx)
 }
-func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context, group *errgroup.Group) error {
+func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
+	extendtime := time.Now()
 	builderImageName := l.opts.BuilderImage
 	defaultFilterFunc := func(file string) bool { return true }
 	var extensions Extensions
 	time1 := time.Now()
 	extensions.SetExtensions(l.tmpDir, l.logger)
-	fmt.Println("extensions.SetExtensions took", time.Since(time1))
+	l.logger.Debugf("extensions.SetExtensions for build took %s", time.Since(time1))
 	time2 := time.Now()
 	dockerfiles, err := extensions.DockerFiles(DockerfileKindBuild, l.tmpDir, l.logger)
 	if err != nil {
 		return fmt.Errorf("getting %s.Dockerfiles: %w", DockerfileKindBuild, err)
 	}
-	fmt.Println("extensions.DockerFiles took", time.Since(time2))
+	l.logger.Debugf("extensions.DockerFiles for build took %s", time.Since(time2))
 	dockerapplytime := time.Now()
 	for _, dockerfile := range dockerfiles {
 		buildContext := archive.ReadDirAsTar(filepath.Dir(dockerfile.Path), "/", 0, 0, -1, true, false, defaultFilterFunc)
@@ -778,6 +784,7 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context, group *err
 		l.logger.Debugf("build response for the extend: %v", response)
 	}
 	l.logger.Debugf("docker apply time: %v", time.Since(dockerapplytime))
+	l.logger.Debugf("Build extend time: %v", time.Since(extendtime))
 
 	return nil
 }
