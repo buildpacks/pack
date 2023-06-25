@@ -234,10 +234,20 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 
 		group, _ := errgroup.WithContext(context.TODO())
 		if l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild() {
-			group.Go(func() error {
-				l.logger.Info(style.Step("EXTENDING (BUILD)"))
-				return l.ExtendBuild(ctx, buildCache, phaseFactory)
-			})
+			if l.opts.Publish {
+				group.Go(func() error {
+					l.logger.Info(style.Step("EXTENDING (BUILD)"))
+					return l.ExtendBuild(ctx, buildCache, phaseFactory)
+				})
+			} else {
+				group.Go(func() error {
+					l.logger.Info(style.Step("EXTENDING (BUILD) BY DAEMON"))
+					if err := l.ExtendBuildByDaemon(ctx, group); err != nil {
+						return err
+					}
+					return l.Build(ctx, phaseFactory)
+				})
+			}
 		} else {
 			group.Go(func() error {
 				l.logger.Info(style.Step("BUILDING"))
@@ -262,6 +272,10 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 				start = time.Now()
 				group.Go(func() error {
 					l.logger.Info(style.Step("EXTENDING (RUN) BY DAEMON"))
+					defer func() {
+						duration := time.Since(start)
+						fmt.Println("Execution time:", duration)
+					}()
 					return l.ExtendRunByDaemon(ctx, group, &currentRunImage)
 				})
 			}
@@ -269,8 +283,6 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		if err := group.Wait(); err != nil {
 			return err
 		}
-		duration := time.Since(start)
-		fmt.Println("Execution time:", duration)
 
 		l.logger.Info(style.Step("EXPORTING"))
 		return l.Export(ctx, buildCache, launchCache, phaseFactory)
@@ -657,6 +669,8 @@ func (l *LifecycleExecution) Build(ctx context.Context, phaseFactory PhaseFactor
 		WithNetwork(l.opts.Network),
 		WithBinds(l.opts.Volumes...),
 		WithFlags(flags...),
+		If((!l.opts.Publish && l.hasExtensionsForBuild()), WithImage("newbuilder-image:latest")),
+		If((!l.opts.Publish && l.hasExtensionsForBuild()), WithoutPrivilege()),
 	)
 
 	build := phaseFactory.New(configProvider)
@@ -725,27 +739,78 @@ func (l *LifecycleExecution) ExtendRun(ctx context.Context, buildCache Cache, ph
 	defer extend.Cleanup()
 	return extend.Run(ctx)
 }
+func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context, group *errgroup.Group) error {
+	builderImageName := l.opts.BuilderImage
+	defaultFilterFunc := func(file string) bool { return true }
+	var extensions Extensions
+	time1 := time.Now()
+	extensions.SetExtensions(l.tmpDir, l.logger)
+	fmt.Println("extensions.SetExtensions took", time.Since(time1))
+	time2 := time.Now()
+	dockerfiles, err := extensions.DockerFiles(DockerfileKindBuild, l.tmpDir, l.logger)
+	if err != nil {
+		return fmt.Errorf("getting %s.Dockerfiles: %w", DockerfileKindBuild, err)
+	}
+	fmt.Println("extensions.DockerFiles took", time.Since(time2))
+	dockerapplytime := time.Now()
+	for _, dockerfile := range dockerfiles {
+		buildContext := archive.ReadDirAsTar(filepath.Dir(dockerfile.Path), "/", 0, 0, -1, true, false, defaultFilterFunc)
+		buildArguments := map[string]*string{}
+		if dockerfile.WithBase == "" {
+			buildArguments["base_image"] = &builderImageName
+		}
+		buildOptions := types.ImageBuildOptions{
+			Context:    buildContext,
+			Dockerfile: "Dockerfile",
+			Tags:       []string{"newbuilder-image"},
+			Remove:     true,
+			BuildArgs:  buildArguments,
+		}
+		response, err := l.docker.ImageBuild(ctx, buildContext, buildOptions)
+		if err != nil {
+			return err
+		}
+		defer response.Body.Close()
+		_, err = io.Copy(os.Stdout, response.Body)
+		if err != nil {
+			return err
+		}
+		l.logger.Debugf("build response for the extend: %v", response)
+	}
+	l.logger.Debugf("docker apply time: %v", time.Since(dockerapplytime))
+
+	return nil
+}
 
 func (l *LifecycleExecution) ExtendRunByDaemon(ctx context.Context, group *errgroup.Group, currentRunImage *string) error {
 	defaultFilterFunc := func(file string) bool { return true }
 	var extensions Extensions
 	l.logger.Debugf("extending run image %s", *currentRunImage)
+	time1 := time.Now()
 	extensions.SetExtensions(l.tmpDir, l.logger)
+	fmt.Println("extensions.SetExtensions took", time.Since(time1))
+	time2 := time.Now()
 	dockerfiles, err := extensions.DockerFiles(DockerfileKindRun, l.tmpDir, l.logger)
 	if err != nil {
 		return fmt.Errorf("getting %s.Dockerfiles: %w", DockerfileKindRun, err)
 	}
+	fmt.Println("extensions.DockerFiles took", time.Since(time2))
 	nestedCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	nestedGroup, _ := errgroup.WithContext(nestedCtx)
-	var origTopLayerHash string = ""
+	var origTopLayerHash = ""
+	time3 := time.Now()
 	nestedGroup.Go(func() error {
+		defer func() {
+			fmt.Println("topLayerHash took", time.Since(time3))
+		}()
 		origTopLayerHash, err = topLayerHash(currentRunImage)
 		if err != nil {
 			return fmt.Errorf("getting top layer hash of run image: %w", err)
 		}
 		return nil
 	})
+	dockerapplytime := time.Now()
 	for _, dockerfile := range dockerfiles {
 		if dockerfile.Extend {
 			buildContext := archive.ReadDirAsTar(filepath.Dir(dockerfile.Path), "/", 0, 0, -1, true, false, defaultFilterFunc)
@@ -772,6 +837,8 @@ func (l *LifecycleExecution) ExtendRunByDaemon(ctx context.Context, group *errgr
 			l.logger.Debugf("build response for the extend: %v", response)
 		}
 	}
+	l.logger.Debugf("docker apply time: %v", time.Since(dockerapplytime))
+	time4 := time.Now()
 	ref, err := name.ParseReference("run-image:latest")
 	if err != nil {
 		return fmt.Errorf("failed to parse reference: %v", err)
@@ -785,13 +852,16 @@ func (l *LifecycleExecution) ExtendRunByDaemon(ctx context.Context, group *errgr
 		return fmt.Errorf("getting image hash: %w", err)
 	}
 	dest := filepath.Join(l.tmpDir, "extended-new", "run", imageHash.String())
+	fmt.Println("exporting to OCI took", time.Since(time4))
 	waiterr := nestedGroup.Wait()
 	if waiterr != nil {
 		return err
 	}
-	if err = SaveLayers(group, image, origTopLayerHash, dest); err != nil {
+	var savetime *time.Duration
+	if savetime, err = SaveLayers(group, image, origTopLayerHash, dest); err != nil {
 		return fmt.Errorf("copying selective image to output directory: %w", err)
 	}
+	fmt.Println("Total Save execution time:", savetime)
 	return nil
 }
 

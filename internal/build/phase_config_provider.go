@@ -244,6 +244,12 @@ func WithRoot() PhaseConfigProviderOperation {
 	}
 }
 
+func WithoutPrivilege() PhaseConfigProviderOperation {
+	return func(provider *PhaseConfigProvider) {
+		provider.ctrConf.User = "1000:1001"
+	}
+}
+
 func WithContainerOperations(operations ...ContainerOperation) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
 		provider.containerOps = append(provider.containerOps, operations...)

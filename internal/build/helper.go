@@ -6,16 +6,18 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil/layout/sparse"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/daemon"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 const (
@@ -94,22 +96,24 @@ func escapeID(id string) string {
 	return strings.ReplaceAll(id, "/", "_")
 }
 
-func SaveLayers(group *errgroup.Group, image v1.Image, origTopLayerHash string, dest string) error {
+func SaveLayers(group *errgroup.Group, image v1.Image, origTopLayerHash string, dest string) (*time.Duration, error) {
+	var totalSaveExecutionTime time.Duration
+	savetime := time.Now()
 	layoutPath, err := sparse.NewImage(dest, image)
 	if err != nil {
 		fmt.Println("sparse.NewImage err", err)
-		return err
+		return nil, err
 	}
 	if err = layoutPath.Save(); err != nil {
-		return err
+		return nil, err
 	}
 	if err != nil {
 		fmt.Println("sparse.NewImage err", err)
-		return err
+		return nil, err
 	}
 	layers, err := image.Layers()
 	if err != nil {
-		return fmt.Errorf("getting image layers: %w", err)
+		return nil, fmt.Errorf("getting image layers: %w", err)
 	}
 	var (
 		currentHash  v1.Hash
@@ -121,12 +125,17 @@ func SaveLayers(group *errgroup.Group, image v1.Image, origTopLayerHash string, 
 	for _, currentLayer := range layers {
 		currentHash, err = currentLayer.Digest()
 		if err != nil {
-			return fmt.Errorf("getting layer hash: %w", err)
+			return nil, fmt.Errorf("getting layer hash: %w", err)
 		}
 		switch {
 		case needsCopying:
 			currentLayer := currentLayer
+			start := time.Now()
 			group.Go(func() error {
+				defer func() {
+					duration := time.Since(start)
+					totalSaveExecutionTime += duration
+				}()
 				return copyLayer(currentLayer, dest)
 			})
 		case currentHash.String() == origTopLayerHash:
@@ -136,7 +145,8 @@ func SaveLayers(group *errgroup.Group, image v1.Image, origTopLayerHash string, 
 			continue
 		}
 	}
-	return nil
+	totalSaveExecutionTime += time.Since(savetime)
+	return &totalSaveExecutionTime, nil
 }
 
 func copyLayer(layer v1.Layer, toSparseImage string) error {
