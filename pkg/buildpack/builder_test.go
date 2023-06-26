@@ -10,7 +10,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
@@ -732,8 +731,6 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				err          error
 			)
 			it.Before(func() {
-				h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
-
 				bp1, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 					WithAPI: api.MustParse("0.2"),
 					WithInfo: dist.ModuleInfo{
