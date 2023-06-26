@@ -637,7 +637,7 @@ version = "buildpack-1-version-1"
 					},
 				}
 			})
-			when("not running o windows", func() {
+			when("not running on windows", func() {
 				it("returns N tar files", func() {
 					h.SkipIf(t, runtime.GOOS == "windows", "")
 					bp := buildpack.FromBlob(

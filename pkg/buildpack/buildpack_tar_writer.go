@@ -12,8 +12,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/paths"
-
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -134,6 +132,6 @@ func processRootPath(module BuildModule) string {
 		bpFolder = "buildpacks"
 	}
 	bpInfo := module.Descriptor().Info()
-	rootPath := path.Join(paths.RootDir, "cnb", bpFolder, strings.ReplaceAll(bpInfo.ID, "/", "_"))
+	rootPath := path.Join("/cnb", bpFolder, strings.ReplaceAll(bpInfo.ID, "/", "_"))
 	return rootPath
 }
