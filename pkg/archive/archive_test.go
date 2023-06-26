@@ -241,7 +241,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("includeRoot is true", func() {
-			it("sets metadata on base dest file", func() {
+			it("writes a tar to the root dir with the provided mode", func() {
 				fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
 				h.AssertNil(t, err)
 
