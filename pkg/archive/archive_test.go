@@ -262,7 +262,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				verify.NextDirectory("/nested/dir/dir-in-archive", int64(os.ModePerm))
 			})
 			when("mode is set to -1", func() {
-				it("writes a tar to the dest dir with default (0777) dir mode", func() {
+				it("writes a tar to the root dir with default (0777) dir mode", func() {
 					fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
 					h.AssertNil(t, err)
 
@@ -281,8 +281,8 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 					verify := h.NewTarVerifier(t, tr, 1234, 2345)
 					verify.NextDirectory("/nested/dir/dir-in-archive", 0777)
-					verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0777)
-					verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", 0777)
+					verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", fileMode(t, filepath.Join(src, "some-file.txt")))
+					verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", fileMode(t, filepath.Join(src, "sub-dir")))
 					if runtime.GOOS != "windows" {
 						verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 					}
@@ -641,4 +641,14 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+}
+
+func fileMode(t *testing.T, path string) int64 {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("failed to stat %s", path)
+	}
+	mode := int64(info.Mode() & os.ModePerm)
+	return mode
 }

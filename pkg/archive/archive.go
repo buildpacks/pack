@@ -169,7 +169,7 @@ func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 // contents will be placed. The includeRoot param sets the permissions and metadata on the root file.
 func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int64, normalizeModTime, includeRoot bool, fileFilter func(string) bool) error {
 	if includeRoot {
-		mode = modePermIfNegativeMode(mode)
+		mode := modePermIfNegativeMode(mode)
 		err := writeRootHeader(tw, basePath, mode, uid, gid, normalizeModTime)
 		if err != nil {
 			return err
@@ -430,7 +430,7 @@ func writeRootHeader(tw TarWriter, basePath string, mode int64, uid int, gid int
 
 func modePermIfNegativeMode(mode int64) int64 {
 	if mode == -1 {
-		mode = int64(fs.ModePerm)
+		return int64(fs.ModePerm)
 	}
 	return mode
 }
