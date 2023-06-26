@@ -19,6 +19,17 @@ jobs:
         id: assets
         with:
           script: |
+            var current = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.number, 
+            })
+            .then(result => result.milestone)
+            
+            if (current) {
+              console.log(`Issue already has a milestone assigned, skipping add milestone step`);
+            }
+            
             var milestone = await github.rest.issues.listMilestones({
                       owner: context.repo.owner,
                       repo: context.repo.repo,
