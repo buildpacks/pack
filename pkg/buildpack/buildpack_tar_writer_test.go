@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"runtime"
 	"testing"
 
 	"github.com/buildpacks/lifecycle/api"
@@ -44,8 +43,6 @@ func testBuildModuleWriter(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
-
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 		buildModuleWriter = buildpack.NewBuildModuleWriter(logger, archive.DefaultTarWriterFactory())
 		tmpDir, err = os.MkdirTemp("", "test_build_module_writer")
