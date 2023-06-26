@@ -67,7 +67,7 @@ func (b *BuildModuleWriter) NToLayerTar(tarPath, filename string, modules []Buil
 				b.logger.Debugf("skipping %s, it was already added", style.Symbol(module.Descriptor().Info().FullName()))
 			}
 		} else {
-			b.logger.Debugf("excluding %s for being flattened", style.Symbol(module.Descriptor().Info().FullName()))
+			b.logger.Debugf("excluding %s from being flattened", style.Symbol(module.Descriptor().Info().FullName()))
 			buildModuleExcluded = append(buildModuleExcluded, module)
 		}
 	}
