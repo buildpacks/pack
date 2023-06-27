@@ -33,6 +33,8 @@ func (s *syncPkg) GetLayer(diffID string) (io.ReadCloser, error) {
 	return s.pkg.GetLayer(diffID)
 }
 
+// extractBuildpacks when provided a flattened buildpack package containing N buildpacks,
+// will return N modules: 1 module with a single tar containing ALL N buildpacks, and N-1 modules with empty tar files.
 func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, err error) {
 	pkg = &syncPkg{pkg: pkg}
 	md := &Metadata{}
@@ -76,11 +78,8 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 	//  }
 	//}
 
-	// We need to know which buildpacks are flattened
-	flattenedDiffIDs := flattenedBuildpacksDiffIDs(pkgLayers)
-
 	// Randomly first buildpacks returns all the tar content and subsequent buildpacks return an empty tar
-	var seenDiffIDs = make(map[string]struct{})
+	var processedDiffIDs = make(map[string]bool)
 	for bpID, v := range pkgLayers {
 		for bpVersion, bpInfo := range v {
 			desc := dist.BuildpackDescriptor{
@@ -99,8 +98,9 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 			diffID := bpInfo.LayerDiffID // Allow use in closure
 
 			var openerFunc func() (io.ReadCloser, error)
-			if _, ok := seenDiffIDs[diffID]; ok {
-				// it is a flattened buildpack, and we want to avoid multiples tar with the same content
+			if _, ok := processedDiffIDs[diffID]; ok {
+				// We already processed a layer with this diffID, so the module must be flattened;
+				// return an empty reader to avoid multiples tar with the same content.
 				openerFunc = func() (io.ReadCloser, error) {
 					return io.NopCloser(strings.NewReader("")), nil
 				}
@@ -116,7 +116,7 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 					}
 					return rc, nil
 				}
-				seenDiffIDs[diffID] = member
+				processedDiffIDs[diffID] = true
 			}
 
 			b := &openerBlob{
@@ -124,10 +124,7 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 			}
 
 			var blobOpts []BlobOption
-			if _, ok := flattenedDiffIDs[diffID]; ok {
-				blobOpts = append(blobOpts, Flattened())
-			}
-			if desc.Info().Match(md.ModuleInfo) { // This is the order buildpack of the package
+			if desc.Info().Match(md.ModuleInfo) { // Current module is the order buildpack of the package
 				mainBP = FromBlob(&desc, b, blobOpts...)
 			} else {
 				depBPs = append(depBPs, FromBlob(&desc, b, blobOpts...))
@@ -193,27 +190,6 @@ func extractExtensions(pkg Package) (mainExt BuildModule, err error) {
 		}
 	}
 	return mainExt, nil
-}
-
-type void struct{}
-
-var member void
-
-func flattenedBuildpacksDiffIDs(layers dist.ModuleLayers) map[string]struct{} {
-	var seenDiffID = make(map[string]struct{})
-	var flattenedDiffIDs = make(map[string]struct{})
-
-	for _, values := range layers {
-		for _, bpInfo := range values {
-			if _, ok := seenDiffID[bpInfo.LayerDiffID]; ok {
-				flattenedDiffIDs[bpInfo.LayerDiffID] = member
-			} else {
-				seenDiffID[bpInfo.LayerDiffID] = member
-			}
-		}
-	}
-
-	return flattenedDiffIDs
 }
 
 type openerBlob struct {
