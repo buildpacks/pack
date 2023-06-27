@@ -78,7 +78,8 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 	//  }
 	//}
 
-	// Randomly first buildpacks returns all the tar content and subsequent buildpacks return an empty tar
+	// If the package is a flattened buildpack, the first buildpack in the package returns all the tar content,
+	// and subsequent buildpacks return an empty tar.
 	var processedDiffIDs = make(map[string]bool)
 	for bpID, v := range pkgLayers {
 		for bpVersion, bpInfo := range v {
@@ -100,7 +101,7 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 			var openerFunc func() (io.ReadCloser, error)
 			if _, ok := processedDiffIDs[diffID]; ok {
 				// We already processed a layer with this diffID, so the module must be flattened;
-				// return an empty reader to avoid multiples tar with the same content.
+				// return an empty reader to avoid multiple tars with the same content.
 				openerFunc = func() (io.ReadCloser, error) {
 					return io.NopCloser(strings.NewReader("")), nil
 				}

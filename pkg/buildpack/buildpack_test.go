@@ -874,10 +874,6 @@ func (eb *errorBuildModule) Descriptor() buildpack.Descriptor {
 	return nil
 }
 
-func (eb *errorBuildModule) ContainsFlattenedModules() bool {
-	return eb.flattened
-}
-
 type expectedBuildpack struct {
 	id      string
 	version string

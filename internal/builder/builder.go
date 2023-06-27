@@ -1196,6 +1196,7 @@ func explodeModules(kind, tmpDir string, additionalModules []buildpack.BuildModu
 			result = append(result, moduleWithDiffID{
 				tarPath: moduleTar.Path(),
 				diffID:  diffID.String(),
+				module:  module,
 			})
 		} else {
 			// This entry is a flattened buildpack that was exploded, we need to add each exploded buildpack to the result in order

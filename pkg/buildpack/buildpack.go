@@ -7,7 +7,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -31,7 +30,6 @@ type BuildModule interface {
 	// timestamp and root UID/GID).
 	Open() (io.ReadCloser, error)
 	Descriptor() Descriptor
-	ContainsFlattenedModules() bool
 }
 
 type Descriptor interface {
@@ -72,10 +70,6 @@ type buildModule struct {
 
 func (b *buildModule) Descriptor() Descriptor {
 	return b.descriptor
-}
-
-func (b *buildModule) ContainsFlattenedModules() bool {
-	return b.flattened
 }
 
 // FromBlob constructs a buildpack or extension from a blob. It is assumed that the buildpack
@@ -356,10 +350,6 @@ func ToLayerTar(dest string, module BuildModule) (string, error) {
 }
 
 func ToNLayerTar(dest string, module BuildModule) ([]ModuleTar, error) {
-	if !module.ContainsFlattenedModules() {
-		return handleSingleOrEmptyModule(dest, module)
-	}
-
 	modReader, err := module.Open()
 	if err != nil {
 		return nil, errors.Wrap(err, "opening blob")
@@ -369,32 +359,34 @@ func ToNLayerTar(dest string, module BuildModule) ([]ModuleTar, error) {
 	tarCollection := newModuleTarCollection(dest)
 	tr := tar.NewReader(modReader)
 
-	var header *tar.Header
-	if runtime.GOOS == "windows" {
-		// Skip over the first headers until we find "Files/cnb/buildpacks/<buildpack-id>":
-		// Files
-		// Hives
-		// Files/cnb
-		// Files/cnb/buildpacks
-		for {
-			header, err = tr.Next()
-			if err != nil {
-				return nil, err
-			}
-			if strings.Contains(header.Name, "/cnb/buildpacks/") {
-				break
-			}
-		}
-	} else {
-		// The first header should look like "/cnb/buildpacks/<buildpack-id>"
+	// find out if it's Windows
+	var (
+		header     *tar.Header
+		forWindows bool
+	)
+
+	for {
 		header, err = tr.Next()
 		if err != nil {
 			if err == io.EOF {
 				return handleSingleOrEmptyModule(dest, module)
 			}
-			return nil, fmt.Errorf("failed to read first header '%s': %w", header.Name, err)
+			return nil, err
+		}
+		if header.Name == "Files" {
+			forWindows = true
+		}
+		if strings.Contains(header.Name, "/cnb/buildpacks/") {
+			// Only for Windows, the first four headers are:
+			// - Files
+			// - Hives
+			// - Files/cnb
+			// - Files/cnb/buildpacks
+			// Skip over these until we find "Files/cnb/buildpacks/<buildpack-id>":
+			break
 		}
 	}
+	// The header should look like "/cnb/buildpacks/<buildpack-id>"
 
 	// the original version should be blank because the first header is missing <buildpack-version>
 	origID, origVersion := parseBpIDAndVersion(header)
@@ -402,7 +394,8 @@ func ToNLayerTar(dest string, module BuildModule) ([]ModuleTar, error) {
 		return nil, fmt.Errorf("first header '%s' contained unexpected version", header.Name)
 	}
 
-	if err := toNLayerTar(origID, origVersion, header, tr, tarCollection); err != nil {
+	// tell this function it's Windows
+	if err := toNLayerTar(origID, origVersion, header, tr, tarCollection, forWindows); err != nil {
 		return nil, err
 	}
 
@@ -414,9 +407,9 @@ func ToNLayerTar(dest string, module BuildModule) ([]ModuleTar, error) {
 	return tarCollection.moduleTars(), nil
 }
 
-func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Reader, tc *moduleTarCollection) error {
+func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Reader, tc *moduleTarCollection, forWindows bool) error {
 	toWrite := []*tar.Header{firstHeader}
-	if runtime.GOOS == "windows" {
+	if forWindows {
 		toWrite = append(preambleFrom(firstHeader), toWrite...)
 	}
 	if origVersion == "" {
@@ -467,7 +460,7 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 		nextID, nextVersion := parseBpIDAndVersion(header)
 		if nextID != origID || nextVersion != origVersion {
 			// we found a new module, recurse
-			return toNLayerTar(nextID, nextVersion, header, tr, tc)
+			return toNLayerTar(nextID, nextVersion, header, tr, tc, forWindows)
 		}
 
 		err = mt.writer.WriteHeader(header)
@@ -488,6 +481,7 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 }
 
 func preambleFrom(header *tar.Header) []*tar.Header {
+	// header looks like Files/cnb/buildpacks/<buildpack-id>/<optional-buildpack-version>
 	preamble := make([]*tar.Header, 4)
 	headers := []string{"Files", "Hives", "Files/cnb", "Files/cnb/buildpacks"}
 	for idx, h := range headers {
