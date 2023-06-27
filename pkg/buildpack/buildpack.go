@@ -438,12 +438,6 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 			return fmt.Errorf("failed to write header '%s': %w", h.Name, err)
 		}
 	}
-
-	for _, h := range toWrite {
-		if err := mt.writer.WriteHeader(h); err != nil {
-			return fmt.Errorf("failed to write header '%s': %w", h.Name, err)
-		}
-	}
 	// write the rest of the package
 	var header *tar.Header
 	for {
