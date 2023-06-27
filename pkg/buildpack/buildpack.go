@@ -359,7 +359,6 @@ func ToNLayerTar(dest string, module BuildModule) ([]ModuleTar, error) {
 	tarCollection := newModuleTarCollection(dest)
 	tr := tar.NewReader(modReader)
 
-	// find out if it's Windows
 	var (
 		header     *tar.Header
 		forWindows bool
@@ -387,14 +386,12 @@ func ToNLayerTar(dest string, module BuildModule) ([]ModuleTar, error) {
 		}
 	}
 	// The header should look like "/cnb/buildpacks/<buildpack-id>"
-
-	// the original version should be blank because the first header is missing <buildpack-version>
+	// The version should be blank because the first header is missing <buildpack-version>.
 	origID, origVersion := parseBpIDAndVersion(header)
 	if origVersion != "" {
 		return nil, fmt.Errorf("first header '%s' contained unexpected version", header.Name)
 	}
 
-	// tell this function it's Windows
 	if err := toNLayerTar(origID, origVersion, header, tr, tarCollection, forWindows); err != nil {
 		return nil, err
 	}
