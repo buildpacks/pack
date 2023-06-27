@@ -747,7 +747,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 					})
 
-					it.Pend("uses the last buildpack", func() {
+					it("uses the last buildpack", func() {
 						logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 
 						subject.AddBuildpack(bp1v1)
@@ -792,7 +792,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("adding buildpack that already exists on the image", func() {
-					it.Pend("skips adding buildpack that already exists", func() {
+					it("skips adding buildpack that already exists", func() {
 						logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 						diffID := "2ba2e8563f7f43533ba26047a44f3e8bb7dd009043bd73a0e6aadb02c084955c"
 						bpLayer := dist.ModuleLayers{
