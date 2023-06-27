@@ -10,7 +10,7 @@ const (
 )
 
 type ManagedCollection struct {
-	explodesModules  []BuildModule
+	explodedModules  []BuildModule
 	flattenedModules [][]BuildModule
 	flatten          bool
 	maxDepth         int
@@ -20,14 +20,14 @@ func NewModuleManager(flatten bool, maxDepth int) *ManagedCollection {
 	return &ManagedCollection{
 		flatten:          flatten,
 		maxDepth:         maxDepth,
-		explodesModules:  []BuildModule{},
+		explodedModules:  []BuildModule{},
 		flattenedModules: [][]BuildModule{},
 	}
 }
 
-// AllModules returns all explodesModules handle by the manager
+// AllModules returns all explodedModules handle by the manager
 func (f *ManagedCollection) AllModules() []BuildModule {
-	all := f.explodesModules
+	all := f.explodedModules
 	for _, modules := range f.flattenedModules {
 		all = append(all, modules...)
 	}
@@ -36,7 +36,7 @@ func (f *ManagedCollection) AllModules() []BuildModule {
 
 // ExplodedModules returns all modules that will be added to the output artifact as a single layer containing a single module.
 func (f *ManagedCollection) ExplodedModules() []BuildModule {
-	return f.explodesModules
+	return f.explodedModules
 }
 
 // FlattenedModules returns all modules that will be added to the output artifact as a single layer containing multiple modules.
@@ -47,12 +47,12 @@ func (f *ManagedCollection) FlattenedModules() [][]BuildModule {
 	return nil
 }
 
-// AddModules determines whether the explodesModules must be added as flatten or not. It uses
+// AddModules determines whether the explodedModules must be added as flattened or not. It uses
 // flatten and maxDepth configuration given during initialization of the manager.
 func (f *ManagedCollection) AddModules(main BuildModule, deps ...BuildModule) {
 	if !f.flatten {
 		// default behavior
-		f.explodesModules = append(f.explodesModules, append([]BuildModule{main}, deps...)...)
+		f.explodedModules = append(f.explodedModules, append([]BuildModule{main}, deps...)...)
 	} else {
 		if f.maxDepth <= FlattenMaxDepth {
 			// flatten all
@@ -66,7 +66,7 @@ func (f *ManagedCollection) AddModules(main BuildModule, deps ...BuildModule) {
 			calculatedModules := recurser.calculateFlattenedModules(main, deps, 0)
 			for _, modules := range calculatedModules {
 				if len(modules) == 1 {
-					f.explodesModules = append(f.explodesModules, modules...)
+					f.explodedModules = append(f.explodedModules, modules...)
 				} else {
 					f.flattenedModules = append(f.flattenedModules, modules)
 				}
