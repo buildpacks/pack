@@ -563,12 +563,12 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.ModuleLayers) error {
 	collectionToAdd := map[string]moduleWithDiffID{}
-	splitAdditionalModules, errs := splitBuildModules(kind, tmpDir, additionalModules, logger)
+	toAdd, errs := explodeModules(kind, tmpDir, additionalModules, logger)
 	if len(errs) > 0 {
 		return e.Join(errs...)
 	}
 
-	for i, additionalModule := range splitAdditionalModules {
+	for i, additionalModule := range toAdd {
 		info, diffID, layerTar, module := additionalModule.module.Descriptor().Info(), additionalModule.diffID, additionalModule.tarPath, additionalModule.module
 
 		// check against builder layers
@@ -1143,15 +1143,19 @@ func sortKeys(collection map[string]moduleWithDiffID) []string {
 	return keys
 }
 
-// splitBuildModules takes the given Build Modules and concurrently read their internal tar files. In
-// case a flattened module is found, it will split each flattened buildpack into an individual module and skip all the empty ones
-// returns an explodedBuildModule array with the Build Module information but also the diffId and the tar file on disk
-func splitBuildModules(kind, tmpDir string, additionalModules []buildpack.BuildModule, logger logging.Logger) ([]moduleWithDiffID, []error) {
+// explodeModules takes a collection of build modules and concurrently reads their tar files.
+// It assumes the modules were extracted with `buildpack.extractBuildpacks`, which when provided a flattened buildpack package containing N buildpacks,
+// will return N modules: 1 module with a single tar containing ALL N buildpacks, and N-1 modules with empty tar files.
+// As we iterate through the modules, in case a flattened module (tar containing all N buildpacks) is found,
+// explodeModules will split the module into N modules, each with a single tar containing a single buildpack.
+// In case a module with an empty tar file is found, it is ignored.
+func explodeModules(kind, tmpDir string, additionalModules []buildpack.BuildModule, logger logging.Logger) ([]moduleWithDiffID, []error) {
 	modInfoChans := make([]chan modInfo, len(additionalModules))
 	for i := range modInfoChans {
 		modInfoChans[i] = make(chan modInfo, 1)
 	}
 
+	// Explode modules concurrently
 	for i, module := range additionalModules {
 		go func(i int, module buildpack.BuildModule) {
 			modTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s", kind, strconv.Itoa(i)))
@@ -1166,20 +1170,20 @@ func splitBuildModules(kind, tmpDir string, additionalModules []buildpack.BuildM
 		}(i, module)
 	}
 
-	var result []moduleWithDiffID
-	var errs []error
-
-	// skip the flattened buildpacks that returned an empty tar file, their contents
-	// are included in a different Build Module that was split
+	// Iterate over modules sequentially, building up the result.
+	var (
+		result []moduleWithDiffID
+		errs   []error
+	)
 	for i, module := range additionalModules {
 		mi := <-modInfoChans[i]
 		if mi.err != nil {
 			errs = append(errs, mi.err)
 			continue
 		}
-		// moduleTar could be an individual Buildpack or flattened Buildpack that writes an empty tar on disk
-		for _, moduleTar := range mi.moduleTars {
-			explodedMod := moduleWithDiffID{tarPath: moduleTar.Path()}
+		if len(mi.moduleTars) == 1 {
+			// This entry is an individual buildpack or extension, or a module with empty tar
+			moduleTar := mi.moduleTars[0]
 			diffID, err := dist.LayerDiffID(moduleTar.Path())
 			if err != nil {
 				errs = append(errs, errors.Wrapf(err, "calculating layer diffID for path %s", moduleTar.Path()))
@@ -1187,23 +1191,37 @@ func splitBuildModules(kind, tmpDir string, additionalModules []buildpack.BuildM
 			}
 			if diffID.String() == emptyTarDiffID {
 				logger.Debugf("%s %s is a component of a flattened buildpack that will be added elsewhere, skipping...", istrings.Title(kind), style.Symbol(moduleTar.Info().FullName()))
-				continue // we don't need to keep empty tars
+				continue // we don't need to keep modules with empty tars
 			}
-			explodedMod.diffID = diffID.String()
-			if moduleTar.Info().FullName() == fmt.Sprintf("%s@%s", module.Descriptor().EscapedID(), module.Descriptor().Info().Version) ||
-				moduleTar.Info().FullName() == module.Descriptor().Info().FullName() {
-				explodedMod.module = module
-			} else {
-				// we need to match the exploded modules with its corresponding BuildModule.
-				// this is important when flattened modules where included
-				for _, additionalModule := range additionalModules {
-					if namesMatch(additionalModule, moduleTar) {
-						explodedMod.module = additionalModule
-						break
+			result = append(result, moduleWithDiffID{
+				tarPath: moduleTar.Path(),
+				diffID:  diffID.String(),
+			})
+		} else {
+			// This entry is a flattened buildpack that was exploded, we need to add each exploded buildpack to the result in order
+			for _, moduleTar := range mi.moduleTars {
+				diffID, err := dist.LayerDiffID(moduleTar.Path())
+				if err != nil {
+					errs = append(errs, errors.Wrapf(err, "calculating layer diffID for path %s", moduleTar.Path()))
+					continue
+				}
+				explodedMod := moduleWithDiffID{
+					tarPath: moduleTar.Path(),
+					diffID:  diffID.String(),
+				}
+				// find the module "info" for this buildpack - it could be the current module, or one of the modules with empty tars that was ignored
+				if namesMatch(module, moduleTar) {
+					explodedMod.module = module
+				} else {
+					for _, additionalModule := range additionalModules {
+						if namesMatch(additionalModule, moduleTar) {
+							explodedMod.module = additionalModule
+							break
+						}
 					}
 				}
+				result = append(result, explodedMod)
 			}
-			result = append(result, explodedMod)
 		}
 	}
 
