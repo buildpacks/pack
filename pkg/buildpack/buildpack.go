@@ -375,7 +375,7 @@ func ToNLayerTar(dest string, module BuildModule) ([]ModuleTar, error) {
 		if header.Name == "Files" {
 			forWindows = true
 		}
-		if strings.Contains(header.Name, "/cnb/buildpacks/") {
+		if strings.Contains(header.Name, `/cnb/buildpacks/`) || strings.Contains(header.Name, `\cnb\buildpacks\`) {
 			// Only for Windows, the first four headers are:
 			// - Files
 			// - Hives
@@ -406,15 +406,12 @@ func ToNLayerTar(dest string, module BuildModule) ([]ModuleTar, error) {
 
 func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Reader, tc *moduleTarCollection, forWindows bool) error {
 	toWrite := []*tar.Header{firstHeader}
-	if forWindows {
-		toWrite = append(preambleFrom(firstHeader), toWrite...)
-	}
 	if origVersion == "" {
 		// the first header only contains the id - e.g., /cnb/buildpacks/<buildpack-id>,
 		// read the next header to get the version
 		secondHeader, err := tr.Next()
 		if err != nil {
-			return err
+			return fmt.Errorf("getting second header: %w; first header was %s", err, firstHeader.Name)
 		}
 		nextID, nextVersion := parseBpIDAndVersion(secondHeader)
 		if nextID != origID || nextVersion == "" {
@@ -429,9 +426,12 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 		realFirstHeader.Name = filepath.ToSlash(filepath.Dir(firstHeader.Name))
 		toWrite = append([]*tar.Header{&realFirstHeader}, toWrite...)
 	}
+	if forWindows {
+		toWrite = append(windowsPreamble(), toWrite...)
+	}
 	mt, err := tc.get(origID, origVersion)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting module from collection: %w", err)
 	}
 	for _, h := range toWrite {
 		if err := mt.writer.WriteHeader(h); err != nil {
@@ -446,7 +446,7 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 			if err == io.EOF {
 				return nil
 			}
-			return err
+			return fmt.Errorf("getting next header: %w", err)
 		}
 		nextID, nextVersion := parseBpIDAndVersion(header)
 		if nextID != origID || nextVersion != origVersion {
@@ -456,31 +456,40 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 
 		err = mt.writer.WriteHeader(header)
 		if err != nil {
-			return errors.Wrapf(err, "failed to write header for '%s'", header.Name)
+			return fmt.Errorf("failed to write header for '%s': %w", header.Name, err)
 		}
 
 		buf, err := io.ReadAll(tr)
 		if err != nil {
-			return errors.Wrapf(err, "failed to read contents of '%s'", header.Name)
+			return fmt.Errorf("failed to read contents of '%s': %w", header.Name, err)
 		}
 
 		_, err = mt.writer.Write(buf)
 		if err != nil {
-			return errors.Wrapf(err, "failed to write contents to '%s'", header.Name)
+			return fmt.Errorf("failed to write contents to '%s': %w", header.Name, err)
 		}
 	}
 }
 
-func preambleFrom(header *tar.Header) []*tar.Header {
-	// header looks like Files/cnb/buildpacks/<buildpack-id>/<optional-buildpack-version>
-	preamble := make([]*tar.Header, 4)
-	headers := []string{"Files", "Hives", "Files/cnb", "Files/cnb/buildpacks"}
-	for idx, h := range headers {
-		p := *header
-		p.Name = h
-		preamble[idx] = &p
+func windowsPreamble() []*tar.Header {
+	return []*tar.Header{
+		{
+			Name:     "Files",
+			Typeflag: tar.TypeDir,
+		},
+		{
+			Name:     "Hives",
+			Typeflag: tar.TypeDir,
+		},
+		{
+			Name:     "Files/cnb",
+			Typeflag: tar.TypeDir,
+		},
+		{
+			Name:     "Files/cnb/buildpacks",
+			Typeflag: tar.TypeDir,
+		},
 	}
-	return preamble
 }
 
 func parseBpIDAndVersion(hdr *tar.Header) (id, version string) {
@@ -491,7 +500,7 @@ func parseBpIDAndVersion(hdr *tar.Header) (id, version string) {
 	// [3] = "{ID}"
 	// [4] = "{version}"
 	// ...
-	parts := strings.Split(hdr.Name, "/")
+	parts := strings.Split(strings.ReplaceAll(filepath.Clean(hdr.Name), `\`, `/`), `/`)
 	size := len(parts)
 	switch {
 	case size < 4:
