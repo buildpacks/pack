@@ -36,20 +36,6 @@ func (m *MockBuildModule) EXPECT() *MockBuildModuleMockRecorder {
 	return m.recorder
 }
 
-// ContainsFlattenedModules mocks base method.
-func (m *MockBuildModule) ContainsFlattenedModules() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ContainsFlattenedModules")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// ContainsFlattenedModules indicates an expected call of ContainsFlattenedModules.
-func (mr *MockBuildModuleMockRecorder) ContainsFlattenedModules() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ContainsFlattenedModules", reflect.TypeOf((*MockBuildModule)(nil).ContainsFlattenedModules))
-}
-
 // Descriptor mocks base method.
 func (m *MockBuildModule) Descriptor() buildpack.Descriptor {
 	m.ctrl.T.Helper()
