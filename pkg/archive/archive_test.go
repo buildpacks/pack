@@ -2,7 +2,6 @@ package archive_test
 
 import (
 	"archive/tar"
-	"io/fs"
 	"net"
 	"os"
 	"path/filepath"
@@ -214,8 +213,35 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("mode is set to 0755", func() {
+			it("writes a tar to the dest dir with 0755", func() {
+				fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+
+				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0755, true, false, nil)
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+
+				file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+				defer file.Close()
+
+				tr := tar.NewReader(file)
+
+				verify := h.NewTarVerifier(t, tr, 1234, 2345)
+				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0755)
+				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", 0755)
+				if runtime.GOOS != "windows" {
+					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
+				}
+			})
+		})
+
 		when("includeRoot is true", func() {
-			it("sets metadata on base dest file", func() {
+			it("writes a tar to the root dir with the provided mode", func() {
 				fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
 				h.AssertNil(t, err)
 
@@ -235,33 +261,32 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				verify := h.NewTarVerifier(t, tr, 1234, 2345)
 				verify.NextDirectory("/nested/dir/dir-in-archive", int64(os.ModePerm))
 			})
-		})
+			when("mode is set to -1", func() {
+				it("writes a tar to the root dir with default (0777) dir mode", func() {
+					fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
+					h.AssertNil(t, err)
 
-		when("mode is set to -1", func() {
-			it("writes a tar to the dest dir with preexisting file mode", func() {
-				fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
-				h.AssertNil(t, err)
+					tw := tar.NewWriter(fh)
 
-				tw := tar.NewWriter(fh)
+					err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1, true, true, nil)
+					h.AssertNil(t, err)
+					h.AssertNil(t, tw.Close())
+					h.AssertNil(t, fh.Close())
 
-				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1, true, true, nil)
-				h.AssertNil(t, err)
-				h.AssertNil(t, tw.Close())
-				h.AssertNil(t, fh.Close())
+					file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+					h.AssertNil(t, err)
+					defer file.Close()
 
-				file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
-				h.AssertNil(t, err)
-				defer file.Close()
+					tr := tar.NewReader(file)
 
-				tr := tar.NewReader(file)
-
-				verify := h.NewTarVerifier(t, tr, 1234, 2345)
-				verify.NextDirectory("/nested/dir/dir-in-archive", int64(fs.ModePerm&^archive.Umask))
-				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", fileMode(t, filepath.Join(src, "some-file.txt")))
-				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", fileMode(t, filepath.Join(src, "sub-dir")))
-				if runtime.GOOS != "windows" {
-					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
-				}
+					verify := h.NewTarVerifier(t, tr, 1234, 2345)
+					verify.NextDirectory("/nested/dir/dir-in-archive", 0777)
+					verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", fileMode(t, filepath.Join(src, "some-file.txt")))
+					verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", fileMode(t, filepath.Join(src, "sub-dir")))
+					if runtime.GOOS != "windows" {
+						verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
+					}
+				})
 			})
 		})
 
