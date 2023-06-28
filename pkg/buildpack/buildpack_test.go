@@ -686,7 +686,6 @@ version = "buildpack-2-version-1"
 								return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 							},
 						},
-						buildpack.Flattened(),
 					)
 
 					tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp)
@@ -750,7 +749,6 @@ version = "buildpack-2-version-1"
 								return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 							},
 						},
-						buildpack.Flattened(),
 					)
 
 					tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp)
@@ -821,7 +819,6 @@ version = "buildpack-2-version-1"
 							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 						},
 					},
-					buildpack.Flattened(),
 				)
 
 				tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp)

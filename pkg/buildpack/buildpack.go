@@ -49,19 +49,6 @@ type Blob interface {
 	Open() (io.ReadCloser, error)
 }
 
-type BlobOption func(*blobOption) error
-
-type blobOption struct {
-	flattened bool
-}
-
-func Flattened() BlobOption {
-	return func(o *blobOption) error {
-		o.flattened = true
-		return nil
-	}
-}
-
 type buildModule struct {
 	descriptor Descriptor
 	Blob       `toml:"-"`
@@ -74,14 +61,7 @@ func (b *buildModule) Descriptor() Descriptor {
 // FromBlob constructs a buildpack or extension from a blob. It is assumed that the buildpack
 // contents are structured as per the distribution spec (currently '/cnb/buildpacks/{ID}/{version}/*' or
 // '/cnb/extensions/{ID}/{version}/*').
-func FromBlob(descriptor Descriptor, blob Blob, ops ...BlobOption) BuildModule {
-	blobOpts := &blobOption{}
-	for _, op := range ops {
-		if err := op(blobOpts); err != nil {
-			return nil
-		}
-	}
-
+func FromBlob(descriptor Descriptor, blob Blob) BuildModule {
 	return &buildModule{
 		Blob:       blob,
 		descriptor: descriptor,
