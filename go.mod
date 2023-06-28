@@ -1,7 +1,7 @@
 module github.com/buildpacks/pack
 
 require (
-	github.com/BurntSushi/toml v1.3.2
+	github.com/BurntSushi/toml v1.2.1
 	github.com/Masterminds/semver v1.5.0
 	github.com/Microsoft/go-winio v0.6.1
 	github.com/apex/log v1.9.0
