@@ -474,7 +474,9 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 			flags = append(flags, "-build-image", l.opts.BuilderImage)
 			registryImages = append(registryImages, l.opts.BuilderImage)
 		}
-
+		if l.hasExtensionsForRun() {
+			registryImages = append(registryImages, l.runImageAfterExtensions())
+		}
 		kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir()))
 	}
 
@@ -851,9 +853,12 @@ type runImage struct {
 func (l *LifecycleExecution) hasExtensionsForRun() bool {
 	var amd analyzedMD
 	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
+		l.logger.Warnf("failed to parse analyzed.toml file, assuming no run image extensions...")
 		return false
 	}
 	if amd.RunImage == nil {
+		// this shouldn't be reachable
+		l.logger.Warnf("found no run image in analyzed.toml file, assuming no run image extensions...")
 		return false
 	}
 	return amd.RunImage.Extend
@@ -862,10 +867,12 @@ func (l *LifecycleExecution) hasExtensionsForRun() bool {
 func (l *LifecycleExecution) runImageAfterExtensions() string {
 	var amd analyzedMD
 	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
+		l.logger.Warnf("failed to parse analyzed.toml file, assuming run image did not change...")
 		return l.opts.RunImage
 	}
 	if amd.RunImage == nil {
 		// this shouldn't be reachable
+		l.logger.Warnf("found no run image in analyzed.toml file, assuming run image did not change...")
 		return l.opts.RunImage
 	}
 	return amd.RunImage.Image
