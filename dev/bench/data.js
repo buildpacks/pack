@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687960201473,
+  "lastUpdate": 1687962102559,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -838,6 +838,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 78984746462,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "84a673367772316d6bf7ee51635a351cca8c6519",
+          "message": "Merge pull request #1809 from dlion/disable-ci-codecov-fail\n\nDisable CI failure if codecov fails due of the flakiness of the upload step",
+          "timestamp": "2023-06-28T09:19:27-05:00",
+          "tree_id": "b3c2800161fd680f71ef9625b5d6c244ebfc4f71",
+          "url": "https://github.com/buildpacks/pack/commit/84a673367772316d6bf7ee51635a351cca8c6519"
+        },
+        "date": 1687962101702,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5867267736,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1459851766,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 85371063818,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
