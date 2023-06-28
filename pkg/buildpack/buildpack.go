@@ -65,7 +65,6 @@ func Flattened() BlobOption {
 type buildModule struct {
 	descriptor Descriptor
 	Blob       `toml:"-"`
-	flattened  bool
 }
 
 func (b *buildModule) Descriptor() Descriptor {
@@ -86,7 +85,6 @@ func FromBlob(descriptor Descriptor, blob Blob, ops ...BlobOption) BuildModule {
 	return &buildModule{
 		Blob:       blob,
 		descriptor: descriptor,
-		flattened:  blobOpts.flattened,
 	}
 }
 
@@ -368,7 +366,7 @@ func ToNLayerTar(dest string, module BuildModule) ([]ModuleTar, error) {
 		header, err = tr.Next()
 		if err != nil {
 			if err == io.EOF {
-				return handleSingleOrEmptyModule(dest, module)
+				return handleEmptyModule(dest, module)
 			}
 			return nil, err
 		}
@@ -514,7 +512,7 @@ func parseBpIDAndVersion(hdr *tar.Header) (id, version string) {
 	return id, version
 }
 
-func handleSingleOrEmptyModule(dest string, module BuildModule) ([]ModuleTar, error) {
+func handleEmptyModule(dest string, module BuildModule) ([]ModuleTar, error) {
 	tarFile, err := ToLayerTar(dest, module)
 	if err != nil {
 		return nil, err
