@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687366471070,
+  "lastUpdate": 1687960201473,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -796,6 +796,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 81757948320,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e083ca1dd120e9e2fe57c4ec7bc38abc5a586edc",
+          "message": "Merge pull request #1810 from dlion/1800-fix-dir-permission\n\nIf includeRoot by default the permission value is always set to 0777",
+          "timestamp": "2023-06-28T08:47:53-05:00",
+          "tree_id": "5f191eec7bf6d5ebb09f05c2bebf3f9cf666634e",
+          "url": "https://github.com/buildpacks/pack/commit/e083ca1dd120e9e2fe57c4ec7bc38abc5a586edc"
+        },
+        "date": 1687960200414,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6202603570,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1781794051,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 78984746462,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
