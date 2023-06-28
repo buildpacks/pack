@@ -124,11 +124,10 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 				opener: openerFunc,
 			}
 
-			var blobOpts []BlobOption
 			if desc.Info().Match(md.ModuleInfo) { // Current module is the order buildpack of the package
-				mainBP = FromBlob(&desc, b, blobOpts...)
+				mainBP = FromBlob(&desc, b)
 			} else {
-				depBPs = append(depBPs, FromBlob(&desc, b, blobOpts...))
+				depBPs = append(depBPs, FromBlob(&desc, b))
 			}
 		}
 	}
