@@ -831,7 +831,7 @@ version = "buildpack-2-version-1"
 
 		when("BuildModule could not be read", func() {
 			it("surfaces errors encountered while reading blob", func() {
-				_, err = buildpack.ToNLayerTar(tmpDir, &errorBuildModule{flattened: true})
+				_, err = buildpack.ToNLayerTar(tmpDir, &errorBuildModule{})
 				h.AssertError(t, err, "opening blob")
 			})
 		})
@@ -860,6 +860,44 @@ version = "buildpack-2-version-1"
 				h.AssertNotNil(t, tarPaths[0].Path())
 			})
 		})
+
+		when("BuildModule contains unexpected elements in the tarball file", func() {
+			it.Before(func() {
+				expectedBP = []expectedBuildpack{
+					{
+						id:      "buildpack-1-id",
+						version: "buildpack-1-version-1",
+					},
+				}
+			})
+
+			it.Focus("throws an error", func() {
+				bp := buildpack.FromBlob(
+					&dist.BuildpackDescriptor{
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
+							ID:      "buildpack-1-id",
+							Version: "buildpack-1-version-1",
+							Name:    "buildpack-1",
+						},
+					},
+					&readerBlob{
+						openFn: func() io.ReadCloser {
+							tarBuilder := archive.TarBuilder{}
+
+							// Buildpack 1
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id", 0700, time.Now())
+							tarBuilder.AddDir("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1", 0700, time.Now())
+							tarBuilder.AddFile("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1/../hack", 0700, time.Now(), []byte("harmful content"))
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
+						},
+					},
+				)
+
+				_, err = buildpack.ToNLayerTar(tmpDir, bp)
+				h.AssertError(t, err, "contains unexpected special elements")
+			})
+		})
 	})
 }
 
@@ -886,7 +924,6 @@ func (r *readerBlob) Open() (io.ReadCloser, error) {
 }
 
 type errorBuildModule struct {
-	flattened bool
 }
 
 func (eb *errorBuildModule) Open() (io.ReadCloser, error) {
