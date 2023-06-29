@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -832,6 +833,31 @@ version = "buildpack-2-version-1"
 			it("surfaces errors encountered while reading blob", func() {
 				_, err = buildpack.ToNLayerTar(tmpDir, &errorBuildModule{flattened: true})
 				h.AssertError(t, err, "opening blob")
+			})
+		})
+
+		when("BuildModule is empty", func() {
+			it("returns a path to an empty tarball", func() {
+				bp := buildpack.FromBlob(
+					&dist.BuildpackDescriptor{
+						WithAPI: api.MustParse("0.3"),
+						WithInfo: dist.ModuleInfo{
+							ID:      "buildpack-1-id",
+							Version: "buildpack-1-version-1",
+							Name:    "buildpack-1",
+						},
+					},
+					&readerBlob{
+						openFn: func() io.ReadCloser {
+							return io.NopCloser(strings.NewReader(""))
+						},
+					},
+				)
+
+				tarPaths, err := buildpack.ToNLayerTar(tmpDir, bp)
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(tarPaths), 1)
+				h.AssertNotNil(t, tarPaths[0].Path())
 			})
 		})
 	})
