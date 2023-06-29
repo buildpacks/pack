@@ -350,6 +350,9 @@ func ToNLayerTar(dest string, module BuildModule) ([]ModuleTar, error) {
 			}
 			return nil, err
 		}
+		if _, err := sanitizePath(header.Name); err != nil {
+			return nil, err
+		}
 		if header.Name == "Files" {
 			forWindows = true
 		}
@@ -391,6 +394,9 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 		if err != nil {
 			return fmt.Errorf("getting second header: %w; first header was %s", err, firstHeader.Name)
 		}
+		if _, err := sanitizePath(secondHeader.Name); err != nil {
+			return err
+		}
 		nextID, nextVersion := parseBpIDAndVersion(secondHeader)
 		if nextID != origID || nextVersion == "" {
 			return fmt.Errorf("second header '%s' contained unexpected id or missing version", secondHeader.Name)
@@ -426,6 +432,9 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 			}
 			return fmt.Errorf("getting next header: %w", err)
 		}
+		if _, err := sanitizePath(header.Name); err != nil {
+			return err
+		}
 		nextID, nextVersion := parseBpIDAndVersion(header)
 		if nextID != origID || nextVersion != origVersion {
 			// we found a new module, recurse
@@ -447,6 +456,13 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 			return fmt.Errorf("failed to write contents to '%s': %w", header.Name, err)
 		}
 	}
+}
+
+func sanitizePath(path string) (string, error) {
+	if strings.Contains(path, "..") {
+		return "", fmt.Errorf("path %s contains unexpected special elements", path)
+	}
+	return path, nil
 }
 
 func windowsPreamble() []*tar.Header {
