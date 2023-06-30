@@ -871,7 +871,7 @@ version = "buildpack-2-version-1"
 				}
 			})
 
-			it.Focus("throws an error", func() {
+			it("throws an error", func() {
 				bp := buildpack.FromBlob(
 					&dist.BuildpackDescriptor{
 						WithAPI: api.MustParse("0.3"),
