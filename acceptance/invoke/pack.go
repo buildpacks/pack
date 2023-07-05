@@ -232,6 +232,7 @@ const (
 	BuildImageExtensions
 	RunImageExtensions
 	StackValidation
+	ForceRebase
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -249,6 +250,9 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	},
 	StackValidation: func(i *PackInvoker) bool {
 		return !i.atLeast("v0.30.0")
+	},
+	ForceRebase: func(i *PackInvoker) bool {
+		return i.atLeast("v0.30.0")
 	},
 }
 

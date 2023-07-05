@@ -2639,12 +2639,15 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 
 						it("uses provided run image", func() {
-							output := pack.RunSuccessfully(
-								"rebase", repoName,
+							args := []string{
+								repoName,
 								"--run-image", runAfter,
 								"--pull-policy", "never",
-								"--force",
-							)
+							}
+							if pack.SupportsFeature(invoke.ForceRebase) {
+								args = append(args, "--force")
+							}
+							output := pack.RunSuccessfully("rebase", args...)
 
 							assert.Contains(output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
 							assertImage.RunsWithOutput(
@@ -2669,7 +2672,11 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 
 						it("prefers the local mirror", func() {
-							output := pack.RunSuccessfully("rebase", repoName, "--pull-policy", "never", "--force")
+							args := []string{repoName, "--pull-policy", "never"}
+							if pack.SupportsFeature(invoke.ForceRebase) {
+								args = append(args, "--force")
+							}
+							output := pack.RunSuccessfully("rebase", args...)
 
 							assertOutput := assertions.NewOutputAssertionManager(t, output)
 							assertOutput.ReportsSelectingRunImageMirrorFromLocalConfig(localRunImageMirror)
@@ -2724,7 +2731,11 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 
 						it("uses provided run image", func() {
-							output := pack.RunSuccessfully("rebase", repoName, "--publish", "--run-image", runAfter, "--force")
+							args := []string{repoName, "--publish", "--run-image", runAfter}
+							if pack.SupportsFeature(invoke.ForceRebase) {
+								args = append(args, "--force")
+							}
+							output := pack.RunSuccessfully("rebase", args...)
 
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulRebase(repoName)
 							assertImage.CanBePulledFromRegistry(repoName)
