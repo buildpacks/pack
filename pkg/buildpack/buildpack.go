@@ -593,9 +593,8 @@ func (m *moduleTarCollection) get(id, version string) (moduleTar, error) {
 func (m *moduleTarCollection) moduleTars() []ModuleTar {
 	var modulesTar []ModuleTar
 	for _, v := range m.modules {
-		v := v
-		vv := &v
-		modulesTar = append(modulesTar, vv)
+		vcopy := v
+		modulesTar = append(modulesTar, &vcopy)
 	}
 	return modulesTar
 }
