@@ -6,7 +6,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -132,12 +132,12 @@ remote_info:
 					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
-				Base: platform.RunImageForRebase{
+				Base: files.RunImageForRebase{
 					TopLayer:  "some-remote-top-layer",
 					Reference: "some-remote-run-image-reference",
 				},
-				Stack: platform.StackMetadata{
-					RunImage: platform.RunImageForExport{
+				Stack: files.Stack{
+					RunImage: files.RunImageForExport{
 						Image:   "some-remote-run-image",
 						Mirrors: []string{"some-remote-mirror", "other-remote-mirror"},
 					},
@@ -187,12 +187,12 @@ remote_info:
 					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
-				Base: platform.RunImageForRebase{
+				Base: files.RunImageForRebase{
 					TopLayer:  "some-local-top-layer",
 					Reference: "some-local-run-image-reference",
 				},
-				Stack: platform.StackMetadata{
-					RunImage: platform.RunImageForExport{
+				Stack: files.Stack{
+					RunImage: files.RunImageForExport{
 						Image:   "some-local-run-image",
 						Mirrors: []string{"some-local-mirror", "other-local-mirror"},
 					},

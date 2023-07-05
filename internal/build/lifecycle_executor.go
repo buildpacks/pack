@@ -6,15 +6,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/buildpacks/pack/pkg/cache"
-
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/container"
+	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -74,7 +73,7 @@ type LifecycleOptions struct {
 	LifecycleApis        []string // optional - populated only if custom lifecycle image is downloaded, from that lifecycle's container's Labels.
 	RunImage             string
 	FetchRunImage        func(name string) error
-	ProjectMetadata      platform.ProjectMetadata
+	ProjectMetadata      files.ProjectMetadata
 	ClearCache           bool
 	Publish              bool
 	TrustBuilder         bool

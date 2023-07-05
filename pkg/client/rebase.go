@@ -8,6 +8,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/build"
@@ -59,11 +60,11 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return err
 	}
 
-	var md platform.LayersMetadataCompat
-	if ok, err := dist.GetLabel(appImage, platform.LayerMetadataLabel, &md); err != nil {
+	var md files.LayersMetadataCompat
+	if ok, err := dist.GetLabel(appImage, platform.LifecycleMetadataLabel, &md); err != nil {
 		return err
 	} else if !ok {
-		return errors.Errorf("could not find label %s on image", style.Symbol(platform.LayerMetadataLabel))
+		return errors.Errorf("could not find label %s on image", style.Symbol(platform.LifecycleMetadataLabel))
 	}
 	var runImageMD builder.RunImageMetadata
 	if md.RunImage.Image != "" {

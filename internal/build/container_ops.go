@@ -9,7 +9,7 @@ import (
 	"runtime"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/errdefs"
@@ -208,7 +208,7 @@ func findMount(info types.ContainerJSON, dst string) (types.MountPoint, error) {
 }
 
 // WriteProjectMetadata
-func WriteProjectMetadata(p string, metadata platform.ProjectMetadata, os string) ContainerOperation {
+func WriteProjectMetadata(p string, metadata files.ProjectMetadata, os string) ContainerOperation {
 	return func(ctrClient DockerClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
 		buf := &bytes.Buffer{}
 		err := toml.NewEncoder(buf).Encode(metadata)
