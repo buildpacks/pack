@@ -2,6 +2,7 @@ package buildpack
 
 import (
 	"io"
+	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -32,6 +33,8 @@ func (s *syncPkg) GetLayer(diffID string) (io.ReadCloser, error) {
 	return s.pkg.GetLayer(diffID)
 }
 
+// extractBuildpacks when provided a flattened buildpack package containing N buildpacks,
+// will return N modules: 1 module with a single tar containing ALL N buildpacks, and N-1 modules with empty tar files.
 func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, err error) {
 	pkg = &syncPkg{pkg: pkg}
 	md := &Metadata{}
@@ -57,6 +60,27 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 		)
 	}
 
+	// Example `dist.ModuleLayers{}`:
+	//
+	//{
+	//  "samples/hello-moon": {
+	//    "0.0.1": {
+	//      "api": "0.2",
+	//      "stacks": [
+	//        {
+	//          "id": "*"
+	//        }
+	//      ],
+	//      "layerDiffID": "sha256:37ab46923c181aa5fb27c9a23479a38aec2679237f35a0ea4115e5ae81a17bba",
+	//      "homepage": "https://github.com/buildpacks/samples/tree/main/buildpacks/hello-moon",
+	//      "name": "Hello Moon Buildpack"
+	//    }
+	//  }
+	//}
+
+	// If the package is a flattened buildpack, the first buildpack in the package returns all the tar content,
+	// and subsequent buildpacks return an empty tar.
+	var processedDiffIDs = make(map[string]bool)
 	for bpID, v := range pkgLayers {
 		for bpVersion, bpInfo := range v {
 			desc := dist.BuildpackDescriptor{
@@ -73,8 +97,16 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 			}
 
 			diffID := bpInfo.LayerDiffID // Allow use in closure
-			b := &openerBlob{
-				opener: func() (io.ReadCloser, error) {
+
+			var openerFunc func() (io.ReadCloser, error)
+			if _, ok := processedDiffIDs[diffID]; ok {
+				// We already processed a layer with this diffID, so the module must be flattened;
+				// return an empty reader to avoid multiple tars with the same content.
+				openerFunc = func() (io.ReadCloser, error) {
+					return io.NopCloser(strings.NewReader("")), nil
+				}
+			} else {
+				openerFunc = func() (io.ReadCloser, error) {
 					rc, err := pkg.GetLayer(diffID)
 					if err != nil {
 						return nil, errors.Wrapf(err,
@@ -84,10 +116,15 @@ func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 						)
 					}
 					return rc, nil
-				},
+				}
+				processedDiffIDs[diffID] = true
 			}
 
-			if desc.Info().Match(md.ModuleInfo) { // This is the order buildpack of the package
+			b := &openerBlob{
+				opener: openerFunc,
+			}
+
+			if desc.Info().Match(md.ModuleInfo) { // Current module is the order buildpack of the package
 				mainBP = FromBlob(&desc, b)
 			} else {
 				depBPs = append(depBPs, FromBlob(&desc, b))
