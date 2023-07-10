@@ -24,5 +24,8 @@ FROM \${base_image}
 
 USER root
 RUN echo "Hello World" > /from-ext.txt
+
+ARG user_id
+USER \${user_id}
 EOL
 fi

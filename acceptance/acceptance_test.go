@@ -797,12 +797,12 @@ func testAcceptance(
 					it("creates builder", func() {
 						// Linux containers (including Linux containers on Windows)
 						extSimpleLayersDiffID := "sha256:b9e4a0ddfb650c7aa71d1e6aceea1665365e409b3078bfdc1e51c2b07ab2b423"
-						extReadEnvDiffID := "sha256:ab7419c5e0b1a0789bd07cef2ed0573ec6e98eb05d7f05eb95d4f035243e331c"
+						extReadEnvDiffID := "sha256:6801a0398d023ff06a43c4fd03ef325a45daaa4540fc3ee140e2fb22bf5143a7"
 						bpSimpleLayersDiffID := "sha256:285ff6683c99e5ae19805f6a62168fb40dca64d813c53b782604c9652d745c70"
 						bpReadEnvDiffID := "sha256:dd1e0efcbf3f08b014ef6eff9cfe7a9eac1cf20bd9b6a71a946f0a74575aa56f"
 						if imageManager.HostOS() == "windows" { // Windows containers on Windows
 							extSimpleLayersDiffID = "sha256:a063cf949b9c267133e451ac8cd95b4e77571bb7c629dd817461dca769170810"
-							extReadEnvDiffID = "sha256:a4e7f114efa3692939974da9c9f08e47b3fdb5c779688dc8f5a950e0f804bef1"
+							extReadEnvDiffID = "sha256:4c37e22595762315d28805f32e1f5fd48b4ddfc293ef7b41e0e609a4241b8479"
 							bpSimpleLayersDiffID = "sha256:ccd1234cc5685e8a412b70c5f9a8e7b584b8e4f2a20c987ec242c9055de3e45e"
 							bpReadEnvDiffID = "sha256:8b22a7742ffdfbdd978787c6937456b68afb27c3585a3903048be7434d251e3f"
 						}
@@ -2250,6 +2250,92 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 								h.AssertNil(t, err)
 								assertImage.HasCreateTime(repoName, expectedTime)
 							})
+						})
+					})
+				})
+
+				when("build --buildpack <flattened buildpack>", func() {
+					var (
+						tmpDir                         string
+						flattenedPackageName           string
+						simplePackageConfigFixtureName = "package.toml"
+					)
+
+					generateAggregatePackageToml := func(buildpackURI, nestedPackageName, operatingSystem string) string {
+						t.Helper()
+						packageTomlFile, err := os.CreateTemp(tmpDir, "package_aggregate-*.toml")
+						assert.Nil(err)
+
+						pack.FixtureManager().TemplateFixtureToFile(
+							"package_aggregate.toml",
+							packageTomlFile,
+							map[string]interface{}{
+								"BuildpackURI": buildpackURI,
+								"PackageName":  nestedPackageName,
+								"OS":           operatingSystem,
+							},
+						)
+
+						assert.Nil(packageTomlFile.Close())
+						return packageTomlFile.Name()
+					}
+
+					it.Before(func() {
+						h.SkipIf(t, !pack.SupportsFeature(invoke.BuildpackFlatten), "")
+						h.SkipIf(t, imageManager.HostOS() == "windows", "buildpack directories not supported on windows")
+
+						var err error
+						tmpDir, err = os.MkdirTemp("", "buildpack-package-flattened-tests")
+						assert.Nil(err)
+
+						buildpackManager = buildpacks.NewBuildModuleManager(t, assert)
+						buildpackManager.PrepareBuildModules(tmpDir, buildpacks.BpSimpleLayersParent, buildpacks.BpSimpleLayers)
+
+						// set up a flattened buildpack
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+						nestedPackageName := "test/flattened-package-" + h.RandString(10)
+						nestedPackage := buildpacks.NewPackageImage(
+							t,
+							pack,
+							nestedPackageName,
+							packageTomlPath,
+							buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayers),
+						)
+						buildpackManager.PrepareBuildModules(tmpDir, nestedPackage)
+						assertImage.ExistsLocally(nestedPackageName)
+
+						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
+						flattenedPackageName = "test/package-" + h.RandString(10)
+
+						_ = pack.RunSuccessfully(
+							"buildpack", "package", flattenedPackageName,
+							"-c", aggregatePackageToml,
+							"--flatten",
+						)
+
+						assertImage.ExistsLocally(flattenedPackageName)
+						assertImage.HasLengthLayers(flattenedPackageName, 1)
+					})
+
+					it.After(func() {
+						assert.Nil(os.RemoveAll(tmpDir))
+						imageManager.CleanupImages(flattenedPackageName)
+					})
+
+					when("--flatten", func() {
+						it("does not write duplicate tar files when creating the ephemeral builder", func() {
+							output := pack.RunSuccessfully(
+								"build", repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--buildpack", fmt.Sprintf("docker://%s", flattenedPackageName),
+								"--builder", builderName,
+							)
+							// buildpack returning an empty tar file is non-deterministic,
+							// but we expect one of them to throw the warning
+							h.AssertContainsMatch(t, output, "Buildpack '(simple/layers@simple-layers-version|simple/layers/parent@simple-layers-parent-version)' is a component of a flattened buildpack that will be added elsewhere, skipping...")
+
+							// simple/layers BP exists on the builder and in the flattened buildpack
+							h.AssertContainsMatch(t, output, "Buildpack 'simple/layers@simple-layers-version' already exists on builder with same contents, skipping...")
 						})
 					})
 				})
