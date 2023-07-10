@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688997121355,
+  "lastUpdate": 1689001143749,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -1132,6 +1132,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 79562953754,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "88a998d8f156ab8654d90ccbf2ab08a216259672",
+          "message": "Merge pull request #1822 from ESWZY/merge-toml-writing\n\nMerge the same TOML file writing logic",
+          "timestamp": "2023-07-10T09:56:27-05:00",
+          "tree_id": "93704c07e6e8ac43429674e241724b51ee5cf531",
+          "url": "https://github.com/buildpacks/pack/commit/88a998d8f156ab8654d90ccbf2ab08a216259672"
+        },
+        "date": 1689001142324,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 8748163796,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2614911437,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 96036092321,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
