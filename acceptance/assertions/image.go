@@ -69,6 +69,13 @@ func (a ImageAssertionManager) HasLabelWithData(image, label, data string) {
 	a.assert.Contains(label, data)
 }
 
+func (a ImageAssertionManager) HasLengthLayers(image string, length int) {
+	a.testObject.Helper()
+	inspect, err := a.imageManager.InspectLocal(image)
+	a.assert.Nil(err)
+	a.assert.TrueWithMessage(len(inspect.RootFS.Layers) == length, fmt.Sprintf("expected image to have %d layers, found %d", length, len(inspect.RootFS.Layers)))
+}
+
 func (a ImageAssertionManager) RunsWithOutput(image string, expectedOutputs ...string) {
 	a.testObject.Helper()
 	containerName := "test-" + h.RandString(10)

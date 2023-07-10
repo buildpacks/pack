@@ -169,17 +169,9 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 (.*)    <DIR>          ...                    some-vol
 `)
 				} else {
-					if runtime.GOOS == "windows" {
-						// Expected LCOW results
-						h.AssertContainsMatch(t, outBuf.String(), `
+					h.AssertContainsMatch(t, outBuf.String(), `
 drwxrwxrwx    2 123      456 (.*) some-vol
 `)
-					} else {
-						// Expected results
-						h.AssertContainsMatch(t, outBuf.String(), `
-drwxr-xr-x    2 123      456 (.*) some-vol
-`)
-					}
 				}
 			})
 		})

@@ -3,6 +3,7 @@ package builder
 import (
 	"archive/tar"
 	"bytes"
+	e "errors"
 	"fmt"
 	"io"
 	"os"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/builder"
@@ -46,6 +46,8 @@ const (
 	compatLifecycleDir = "/lifecycle"
 	workspaceDir       = "/workspace"
 	layersDir          = "/layers"
+
+	emptyTarDiffID = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 	metadataLabel = "io.buildpacks.builder.metadata"
 	stackLabel    = "io.buildpacks.stack.id"
@@ -88,7 +90,8 @@ type orderTOML struct {
 	OrderExt dist.Order `toml:"order-extensions,omitempty"`
 }
 
-type toAdd struct {
+// moduleWithDiffID is a Build Module which content was written on disk in a tar file and the content hash was calculated
+type moduleWithDiffID struct {
 	tarPath string
 	diffID  string
 	module  buildpack.BuildModule
@@ -559,62 +562,18 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 // Helpers
 
 func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.ModuleLayers) error {
-	collectionToAdd := map[string]toAdd{}
-
-	type modInfo struct {
-		info     dist.ModuleInfo
-		layerTar string
-		diffID   v1.Hash
-		err      error
+	collectionToAdd := map[string]moduleWithDiffID{}
+	toAdd, errs := explodeModules(kind, tmpDir, additionalModules, logger)
+	if len(errs) > 0 {
+		return e.Join(errs...)
 	}
 
-	lids := make([]chan modInfo, len(additionalModules))
-	for i := range lids {
-		lids[i] = make(chan modInfo, 1)
-	}
-
-	for i, module := range additionalModules {
-		go func(i int, module buildpack.BuildModule) {
-			// create directory
-			modTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s", kind, strconv.Itoa(i)))
-			if err := os.MkdirAll(modTmpDir, os.ModePerm); err != nil {
-				lids[i] <- modInfo{err: errors.Wrapf(err, "creating %s temp dir", kind)}
-			}
-
-			// create tar file
-			layerTar, err := buildpack.ToLayerTar(modTmpDir, module)
-			if err != nil {
-				lids[i] <- modInfo{err: err}
-			}
-
-			// generate diff id
-			diffID, err := dist.LayerDiffID(layerTar)
-			info := module.Descriptor().Info()
-			if err != nil {
-				lids[i] <- modInfo{err: errors.Wrapf(err,
-					"getting content hashes for %s %s",
-					kind,
-					style.Symbol(info.FullName()),
-				)}
-			}
-			lids[i] <- modInfo{
-				info:     info,
-				layerTar: layerTar,
-				diffID:   diffID,
-			}
-		}(i, module)
-	}
-
-	for i, module := range additionalModules {
-		mi := <-lids[i]
-		if mi.err != nil {
-			return mi.err
-		}
-		info, diffID, layerTar := mi.info, mi.diffID, mi.layerTar
+	for i, additionalModule := range toAdd {
+		info, diffID, layerTar, module := additionalModule.module.Descriptor().Info(), additionalModule.diffID, additionalModule.tarPath, additionalModule.module
 
 		// check against builder layers
 		if existingInfo, ok := layers[info.ID][info.Version]; ok {
-			if existingInfo.LayerDiffID == diffID.String() {
+			if existingInfo.LayerDiffID == diffID {
 				logger.Debugf("%s %s already exists on builder with same contents, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
 				continue
 			} else {
@@ -628,23 +587,23 @@ func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir 
 				}
 			}
 
-			logger.Debugf(ModuleOnBuilderMessage, kind, style.Symbol(info.FullName()), style.Symbol(existingInfo.LayerDiffID), style.Symbol(diffID.String()))
+			logger.Debugf(ModuleOnBuilderMessage, kind, style.Symbol(info.FullName()), style.Symbol(existingInfo.LayerDiffID), style.Symbol(diffID))
 		}
 
 		// check against other modules to be added
 		if otherAdditionalMod, ok := collectionToAdd[info.FullName()]; ok {
-			if otherAdditionalMod.diffID == diffID.String() {
+			if otherAdditionalMod.diffID == diffID {
 				logger.Debugf("%s %s with same contents is already being added, skipping...", istrings.Title(kind), style.Symbol(info.FullName()))
 				continue
 			}
 
-			logger.Debugf(ModulePreviouslyDefinedMessage, kind, style.Symbol(info.FullName()), style.Symbol(otherAdditionalMod.diffID), style.Symbol(diffID.String()))
+			logger.Debugf(ModulePreviouslyDefinedMessage, kind, style.Symbol(info.FullName()), style.Symbol(otherAdditionalMod.diffID), style.Symbol(diffID))
 		}
 
 		// note: if same id@version is in additionalModules, last one wins (see warnings above)
-		collectionToAdd[info.FullName()] = toAdd{
+		collectionToAdd[info.FullName()] = moduleWithDiffID{
 			tarPath: layerTar,
-			diffID:  diffID.String(),
+			diffID:  diffID,
 			module:  module,
 		}
 	}
@@ -669,7 +628,7 @@ func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir 
 }
 
 func (b *Builder) addFlattenedModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, flattenModules [][]buildpack.BuildModule, layers dist.ModuleLayers) ([]buildpack.BuildModule, error) {
-	collectionToAdd := map[string]toAdd{}
+	collectionToAdd := map[string]moduleWithDiffID{}
 	var (
 		buildModuleExcluded []buildpack.BuildModule
 		finalTarPath        string
@@ -696,7 +655,7 @@ func (b *Builder) addFlattenedModules(kind string, logger logging.Logger, tmpDir
 		}
 
 		for _, module := range additionalModules {
-			collectionToAdd[module.Descriptor().Info().FullName()] = toAdd{
+			collectionToAdd[module.Descriptor().Info().FullName()] = moduleWithDiffID{
 				tarPath: finalTarPath,
 				diffID:  diffID.String(),
 				module:  module,
@@ -1083,7 +1042,7 @@ func (b *Builder) stackLayer(dest string) (string, error) {
 	if b.metadata.Stack.RunImage.Image != "" {
 		err = toml.NewEncoder(buf).Encode(b.metadata.Stack)
 	} else if len(b.metadata.RunImages) > 0 {
-		err = toml.NewEncoder(buf).Encode(b.metadata.RunImages[0])
+		err = toml.NewEncoder(buf).Encode(StackMetadata{RunImage: b.metadata.RunImages[0]})
 	}
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to marshal stack.toml")
@@ -1175,11 +1134,126 @@ func (b *Builder) whiteoutLayer(tmpDir string, i int, bpInfo dist.ModuleInfo) (s
 	return fh.Name(), nil
 }
 
-func sortKeys(collection map[string]toAdd) []string {
+func sortKeys(collection map[string]moduleWithDiffID) []string {
 	keys := make([]string, 0, len(collection))
 	for k := range collection {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// explodeModules takes a collection of build modules and concurrently reads their tar files.
+// It assumes the modules were extracted with `buildpack.extractBuildpacks`, which when provided a flattened buildpack package containing N buildpacks,
+// will return N modules: 1 module with a single tar containing ALL N buildpacks, and N-1 modules with empty tar files.
+// As we iterate through the modules, in case a flattened module (tar containing all N buildpacks) is found,
+// explodeModules will split the module into N modules, each with a single tar containing a single buildpack.
+// In case a module with an empty tar file is found, it is ignored.
+func explodeModules(kind, tmpDir string, additionalModules []buildpack.BuildModule, logger logging.Logger) ([]moduleWithDiffID, []error) {
+	modInfoChans := make([]chan modInfo, len(additionalModules))
+	for i := range modInfoChans {
+		modInfoChans[i] = make(chan modInfo, 1)
+	}
+
+	// Explode modules concurrently
+	for i, module := range additionalModules {
+		go func(i int, module buildpack.BuildModule) {
+			modTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s", kind, strconv.Itoa(i)))
+			if err := os.MkdirAll(modTmpDir, os.ModePerm); err != nil {
+				modInfoChans[i] <- handleError(module, err, fmt.Sprintf("creating %s temp dir %s", kind, modTmpDir))
+			}
+			moduleTars, err := buildpack.ToNLayerTar(modTmpDir, module)
+			if err != nil {
+				modInfoChans[i] <- handleError(module, err, fmt.Sprintf("creating %s tar file at path %s", module.Descriptor().Info().FullName(), modTmpDir))
+			}
+			modInfoChans[i] <- modInfo{moduleTars: moduleTars}
+		}(i, module)
+	}
+
+	// Iterate over modules sequentially, building up the result.
+	var (
+		result []moduleWithDiffID
+		errs   []error
+	)
+	for i, module := range additionalModules {
+		mi := <-modInfoChans[i]
+		if mi.err != nil {
+			errs = append(errs, mi.err)
+			continue
+		}
+		if len(mi.moduleTars) == 1 {
+			// This entry is an individual buildpack or extension, or a module with empty tar
+			moduleTar := mi.moduleTars[0]
+			diffID, err := dist.LayerDiffID(moduleTar.Path())
+			if err != nil {
+				errs = append(errs, errors.Wrapf(err, "calculating layer diffID for path %s", moduleTar.Path()))
+				continue
+			}
+			if diffID.String() == emptyTarDiffID {
+				logger.Debugf("%s %s is a component of a flattened buildpack that will be added elsewhere, skipping...", istrings.Title(kind), style.Symbol(moduleTar.Info().FullName()))
+				continue // we don't need to keep modules with empty tars
+			}
+			result = append(result, moduleWithDiffID{
+				tarPath: moduleTar.Path(),
+				diffID:  diffID.String(),
+				module:  module,
+			})
+		} else {
+			// This entry is a flattened buildpack that was exploded, we need to add each exploded buildpack to the result in order
+			for _, moduleTar := range mi.moduleTars {
+				diffID, err := dist.LayerDiffID(moduleTar.Path())
+				if err != nil {
+					errs = append(errs, errors.Wrapf(err, "calculating layer diffID for path %s", moduleTar.Path()))
+					continue
+				}
+				explodedMod := moduleWithDiffID{
+					tarPath: moduleTar.Path(),
+					diffID:  diffID.String(),
+				}
+				// find the module "info" for this buildpack - it could be the current module, or one of the modules with empty tars that was ignored
+				if namesMatch(module, moduleTar) {
+					explodedMod.module = module
+				} else {
+					for _, additionalModule := range additionalModules {
+						if namesMatch(additionalModule, moduleTar) {
+							explodedMod.module = additionalModule
+							break
+						}
+					}
+				}
+				result = append(result, explodedMod)
+			}
+		}
+	}
+
+	return result, errs
+}
+
+func handleError(module buildpack.BuildModule, err error, message string) modInfo {
+	moduleTar := errModuleTar{
+		module: module,
+	}
+	return modInfo{moduleTars: []buildpack.ModuleTar{moduleTar}, err: errors.Wrap(err, message)}
+}
+
+func namesMatch(module buildpack.BuildModule, moduleOnDisk buildpack.ModuleTar) bool {
+	return moduleOnDisk.Info().FullName() == fmt.Sprintf("%s@%s", module.Descriptor().EscapedID(), module.Descriptor().Info().Version) ||
+		moduleOnDisk.Info().FullName() == module.Descriptor().Info().FullName()
+}
+
+type modInfo struct {
+	moduleTars []buildpack.ModuleTar
+	err        error
+}
+
+type errModuleTar struct {
+	module buildpack.BuildModule
+}
+
+func (e errModuleTar) Info() dist.ModuleInfo {
+	return e.module.Descriptor().Info()
+}
+
+func (e errModuleTar) Path() string {
+	return ""
 }
