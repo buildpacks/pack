@@ -21,7 +21,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
@@ -1865,7 +1865,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertNil(t, err)
 						h.AssertNotNil(t, fakeLifecycle.Opts.ProjectMetadata.Source)
-						h.AssertEq(t, fakeLifecycle.Opts.ProjectMetadata.Source, &platform.ProjectSource{
+						h.AssertEq(t, fakeLifecycle.Opts.ProjectMetadata.Source, &files.ProjectSource{
 							Type:     "project",
 							Version:  map[string]interface{}{"declared": "1.2.3"},
 							Metadata: map[string]interface{}{"url": "https://example.com"},

@@ -80,15 +80,26 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNilE(t, fakeCustomRunImage.Cleanup())
 					})
 
-					it("uses the run image provided by the user", func() {
-						h.AssertNil(t, subject.Rebase(context.TODO(),
+					when("--force", func() {
+						it("uses the run image provided by the user", func() {
+							h.AssertNil(t, subject.Rebase(context.TODO(),
+								RebaseOptions{
+									RunImage: "custom/run",
+									RepoName: "some/app",
+									Force:    true,
+								}))
+							h.AssertEq(t, fakeAppImage.Base(), "custom/run")
+							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
+							h.AssertContains(t, lbl, `"runImage":{"topLayer":"custom-base-top-layer-sha","reference":"custom-base-digest"`)
+						})
+					})
+
+					it("errors", func() {
+						h.AssertError(t, subject.Rebase(context.TODO(),
 							RebaseOptions{
 								RunImage: "custom/run",
 								RepoName: "some/app",
-							}))
-						h.AssertEq(t, fakeAppImage.Base(), "custom/run")
-						lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
-						h.AssertContains(t, lbl, `"runImage":{"topLayer":"custom-base-top-layer-sha","reference":"custom-base-digest"`)
+							}), "new base image 'custom/run' not found in existing run image metadata")
 					})
 				})
 			})
@@ -135,17 +146,19 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						it.After(func() {
 							h.AssertNilE(t, fakeLocalMirror.Cleanup())
 						})
-
-						it("chooses a matching local mirror first", func() {
-							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
-								RepoName: "example.com/some/app",
-								AdditionalMirrors: map[string][]string{
-									"some/run": {"example.com/some/local-run"},
-								},
-							}))
-							h.AssertEq(t, fakeAppImage.Base(), "example.com/some/local-run")
-							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
-							h.AssertContains(t, lbl, `"runImage":{"topLayer":"local-mirror-top-layer-sha","reference":"local-mirror-digest"`)
+						when("--force", func() {
+							it("chooses a matching local mirror first", func() {
+								h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
+									RepoName: "example.com/some/app",
+									AdditionalMirrors: map[string][]string{
+										"some/run": {"example.com/some/local-run"},
+									},
+									Force: true,
+								}))
+								h.AssertEq(t, fakeAppImage.Base(), "example.com/some/local-run")
+								lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
+								h.AssertContains(t, lbl, `"runImage":{"topLayer":"local-mirror-top-layer-sha","reference":"local-mirror-digest"`)
+							})
 						})
 					})
 					when("there is a label and it has a run image and no stack", func() {

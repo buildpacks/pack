@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -169,17 +169,9 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 (.*)    <DIR>          ...                    some-vol
 `)
 				} else {
-					if runtime.GOOS == "windows" {
-						// Expected LCOW results
-						h.AssertContainsMatch(t, outBuf.String(), `
+					h.AssertContainsMatch(t, outBuf.String(), `
 drwxrwxrwx    2 123      456 (.*) some-vol
 `)
-					} else {
-						// Expected results
-						h.AssertContainsMatch(t, outBuf.String(), `
-drwxr-xr-x    2 123      456 (.*) some-vol
-`)
-					}
 				}
 			})
 		})
@@ -572,8 +564,8 @@ drwxr-xr-x    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			writeOp := build.WriteProjectMetadata(p, platform.ProjectMetadata{
-				Source: &platform.ProjectSource{
+			writeOp := build.WriteProjectMetadata(p, files.ProjectMetadata{
+				Source: &files.ProjectSource{
 					Type: "project",
 					Version: map[string]interface{}{
 						"declared": "1.0.2",
@@ -617,8 +609,8 @@ drwxr-xr-x    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			writeOp := build.WriteProjectMetadata(p, platform.ProjectMetadata{
-				Source: &platform.ProjectSource{
+			writeOp := build.WriteProjectMetadata(p, files.ProjectMetadata{
+				Source: &files.ProjectSource{
 					Type: "project",
 					Version: map[string]interface{}{
 						"declared": "1.0.2",
@@ -646,6 +638,7 @@ drwxr-xr-x    2 123      456 (.*) some-vol
 `)
 		})
 	})
+
 	when("#EnsureVolumeAccess", func() {
 		it("changes owner of volume", func() {
 			h.SkipIf(t, osType != "windows", "no-op for linux")

@@ -59,6 +59,6 @@ type Target struct {
 }
 
 type Distribution struct {
-	Name     string   `json:"name" toml:"name"`
+	Name     string   `json:"name,omitempty" toml:"name,omitempty"`
 	Versions []string `json:"versions,omitempty" toml:"versions,omitempty"`
 }

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -61,7 +61,7 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 			createUnannotatedTag(t, repo, commits[len(commits)-1], "testTag")
 
 			output := GitMetadata(repoPath)
-			expectedOutput := &platform.ProjectSource{
+			expectedOutput := &files.ProjectSource{
 				Type: "git",
 				Version: map[string]interface{}{
 					"commit":   commits[len(commits)-1].String(),
