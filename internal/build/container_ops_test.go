@@ -638,6 +638,7 @@ drwxrwxrwx    2 123      456 (.*) some-vol
 `)
 		})
 	})
+
 	when("#EnsureVolumeAccess", func() {
 		it("changes owner of volume", func() {
 			h.SkipIf(t, osType != "windows", "no-op for linux")
