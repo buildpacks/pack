@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688950490240,
+  "lastUpdate": 1688952164832,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -964,6 +964,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 71137281303,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3921f9e54b04662858ab46a572c4fb17e3f164ee",
+          "message": "Merge pull request #1801 from buildpacks/fix/log-message\n\nFix log message when buildpack doesn't satisfy target constraints for builder",
+          "timestamp": "2023-07-09T20:20:15-05:00",
+          "tree_id": "37f50849ce1969aa642602fdfebf7d8070fb9d4e",
+          "url": "https://github.com/buildpacks/pack/commit/3921f9e54b04662858ab46a572c4fb17e3f164ee"
+        },
+        "date": 1688952163388,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 8694933271,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2534108437,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 92716344318,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
