@@ -1,6 +1,7 @@
 package dist
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -84,7 +85,33 @@ func (b *BuildpackDescriptor) EnsureTargetSupport(os, arch, distroName, distroVe
 			}
 		}
 	}
-	return fmt.Errorf("buildpack %s does not support target: (%s %s, %s@%s)", style.Symbol(b.Info().FullName()), os, arch, distroName, distroVersion)
+	type osDistribution struct {
+		Name    string `json:"name,omitempty"`
+		Version string `json:"version,omitempty"`
+	}
+	type target struct {
+		OS           string         `json:"os"`
+		Arch         string         `json:"arch"`
+		Distribution osDistribution `json:"distribution"`
+	}
+	return fmt.Errorf(
+		"unable to satisfy target os/arch constraints; build image: %s, buildpack %s: %s",
+		toJSONMaybe(target{
+			OS:           os,
+			Arch:         arch,
+			Distribution: osDistribution{Name: distroName, Version: distroVersion},
+		}),
+		style.Symbol(b.Info().FullName()),
+		toJSONMaybe(b.Targets()),
+	)
+}
+
+func toJSONMaybe(v interface{}) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Sprintf("%s", v) // hopefully v is a Stringer
+	}
+	return string(b)
 }
 
 func (b *BuildpackDescriptor) Kind() string {
