@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1688955473639,
+  "lastUpdate": 1688995378128,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -1048,6 +1048,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 94071801656,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f9149b7bc68d1257cba59f840ef564063c17e5f8",
+          "message": "Merge pull request #1815 from buildpacks/fix/creds-for-run-ext\n\nFix: when running restore, provide creds for run image if there are r…",
+          "timestamp": "2023-07-10T08:21:03-05:00",
+          "tree_id": "8edcda22b091bf4a63fb9e9f60986b42234fb263",
+          "url": "https://github.com/buildpacks/pack/commit/f9149b7bc68d1257cba59f840ef564063c17e5f8"
+        },
+        "date": 1688995377406,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4588561892,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1213092399,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 74822387013,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
