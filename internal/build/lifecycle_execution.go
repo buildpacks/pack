@@ -469,13 +469,17 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 	// for kaniko
 	kanikoCacheBindOp := NullOp()
 	if (l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild()) ||
-		(l.platformAPI.AtLeast("0.12") && (l.hasExtensionsForBuild() || l.hasExtensionsForRun())) {
+		l.platformAPI.AtLeast("0.12") {
 		if l.hasExtensionsForBuild() {
 			flags = append(flags, "-build-image", l.opts.BuilderImage)
 			registryImages = append(registryImages, l.opts.BuilderImage)
 		}
-
-		kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir()))
+		if l.runImageChanged() || l.hasExtensionsForRun() {
+			registryImages = append(registryImages, l.runImageAfterExtensions())
+		}
+		if l.hasExtensionsForBuild() || l.hasExtensionsForRun() {
+			kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir()))
+		}
 	}
 
 	// for auths
@@ -842,9 +846,12 @@ func (l *LifecycleExecution) hasExtensionsForBuild() bool {
 func (l *LifecycleExecution) hasExtensionsForRun() bool {
 	var amd files.Analyzed
 	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
+		l.logger.Warnf("failed to parse analyzed.toml file, assuming no run image extensions: %s", err)
 		return false
 	}
 	if amd.RunImage == nil {
+		// this shouldn't be reachable
+		l.logger.Warnf("found no run image in analyzed.toml file, assuming no run image extensions...")
 		return false
 	}
 	return amd.RunImage.Extend
@@ -853,13 +860,20 @@ func (l *LifecycleExecution) hasExtensionsForRun() bool {
 func (l *LifecycleExecution) runImageAfterExtensions() string {
 	var amd files.Analyzed
 	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
+		l.logger.Warnf("failed to parse analyzed.toml file, assuming run image did not change: %s", err)
 		return l.opts.RunImage
 	}
 	if amd.RunImage == nil || amd.RunImage.Image == "" {
 		// this shouldn't be reachable
+		l.logger.Warnf("found no run image in analyzed.toml file, assuming run image did not change...")
 		return l.opts.RunImage
 	}
 	return amd.RunImage.Image
+}
+
+func (l *LifecycleExecution) runImageChanged() bool {
+	currentRunImage := l.runImageAfterExtensions()
+	return currentRunImage != "" && currentRunImage != l.opts.RunImage
 }
 
 func (l *LifecycleExecution) appendLayoutOperations(opts []PhaseConfigProviderOperation) ([]PhaseConfigProviderOperation, error) {
