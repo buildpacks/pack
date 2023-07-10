@@ -8,6 +8,7 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/pkg/dist"
@@ -42,7 +43,7 @@ type ImageInfo struct {
 	// the first 1 to k layers all belong to the run image,
 	// the last k+1 to n layers are added by buildpacks.
 	// the sum of all of these is our app image.
-	Base platform.RunImageMetadata
+	Base files.RunImageForRebase
 
 	// BOM or Bill of materials, contains dependency and
 	// version information provided by each buildpack.
@@ -50,7 +51,7 @@ type ImageInfo struct {
 
 	// Stack includes the run image name, and a list of image mirrors,
 	// where the run image is hosted.
-	Stack platform.StackMetadata
+	Stack files.Stack
 
 	// Processes lists all processes contributed by buildpacks.
 	Processes ProcessDetails
@@ -68,8 +69,8 @@ type ProcessDetails struct {
 
 // Deserialize just the subset of fields we need to avoid breaking changes
 type layersMetadata struct {
-	RunImage platform.RunImageMetadata `json:"runImage" toml:"run-image"`
-	Stack    platform.StackMetadata    `json:"stack" toml:"stack"`
+	RunImage files.RunImageForRebase `json:"runImage" toml:"run-image"`
+	Stack    files.Stack             `json:"stack" toml:"stack"`
 }
 
 const (
@@ -98,11 +99,11 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 	}
 
 	var layersMd layersMetadata
-	if _, err := dist.GetLabel(img, platform.LayerMetadataLabel, &layersMd); err != nil {
+	if _, err := dist.GetLabel(img, platform.LifecycleMetadataLabel, &layersMd); err != nil {
 		return nil, err
 	}
 
-	var buildMD platform.BuildMetadata
+	var buildMD files.BuildMetadata
 	if _, err := dist.GetLabel(img, platform.BuildMetadataLabel, &buildMD); err != nil {
 		return nil, err
 	}
@@ -175,10 +176,18 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		}
 		processDetails.OtherProcesses = append(processDetails.OtherProcesses, proc)
 	}
+
+	var stackCompat files.Stack
+	if layersMd.RunImage.Image != "" {
+		stackCompat = layersMd.RunImage.ToStack()
+	} else {
+		stackCompat = layersMd.Stack
+	}
+
 	if buildMD.Extensions != nil {
 		return &ImageInfo{
 			StackID:    stackID,
-			Stack:      layersMd.Stack,
+			Stack:      stackCompat,
 			Base:       layersMd.RunImage,
 			BOM:        buildMD.BOM,
 			Buildpacks: buildMD.Buildpacks,
@@ -189,7 +198,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 
 	return &ImageInfo{
 		StackID:    stackID,
-		Stack:      layersMd.Stack,
+		Stack:      stackCompat,
 		Base:       layersMd.RunImage,
 		BOM:        buildMD.BOM,
 		Buildpacks: buildMD.Buildpacks,

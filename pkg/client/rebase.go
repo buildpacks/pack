@@ -8,6 +8,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/build"
@@ -40,6 +41,10 @@ type RebaseOptions struct {
 
 	// If provided, directory to which report.toml will be copied
 	ReportDestinationDir string
+
+	// Pass-through force flag to lifecycle rebase command to skip target data
+	// validated (will not have any effect if API < 0.12).
+	Force bool
 }
 
 // Rebase updates the run image layers in an app image.
@@ -55,23 +60,29 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return err
 	}
 
-	var md platform.LayersMetadataCompat
-	if ok, err := dist.GetLabel(appImage, platform.LayerMetadataLabel, &md); err != nil {
+	var md files.LayersMetadataCompat
+	if ok, err := dist.GetLabel(appImage, platform.LifecycleMetadataLabel, &md); err != nil {
 		return err
 	} else if !ok {
-		return errors.Errorf("could not find label %s on image", style.Symbol(platform.LayerMetadataLabel))
+		return errors.Errorf("could not find label %s on image", style.Symbol(platform.LifecycleMetadataLabel))
 	}
-
+	var runImageMD builder.RunImageMetadata
+	if md.RunImage.Image != "" {
+		runImageMD = builder.RunImageMetadata{
+			Image:   md.RunImage.Image,
+			Mirrors: md.RunImage.Mirrors,
+		}
+	} else if md.Stack != nil {
+		runImageMD = builder.RunImageMetadata{
+			Image:   md.Stack.RunImage.Image,
+			Mirrors: md.Stack.RunImage.Mirrors,
+		}
+	}
 	runImageName := c.resolveRunImage(
 		opts.RunImage,
 		imageRef.Context().RegistryStr(),
 		"",
-		builder.StackMetadata{
-			RunImage: builder.RunImageMetadata{
-				Image:   md.Stack.RunImage.Image,
-				Mirrors: md.Stack.RunImage.Mirrors,
-			},
-		},
+		runImageMD,
 		opts.AdditionalMirrors,
 		opts.Publish)
 
@@ -85,7 +96,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	}
 
 	c.logger.Infof("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
-	rebaser := &lifecycle.Rebaser{Logger: c.logger, PlatformAPI: build.SupportedPlatformAPIVersions.Latest()}
+	rebaser := &lifecycle.Rebaser{Logger: c.logger, PlatformAPI: build.SupportedPlatformAPIVersions.Latest(), Force: opts.Force}
 	report, err := rebaser.Rebase(appImage, baseImage, appImage.Name(), nil)
 	if err != nil {
 		return err

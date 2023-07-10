@@ -19,7 +19,6 @@ type BOMEntryDisplay struct {
 	Version   string                 `toml:"version,omitempty" json:"version,omitempty" yaml:"version,omitempty"`
 	Metadata  map[string]interface{} `toml:"metadata" json:"metadata" yaml:"metadata"`
 	Buildpack dist.ModuleRef         `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
-	Extension dist.ModuleRef         `json:"extensions" yaml:"extensions" toml:"extensions"`
 }
 
 func NewBOMDisplay(info *client.ImageInfo) []BOMEntryDisplay {
@@ -62,13 +61,6 @@ func displayBOMWithExtension(bom []buildpack.BOMEntry) []BOMEntryDisplay {
 			Metadata: entry.Metadata,
 
 			Buildpack: dist.ModuleRef{
-				ModuleInfo: dist.ModuleInfo{
-					ID:      entry.Buildpack.ID,
-					Version: entry.Buildpack.Version,
-				},
-				Optional: entry.Buildpack.Optional,
-			},
-			Extension: dist.ModuleRef{
 				ModuleInfo: dist.ModuleInfo{
 					ID:      entry.Buildpack.ID,
 					Version: entry.Buildpack.Version,

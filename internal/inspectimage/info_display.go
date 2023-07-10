@@ -3,7 +3,7 @@ package inspectimage
 import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/pkg/client"
@@ -95,7 +95,7 @@ func getConfigMirrors(info *client.ImageInfo, imageMirrors []config.RunImage) []
 	return nil
 }
 
-func displayBase(base platform.RunImageMetadata) BaseDisplay {
+func displayBase(base files.RunImageForRebase) BaseDisplay {
 	return BaseDisplay{
 		TopLayer:  base.TopLayer,
 		Reference: base.Reference,

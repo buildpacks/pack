@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/layers"
 	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/pkg/dist"
@@ -18,7 +19,7 @@ type DownloadSBOMOptions struct {
 
 // Deserialize just the subset of fields we need to avoid breaking changes
 type sbomMetadata struct {
-	BOM *platform.LayerMetadata `json:"sbom" toml:"sbom"`
+	BOM *files.LayerMetadata `json:"sbom" toml:"sbom"`
 }
 
 func (s *sbomMetadata) isMissing() bool {
@@ -46,7 +47,7 @@ func (c *Client) DownloadSBOM(name string, options DownloadSBOMOptions) error {
 	}
 
 	var sbomMD sbomMetadata
-	if _, err := dist.GetLabel(img, platform.LayerMetadataLabel, &sbomMD); err != nil {
+	if _, err := dist.GetLabel(img, platform.LifecycleMetadataLabel, &sbomMD); err != nil {
 		return err
 	}
 

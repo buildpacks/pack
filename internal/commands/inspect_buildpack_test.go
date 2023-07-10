@@ -421,7 +421,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					assert.TrimmedEq(outBuf.String(), expectedOutput)
 				})
 			})
-			when("uri is a http or https location", func() {
+			when("uri is an http or https location", func() {
 				it.Before(func() {
 					simpleInfo.Location = buildpack.URILocator
 				})

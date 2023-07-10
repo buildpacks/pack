@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle/api"
@@ -34,11 +35,13 @@ type BuildModule interface {
 type Descriptor interface {
 	API() *api.Version
 	EnsureStackSupport(stackID string, providedMixins []string, validateRunStageMixins bool) error
+	EnsureTargetSupport(os, arch, distroName, distroVersion string) error
 	EscapedID() string
 	Info() dist.ModuleInfo
 	Kind() string
 	Order() dist.Order
 	Stacks() []dist.Stack
+	Targets() []dist.Target
 }
 
 type Blob interface {
@@ -72,6 +75,9 @@ func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 	descriptor := dist.BuildpackDescriptor{}
 	descriptor.WithAPI = api.MustParse(dist.AssumedBuildpackAPIVersion)
 	if err := readDescriptor(KindBuildpack, &descriptor, blob); err != nil {
+		return nil, err
+	}
+	if err := detectPlatformSpecificValues(&descriptor, blob); err != nil {
 		return nil, err
 	}
 	if err := validateBuildpackDescriptor(descriptor); err != nil {
@@ -115,6 +121,35 @@ func readDescriptor(kind string, descriptor interface{}, blob Blob) error {
 	}
 
 	return nil
+}
+
+func detectPlatformSpecificValues(descriptor *dist.BuildpackDescriptor, blob Blob) error {
+	if val, err := hasFile(blob, path.Join("bin", "build")); val {
+		descriptor.WithLinuxBuild = true
+	} else if err != nil {
+		return err
+	}
+	if val, err := hasFile(blob, path.Join("bin", "build.bat")); val {
+		descriptor.WithWindowsBuild = true
+	} else if err != nil {
+		return err
+	}
+	if val, err := hasFile(blob, path.Join("bin", "build.exe")); val {
+		descriptor.WithWindowsBuild = true
+	} else if err != nil {
+		return err
+	}
+	return nil
+}
+
+func hasFile(blob Blob, file string) (bool, error) {
+	rc, err := blob.Open()
+	if err != nil {
+		return false, errors.Wrapf(err, "open %s", "buildpack bin/")
+	}
+	defer rc.Close()
+	_, _, err = archive.ReadTarEntry(rc, file)
+	return err == nil, nil
 }
 
 func buildpackFrom(descriptor Descriptor, blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
@@ -245,19 +280,11 @@ func validateBuildpackDescriptor(bpd dist.BuildpackDescriptor) error {
 		return errors.Errorf("%s is required", style.Symbol("buildpack.version"))
 	}
 
-	if len(bpd.Order()) == 0 && len(bpd.Stacks()) == 0 {
+	if len(bpd.Order()) >= 1 && (len(bpd.Stacks()) >= 1 || len(bpd.Targets()) >= 1) {
 		return errors.Errorf(
-			"buildpack %s: must have either %s or an %s defined",
+			"buildpack %s: cannot have both %s/%s and an %s defined",
 			style.Symbol(bpd.Info().FullName()),
-			style.Symbol("stacks"),
-			style.Symbol("order"),
-		)
-	}
-
-	if len(bpd.Order()) >= 1 && len(bpd.Stacks()) >= 1 {
-		return errors.Errorf(
-			"buildpack %s: cannot have both %s and an %s defined",
-			style.Symbol(bpd.Info().FullName()),
+			style.Symbol("targets"),
 			style.Symbol("stacks"),
 			style.Symbol("order"),
 		)
@@ -298,4 +325,288 @@ func ToLayerTar(dest string, module BuildModule) (string, error) {
 	}
 
 	return layerTar, nil
+}
+
+func ToNLayerTar(dest string, module BuildModule) ([]ModuleTar, error) {
+	modReader, err := module.Open()
+	if err != nil {
+		return nil, errors.Wrap(err, "opening blob")
+	}
+	defer modReader.Close()
+
+	tarCollection := newModuleTarCollection(dest)
+	tr := tar.NewReader(modReader)
+
+	var (
+		header     *tar.Header
+		forWindows bool
+	)
+
+	for {
+		header, err = tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				return handleEmptyModule(dest, module)
+			}
+			return nil, err
+		}
+		if _, err := sanitizePath(header.Name); err != nil {
+			return nil, err
+		}
+		if header.Name == "Files" {
+			forWindows = true
+		}
+		if strings.Contains(header.Name, `/cnb/buildpacks/`) || strings.Contains(header.Name, `\cnb\buildpacks\`) {
+			// Only for Windows, the first four headers are:
+			// - Files
+			// - Hives
+			// - Files/cnb
+			// - Files/cnb/buildpacks
+			// Skip over these until we find "Files/cnb/buildpacks/<buildpack-id>":
+			break
+		}
+	}
+	// The header should look like "/cnb/buildpacks/<buildpack-id>"
+	// The version should be blank because the first header is missing <buildpack-version>.
+	origID, origVersion := parseBpIDAndVersion(header)
+	if origVersion != "" {
+		return nil, fmt.Errorf("first header '%s' contained unexpected version", header.Name)
+	}
+
+	if err := toNLayerTar(origID, origVersion, header, tr, tarCollection, forWindows); err != nil {
+		return nil, err
+	}
+
+	errs := tarCollection.close()
+	if len(errs) > 0 {
+		return nil, errors.New("closing files")
+	}
+
+	return tarCollection.moduleTars(), nil
+}
+
+func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Reader, tc *moduleTarCollection, forWindows bool) error {
+	toWrite := []*tar.Header{firstHeader}
+	if origVersion == "" {
+		// the first header only contains the id - e.g., /cnb/buildpacks/<buildpack-id>,
+		// read the next header to get the version
+		secondHeader, err := tr.Next()
+		if err != nil {
+			return fmt.Errorf("getting second header: %w; first header was %s", err, firstHeader.Name)
+		}
+		if _, err := sanitizePath(secondHeader.Name); err != nil {
+			return err
+		}
+		nextID, nextVersion := parseBpIDAndVersion(secondHeader)
+		if nextID != origID || nextVersion == "" {
+			return fmt.Errorf("second header '%s' contained unexpected id or missing version", secondHeader.Name)
+		}
+		origVersion = nextVersion
+		toWrite = append(toWrite, secondHeader)
+	} else {
+		// the first header contains id and version - e.g., /cnb/buildpacks/<buildpack-id>/<buildpack-version>,
+		// we need to write the parent header - e.g., /cnb/buildpacks/<buildpack-id>
+		realFirstHeader := *firstHeader
+		realFirstHeader.Name = filepath.ToSlash(filepath.Dir(firstHeader.Name))
+		toWrite = append([]*tar.Header{&realFirstHeader}, toWrite...)
+	}
+	if forWindows {
+		toWrite = append(windowsPreamble(), toWrite...)
+	}
+	mt, err := tc.get(origID, origVersion)
+	if err != nil {
+		return fmt.Errorf("getting module from collection: %w", err)
+	}
+	for _, h := range toWrite {
+		if err := mt.writer.WriteHeader(h); err != nil {
+			return fmt.Errorf("failed to write header '%s': %w", h.Name, err)
+		}
+	}
+	// write the rest of the package
+	var header *tar.Header
+	for {
+		header, err = tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return fmt.Errorf("getting next header: %w", err)
+		}
+		if _, err := sanitizePath(header.Name); err != nil {
+			return err
+		}
+		nextID, nextVersion := parseBpIDAndVersion(header)
+		if nextID != origID || nextVersion != origVersion {
+			// we found a new module, recurse
+			return toNLayerTar(nextID, nextVersion, header, tr, tc, forWindows)
+		}
+
+		err = mt.writer.WriteHeader(header)
+		if err != nil {
+			return fmt.Errorf("failed to write header for '%s': %w", header.Name, err)
+		}
+
+		buf, err := io.ReadAll(tr)
+		if err != nil {
+			return fmt.Errorf("failed to read contents of '%s': %w", header.Name, err)
+		}
+
+		_, err = mt.writer.Write(buf)
+		if err != nil {
+			return fmt.Errorf("failed to write contents to '%s': %w", header.Name, err)
+		}
+	}
+}
+
+func sanitizePath(path string) (string, error) {
+	if strings.Contains(path, "..") {
+		return "", fmt.Errorf("path %s contains unexpected special elements", path)
+	}
+	return path, nil
+}
+
+func windowsPreamble() []*tar.Header {
+	return []*tar.Header{
+		{
+			Name:     "Files",
+			Typeflag: tar.TypeDir,
+		},
+		{
+			Name:     "Hives",
+			Typeflag: tar.TypeDir,
+		},
+		{
+			Name:     "Files/cnb",
+			Typeflag: tar.TypeDir,
+		},
+		{
+			Name:     "Files/cnb/buildpacks",
+			Typeflag: tar.TypeDir,
+		},
+	}
+}
+
+func parseBpIDAndVersion(hdr *tar.Header) (id, version string) {
+	// splitting "/cnb/buildpacks/{ID}/{version}/*" returns
+	// [0] = "" -> first element is empty or "Files" in windows
+	// [1] = "cnb"
+	// [2] = "buildpacks"
+	// [3] = "{ID}"
+	// [4] = "{version}"
+	// ...
+	parts := strings.Split(strings.ReplaceAll(filepath.Clean(hdr.Name), `\`, `/`), `/`)
+	size := len(parts)
+	switch {
+	case size < 4:
+		// error
+	case size == 4:
+		id = parts[3]
+	case size >= 5:
+		id = parts[3]
+		version = parts[4]
+	}
+	return id, version
+}
+
+func handleEmptyModule(dest string, module BuildModule) ([]ModuleTar, error) {
+	tarFile, err := ToLayerTar(dest, module)
+	if err != nil {
+		return nil, err
+	}
+	layerTar := &moduleTar{
+		info: module.Descriptor().Info(),
+		path: tarFile,
+	}
+	return []ModuleTar{layerTar}, nil
+}
+
+// Set returns a set of the given string slice.
+func Set(exclude []string) map[string]struct{} {
+	type void struct{}
+	var member void
+	var excludedModules = make(map[string]struct{})
+	for _, fullName := range exclude {
+		excludedModules[fullName] = member
+	}
+	return excludedModules
+}
+
+type ModuleTar interface {
+	Info() dist.ModuleInfo
+	Path() string
+}
+
+type moduleTar struct {
+	info   dist.ModuleInfo
+	path   string
+	writer archive.TarWriter
+}
+
+func (t *moduleTar) Info() dist.ModuleInfo {
+	return t.info
+}
+
+func (t *moduleTar) Path() string {
+	return t.path
+}
+
+func newModuleTar(dest, id, version string) (moduleTar, error) {
+	layerTar := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", id, version))
+	fh, err := os.Create(layerTar)
+	if err != nil {
+		return moduleTar{}, errors.Wrapf(err, "creating file at path %s", layerTar)
+	}
+	return moduleTar{
+		info: dist.ModuleInfo{
+			ID:      id,
+			Version: version,
+		},
+		path:   layerTar,
+		writer: tar.NewWriter(fh),
+	}, nil
+}
+
+type moduleTarCollection struct {
+	rootPath string
+	modules  map[string]moduleTar
+}
+
+func newModuleTarCollection(rootPath string) *moduleTarCollection {
+	return &moduleTarCollection{
+		rootPath: rootPath,
+		modules:  map[string]moduleTar{},
+	}
+}
+
+func (m *moduleTarCollection) get(id, version string) (moduleTar, error) {
+	key := fmt.Sprintf("%s@%s", id, version)
+	if _, ok := m.modules[key]; !ok {
+		module, err := newModuleTar(m.rootPath, id, version)
+		if err != nil {
+			return moduleTar{}, err
+		}
+		m.modules[key] = module
+	}
+	return m.modules[key], nil
+}
+
+func (m *moduleTarCollection) moduleTars() []ModuleTar {
+	var modulesTar []ModuleTar
+	for _, v := range m.modules {
+		v := v
+		vv := &v
+		modulesTar = append(modulesTar, vv)
+	}
+	return modulesTar
+}
+
+func (m *moduleTarCollection) close() []error {
+	var errors []error
+	for _, v := range m.modules {
+		err := v.writer.Close()
+		if err != nil {
+			errors = append(errors, err)
+		}
+	}
+	return errors
 }

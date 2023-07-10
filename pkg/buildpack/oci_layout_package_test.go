@@ -57,19 +57,18 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when.Pend("#ExtensionsFromOCILayoutBlob", func() { // TODO: add fixture when `pack extension package` is supported in https://github.com/buildpacks/pack/issues/1489
+	when("#ExtensionsFromOCILayoutBlob", func() {
 		it("extracts buildpacks", func() {
-			ext, err := buildpack.ExtensionsFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-extensions.cnb")))
+			ext, err := buildpack.ExtensionsFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "tree-extension.cnb")))
 			h.AssertNil(t, err)
 
-			h.AssertEq(t, ext.Descriptor().Info().ID, "io.buildpacks.samples.hello-extensions")
+			h.AssertEq(t, ext.Descriptor().Info().ID, "samples-tree")
 			h.AssertEq(t, ext.Descriptor().Info().Version, "0.0.1")
 		})
 
 		it("provides readable blobs", func() {
-			ext, err := buildpack.ExtensionsFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-extensions.cnb")))
+			ext, err := buildpack.ExtensionsFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "tree-extension.cnb")))
 			h.AssertNil(t, err)
-
 			reader, err := ext.Open()
 			h.AssertNil(t, err)
 

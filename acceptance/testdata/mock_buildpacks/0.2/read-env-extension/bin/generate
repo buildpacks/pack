@@ -1,3 +1,31 @@
 #!/usr/bin/env bash
 
 echo "---> Generate: Read Env Extension"
+
+# 1. Get args
+output_dir=$CNB_OUTPUT_DIR
+
+# 2. Generate build.Dockerfile
+cat >> "${output_dir}/build.Dockerfile" <<EOL
+ARG base_image
+FROM \${base_image}
+
+RUN echo "Hello World"
+EOL
+
+# 3. Optionally generate run.Dockerfile
+if [[ -z "$EXT_RUN" ]]; then
+  echo "Skipping run image extension, not requested..."
+else
+  echo "Generating run.Dockerfile for run image extension..."
+  cat >>"${output_dir}/run.Dockerfile" <<EOL
+ARG base_image
+FROM \${base_image}
+
+USER root
+RUN echo "Hello World" > /from-ext.txt
+
+ARG user_id
+USER \${user_id}
+EOL
+fi

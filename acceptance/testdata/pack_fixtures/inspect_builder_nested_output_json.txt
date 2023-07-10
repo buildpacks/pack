@@ -97,9 +97,7 @@
           }
         ]
       }
-    ],
-    "extensions": null,
-    "order_extensions": null
+    ]
   },
   "local_info": {
     "created_by": {
@@ -196,8 +194,6 @@
           }
         ]
       }
-    ],
-    "extensions": null,
-    "order_extensions": null
+    ]
   }
 }

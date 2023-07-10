@@ -9,6 +9,8 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
@@ -39,6 +41,15 @@ type CreateBuilderOptions struct {
 
 	// Strategy for updating images before a build.
 	PullPolicy image.PullPolicy
+
+	// Flatten layers
+	Flatten bool
+
+	// Max depth for flattening compose buildpacks.
+	Depth int
+
+	// List of buildpack images to exclude from the package been flatten.
+	FlattenExclude []string
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.
@@ -140,7 +151,12 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	}
 
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
-	bldr, err := builder.New(baseImage, opts.BuilderName)
+
+	var builderOpts []builder.BuilderOption
+	if opts.Flatten {
+		builderOpts = append(builderOpts, builder.WithFlatten(opts.Depth, opts.FlattenExclude))
+	}
+	bldr, err := builder.New(baseImage, opts.BuilderName, builderOpts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid build-image")
 	}
@@ -244,7 +260,6 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 	if err != nil {
 		return errors.Wrapf(err, "getting OS from %s", style.Symbol(bldr.Image().Name()))
 	}
-
 	mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, config.URI, buildpack.DownloadOptions{
 		Daemon:          !opts.Publish,
 		ImageName:       config.ImageName,
@@ -257,7 +272,6 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 	if err != nil {
 		return errors.Wrapf(err, "downloading %s", kind)
 	}
-
 	err = validateModule(kind, mainBP, config.URI, config.ID, config.Version)
 	if err != nil {
 		return errors.Wrapf(err, "invalid %s", kind)
@@ -268,7 +282,7 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 		if deprecatedAPI.Equal(bpDesc.API()) {
 			c.logger.Warnf(
 				"%s %s is using deprecated Buildpacks API version %s",
-				strings.Title(kind),
+				cases.Title(language.AmericanEnglish).String(kind),
 				style.Symbol(bpDesc.Info().FullName()),
 				style.Symbol(bpDesc.API().String()),
 			)
@@ -278,22 +292,21 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 
 	// Fixes 1453
 	sort.Slice(depBPs, func(i, j int) bool {
-		compareId := strings.Compare(depBPs[i].Descriptor().Info().ID, depBPs[j].Descriptor().Info().ID)
-		if compareId == 0 {
+		compareID := strings.Compare(depBPs[i].Descriptor().Info().ID, depBPs[j].Descriptor().Info().ID)
+		if compareID == 0 {
 			return strings.Compare(depBPs[i].Descriptor().Info().Version, depBPs[j].Descriptor().Info().Version) <= 0
 		}
-		return compareId < 0
+		return compareID < 0
 	})
 
-	for _, module := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
-		switch kind {
-		case buildpack.KindBuildpack:
-			bldr.AddBuildpack(module)
-		case buildpack.KindExtension:
-			bldr.AddExtension(module)
-		default:
-			return fmt.Errorf("unknown module kind: %s", kind)
-		}
+	switch kind {
+	case buildpack.KindBuildpack:
+		bldr.AddBuildpacks(mainBP, depBPs)
+	case buildpack.KindExtension:
+		// Extensions can't be composite
+		bldr.AddExtension(mainBP)
+	default:
+		return fmt.Errorf("unknown module kind: %s", kind)
 	}
 	return nil
 }

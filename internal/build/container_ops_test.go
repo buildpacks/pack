@@ -6,15 +6,13 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -31,8 +29,6 @@ import (
 
 // TestContainerOperations are integration tests for the container operations against a docker daemon
 func TestContainerOperations(t *testing.T) {
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	color.Disable(true)
 	defer color.Disable(false)
 
@@ -173,17 +169,9 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 (.*)    <DIR>          ...                    some-vol
 `)
 				} else {
-					if runtime.GOOS == "windows" {
-						// Expected LCOW results
-						h.AssertContainsMatch(t, outBuf.String(), `
+					h.AssertContainsMatch(t, outBuf.String(), `
 drwxrwxrwx    2 123      456 (.*) some-vol
 `)
-					} else {
-						// Expected results
-						h.AssertContainsMatch(t, outBuf.String(), `
-drwxr-xr-x    2 123      456 (.*) some-vol
-`)
-					}
 				}
 			})
 		})
@@ -300,6 +288,64 @@ drwxr-xr-x    2 123      456 (.*) some-vol
 			}
 
 			copyOutDirsOp := build.CopyOut(handler, containerDir)
+			err = copyOutDirsOp(ctrClient, ctx, ctr.ID, io.Discard, io.Discard)
+			h.AssertNil(t, err)
+
+			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(io.Discard, io.Discard))
+			h.AssertNil(t, err)
+
+			separator := "/"
+			if osType == "windows" {
+				separator = `\`
+			}
+
+			h.AssertTarball(t, tarDestination.Name())
+			h.AssertTarHasFile(t, tarDestination.Name(), fmt.Sprintf("some-vol%sfake-app-file", separator))
+			h.AssertTarHasFile(t, tarDestination.Name(), fmt.Sprintf("some-vol%sfake-app-symlink", separator))
+			h.AssertTarHasFile(t, tarDestination.Name(), fmt.Sprintf("some-vol%sfile-to-ignore", separator))
+		})
+	})
+
+	when("#CopyOutMaybe", func() {
+		it("reads the contents of a container directory", func() {
+			h.SkipIf(t, osType == "windows", "copying directories out of windows containers not yet supported")
+
+			containerDir := "/some-vol"
+			if osType == "windows" {
+				containerDir = `c:\some-vol`
+			}
+
+			ctrCmd := []string{"ls", "-al", "/some-vol"}
+			if osType == "windows" {
+				ctrCmd = []string{"cmd", "/c", `dir /q /s c:\some-vol`}
+			}
+
+			ctx := context.Background()
+			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
+			h.AssertNil(t, err)
+			defer cleanupContainer(ctx, ctr.ID)
+
+			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), containerDir, 123, 456, osType, false, nil)
+			err = copyDirOp(ctrClient, ctx, ctr.ID, io.Discard, io.Discard)
+			h.AssertNil(t, err)
+
+			tarDestination, err := os.CreateTemp("", "pack.container.ops.test.")
+			h.AssertNil(t, err)
+			defer os.RemoveAll(tarDestination.Name())
+
+			handler := func(reader io.ReadCloser) error {
+				defer reader.Close()
+
+				contents, err := io.ReadAll(reader)
+				h.AssertNil(t, err)
+
+				err = os.WriteFile(tarDestination.Name(), contents, 0600)
+				h.AssertNil(t, err)
+
+				return nil
+			}
+
+			copyOutDirsOp := build.CopyOutMaybe(handler, containerDir)
 			err = copyOutDirsOp(ctrClient, ctx, ctr.ID, io.Discard, io.Discard)
 			h.AssertNil(t, err)
 
@@ -518,8 +564,8 @@ drwxr-xr-x    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			writeOp := build.WriteProjectMetadata(p, platform.ProjectMetadata{
-				Source: &platform.ProjectSource{
+			writeOp := build.WriteProjectMetadata(p, files.ProjectMetadata{
+				Source: &files.ProjectSource{
 					Type: "project",
 					Version: map[string]interface{}{
 						"declared": "1.0.2",
@@ -563,8 +609,8 @@ drwxr-xr-x    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			writeOp := build.WriteProjectMetadata(p, platform.ProjectMetadata{
-				Source: &platform.ProjectSource{
+			writeOp := build.WriteProjectMetadata(p, files.ProjectMetadata{
+				Source: &files.ProjectSource{
 					Type: "project",
 					Version: map[string]interface{}{
 						"declared": "1.0.2",
@@ -592,6 +638,7 @@ drwxr-xr-x    2 123      456 (.*) some-vol
 `)
 		})
 	})
+
 	when("#EnsureVolumeAccess", func() {
 		it("changes owner of volume", func() {
 			h.SkipIf(t, osType != "windows", "no-op for linux")
@@ -637,7 +684,7 @@ drwxr-xr-x    2 123      456 (.*) some-vol
 	})
 }
 
-func createContainer(ctx context.Context, imageName, containerDir, osType string, cmd ...string) (dcontainer.ContainerCreateCreatedBody, error) {
+func createContainer(ctx context.Context, imageName, containerDir, osType string, cmd ...string) (dcontainer.CreateResponse, error) {
 	isolationType := dcontainer.IsolationDefault
 	if osType == "windows" {
 		isolationType = dcontainer.IsolationProcess

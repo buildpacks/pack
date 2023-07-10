@@ -65,7 +65,7 @@ type RunConfig struct {
 // RunImageConfig run image id and mirrors
 type RunImageConfig struct {
 	Image   string   `toml:"image"`
-	Mirrors []string `toml:"run-image-mirrors,omitempty"`
+	Mirrors []string `toml:"mirrors,omitempty"`
 }
 
 // BuildConfig build image configuration

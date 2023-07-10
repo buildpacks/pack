@@ -2,10 +2,10 @@ package cache_test
 
 import (
 	"context"
-	"math/rand"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/buildpacks/pack/pkg/cache"
 
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/volume"
@@ -16,7 +16,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/cache"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -24,7 +23,6 @@ func TestVolumeCache(t *testing.T) {
 	h.RequireDocker(t)
 	color.Disable(true)
 	defer color.Disable(false)
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	spec.Run(t, "VolumeCache", testCache, spec.Parallel(), spec.Report(report.Terminal{}))
 }
@@ -225,7 +223,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is a cache volume", func() {
 			it.Before(func() {
-				dockerClient.VolumeCreate(context.TODO(), volume.VolumeCreateBody{
+				dockerClient.VolumeCreate(context.TODO(), volume.CreateOptions{
 					Name: volumeName,
 				})
 			})
@@ -234,10 +232,12 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 				err := subject.Clear(ctx)
 				h.AssertNil(t, err)
 
-				volumes, err := dockerClient.VolumeList(context.TODO(), filters.NewArgs(filters.KeyValuePair{
-					Key:   "name",
-					Value: volumeName,
-				}))
+				volumes, err := dockerClient.VolumeList(context.TODO(), volume.ListOptions{
+					Filters: filters.NewArgs(filters.KeyValuePair{
+						Key:   "name",
+						Value: volumeName,
+					}),
+				})
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(volumes.Volumes), 0)
 			})

@@ -70,12 +70,30 @@ func earliestVersion(versions []*api.Version) *api.Version {
 	return earliest
 }
 
+func latestVersion(versions []*api.Version) *api.Version {
+	var latest *api.Version
+	for _, version := range versions {
+		switch {
+		case version == nil:
+			continue
+		case latest == nil:
+			latest = version
+		case latest.Compare(version) < 0:
+			latest = version
+		}
+	}
+	return latest
+}
 func (l *LifecycleAsset) EarliestBuildpackAPIVersion() string {
 	return earliestVersion(l.descriptor.APIs.Buildpack.Supported).String()
 }
 
 func (l *LifecycleAsset) EarliestPlatformAPIVersion() string {
 	return earliestVersion(l.descriptor.APIs.Platform.Supported).String()
+}
+
+func (l *LifecycleAsset) LatestPlatformAPIVersion() string {
+	return latestVersion(l.descriptor.APIs.Platform.Supported).String()
 }
 
 func (l *LifecycleAsset) OutputForAPIs() (deprecatedBuildpackAPIs, supportedBuildpackAPIs, deprecatedPlatformAPIs, supportedPlatformAPIs string) {
@@ -183,7 +201,8 @@ type LifecycleFeature int
 
 const (
 	CreationTime = iota
-	Extensions
+	BuildImageExtensions
+	RunImageExtensions
 )
 
 type LifecycleAssetSupported func(l *LifecycleAsset) bool
@@ -205,8 +224,9 @@ func supportsPlatformAPI(version string) LifecycleAssetSupported {
 }
 
 var lifecycleFeatureTests = map[LifecycleFeature]LifecycleAssetSupported{
-	CreationTime: supportsPlatformAPI("0.9"),
-	Extensions:   supportsPlatformAPI("0.10"),
+	CreationTime:         supportsPlatformAPI("0.9"),
+	BuildImageExtensions: supportsPlatformAPI("0.10"),
+	RunImageExtensions:   supportsPlatformAPI("0.12"),
 }
 
 func (l *LifecycleAsset) SupportsFeature(f LifecycleFeature) bool {

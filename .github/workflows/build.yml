@@ -74,7 +74,8 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.19"
+          go-version: "1.20"
+          check-latest: true
       - name: Set up go env for Unix
         if: runner.os != 'Windows'
         run: |
@@ -123,14 +124,14 @@ jobs:
         env:
           TEST_COVERAGE: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: make test       
+        run: make test
       - name: Upload Coverage
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./out/tests/coverage-unit.txt
           flags: unit,os_${{ matrix.os }}
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           verbose: true
       - name: Prepare Codecov
         if: matrix.os == 'windows'
@@ -179,7 +180,8 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.19"
+          go-version: "1.20"
+          check-latest: true
       - name: Build
         run: |
           [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]} || version=0.0.0
@@ -252,14 +254,13 @@ jobs:
           echo "version=$LIFECYCLE_VERSION" >> $GITHUB_OUTPUT
       - name: Extract pack help
         id: pack_help
-        # Replacements have to do with multiline output.
-        # See https://github.community/t5/GitHub-Actions/set-output-Truncates-Multiline-Strings/m-p/38372/highlight/true#M3322
+        # Multiline output use a syntax similar to heredocs.
+        # see https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings
         run: |
-          PACK_HELP=$(./pack-linux/pack --help)
-          PACK_HELP="${PACK_HELP//'%'/'%25'}"
-          PACK_HELP="${PACK_HELP//$'\n'/'%0A'}"
-          PACK_HELP="${PACK_HELP//$'\r'/'%0D'}"
-          echo "help=$PACK_HELP" >> $GITHUB_OUTPUT
+          DELIMITER="$(uuidgen)"
+          echo "help<<${DELIMITER}" >> $GITHUB_OUTPUT
+          ./pack-linux/pack --help >> $GITHUB_OUTPUT
+          echo "${DELIMITER}" >> $GITHUB_OUTPUT
       - name: Generate changelog
         uses: ./.github/workflows/actions/release-notes
         id: changelog

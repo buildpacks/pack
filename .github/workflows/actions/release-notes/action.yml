@@ -15,5 +15,5 @@ outputs:
   contents:
     description: The contents of the release notes.
 runs:
-  using: 'node12'
+  using: 'node16'
   main: 'dist/index.js'

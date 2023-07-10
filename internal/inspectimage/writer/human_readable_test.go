@@ -8,7 +8,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -171,12 +171,12 @@ Processes:
 					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 					{ID: "test.bp.three.remote", Version: "3.0.0"},
 				},
-				Base: platform.RunImageMetadata{
+				Base: files.RunImageForRebase{
 					TopLayer:  "some-remote-top-layer",
 					Reference: "some-remote-run-image-reference",
 				},
-				Stack: platform.StackMetadata{
-					RunImage: platform.StackRunImageMetadata{
+				Stack: files.Stack{
+					RunImage: files.RunImageForExport{
 						Image:   "some-remote-run-image",
 						Mirrors: []string{"some-remote-mirror", "other-remote-mirror"},
 					},
@@ -227,12 +227,12 @@ Processes:
 					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 					{ID: "test.bp.three.local", Version: "3.0.0"},
 				},
-				Base: platform.RunImageMetadata{
+				Base: files.RunImageForRebase{
 					TopLayer:  "some-local-top-layer",
 					Reference: "some-local-run-image-reference",
 				},
-				Stack: platform.StackMetadata{
-					RunImage: platform.StackRunImageMetadata{
+				Stack: files.Stack{
+					RunImage: files.RunImageForExport{
 						Image:   "some-local-run-image",
 						Mirrors: []string{"some-local-mirror", "other-local-mirror"},
 					},
@@ -282,12 +282,12 @@ Processes:
 					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 					{ID: "test.bp.three.remote", Version: "3.0.0"},
 				},
-				Base: platform.RunImageMetadata{
+				Base: files.RunImageForRebase{
 					TopLayer:  "some-remote-top-layer",
 					Reference: "some-remote-run-image-reference",
 				},
-				Stack: platform.StackMetadata{
-					RunImage: platform.StackRunImageMetadata{
+				Stack: files.Stack{
+					RunImage: files.RunImageForExport{
 						Image:   "some-remote-run-image",
 						Mirrors: []string{"some-remote-mirror", "other-remote-mirror"},
 					},
@@ -343,12 +343,12 @@ Processes:
 					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 					{ID: "test.bp.three.local", Version: "3.0.0"},
 				},
-				Base: platform.RunImageMetadata{
+				Base: files.RunImageForRebase{
 					TopLayer:  "some-local-top-layer",
 					Reference: "some-local-run-image-reference",
 				},
-				Stack: platform.StackMetadata{
-					RunImage: platform.StackRunImageMetadata{
+				Stack: files.Stack{
+					RunImage: files.RunImageForExport{
 						Image:   "some-local-run-image",
 						Mirrors: []string{"some-local-mirror", "other-local-mirror"},
 					},
@@ -565,7 +565,7 @@ Processes:
 
 			when("there are no run images", func() {
 				it.Before(func() {
-					remoteInfo.Stack = platform.StackMetadata{}
+					remoteInfo.Stack = files.Stack{}
 				})
 				it("displays a message indicating missing run images", func() {
 					sharedImageInfo := inspectimage.GeneralInfo{
@@ -636,7 +636,7 @@ Processes:
 
 			when("there are no run images", func() {
 				it.Before(func() {
-					remoteWithExtensionInfo.Stack = platform.StackMetadata{}
+					remoteWithExtensionInfo.Stack = files.Stack{}
 				})
 				it("displays a message indicating missing run images", func() {
 					sharedImageInfo := inspectimage.GeneralInfo{

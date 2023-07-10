@@ -24,7 +24,7 @@ import (
 	"github.com/buildpacks/imgutil/fakes"
 
 	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
+	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -33,6 +33,7 @@ import (
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
@@ -634,7 +635,7 @@ func SkipUnless(t *testing.T, expression bool, reason string) {
 }
 
 func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id string, stdout io.Writer, stderr io.Writer) error {
-	bodyChan, errChan := dockerCli.ContainerWait(ctx, id, container.WaitConditionNextExit)
+	bodyChan, errChan := container.ContainerWaitWrapper(ctx, dockerCli, id, dcontainer.WaitConditionNextExit)
 
 	logs, err := dockerCli.ContainerAttach(ctx, id, dockertypes.ContainerAttachOptions{
 		Stream: true,

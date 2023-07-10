@@ -15,6 +15,10 @@ func (e *ExtensionDescriptor) EnsureStackSupport(_ string, _ []string, _ bool) e
 	return nil
 }
 
+func (e *ExtensionDescriptor) EnsureTargetSupport(_, _, _, _ string) error {
+	return nil
+}
+
 func (e *ExtensionDescriptor) EscapedID() string {
 	return strings.ReplaceAll(e.Info().ID, "/", "_")
 }
@@ -36,5 +40,9 @@ func (e *ExtensionDescriptor) Order() Order {
 }
 
 func (e *ExtensionDescriptor) Stacks() []Stack {
+	return nil
+}
+
+func (e *ExtensionDescriptor) Targets() []Target {
 	return nil
 }

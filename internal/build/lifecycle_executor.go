@@ -3,17 +3,17 @@ package build
 import (
 	"context"
 	"io"
-	"math/rand"
+	"os"
 	"time"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/container"
+	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -64,10 +64,6 @@ type Termui interface {
 	ReadLayers(reader io.ReadCloser) error
 }
 
-func init() {
-	rand.Seed(time.Now().UTC().UnixNano())
-}
-
 type LifecycleOptions struct {
 	AppPath              string
 	Image                name.Reference
@@ -76,7 +72,8 @@ type LifecycleOptions struct {
 	LifecycleImage       string
 	LifecycleApis        []string // optional - populated only if custom lifecycle image is downloaded, from that lifecycle's container's Labels.
 	RunImage             string
-	ProjectMetadata      platform.ProjectMetadata
+	FetchRunImage        func(name string) error
+	ProjectMetadata      files.ProjectMetadata
 	ClearCache           bool
 	Publish              bool
 	TrustBuilder         bool
@@ -108,7 +105,12 @@ func NewLifecycleExecutor(logger logging.Logger, docker DockerClient) *Lifecycle
 }
 
 func (l *LifecycleExecutor) Execute(ctx context.Context, opts LifecycleOptions) error {
-	lifecycleExec, err := NewLifecycleExecution(l.logger, l.docker, opts)
+	tmpDir, err := os.MkdirTemp("", "pack.tmp")
+	if err != nil {
+		return err
+	}
+
+	lifecycleExec, err := NewLifecycleExecution(l.logger, l.docker, tmpDir, opts)
 	if err != nil {
 		return err
 	}

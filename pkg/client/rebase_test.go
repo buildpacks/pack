@@ -41,15 +41,15 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			fakeAppImage = fakes.NewImage("some/app", "", &fakeIdentifier{name: "app-image"})
 			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata",
 				`{"stack":{"runImage":{"image":"some/run", "mirrors":["example.com/some/run"]}}}`))
-			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.bionic"))
+			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.jammy"))
 			fakeImageFetcher.LocalImages["some/app"] = fakeAppImage
 
 			fakeRunImage = fakes.NewImage("some/run", "run-image-top-layer-sha", &fakeIdentifier{name: "run-image-digest"})
-			h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.bionic"))
+			h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.jammy"))
 			fakeImageFetcher.LocalImages["some/run"] = fakeRunImage
 
 			fakeRunImageMirror = fakes.NewImage("example.com/some/run", "mirror-top-layer-sha", &fakeIdentifier{name: "mirror-digest"})
-			h.AssertNil(t, fakeRunImageMirror.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.bionic"))
+			h.AssertNil(t, fakeRunImageMirror.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.jammy"))
 			fakeImageFetcher.LocalImages["example.com/some/run"] = fakeRunImageMirror
 
 			fakeLogger := logging.NewLogWithWriters(&out, &out)
@@ -72,7 +72,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 
 					it.Before(func() {
 						fakeCustomRunImage = fakes.NewImage("custom/run", "custom-base-top-layer-sha", &fakeIdentifier{name: "custom-base-digest"})
-						h.AssertNil(t, fakeCustomRunImage.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.bionic"))
+						h.AssertNil(t, fakeCustomRunImage.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.jammy"))
 						fakeImageFetcher.LocalImages["custom/run"] = fakeCustomRunImage
 					})
 
@@ -80,15 +80,26 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNilE(t, fakeCustomRunImage.Cleanup())
 					})
 
-					it("uses the run image provided by the user", func() {
-						h.AssertNil(t, subject.Rebase(context.TODO(),
+					when("--force", func() {
+						it("uses the run image provided by the user", func() {
+							h.AssertNil(t, subject.Rebase(context.TODO(),
+								RebaseOptions{
+									RunImage: "custom/run",
+									RepoName: "some/app",
+									Force:    true,
+								}))
+							h.AssertEq(t, fakeAppImage.Base(), "custom/run")
+							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
+							h.AssertContains(t, lbl, `"runImage":{"topLayer":"custom-base-top-layer-sha","reference":"custom-base-digest"`)
+						})
+					})
+
+					it("errors", func() {
+						h.AssertError(t, subject.Rebase(context.TODO(),
 							RebaseOptions{
 								RunImage: "custom/run",
 								RepoName: "some/app",
-							}))
-						h.AssertEq(t, fakeAppImage.Base(), "custom/run")
-						lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
-						h.AssertContains(t, lbl, `"runImage":{"topLayer":"custom-base-top-layer-sha","reference":"custom-base-digest"`)
+							}), "new base image 'custom/run' not found in existing run image metadata")
 					})
 				})
 			})
@@ -128,24 +139,43 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						it.Before(func() {
 							fakeImageFetcher.LocalImages["example.com/some/app"] = fakeAppImage
 							fakeLocalMirror = fakes.NewImage("example.com/some/local-run", "local-mirror-top-layer-sha", &fakeIdentifier{name: "local-mirror-digest"})
-							h.AssertNil(t, fakeLocalMirror.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.bionic"))
+							h.AssertNil(t, fakeLocalMirror.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.jammy"))
 							fakeImageFetcher.LocalImages["example.com/some/local-run"] = fakeLocalMirror
 						})
 
 						it.After(func() {
 							h.AssertNilE(t, fakeLocalMirror.Cleanup())
 						})
-
-						it("chooses a matching local mirror first", func() {
+						when("--force", func() {
+							it("chooses a matching local mirror first", func() {
+								h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
+									RepoName: "example.com/some/app",
+									AdditionalMirrors: map[string][]string{
+										"some/run": {"example.com/some/local-run"},
+									},
+									Force: true,
+								}))
+								h.AssertEq(t, fakeAppImage.Base(), "example.com/some/local-run")
+								lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
+								h.AssertContains(t, lbl, `"runImage":{"topLayer":"local-mirror-top-layer-sha","reference":"local-mirror-digest"`)
+							})
+						})
+					})
+					when("there is a label and it has a run image and no stack", func() {
+						it("reads the run image from the label", func() {
+							h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata",
+								`{"runImage":{"image":"some/run", "mirrors":["example.com/some/run"]}}`))
 							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
-								RepoName: "example.com/some/app",
-								AdditionalMirrors: map[string][]string{
-									"some/run": {"example.com/some/local-run"},
-								},
+								RepoName: "some/app",
 							}))
-							h.AssertEq(t, fakeAppImage.Base(), "example.com/some/local-run")
-							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
-							h.AssertContains(t, lbl, `"runImage":{"topLayer":"local-mirror-top-layer-sha","reference":"local-mirror-digest"`)
+							h.AssertEq(t, fakeAppImage.Base(), "some/run")
+						})
+					})
+					when("there is neither runImage nor stack", func() {
+						it("fails gracefully", func() {
+							h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata", `{}`))
+							h.AssertError(t, subject.Rebase(context.TODO(), RebaseOptions{RepoName: "some/app"}),
+								"run image must be specified")
 						})
 					})
 				})
@@ -168,7 +198,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 
 				it.Before(func() {
 					fakeRemoteRunImage = fakes.NewImage("some/run", "remote-top-layer-sha", &fakeIdentifier{name: "remote-digest"})
-					h.AssertNil(t, fakeRemoteRunImage.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.bionic"))
+					h.AssertNil(t, fakeRemoteRunImage.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.jammy"))
 					fakeImageFetcher.RemoteImages["some/run"] = fakeRemoteRunImage
 				})
 

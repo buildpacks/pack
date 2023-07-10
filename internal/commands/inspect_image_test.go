@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -32,18 +32,18 @@ var (
 	expectedLocalImageInfo = &client.ImageInfo{
 		StackID:    "local.image.stack",
 		Buildpacks: nil,
-		Base:       platform.RunImageMetadata{},
+		Base:       files.RunImageForRebase{},
 		BOM:        nil,
-		Stack:      platform.StackMetadata{},
+		Stack:      files.Stack{},
 		Processes:  client.ProcessDetails{},
 	}
 
 	expectedRemoteImageInfo = &client.ImageInfo{
 		StackID:    "remote.image.stack",
 		Buildpacks: nil,
-		Base:       platform.RunImageMetadata{},
+		Base:       files.RunImageForRebase{},
 		BOM:        nil,
-		Stack:      platform.StackMetadata{},
+		Stack:      files.Stack{},
 		Processes:  client.ProcessDetails{},
 	}
 
@@ -51,9 +51,9 @@ var (
 		StackID:    "local.image.stack",
 		Buildpacks: nil,
 		Extensions: nil,
-		Base:       platform.RunImageMetadata{},
+		Base:       files.RunImageForRebase{},
 		BOM:        nil,
-		Stack:      platform.StackMetadata{},
+		Stack:      files.Stack{},
 		Processes:  client.ProcessDetails{},
 	}
 
@@ -61,9 +61,9 @@ var (
 		StackID:    "remote.image.stack",
 		Buildpacks: nil,
 		Extensions: nil,
-		Base:       platform.RunImageMetadata{},
+		Base:       files.RunImageForRebase{},
 		BOM:        nil,
-		Stack:      platform.StackMetadata{},
+		Stack:      files.Stack{},
 		Processes:  client.ProcessDetails{},
 	}
 )

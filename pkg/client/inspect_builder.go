@@ -22,11 +22,7 @@ type BuilderInfo struct {
 	Mixins []string
 
 	// RunImage provided by the builder.
-	RunImage string
-
-	// List of all run image mirrors a builder will use to provide
-	// the RunImage.
-	RunImageMirrors []string
+	RunImages []pubbldr.RunImageConfig
 
 	// All buildpacks included within the builder.
 	Buildpacks []dist.ModuleInfo
@@ -101,8 +97,7 @@ func (c *Client) InspectBuilder(name string, daemon bool, modifiers ...BuilderIn
 		Description:     info.Description,
 		Stack:           info.StackID,
 		Mixins:          info.Mixins,
-		RunImage:        info.RunImage,
-		RunImageMirrors: info.RunImageMirrors,
+		RunImages:       info.RunImages,
 		Buildpacks:      info.Buildpacks,
 		Order:           info.Order,
 		BuildpackLayers: info.BuildpackLayers,
