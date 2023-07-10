@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1687974625927,
+  "lastUpdate": 1688950490240,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -922,6 +922,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 85777442574,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "34a6b7c725e910e61f93909b11baf5d8fe97c97c",
+          "message": "Merge pull request #1787 from buildpacks/fix/flatten-tar-extras-2\n\nExplode flattened buildpacks when `pack build`",
+          "timestamp": "2023-07-09T19:52:53-05:00",
+          "tree_id": "3579809f1da1a26d2d7549ddbb62aa0c6b7519d6",
+          "url": "https://github.com/buildpacks/pack/commit/34a6b7c725e910e61f93909b11baf5d8fe97c97c"
+        },
+        "date": 1688950489525,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4653697966,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1121120381,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 71137281303,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
