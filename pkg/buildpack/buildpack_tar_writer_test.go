@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"runtime"
 	"testing"
 
 	"github.com/buildpacks/lifecycle/api"
@@ -44,8 +43,6 @@ func testBuildModuleWriter(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
-
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 		buildModuleWriter = buildpack.NewBuildModuleWriter(logger, archive.DefaultTarWriterFactory())
 		tmpDir, err = os.MkdirTemp("", "test_build_module_writer")
@@ -147,7 +144,7 @@ func testBuildModuleWriter(t *testing.T, when spec.G, it spec.S) {
 					h.AssertTrue(t, len(bpExcluded) == 1)
 					h.AssertNotNil(t, tarFile)
 					assertBuildpackModuleWritten(t, tarFile, []buildpack.BuildModule{bp1v1, bp3v1})
-					h.AssertContains(t, outBuf.String(), fmt.Sprintf("excluding %s for being flattened", style.Symbol(bp2v1.Descriptor().Info().FullName())))
+					h.AssertContains(t, outBuf.String(), fmt.Sprintf("excluding %s from being flattened", style.Symbol(bp2v1.Descriptor().Info().FullName())))
 				})
 			})
 
@@ -160,7 +157,7 @@ func testBuildModuleWriter(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNotNil(t, tarFile)
 					assertBuildpackModuleWritten(t, tarFile, []buildpack.BuildModule{bp1v1, bp1v2, bp3v1})
 					h.AssertContains(t, outBuf.String(), fmt.Sprintf("folder '%s' was already added, skipping it", "/cnb/buildpacks/buildpack-1-id"))
-					h.AssertContains(t, outBuf.String(), fmt.Sprintf("excluding %s for being flattened", style.Symbol(bp2v1.Descriptor().Info().FullName())))
+					h.AssertContains(t, outBuf.String(), fmt.Sprintf("excluding %s from being flattened", style.Symbol(bp2v1.Descriptor().Info().FullName())))
 				})
 			})
 		})
