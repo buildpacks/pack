@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -564,8 +564,8 @@ drwxrwxrwx    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			writeOp := build.WriteProjectMetadata(p, platform.ProjectMetadata{
-				Source: &platform.ProjectSource{
+			writeOp := build.WriteProjectMetadata(p, files.ProjectMetadata{
+				Source: &files.ProjectSource{
 					Type: "project",
 					Version: map[string]interface{}{
 						"declared": "1.0.2",
@@ -609,8 +609,8 @@ drwxrwxrwx    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			writeOp := build.WriteProjectMetadata(p, platform.ProjectMetadata{
-				Source: &platform.ProjectSource{
+			writeOp := build.WriteProjectMetadata(p, files.ProjectMetadata{
+				Source: &files.ProjectSource{
 					Type: "project",
 					Version: map[string]interface{}{
 						"declared": "1.0.2",

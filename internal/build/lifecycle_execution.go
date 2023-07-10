@@ -8,11 +8,10 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/buildpacks/pack/pkg/cache"
-
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -21,6 +20,7 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -843,17 +843,8 @@ func (l *LifecycleExecution) hasExtensionsForBuild() bool {
 	return len(fis) > 0
 }
 
-// FIXME: when lifecycle 0.17.0 is released, we can bump the library version imported by pack and use platform.AnalyzedMetadata directly
-type analyzedMD struct {
-	RunImage *runImage `toml:"run-image,omitempty"`
-}
-type runImage struct {
-	Extend bool   `toml:"extend,omitempty"`
-	Image  string `toml:"image"`
-}
-
 func (l *LifecycleExecution) hasExtensionsForRun() bool {
-	var amd analyzedMD
+	var amd files.Analyzed
 	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
 		l.logger.Warnf("failed to parse analyzed.toml file, assuming no run image extensions: %s", err)
 		return false
@@ -867,12 +858,12 @@ func (l *LifecycleExecution) hasExtensionsForRun() bool {
 }
 
 func (l *LifecycleExecution) runImageAfterExtensions() string {
-	var amd analyzedMD
+	var amd files.Analyzed
 	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
 		l.logger.Warnf("failed to parse analyzed.toml file, assuming run image did not change: %s", err)
 		return l.opts.RunImage
 	}
-	if amd.RunImage == nil {
+	if amd.RunImage == nil || amd.RunImage.Image == "" {
 		// this shouldn't be reachable
 		l.logger.Warnf("found no run image in analyzed.toml file, assuming run image did not change...")
 		return l.opts.RunImage

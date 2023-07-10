@@ -9,7 +9,7 @@ import (
 	"runtime"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/errdefs"
@@ -234,7 +234,7 @@ func writeToml(ctrClient DockerClient, ctx context.Context, data interface{}, ds
 }
 
 // WriteProjectMetadata writes a `project-metadata.toml` based on the ProjectMetadata provided to the destination path.
-func WriteProjectMetadata(dstPath string, metadata platform.ProjectMetadata, os string) ContainerOperation {
+func WriteProjectMetadata(dstPath string, metadata files.ProjectMetadata, os string) ContainerOperation {
 	return func(ctrClient DockerClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
 		return writeToml(ctrClient, ctx, metadata, dstPath, containerID, os, stdout, stderr)
 	}

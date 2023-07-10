@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 )
@@ -19,7 +19,7 @@ type TagInfo struct {
 	TagTime time.Time
 }
 
-func GitMetadata(appPath string) *platform.ProjectSource {
+func GitMetadata(appPath string) *files.ProjectSource {
 	repo, err := git.PlainOpen(appPath)
 	if err != nil {
 		return nil
@@ -34,7 +34,7 @@ func GitMetadata(appPath string) *platform.ProjectSource {
 	refs := parseGitRefs(repo, headRef, commitTagMap)
 	remote := parseGitRemote(repo)
 
-	projectSource := &platform.ProjectSource{
+	projectSource := &files.ProjectSource{
 		Type: "git",
 		Version: map[string]interface{}{
 			"commit":   headRef.Hash().String(),
