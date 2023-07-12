@@ -809,7 +809,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						bpLayerString, err := json.Marshal(bpLayer)
 						h.AssertNil(t, err)
 
-						h.AssertNil(t, baseImage.SetLabel(
+						h.AssertNil(t, baseImage.SetLabel( // label builder as already having a buildpack with diffID `diffID`
 							dist.BuildpackLayersLabel,
 							string(bpLayerString),
 						))

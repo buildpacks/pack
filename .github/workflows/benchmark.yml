@@ -41,4 +41,4 @@ jobs:
           alert-threshold: '200%'
           comment-on-alert: true
           fail-on-alert: true
-          alert-comment-cc-users: '@edithwuly'
+          alert-comment-cc-users: '@buildpacks/platform-maintainers'

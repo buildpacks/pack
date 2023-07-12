@@ -12,8 +12,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/paths"
-
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -67,7 +65,7 @@ func (b *BuildModuleWriter) NToLayerTar(tarPath, filename string, modules []Buil
 				b.logger.Debugf("skipping %s, it was already added", style.Symbol(module.Descriptor().Info().FullName()))
 			}
 		} else {
-			b.logger.Debugf("excluding %s for being flattened", style.Symbol(module.Descriptor().Info().FullName()))
+			b.logger.Debugf("excluding %s from being flattened", style.Symbol(module.Descriptor().Info().FullName()))
 			buildModuleExcluded = append(buildModuleExcluded, module)
 		}
 	}
@@ -134,6 +132,6 @@ func processRootPath(module BuildModule) string {
 		bpFolder = "buildpacks"
 	}
 	bpInfo := module.Descriptor().Info()
-	rootPath := path.Join(paths.RootDir, "cnb", bpFolder, strings.ReplaceAll(bpInfo.ID, "/", "_"))
+	rootPath := path.Join("/cnb", bpFolder, strings.ReplaceAll(bpInfo.ID, "/", "_"))
 	return rootPath
 }

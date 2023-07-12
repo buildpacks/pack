@@ -9,7 +9,7 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/launch"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -228,15 +228,15 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					info, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.Stack,
-						platform.StackMetadata{RunImage: platform.RunImageForExport{Image: "is everything"}})
+						files.Stack{RunImage: files.RunImageForExport{Image: "is everything"}})
 				})
 
 				it("returns the stack", func() {
 					info, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.Stack,
-						platform.StackMetadata{
-							RunImage: platform.RunImageForExport{
+						files.Stack{
+							RunImage: files.RunImageForExport{
 								Image: "some-run-image",
 								Mirrors: []string{
 									"some-mirror",
@@ -251,8 +251,8 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					infoWithExtension, err := subject.InspectImage("some/imageWithExtension", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, infoWithExtension.Stack,
-						platform.StackMetadata{
-							RunImage: platform.RunImageForExport{
+						files.Stack{
+							RunImage: files.RunImageForExport{
 								Image: "some-run-image",
 								Mirrors: []string{
 									"some-mirror",
@@ -267,7 +267,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					info, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.Base,
-						platform.RunImageForRebase{
+						files.RunImageForRebase{
 							TopLayer:  "some-top-layer",
 							Reference: "some-run-image-reference",
 						},
@@ -278,7 +278,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					infoWithExtension, err := subject.InspectImage("some/imageWithExtension", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, infoWithExtension.Base,
-						platform.RunImageForRebase{
+						files.RunImageForRebase{
 							TopLayer:  "some-top-layer",
 							Reference: "some-run-image-reference",
 						},
@@ -864,7 +864,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 			info, err := subject.InspectImage("old/image", true)
 			h.AssertNil(t, err)
 			h.AssertEq(t, info.Base,
-				platform.RunImageForRebase{
+				files.RunImageForRebase{
 					TopLayer:  "some-top-layer",
 					Reference: "",
 				},

@@ -11,12 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/pack/pkg/cache"
-
 	"github.com/BurntSushi/toml"
 	"github.com/apex/log"
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -24,10 +23,10 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/paths"
-
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
+	"github.com/buildpacks/pack/internal/paths"
+	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -139,14 +138,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			_, err = os.Create(filepath.Join(tmpDir, "build", "some-dockerfile"))
 			h.AssertNil(t, err)
 		}
-		type runImage struct {
-			Extend bool   `toml:"extend,omitempty"`
-			Image  string `toml:"image"`
-		}
-		type analyzedMD struct {
-			RunImage *runImage `toml:"run-image,omitempty"`
-		}
-		amd := analyzedMD{RunImage: &runImage{
+		amd := files.Analyzed{RunImage: &files.RunImage{
 			Extend: false,
 			Image:  "",
 		}}
@@ -1709,6 +1701,26 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBind)
 		})
 
+		when("there are extensions", func() {
+			platformAPI = api.MustParse("0.12")
+
+			when("for build", func() {
+				extensionsForBuild = true
+
+				it("configures the phase with registry access", func() {
+					h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
+				})
+			})
+
+			when("for run", func() {
+				extensionsForRun = true
+
+				it("configures the phase with registry access", func() {
+					h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
+				})
+			})
+		})
+
 		when("using cache image", func() {
 			fakeBuildCache = newFakeImageCache()
 
@@ -1999,7 +2011,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-stack")
 			})
 
-			when("extensions", func() {
+			when("there are extensions", func() {
 				when("for run", func() {
 					extensionsForRun = true
 
