@@ -40,7 +40,6 @@ func ManifestDelete(logger logging.Logger, pack PackClient) *cobra.Command {
 				}
 			}
 			return nil
-
 		}),
 	}
 

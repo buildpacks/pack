@@ -86,11 +86,12 @@ func validateManifestCreateFlags(p *ManifestCreateFlags) error {
 func validateMediaTypeFlag(format string) (imgutil.MediaTypes, error) {
 	var mediaType imgutil.MediaTypes
 
-	if format == "oci" {
+	switch format {
+	case "oci":
 		mediaType = imgutil.OCITypes
-	} else if format == "v2s2" {
+	case "v2s2":
 		mediaType = imgutil.DockerTypes
-	} else {
+	default:
 		return imgutil.MissingTypes, errors.Errorf("unsupported media type given for --format")
 	}
 

@@ -53,14 +53,13 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 			logger.Infof("Successfully added the image %s to the image index %s", style.Symbol(manifest), style.Symbol(indexName))
 
 			return nil
-
 		}),
 	}
 
 	cmd.Flags().BoolVar(&flags.All, "all", false, `add all of the contents to the local list (applies only if <manifest> is an index)`)
-	cmd.Flags().StringVar(&flags.Architecture, "arch", "", "Set the architecutre")
+	cmd.Flags().StringVar(&flags.Architecture, "arch", "", "Set the architecture")
 	cmd.Flags().StringVar(&flags.OS, "os", "", "Set the operating system")
-	cmd.Flags().StringVar(&flags.Variant, "variant", "", "Set the architecutre variant")
+	cmd.Flags().StringVar(&flags.Variant, "variant", "", "Set the architecture variant")
 
 	AddHelpFlag(cmd, "add")
 	return cmd

@@ -26,5 +26,5 @@ func (c *Client) InspectManifest(ctx context.Context, opts InspectManifestOption
 		return nil
 	}
 
-	return fmt.Errorf("Index %s not found in local storage", opts.Index)
+	return fmt.Errorf("index %s not found in local storage", opts.Index)
 }

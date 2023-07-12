@@ -40,7 +40,6 @@ func ManifestRemove(logger logging.Logger, pack PackClient) *cobra.Command {
 			logger.Infof("Successfully removed the manifest '%s' from image index %s", style.Symbol(manifest), style.Symbol(indexName))
 
 			return nil
-
 		}),
 	}
 

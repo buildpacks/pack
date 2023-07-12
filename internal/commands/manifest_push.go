@@ -52,7 +52,6 @@ func ManifestPush(logger logging.Logger, pack PackClient) *cobra.Command {
 			logger.Infof("Successfully pushed the %s image index to the repository.", style.Symbol(indexName))
 
 			return nil
-
 		}),
 	}
 

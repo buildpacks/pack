@@ -29,7 +29,6 @@ type CreateManifestOptions struct {
 }
 
 func (c *Client) CreateManifest(ctx context.Context, opts CreateManifestOptions) error {
-
 	indexCreator := c.indexFactory
 	idx, err := indexCreator.NewIndex(opts)
 	if err != nil {
@@ -59,5 +58,4 @@ func (c *Client) CreateManifest(ctx context.Context, opts CreateManifestOptions)
 	}
 
 	return nil
-
 }
