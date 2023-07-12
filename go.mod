@@ -126,4 +126,4 @@ require (
 
 go 1.20
 
-replace github.com/buildpacks/imgutil => github.com/drac98/imgutil v1.3.0
+replace github.com/buildpacks/imgutil => github.com/drac98/imgutil v1.4.0

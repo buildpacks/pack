@@ -93,8 +93,6 @@ github.com/aws/smithy-go v1.13.5/go.mod h1:Tg+OJXh4MB2R/uN61Ko2f6hTZwB/ZYGOtib8J
 github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230522190001-adf1bafd791a h1:rW+dV12c0WD3+O4Zs8Qt4+oqnr8ecXeyg8g3yB73ZKA=
 github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230522190001-adf1bafd791a/go.mod h1:1mvdZLjy932pV2fhj1jjwUSHaF5Ogq2gk5bvi/6ngEU=
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
-github.com/buildpacks/imgutil v0.0.0-20230626185301-726f02e4225c h1:HlRuSz+JGAzudNtNCfHIzXe0AEuHX6Vx8uZgmjvX02o=
-github.com/buildpacks/imgutil v0.0.0-20230626185301-726f02e4225c/go.mod h1:mBG5M3GJW5nknCEOOqtmMHyPYnSpw/5GEiciuYU/COw=
 github.com/buildpacks/lifecycle v0.17.0-rc.3 h1:GAo6Gv2hFbhjf0JX7M2khS8jd6vU8I9oCkheIhHQwxg=
 github.com/buildpacks/lifecycle v0.17.0-rc.3/go.mod h1:WFzcNp1WG4bwgHuXtKxMg4tdU3AguL44ZlP3knANeVs=
 github.com/bwesterb/go-ristretto v1.2.0/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7NFEuV9ekS419A0=
@@ -131,8 +129,8 @@ github.com/docker/go-connections v0.4.0 h1:El9xVISelRB7BuFusrZozjnkIM5YnzCViNKoh
 github.com/docker/go-connections v0.4.0/go.mod h1:Gbd7IOopHjR8Iph03tsViu4nIes5XhDvyHbTtUxmeec=
 github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4=
 github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
-github.com/drac98/imgutil v1.3.0 h1:jmnN5b/8mZYmFtruhH71agLgo1q6Qh8CdKnkxxO8tH8=
-github.com/drac98/imgutil v1.3.0/go.mod h1:M6J5S49+IPQ0i5Yr/Z2z+ZX245FaIkdaXu+FSJo1VDY=
+github.com/drac98/imgutil v1.4.0 h1:b8dtuhmfyYrWfjxRyg92MofmVt/bKgq3izY7Sc7NsMY=
+github.com/drac98/imgutil v1.4.0/go.mod h1:mBG5M3GJW5nknCEOOqtmMHyPYnSpw/5GEiciuYU/COw=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/elazarl/goproxy v0.0.0-20221015165544-a0805db90819 h1:RIB4cRk+lBqKK3Oy0r2gRX4ui7tuhiZq2SuTtTCi0/0=
