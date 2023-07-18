@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
 
+	"github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	internalConfig "github.com/buildpacks/pack/internal/config"
@@ -1042,6 +1043,30 @@ func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir 
 		fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
 		mainBPInfo := mainBP.Descriptor().Info()
 		moduleInfo = &mainBPInfo
+
+		packageCfgPath := filepath.Join(bp, "package.toml")
+		_, err = os.Stat(packageCfgPath)
+		if err == nil {
+			packageReader := buildpackage.NewConfigReader()
+			packageCfg, err := packageReader.Read(packageCfgPath)
+			if err == nil {
+				for _, dep := range packageCfg.Dependencies {
+					mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
+						RegistryName:    registry,
+						ImageOS:         imageOS,
+						RelativeBaseDir: filepath.Join(bp, packageCfg.Buildpack.URI),
+						Daemon:          !publish,
+						PullPolicy:      pullPolicy,
+					})
+
+					if err != nil {
+						return nil, nil, errors.Wrapf(err, "fetching dependencies (uri=%s,image=%s)", style.Symbol(dep.URI), style.Symbol(dep.ImageName))
+					}
+
+					fetchedBPs = append(append(fetchedBPs, mainBP), deps...)
+				}
+			}
+		}
 	}
 	return fetchedBPs, moduleInfo, nil
 }
