@@ -57,13 +57,13 @@ func (f *ManagedCollection) AddModules(main BuildModule, deps ...BuildModule) {
 		f.explodedModules = append(f.explodedModules, append([]BuildModule{main}, deps...)...)
 	} else {
 		if _, ok := f.excluded[main.Descriptor().Info().FullName()]; ok {
-			f.explodesModules = append(f.explodesModules, append([]BuildModule{main}, deps...)...)
+			f.explodedModules = append(f.explodedModules, append([]BuildModule{main}, deps...)...)
 			f.setExcludedModules(deps)
 			return
 		}
 		if f.maxDepth <= FlattenMaxDepth {
 			excluded, newDeps := f.calculateExcludeModules(deps...)
-			f.explodesModules = append(f.explodesModules, excluded...)
+			f.explodedModules = append(f.explodedModules, excluded...)
 			// flatten all
 			if len(f.flattenedModules) == 1 {
 				f.flattenedModules[0] = append(f.flattenedModules[0], append([]BuildModule{main}, newDeps...)...)
@@ -78,7 +78,7 @@ func (f *ManagedCollection) AddModules(main BuildModule, deps ...BuildModule) {
 					f.explodedModules = append(f.explodedModules, modules...)
 				} else {
 					excluded, newModules := f.calculateExcludeModules(modules...)
-					f.explodesModules = append(f.explodesModules, excluded...)
+					f.explodedModules = append(f.explodedModules, excluded...)
 					f.flattenedModules = append(f.flattenedModules, newModules)
 				}
 			}
