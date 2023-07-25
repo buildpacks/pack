@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1689705926065,
+  "lastUpdate": 1690309708446,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -1300,6 +1300,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 70687248519,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "hone02@gmail.com",
+            "name": "Terence Lee",
+            "username": "hone"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "10195e2b9f2dae8017a7f8df9f6737a1473e9c59",
+          "message": "Merge pull request #1847 from buildpacks/dependabot/go_modules/github.com/docker/docker-24.0.5incompatible\n\nbuild(deps): bump github.com/docker/docker from 24.0.2+incompatible to 24.0.5+incompatible",
+          "timestamp": "2023-07-25T13:25:41-05:00",
+          "tree_id": "c03f5feb12d19a45a02024a047bd96b42753f760",
+          "url": "https://github.com/buildpacks/pack/commit/10195e2b9f2dae8017a7f8df9f6737a1473e9c59"
+        },
+        "date": 1690309707839,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4431452295,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1138968945,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 68772425916,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
