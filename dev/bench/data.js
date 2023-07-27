@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690470275821,
+  "lastUpdate": 1690471996072,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -1426,6 +1426,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 88310672709,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "02e0139290e6c3b1d8da1efe26c44360dcab7077",
+          "message": "Merge pull request #1840 from AidanDelaney/update-yank-summary\n\nUpdate the summary of `yank`",
+          "timestamp": "2023-07-27T08:31:15-07:00",
+          "tree_id": "a45c185ba727ee2cae0fe58ed0d06c587ea423a2",
+          "url": "https://github.com/buildpacks/pack/commit/02e0139290e6c3b1d8da1efe26c44360dcab7077"
+        },
+        "date": 1690471995342,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4908135223,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1264881127,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 73735083686,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
