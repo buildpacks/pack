@@ -1467,6 +1467,8 @@ func testAcceptance(
 
 							it("adds the buildpacks to the builder and runs it", func() {
 								h.SkipIf(t, runtime.GOOS == "windows", "buildpack directories not supported on windows")
+								// This only works if pack is new, therefore skip if pack is old
+								h.SkipIf(t, !pack.SupportsFeature(invoke.MetaBuildpackFolder), "")
 
 								buildpackManager.PrepareBuildModules(tmpDir, buildpacks.MetaBpFolder)
 								buildpackManager.PrepareBuildModules(tmpDir, buildpacks.MetaBpDependency)
