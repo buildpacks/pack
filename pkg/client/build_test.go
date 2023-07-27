@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -985,6 +986,77 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					h.AssertNil(t, err)
+				})
+			})
+
+			when("meta-buildpack folder is used", func() {
+				it.Focus("resolves buildpack", func() {
+					metaBuildpackFolder := path.Join(tmpDir, "meta-buildpack")
+					err := os.Mkdir(metaBuildpackFolder, os.ModePerm)
+					h.AssertNil(t, err)
+
+					err = os.WriteFile(path.Join(metaBuildpackFolder, "buildpack.toml"), []byte(`
+api = "0.2"
+
+[buildpack]
+  id = "local/meta-bp"
+  version = "local-meta-bp-version"
+  name = "Local Meta-Buildpack"
+
+[[order]]
+[[order.group]]
+id = "local/meta-bp-dep"
+version = "local-meta-bp-version"
+					`), 0644)
+					h.AssertNil(t, err)
+
+					err = os.WriteFile(path.Join(metaBuildpackFolder, "package.toml"), []byte(`
+[buildpack]
+uri = "."
+
+[[dependencies]]
+uri = "../meta-buildpack-dependency"
+					`), 0644)
+					h.AssertNil(t, err)
+
+					metaBuildpackDependencyFolder := path.Join(tmpDir, "meta-buildpack-dependency")
+					err = os.Mkdir(metaBuildpackDependencyFolder, os.ModePerm)
+					h.AssertNil(t, err)
+
+					err = os.WriteFile(path.Join(metaBuildpackDependencyFolder, "buildpack.toml"), []byte(`
+api = "0.2"
+
+[buildpack]
+  id = "local/meta-bp-dep"
+  version = "local-meta-bp-version"
+  name = "Local Meta-Buildpack Dependency"
+
+[[stacks]]
+  id = "*"
+					`), 0644)
+					h.AssertNil(t, err)
+
+					err = subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    defaultBuilderName,
+						ClearCache: true,
+						Buildpacks: []string{metaBuildpackFolder},
+					})
+
+					h.AssertNil(t, err)
+					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+					bldr, err := builder.FromImage(defaultBuilderImage)
+
+					buildpack1Info := dist.ModuleInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}
+					buildpack2Info := dist.ModuleInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}
+					metaBuildpackInfo := dist.ModuleInfo{ID: "local/meta-bp", Version: "local-meta-bp-version", Name: "Local Meta-Buildpack"}
+					metaBuildpackDependencyInfo := dist.ModuleInfo{ID: "local/meta-bp-dep", Version: "local-meta-bp-version", Name: "Local Meta-Buildpack Dependency"}
+					h.AssertEq(t, bldr.Buildpacks(), []dist.ModuleInfo{
+						buildpack1Info,
+						buildpack2Info,
+						metaBuildpackInfo,
+						metaBuildpackDependencyInfo,
+					})
 				})
 			})
 
