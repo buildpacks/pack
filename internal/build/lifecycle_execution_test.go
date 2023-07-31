@@ -1838,6 +1838,24 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("publish is false", func() {
+			when("platform >= 0.12", func() {
+				platformAPI = api.MustParse("0.12")
+
+				it("configures the phase with daemon access", func() {
+					h.AssertEq(t, configProvider.ContainerConfig().User, "root")
+					h.AssertSliceContains(t, configProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
+				})
+
+				it("configures the phase with the expected arguments", func() {
+					h.AssertIncludeAllExpectedPatterns(t,
+						configProvider.ContainerConfig().Cmd,
+						[]string{"-daemon"},
+					)
+				})
+			})
+		})
 	})
 
 	when("#Build", func() {

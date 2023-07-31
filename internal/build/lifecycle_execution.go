@@ -492,6 +492,12 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 		registryOp = WithRegistryAccess(authConfig)
 	}
 
+	dockerOp := NullOp()
+	if !l.opts.Publish && l.platformAPI.AtLeast("0.12") {
+		dockerOp = WithDaemonAccess(l.opts.DockerHost)
+		flags = append(flags, "-daemon")
+	}
+
 	flagsOp := WithFlags(flags...)
 
 	configProvider := NewPhaseConfigProvider(
@@ -507,10 +513,11 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 		WithNetwork(l.opts.Network),
 		If(l.hasExtensionsForRun(), WithPostContainerRunOperations(
 			CopyOutToMaybe(l.mountPaths.cnbDir(), l.tmpDir))), // FIXME: this is hacky; we should get the lifecycle binaries from the lifecycle image
-		flagsOp,
 		cacheBindOp,
-		registryOp,
+		dockerOp,
+		flagsOp,
 		kanikoCacheBindOp,
+		registryOp,
 	)
 
 	restore := phaseFactory.New(configProvider)
