@@ -865,33 +865,54 @@ func testAcceptance(
 						})
 
 						when("there are run image extensions", func() {
-							it.Before(func() {
-								h.SkipIf(t, !pack.SupportsFeature(invoke.RunImageExtensions), "")
-								h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
+							when("switching the run image", func() {
+								it.Before(func() {
+									h.SkipIf(t, !pack.SupportsFeature(invoke.RunImageExtensions), "")
+									h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
+								})
+
+								it("uses the 5 phases, and tries to pull the new run image before restore", func() {
+									output, _ := pack.Run(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--network", "host",
+										"-B", builderName,
+										"--env", "EXT_RUN_SWITCH=1",
+									)
+									h.AssertContains(t, output, "ERROR: failed to build: executing lifecycle: image 'some-not-exist-run-image' does not exist on the daemon: not found")
+									h.AssertNotContains(t, output, "RESTORING")
+								})
 							})
 
-							it("uses the 5 phases, and runs the extender (run)", func() {
-								output := pack.RunSuccessfully(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--network", "host", // export target is the daemon, but we need to be able to reach the registry where the builder image and run image are saved
-									"-B", builderName,
-									"--env", "EXT_RUN=1",
-								)
+							when("extending the run image", func() {
+								it.Before(func() {
+									h.SkipIf(t, !pack.SupportsFeature(invoke.RunImageExtensions), "")
+									h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
+								})
 
-								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+								it("uses the 5 phases, and runs the extender (run)", func() {
+									output := pack.RunSuccessfully(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--network", "host", // export target is the daemon, but we need to be able to reach the registry where the builder image and run image are saved
+										"-B", builderName,
+										"--env", "EXT_RUN=1",
+									)
 
-								assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-								assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
-								assertOutput.IncludesSeparatePhasesWithRunExtension()
+									assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
-								t.Log("inspecting image")
-								inspectCmd := "inspect"
-								if !pack.Supports("inspect") {
-									inspectCmd = "inspect-image"
-								}
+									assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
+									assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+									assertOutput.IncludesSeparatePhasesWithRunExtension()
 
-								output = pack.RunSuccessfully(inspectCmd, repoName)
+									t.Log("inspecting image")
+									inspectCmd := "inspect"
+									if !pack.Supports("inspect") {
+										inspectCmd = "inspect-image"
+									}
+
+									output = pack.RunSuccessfully(inspectCmd, repoName)
+								})
 							})
 						})
 					})

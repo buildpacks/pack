@@ -240,6 +240,13 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			}
 		}
 
+		currentRunImage := l.runImageAfterExtensions()
+		if currentRunImage != "" && currentRunImage != l.opts.RunImage {
+			if err := l.opts.FetchRunImage(currentRunImage); err != nil {
+				return err
+			}
+		}
+
 		l.logger.Info(style.Step("RESTORING"))
 		if l.opts.ClearCache && l.PlatformAPI().LessThan("0.10") {
 			l.logger.Info("Skipping 'restore' due to clearing cache")
@@ -258,13 +265,6 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 				l.logger.Info(style.Step("BUILDING"))
 				return l.Build(ctx, phaseFactory)
 			})
-		}
-
-		currentRunImage := l.runImageAfterExtensions()
-		if currentRunImage != "" && currentRunImage != l.opts.RunImage {
-			if err := l.opts.FetchRunImage(currentRunImage); err != nil {
-				return err
-			}
 		}
 
 		if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {

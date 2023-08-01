@@ -29,3 +29,12 @@ ARG user_id
 USER \${user_id}
 EOL
 fi
+
+if [[ -z "$EXT_RUN_SWITCH" ]]; then
+  echo "Skipping run image switch, not requested..."
+else
+  echo "Generating run.Dockerfile for run image switch..."
+  cat >>"${output_dir}/run.Dockerfile" <<EOL
+FROM some-not-exist-run-image
+EOL
+fi
