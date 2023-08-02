@@ -842,6 +842,9 @@ func (l *LifecycleExecution) hasExtensions() bool {
 }
 
 func (l *LifecycleExecution) hasExtensionsForBuild() bool {
+	if !l.hasExtensions() {
+		return false
+	}
 	// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
 	fis, err := os.ReadDir(filepath.Join(l.tmpDir, "build"))
 	if err != nil {
@@ -851,6 +854,9 @@ func (l *LifecycleExecution) hasExtensionsForBuild() bool {
 }
 
 func (l *LifecycleExecution) hasExtensionsForRun() bool {
+	if !l.hasExtensions() {
+		return false
+	}
 	var amd files.Analyzed
 	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
 		l.logger.Warnf("failed to parse analyzed.toml file, assuming no run image extensions: %s", err)
@@ -865,6 +871,9 @@ func (l *LifecycleExecution) hasExtensionsForRun() bool {
 }
 
 func (l *LifecycleExecution) runImageAfterExtensions() string {
+	if !l.hasExtensions() {
+		return l.opts.RunImage
+	}
 	var amd files.Analyzed
 	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
 		l.logger.Warnf("failed to parse analyzed.toml file, assuming run image did not change: %s", err)
