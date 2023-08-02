@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690471996072,
+  "lastUpdate": 1690991088110,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -1468,6 +1468,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 73735083686,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dd4a8adc339fefd112871db680ebc161132b6f1a",
+          "message": "Merge pull request #1843 from dlion/fixed-lint-version\n\nFixed version of the linter to 1.51.1",
+          "timestamp": "2023-08-02T10:42:46-05:00",
+          "tree_id": "c5ca098536f779e0b8f7dfe6d03140909326beca",
+          "url": "https://github.com/buildpacks/pack/commit/dd4a8adc339fefd112871db680ebc161132b6f1a"
+        },
+        "date": 1690991087318,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5115421016,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1335117473,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 72080708534,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
