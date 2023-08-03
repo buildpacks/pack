@@ -1060,6 +1060,65 @@ api = "0.2"
 						metaBuildpackDependencyInfo,
 					})
 				})
+
+				it("fails if buildpack dependency could not be fetched", func() {
+					metaBuildpackFolder := path.Join(tmpDir, "meta-buildpack")
+					err := os.Mkdir(metaBuildpackFolder, os.ModePerm)
+					h.AssertNil(t, err)
+
+					err = os.WriteFile(path.Join(metaBuildpackFolder, "buildpack.toml"), []byte(`
+api = "0.2"
+
+[buildpack]
+  id = "local/meta-bp"
+  version = "local-meta-bp-version"
+  name = "Local Meta-Buildpack"
+
+[[order]]
+[[order.group]]
+id = "local/meta-bp-dep"
+version = "local-meta-bp-version"
+					`), 0644)
+					h.AssertNil(t, err)
+
+					err = os.WriteFile(path.Join(metaBuildpackFolder, "package.toml"), []byte(`
+[buildpack]
+uri = "."
+
+[[dependencies]]
+uri = "../meta-buildpack-dependency"
+
+[[dependencies]]
+uri = "../not-a-valid-dependency"
+					`), 0644)
+					h.AssertNil(t, err)
+
+					metaBuildpackDependencyFolder := path.Join(tmpDir, "meta-buildpack-dependency")
+					err = os.Mkdir(metaBuildpackDependencyFolder, os.ModePerm)
+					h.AssertNil(t, err)
+
+					err = os.WriteFile(path.Join(metaBuildpackDependencyFolder, "buildpack.toml"), []byte(`
+api = "0.2"
+
+[buildpack]
+  id = "local/meta-bp-dep"
+  version = "local-meta-bp-version"
+  name = "Local Meta-Buildpack Dependency"
+
+[[stacks]]
+  id = "*"
+					`), 0644)
+					h.AssertNil(t, err)
+
+					err = subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    defaultBuilderName,
+						ClearCache: true,
+						Buildpacks: []string{metaBuildpackFolder},
+					})
+					h.AssertError(t, err, fmt.Sprintf("fetching package.toml dependencies (path='%s')", path.Join(metaBuildpackFolder, "package.toml")))
+					h.AssertError(t, err, "fetching dependencies (uri='../not-a-valid-dependency',image='')")
+				})
 			})
 
 			when("buildpackage image is used", func() {

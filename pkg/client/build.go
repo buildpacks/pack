@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buildpacks/pack/buildpackage"
+
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layout"
@@ -24,7 +26,6 @@ import (
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
 
-	"github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	internalConfig "github.com/buildpacks/pack/internal/config"
@@ -1047,28 +1048,39 @@ func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir 
 		packageCfgPath := filepath.Join(bp, "package.toml")
 		_, err = os.Stat(packageCfgPath)
 		if err == nil {
-			packageReader := buildpackage.NewConfigReader()
-			packageCfg, err := packageReader.Read(packageCfgPath)
-			if err == nil {
-				for _, dep := range packageCfg.Dependencies {
-					mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
-						RegistryName:    registry,
-						ImageOS:         imageOS,
-						RelativeBaseDir: filepath.Join(bp, packageCfg.Buildpack.URI),
-						Daemon:          !publish,
-						PullPolicy:      pullPolicy,
-					})
-
-					if err != nil {
-						return nil, nil, errors.Wrapf(err, "fetching dependencies (uri=%s,image=%s)", style.Symbol(dep.URI), style.Symbol(dep.ImageName))
-					}
-
-					fetchedBPs = append(append(fetchedBPs, mainBP), deps...)
-				}
+			fetchedDeps, err := c.fetchBuildpackDependencies(ctx, bp, packageCfgPath, downloadOptions)
+			if err != nil {
+				return nil, nil, errors.Wrapf(err, "fetching package.toml dependencies (path=%s)", style.Symbol(packageCfgPath))
 			}
+			fetchedBPs = append(fetchedBPs, fetchedDeps...)
 		}
 	}
 	return fetchedBPs, moduleInfo, nil
+}
+
+func (c *Client) fetchBuildpackDependencies(ctx context.Context, bp string, packageCfgPath string, downloadOptions buildpack.DownloadOptions) ([]buildpack.BuildModule, error) {
+	packageReader := buildpackage.NewConfigReader()
+	packageCfg, err := packageReader.Read(packageCfgPath)
+	if err == nil {
+		fetchedBPs := []buildpack.BuildModule{}
+		for _, dep := range packageCfg.Dependencies {
+			mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
+				RegistryName:    downloadOptions.RegistryName,
+				ImageOS:         downloadOptions.ImageOS,
+				Daemon:          downloadOptions.Daemon,
+				PullPolicy:      downloadOptions.PullPolicy,
+				RelativeBaseDir: filepath.Join(bp, packageCfg.Buildpack.URI),
+			})
+
+			if err != nil {
+				return nil, errors.Wrapf(err, "fetching dependencies (uri=%s,image=%s)", style.Symbol(dep.URI), style.Symbol(dep.ImageName))
+			}
+
+			fetchedBPs = append(append(fetchedBPs, mainBP), deps...)
+		}
+		return fetchedBPs, nil
+	}
+	return nil, err
 }
 
 func getBuildpackLocator(bp projectTypes.Buildpack, stackID string) (string, error) {
