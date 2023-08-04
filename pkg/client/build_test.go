@@ -988,6 +988,138 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("meta-buildpack folder is used", func() {
+				it("resolves buildpack", func() {
+					metaBuildpackFolder := filepath.Join(tmpDir, "meta-buildpack")
+					err := os.Mkdir(metaBuildpackFolder, os.ModePerm)
+					h.AssertNil(t, err)
+
+					err = os.WriteFile(filepath.Join(metaBuildpackFolder, "buildpack.toml"), []byte(`
+api = "0.2"
+
+[buildpack]
+  id = "local/meta-bp"
+  version = "local-meta-bp-version"
+  name = "Local Meta-Buildpack"
+
+[[order]]
+[[order.group]]
+id = "local/meta-bp-dep"
+version = "local-meta-bp-version"
+					`), 0644)
+					h.AssertNil(t, err)
+
+					err = os.WriteFile(filepath.Join(metaBuildpackFolder, "package.toml"), []byte(`
+[buildpack]
+uri = "."
+
+[[dependencies]]
+uri = "../meta-buildpack-dependency"
+					`), 0644)
+					h.AssertNil(t, err)
+
+					metaBuildpackDependencyFolder := filepath.Join(tmpDir, "meta-buildpack-dependency")
+					err = os.Mkdir(metaBuildpackDependencyFolder, os.ModePerm)
+					h.AssertNil(t, err)
+
+					err = os.WriteFile(filepath.Join(metaBuildpackDependencyFolder, "buildpack.toml"), []byte(`
+api = "0.2"
+
+[buildpack]
+  id = "local/meta-bp-dep"
+  version = "local-meta-bp-version"
+  name = "Local Meta-Buildpack Dependency"
+
+[[stacks]]
+  id = "*"
+					`), 0644)
+					h.AssertNil(t, err)
+
+					err = subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    defaultBuilderName,
+						ClearCache: true,
+						Buildpacks: []string{metaBuildpackFolder},
+					})
+
+					h.AssertNil(t, err)
+					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+
+					bldr, err := builder.FromImage(defaultBuilderImage)
+					h.AssertNil(t, err)
+
+					buildpack1Info := dist.ModuleInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}
+					buildpack2Info := dist.ModuleInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}
+					metaBuildpackInfo := dist.ModuleInfo{ID: "local/meta-bp", Version: "local-meta-bp-version", Name: "Local Meta-Buildpack"}
+					metaBuildpackDependencyInfo := dist.ModuleInfo{ID: "local/meta-bp-dep", Version: "local-meta-bp-version", Name: "Local Meta-Buildpack Dependency"}
+					h.AssertEq(t, bldr.Buildpacks(), []dist.ModuleInfo{
+						buildpack1Info,
+						buildpack2Info,
+						metaBuildpackInfo,
+						metaBuildpackDependencyInfo,
+					})
+				})
+
+				it("fails if buildpack dependency could not be fetched", func() {
+					metaBuildpackFolder := filepath.Join(tmpDir, "meta-buildpack")
+					err := os.Mkdir(metaBuildpackFolder, os.ModePerm)
+					h.AssertNil(t, err)
+
+					err = os.WriteFile(filepath.Join(metaBuildpackFolder, "buildpack.toml"), []byte(`
+api = "0.2"
+
+[buildpack]
+  id = "local/meta-bp"
+  version = "local-meta-bp-version"
+  name = "Local Meta-Buildpack"
+
+[[order]]
+[[order.group]]
+id = "local/meta-bp-dep"
+version = "local-meta-bp-version"
+					`), 0644)
+					h.AssertNil(t, err)
+
+					err = os.WriteFile(filepath.Join(metaBuildpackFolder, "package.toml"), []byte(`
+[buildpack]
+uri = "."
+
+[[dependencies]]
+uri = "../meta-buildpack-dependency"
+
+[[dependencies]]
+uri = "../not-a-valid-dependency"
+					`), 0644)
+					h.AssertNil(t, err)
+
+					metaBuildpackDependencyFolder := filepath.Join(tmpDir, "meta-buildpack-dependency")
+					err = os.Mkdir(metaBuildpackDependencyFolder, os.ModePerm)
+					h.AssertNil(t, err)
+
+					err = os.WriteFile(filepath.Join(metaBuildpackDependencyFolder, "buildpack.toml"), []byte(`
+api = "0.2"
+
+[buildpack]
+  id = "local/meta-bp-dep"
+  version = "local-meta-bp-version"
+  name = "Local Meta-Buildpack Dependency"
+
+[[stacks]]
+  id = "*"
+					`), 0644)
+					h.AssertNil(t, err)
+
+					err = subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    defaultBuilderName,
+						ClearCache: true,
+						Buildpacks: []string{metaBuildpackFolder},
+					})
+					h.AssertError(t, err, fmt.Sprintf("fetching package.toml dependencies (path='%s')", filepath.Join(metaBuildpackFolder, "package.toml")))
+					h.AssertError(t, err, "fetching dependencies (uri='../not-a-valid-dependency',image='')")
+				})
+			})
+
 			when("buildpackage image is used", func() {
 				var fakePackage *fakes.Image
 

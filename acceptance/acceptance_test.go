@@ -1453,6 +1453,43 @@ func testAcceptance(
 							})
 						})
 
+						when("the argument is meta-buildpack directory", func() {
+							var tmpDir string
+
+							it.Before(func() {
+								var err error
+								tmpDir, err = os.MkdirTemp("", "folder-buildpack-tests-")
+								assert.Nil(err)
+							})
+
+							it.After(func() {
+								_ = os.RemoveAll(tmpDir)
+							})
+
+							it("adds the buildpacks to the builder and runs it", func() {
+								h.SkipIf(t, runtime.GOOS == "windows", "buildpack directories not supported on windows")
+								// This only works if pack is new, therefore skip if pack is old
+								h.SkipIf(t, !pack.SupportsFeature(invoke.MetaBuildpackFolder), "")
+
+								buildpackManager.PrepareBuildModules(tmpDir, buildpacks.MetaBpFolder)
+								buildpackManager.PrepareBuildModules(tmpDir, buildpacks.MetaBpDependency)
+
+								output := pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--buildpack", buildpacks.MetaBpFolder.FullPathIn(tmpDir),
+								)
+
+								assertOutput := assertions.NewOutputAssertionManager(t, output)
+								assertOutput.ReportsAddingBuildpack("local/meta-bp", "local-meta-bp-version")
+								assertOutput.ReportsAddingBuildpack("local/meta-bp-dep", "local-meta-bp-version")
+								assertOutput.ReportsSuccessfulImageBuild(repoName)
+
+								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+								assertBuildpackOutput.ReportsBuildStep("Local Meta-Buildpack Dependency")
+							})
+						})
+
 						when("the argument is a buildpackage image", func() {
 							var (
 								tmpDir           string
