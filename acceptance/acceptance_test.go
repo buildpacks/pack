@@ -879,7 +879,7 @@ func testAcceptance(
 										"-B", builderName,
 										"--env", "EXT_RUN_SWITCH=1",
 									)
-									h.AssertContains(t, output, "ERROR: failed to build: executing lifecycle: image 'some-not-exist-run-image' does not exist on the daemon: not found")
+									h.AssertContains(t, output, "ERROR: failed to build: executing lifecycle: resolve auth for ref some-not-exist-run-image!")
 									h.AssertNotContains(t, output, "RESTORING")
 								})
 							})
