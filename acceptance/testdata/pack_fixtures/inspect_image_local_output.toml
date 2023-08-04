@@ -2,6 +2,7 @@ image_name = "{{.image_name}}"
 
 [local_info]
 stack = "pack.test.stack"
+rebasable = false
 
   [local_info.base_image]
   top_layer = "{{.base_image_top_layer}}"
