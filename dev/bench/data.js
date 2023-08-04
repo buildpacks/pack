@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1690991088110,
+  "lastUpdate": 1691162439885,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -1510,6 +1510,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 72080708534,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "69395593ef3cd7929e3957ca945884604428aeae",
+          "message": "Merge pull request #1856 from jericop/multi-arch-delivery-docker\n\nUpdate docker-delivery workflow to create multi-arch images",
+          "timestamp": "2023-08-04T10:18:08-05:00",
+          "tree_id": "bf3b8e27589caf9b37229f4a0a661b31d7d4a05e",
+          "url": "https://github.com/buildpacks/pack/commit/69395593ef3cd7929e3957ca945884604428aeae"
+        },
+        "date": 1691162438367,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 9826866993,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2874070173,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 92675728650,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
