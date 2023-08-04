@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691162439885,
+  "lastUpdate": 1691164312371,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -1552,6 +1552,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 92675728650,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a90f6fbf290e0808a9e639f88ec667603de9b1c5",
+          "message": "Merge pull request #1841 from colincasey/fix_1320\n\nApply package config from meta-buildpack folder in pack build",
+          "timestamp": "2023-08-04T10:49:13-05:00",
+          "tree_id": "3edc632dffa7d014aa8f651ccca82cbbdcb42286",
+          "url": "https://github.com/buildpacks/pack/commit/a90f6fbf290e0808a9e639f88ec667603de9b1c5"
+        },
+        "date": 1691164310860,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 9840318872,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2898870784,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 96074205591,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
