@@ -553,6 +553,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 			when("extensions", func() {
 				providedUseCreator = false
+				providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
 
 				when("for build", func() {
 					when("present <layers>/generated/build", func() {
@@ -1703,6 +1704,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		when("there are extensions", func() {
 			platformAPI = api.MustParse("0.12")
+			providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
 
 			when("for build", func() {
 				extensionsForBuild = true
@@ -1772,6 +1774,8 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("extensions", func() {
+			providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+
 			when("for build", func() {
 				when("present in <layers>/generated/build", func() {
 					extensionsForBuild = true
@@ -1956,6 +1960,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		when("extensions change the run image", func() {
 			extensionsRunImage = "some-new-run-image"
+			providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
 
 			it("runs the phase with the new run image", func() {
 				h.AssertEq(t, configProvider.ContainerConfig().Image, "some-new-run-image")
@@ -2030,6 +2035,8 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("there are extensions", func() {
+				providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+
 				when("for run", func() {
 					extensionsForRun = true
 
