@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691164312371,
+  "lastUpdate": 1691175211604,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -1594,6 +1594,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 96074205591,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "246234980d570dc0ac5637423ff33bcf4d2ef466",
+          "message": "Merge pull request #1806 from dlion/1799-pack-inspect\n\npack inspect <app-image> shows if the image is rebasable or not",
+          "timestamp": "2023-08-04T13:51:10-05:00",
+          "tree_id": "a307ef0eb708252d564b7972b513dce399c4f91c",
+          "url": "https://github.com/buildpacks/pack/commit/246234980d570dc0ac5637423ff33bcf4d2ef466"
+        },
+        "date": 1691175210243,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 8426376829,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2792908707,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 88186181134,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
