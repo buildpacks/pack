@@ -3,6 +3,7 @@ image_name: "{{.image_name}}"
 remote_info:
 local_info:
   stack: pack.test.stack
+  rebasable: false
   base_image:
     top_layer: "{{.base_image_top_layer}}"
     reference: "{{.base_image_id}}"

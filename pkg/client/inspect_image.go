@@ -55,6 +55,9 @@ type ImageInfo struct {
 
 	// Processes lists all processes contributed by buildpacks.
 	Processes ProcessDetails
+
+	// If the image can be rebased
+	Rebasable bool
 }
 
 // ProcessDetails is a collection of all start command metadata
@@ -117,6 +120,11 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 
 	stackID, err := img.Label(platform.StackIDLabel)
 	if err != nil {
+		return nil, err
+	}
+
+	var rebasable bool
+	if _, err := dist.GetLabel(img, platform.RebasableLabel, &rebasable); err != nil {
 		return nil, err
 	}
 
@@ -193,6 +201,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 			Buildpacks: buildMD.Buildpacks,
 			Extensions: buildMD.Extensions,
 			Processes:  processDetails,
+			Rebasable:  rebasable,
 		}, nil
 	}
 
@@ -203,5 +212,6 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		BOM:        buildMD.BOM,
 		Buildpacks: buildMD.Buildpacks,
 		Processes:  processDetails,
+		Rebasable:  rebasable,
 	}, nil
 }
