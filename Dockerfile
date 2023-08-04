@@ -1,10 +1,8 @@
-FROM golang:1.20-alpine as builder
+FROM golang:1.20 as builder
 ARG pack_version
 ENV PACK_VERSION=$pack_version
 WORKDIR /app
 COPY . .
-RUN apk update && apk upgrade && apk add --no-cache make ca-certificates
-RUN update-ca-certificates
 RUN make build
 
 FROM scratch
