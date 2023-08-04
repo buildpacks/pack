@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691176749087,
+  "lastUpdate": 1691178550024,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -1678,6 +1678,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 88125179656,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7a46328a853ebbadcdfcbafe86e5138aee386326",
+          "message": "Merge pull request #1855 from buildpacks/dependabot/go_modules/github.com/google/go-containerregistry-0.16.1\n\nbuild(deps): bump github.com/google/go-containerregistry from 0.15.2 to 0.16.1",
+          "timestamp": "2023-08-04T14:45:39-05:00",
+          "tree_id": "6b6bd3cbadf230479fd186ddc8d25bd43f38a272",
+          "url": "https://github.com/buildpacks/pack/commit/7a46328a853ebbadcdfcbafe86e5138aee386326"
+        },
+        "date": 1691178548918,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 8083874597,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2204696822,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 90008394656,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
