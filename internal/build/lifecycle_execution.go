@@ -240,17 +240,16 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 					return l.ExtendBuild(ctx, buildCache, phaseFactory)
 				})
 			} else {
-				start := time.Now()
-				defer func() {
-					elapsed := time.Since(start)
-					l.logger.Debugf("EXTENDING (BUILD) took %s", elapsed)
-				}()
 				group.Go(func() error {
 					l.logger.Info(style.Step("EXTENDING (BUILD) BY DAEMON"))
+					start := time.Now()
 					if err := l.ExtendBuildByDaemon(ctx); err != nil {
 						return err
 					}
-					return l.Build(ctx, phaseFactory)
+					l.Build(ctx, phaseFactory)
+					elapsed := time.Since(start)
+					l.logger.Debugf("EXTENDING (BUILD) took %s", elapsed)
+					return nil
 				})
 			}
 		} else {
@@ -772,11 +771,13 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 			Remove:     true,
 			BuildArgs:  buildArguments,
 		}
+					fmt.Println("buildContext: ", buildContext)
 		response, err := l.docker.ImageBuild(ctx, buildContext, buildOptions)
 		if err != nil {
 			return err
 		}
 		defer response.Body.Close()
+		fmt.Println("build response for the extend: ", response.Body)
 		_, err = io.Copy(os.Stdout, response.Body)
 		if err != nil {
 			return err

@@ -10,6 +10,8 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
+//go:generate mockgen -package mockdocker -destination ./mockdocker/mockDockerClient.go github.com/buildpacks/pack/internal/build DockerClient
+
 type DockerClient interface {
 	ImageRemove(ctx context.Context, image string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
 	VolumeRemove(ctx context.Context, volumeID string, force bool) error
