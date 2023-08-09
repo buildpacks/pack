@@ -123,8 +123,8 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		return nil, err
 	}
 
-	var rebasable bool
-	if _, err := dist.GetLabel(img, platform.RebasableLabel, &rebasable); err != nil {
+	rebasable, err := getRebasableLabel(img)
+	if err != nil {
 		return nil, err
 	}
 
@@ -214,4 +214,18 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		Processes:  processDetails,
 		Rebasable:  rebasable,
 	}, nil
+}
+
+func getRebasableLabel(labeled dist.Labeled) (bool, error) {
+	var rebasableOutput bool
+	isPresent, err := dist.GetLabel(labeled, platform.RebasableLabel, &rebasableOutput)
+	if err != nil {
+		return false, err
+	}
+
+	if !isPresent && err == nil {
+		rebasableOutput = true
+	}
+
+	return rebasableOutput, nil
 }

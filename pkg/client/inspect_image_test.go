@@ -37,14 +37,15 @@ var ignorePlatformAPI = []cmp.Option{
 
 func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 	var (
-		subject                *Client
-		mockImageFetcher       *testmocks.MockImageFetcher
-		mockDockerClient       *testmocks.MockCommonAPIClient
-		mockController         *gomock.Controller
-		mockImage              *testmocks.MockImage
-		mockImageNoRebasable   *testmocks.MockImage
-		mockImageWithExtension *testmocks.MockImage
-		out                    bytes.Buffer
+		subject                        *Client
+		mockImageFetcher               *testmocks.MockImageFetcher
+		mockDockerClient               *testmocks.MockCommonAPIClient
+		mockController                 *gomock.Controller
+		mockImage                      *testmocks.MockImage
+		mockImageNoRebasable           *testmocks.MockImage
+		mockImageRebasableWithoutLabel *testmocks.MockImage
+		mockImageWithExtension         *testmocks.MockImage
+		out                            bytes.Buffer
 	)
 
 	it.Before(func() {
@@ -138,7 +139,66 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
   }
 }`,
 		))
-		h.AssertNil(t, mockImage.SetLabel(
+		h.AssertNil(t, mockImageNoRebasable.SetLabel(
+			"io.buildpacks.build.metadata",
+			`{
+  "bom": [
+    {
+      "name": "some-bom-element"
+    }
+  ],
+  "buildpacks": [
+    {
+      "id": "some-buildpack",
+      "version": "some-version"
+    },
+    {
+      "id": "other-buildpack",
+      "version": "other-version"
+    }
+  ],
+  "processes": [
+    {
+      "type": "other-process",
+      "command": "/other/process",
+      "args": ["opt", "1"],
+      "direct": true
+    },
+    {
+      "type": "web",
+      "command": "/start/web-process",
+      "args": ["-p", "1234"],
+      "direct": false
+    }
+  ],
+  "launcher": {
+    "version": "0.5.0"
+  }
+}`,
+		))
+
+		mockImageRebasableWithoutLabel = testmocks.NewImage("some/imageRebasableWithoutLabel", "", nil)
+		h.AssertNil(t, mockImageNoRebasable.SetWorkingDir("/test-workdir"))
+		h.AssertNil(t, mockImageNoRebasable.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
+		h.AssertNil(t, mockImageNoRebasable.SetLabel(
+			"io.buildpacks.lifecycle.metadata",
+			`{
+  "stack": {
+    "runImage": {
+      "image": "some-run-image-no-rebasable",
+      "mirrors": [
+        "some-mirror",
+        "other-mirror"
+      ]
+    }
+  },
+  "runImage": {
+    "topLayer": "some-top-layer",
+    "reference": "some-run-image-reference"
+  }
+}`,
+		))
+		h.AssertNil(t, mockImageNoRebasable.SetLabel(
 			"io.buildpacks.build.metadata",
 			`{
   "bom": [
@@ -259,10 +319,12 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					if useDaemon {
 						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/image", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(mockImage, nil).AnyTimes()
 						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/imageNoRebasable", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(mockImageNoRebasable, nil).AnyTimes()
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/imageRebasableWithoutLabel", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(mockImageRebasableWithoutLabel, nil).AnyTimes()
 						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/imageWithExtension", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(mockImageWithExtension, nil).AnyTimes()
 					} else {
 						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/image", image.FetchOptions{Daemon: false, PullPolicy: image.PullNever}).Return(mockImage, nil).AnyTimes()
 						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/imageNoRebasable", image.FetchOptions{Daemon: false, PullPolicy: image.PullNever}).Return(mockImageNoRebasable, nil).AnyTimes()
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/imageRebasableWithoutLabel", image.FetchOptions{Daemon: false, PullPolicy: image.PullNever}).Return(mockImageRebasableWithoutLabel, nil).AnyTimes()
 						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/imageWithExtension", image.FetchOptions{Daemon: false, PullPolicy: image.PullNever}).Return(mockImageWithExtension, nil).AnyTimes()
 					}
 				})
@@ -352,6 +414,12 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 
 				it("returns the rebasable image", func() {
 					info, err := subject.InspectImage("some/image", useDaemon)
+					h.AssertNil(t, err)
+					h.AssertEq(t, info.Rebasable, true)
+				})
+
+				it("returns the rebasable image true if the label has not been set", func() {
+					info, err := subject.InspectImage("some/imageRebasableWithoutLabel", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.Rebasable, true)
 				})
@@ -894,7 +962,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 				Return(fakes.NewImage("missing/labels", "", nil), nil)
 			info, err := subject.InspectImage("missing/labels", true)
 			h.AssertNil(t, err)
-			h.AssertEq(t, info, &ImageInfo{}, ignorePlatformAPI...)
+			h.AssertEq(t, info, &ImageInfo{Rebasable: true}, ignorePlatformAPI...)
 		})
 	})
 
