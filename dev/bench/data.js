@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691687742074,
+  "lastUpdate": 1691706891578,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -1804,6 +1804,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 84470748348,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "hone02@gmail.com",
+            "name": "Terence Lee",
+            "username": "hone"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "82665a51d0889b02ab6718a8ff03744de5881c10",
+          "message": "Merge pull request #1868 from buildpacks/bump-lifecycle\n\nBump lifecycle",
+          "timestamp": "2023-08-10T18:33:01-04:00",
+          "tree_id": "205f665ce2d6faebdd79b5326601cbd45e8c3881",
+          "url": "https://github.com/buildpacks/pack/commit/82665a51d0889b02ab6718a8ff03744de5881c10"
+        },
+        "date": 1691706891003,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4955855230,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1243644901,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 69513107799,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
