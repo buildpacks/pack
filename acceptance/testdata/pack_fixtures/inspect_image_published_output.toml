@@ -2,7 +2,7 @@ image_name = "{{.image_name}}"
 
 [remote_info]
 stack = "pack.test.stack"
-rebasable = false
+rebasable = {{.rebasable}}
 
   [remote_info.base_image]
   top_layer = "{{.base_image_top_layer}}"
