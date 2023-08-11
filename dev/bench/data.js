@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691706891578,
+  "lastUpdate": 1691713994741,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -1846,6 +1846,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 69513107799,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "07a8c20418fe17f5f4db7792706f9fdd8ef686e3",
+          "message": "Merge pull request #1866 from dlion/1799-fix-rebasable-logic-and-test\n\nFix the rebasable flag logic in case of missing label",
+          "timestamp": "2023-08-10T19:31:20-05:00",
+          "tree_id": "f838920ba6d6e2d94d791c5d10e098d42932aa10",
+          "url": "https://github.com/buildpacks/pack/commit/07a8c20418fe17f5f4db7792706f9fdd8ef686e3"
+        },
+        "date": 1691713994097,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4846072042,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1243157029,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 70560237486,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
