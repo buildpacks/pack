@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691713994741,
+  "lastUpdate": 1691760078215,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -1888,6 +1888,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 70560237486,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c38f7da1b43d5b142d1e870f3d17da93b454c64f",
+          "message": "Merge pull request #1863 from buildpacks/dependabot/go_modules/golang.org/x/oauth2-0.11.0\n\nbuild(deps): bump golang.org/x/oauth2 from 0.10.0 to 0.11.0",
+          "timestamp": "2023-08-11T08:18:08-05:00",
+          "tree_id": "47da7d87481281982818a9083da230763fbaed7d",
+          "url": "https://github.com/buildpacks/pack/commit/c38f7da1b43d5b142d1e870f3d17da93b454c64f"
+        },
+        "date": 1691760077289,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6273539833,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1822829184,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 83882086727,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
