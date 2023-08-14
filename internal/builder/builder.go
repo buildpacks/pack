@@ -783,11 +783,11 @@ func (b *Builder) validateBuildpacks() error {
 			if err != nil {
 				return err
 			}
-			buildDistroName, err := b.Image().Label(lifecycleplatform.OSDistributionNameLabel)
+			buildDistroName, err := b.Image().Label(lifecycleplatform.OSDistroNameLabel)
 			if err != nil {
 				return err
 			}
-			buildDistroVersion, err := b.Image().Label(lifecycleplatform.OSDistributionVersionLabel)
+			buildDistroVersion, err := b.Image().Label(lifecycleplatform.OSDistroVersionLabel)
 			if err != nil {
 				return err
 			}
