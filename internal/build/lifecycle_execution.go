@@ -234,7 +234,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 
 		group, _ := errgroup.WithContext(context.TODO())
 		if l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild() {
-			if l.opts.Publish {
+			if false {
 				group.Go(func() error {
 					l.logger.Info(style.Step("EXTENDING (BUILD)"))
 					return l.ExtendBuild(ctx, buildCache, phaseFactory)
@@ -673,7 +673,7 @@ func (l *LifecycleExecution) Build(ctx context.Context, phaseFactory PhaseFactor
 		WithNetwork(l.opts.Network),
 		WithBinds(l.opts.Volumes...),
 		WithFlags(flags...),
-		If((!l.opts.Publish && l.hasExtensionsForBuild()), WithImage("newbuilder-image:latest")),
+		If((!l.opts.Publish && l.hasExtensionsForBuild()), WithImage(l.opts.BuilderImage+"-extended")),
 		If((!l.opts.Publish && l.hasExtensionsForBuild()), WithoutPrivilege()),
 	)
 
@@ -746,6 +746,7 @@ func (l *LifecycleExecution) ExtendRun(ctx context.Context, buildCache Cache, ph
 func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 	extendtime := time.Now()
 	builderImageName := l.opts.BuilderImage
+	extendedBuilderImageName := l.opts.BuilderImage + "-extended"
 	defaultFilterFunc := func(file string) bool { return true }
 	var extensions Extensions
 	time1 := time.Now()
@@ -761,17 +762,19 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 	for _, dockerfile := range dockerfiles {
 		buildContext := archive.ReadDirAsTar(filepath.Dir(dockerfile.Path), "/", 0, 0, -1, true, false, defaultFilterFunc)
 		buildArguments := map[string]*string{}
+		fmt.Println("builderImageName: ", builderImageName)
+
 		if dockerfile.WithBase == "" {
 			buildArguments["base_image"] = &builderImageName
 		}
 		buildOptions := types.ImageBuildOptions{
 			Context:    buildContext,
 			Dockerfile: "Dockerfile",
-			Tags:       []string{"newbuilder-image"},
+			Tags:       []string{extendedBuilderImageName},
 			Remove:     true,
 			BuildArgs:  buildArguments,
 		}
-					fmt.Println("buildContext: ", buildContext)
+		fmt.Println("buildContext: ", buildContext)
 		response, err := l.docker.ImageBuild(ctx, buildContext, buildOptions)
 		if err != nil {
 			return err
@@ -783,6 +786,7 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 			return err
 		}
 		l.logger.Debugf("build response for the extend: %v", response)
+		builderImageName = l.opts.BuilderImage+"-extended"
 	}
 	l.logger.Debugf("docker apply time: %v", time.Since(dockerapplytime))
 	l.logger.Debugf("Build extend time: %v", time.Since(extendtime))

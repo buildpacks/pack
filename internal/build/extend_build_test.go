@@ -43,7 +43,7 @@ func testBuildDockerfiles(t *testing.T, when spec.G, it spec.S) {
 		providedClearCache   bool
 		providedPublish      bool
 		providedBuilderImage = "some-registry.com/some-namespace/some-builder-name"
-
+		extendedBuilderImage =  "some-registry.com/some-namespace/some-builder-name-extended"
 		configureDefaultTestLifecycle func(opts *build.LifecycleOptions)
 		lifecycleOps                  []func(*build.LifecycleOptions)
 	)
@@ -76,7 +76,7 @@ func testBuildDockerfiles(t *testing.T, when spec.G, it spec.S) {
 			expectedBuildOptions := types.ImageBuildOptions{
 				Context:    expectedBuildContext,
 				Dockerfile: "Dockerfile",
-				Tags:       []string{"newbuilder-image"},
+				Tags:       []string{extendedBuilderImage},
 				Remove:     true,
 				BuildArgs:  expectedbuildArguments,
 			}
@@ -87,6 +87,19 @@ func testBuildDockerfiles(t *testing.T, when spec.G, it spec.S) {
 			mockDockerClient.EXPECT().ImageBuild(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, buildContext io.ReadCloser, buildOptions types.ImageBuildOptions) {
 				compBuildOptions(t, expectedBuildOptions, buildOptions)
 			}).Return(mockResponse, nil).Times(1)
+			err := lifecycle.ExtendBuildByDaemon(context.Background())
+			h.AssertNil(t, err)
+		})
+
+		it("should extend build image using multiple extension", func() {
+			// set tmp directory
+			tmpDir = "./testdata/fake-tmp/build-extension/multi"
+			lifecycle = getTestLifecycleExec(t, true, tmpDir, mockDockerClient, lifecycleOps...)
+			mockResponse := types.ImageBuildResponse{
+				Body:   io.NopCloser(strings.NewReader("mock-build-response-body")),
+				OSType: "linux",
+			}
+			mockDockerClient.EXPECT().ImageBuild(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockResponse, nil).Times(2)
 			err := lifecycle.ExtendBuildByDaemon(context.Background())
 			h.AssertNil(t, err)
 		})
