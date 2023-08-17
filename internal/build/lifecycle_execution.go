@@ -20,6 +20,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/daemon"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -674,7 +675,7 @@ func (l *LifecycleExecution) Build(ctx context.Context, phaseFactory PhaseFactor
 		WithBinds(l.opts.Volumes...),
 		WithFlags(flags...),
 		If((!l.opts.Publish && l.hasExtensionsForBuild()), WithImage(l.opts.BuilderImage+"-extended")),
-		If((!l.opts.Publish && l.hasExtensionsForBuild()), WithoutPrivilege()),
+		If((!l.opts.Publish && l.hasExtensionsForBuild()), WithoutPrivilege(l.opts.Builder.UID(), l.opts.Builder.GID())),
 	)
 
 	build := phaseFactory.New(configProvider)
@@ -743,6 +744,13 @@ func (l *LifecycleExecution) ExtendRun(ctx context.Context, buildCache Cache, ph
 	defer extend.Cleanup()
 	return extend.Run(ctx)
 }
+
+const (
+	argBuildID = "build_id"
+	argUserID  = "user_id"
+	argGroupID = "group_id"
+)
+
 func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 	extendtime := time.Now()
 	builderImageName := l.opts.BuilderImage
@@ -760,12 +768,18 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 	l.logger.Debugf("extensions.DockerFiles for build took %s", time.Since(time2))
 	dockerapplytime := time.Now()
 	for _, dockerfile := range dockerfiles {
-		buildContext := archive.ReadDirAsTar(filepath.Dir(dockerfile.Path), "/", 0, 0, -1, true, false, defaultFilterFunc)
+		dockerfile.Args = append([]Arg{
+			{Name: argBuildID, Value: uuid.New().String()},
+			{Name: argUserID, Value: strconv.Itoa(l.opts.Builder.UID())},
+			{Name: argGroupID, Value: strconv.Itoa(l.opts.Builder.GID())},
+		}, dockerfile.Args...)
+		buildContext := archive.ReadDirAsTar(filepath.Dir(dockerfile.Info.Path), "/", 0, 0, -1, true, false, defaultFilterFunc)
 		buildArguments := map[string]*string{}
 		fmt.Println("builderImageName: ", builderImageName)
-
-		if dockerfile.WithBase == "" {
-			buildArguments["base_image"] = &builderImageName
+		buildArguments["base_image"] = &builderImageName
+		for i := range dockerfile.Args {
+			arg := &dockerfile.Args[i]
+			buildArguments[arg.Name] = &arg.Value
 		}
 		buildOptions := types.ImageBuildOptions{
 			Context:    buildContext,
@@ -786,7 +800,7 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 			return err
 		}
 		l.logger.Debugf("build response for the extend: %v", response)
-		builderImageName = l.opts.BuilderImage+"-extended"
+		builderImageName = l.opts.BuilderImage + "-extended"
 	}
 	l.logger.Debugf("docker apply time: %v", time.Since(dockerapplytime))
 	l.logger.Debugf("Build extend time: %v", time.Since(extendtime))
@@ -824,10 +838,10 @@ func (l *LifecycleExecution) ExtendRunByDaemon(ctx context.Context, group *errgr
 	})
 	dockerapplytime := time.Now()
 	for _, dockerfile := range dockerfiles {
-		if dockerfile.Extend {
-			buildContext := archive.ReadDirAsTar(filepath.Dir(dockerfile.Path), "/", 0, 0, -1, true, false, defaultFilterFunc)
+		if dockerfile.Info.Extend {
+			buildContext := archive.ReadDirAsTar(filepath.Dir(dockerfile.Info.Path), "/", 0, 0, -1, true, false, defaultFilterFunc)
 			buildArguments := map[string]*string{}
-			if dockerfile.WithBase == "" {
+			if dockerfile.Info.WithBase == "" {
 				buildArguments["base_image"] = currentRunImage
 			}
 			buildOptions := types.ImageBuildOptions{

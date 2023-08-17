@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -244,9 +245,9 @@ func WithRoot() PhaseConfigProviderOperation {
 	}
 }
 
-func WithoutPrivilege() PhaseConfigProviderOperation {
+func WithoutPrivilege(uid int, gid int) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
-		provider.ctrConf.User = "1000:1001"
+		provider.ctrConf.User = strconv.Itoa(uid) + ":" + strconv.Itoa(gid)
 	}
 }
 

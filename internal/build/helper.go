@@ -29,8 +29,27 @@ type Extensions struct {
 	Extensions []buildpack.GroupElement
 }
 
-func (extensions *Extensions) DockerFiles(kind string, path string, logger logging.Logger) ([]buildpack.DockerfileInfo, error) {
-	var dockerfiles []buildpack.DockerfileInfo
+type DockerfileInfo struct {
+	Info *buildpack.DockerfileInfo
+	Args []Arg
+}
+
+type Arg struct {
+	Name  string `toml:"name"`
+	Value string `toml:"value"`
+}
+
+type Config struct {
+	Build BuildConfig `toml:"build"`
+	Run   BuildConfig `toml:"run"`
+}
+
+type BuildConfig struct {
+	Args []Arg `toml:"args"`
+}
+
+func (extensions *Extensions) DockerFiles(kind string, path string, logger logging.Logger) ([]DockerfileInfo, error) {
+	var dockerfiles []DockerfileInfo
 	for _, ext := range extensions.Extensions {
 		dockerfile, err := extensions.ReadDockerFile(path, kind, ext.ID)
 		if err != nil {
@@ -42,7 +61,7 @@ func (extensions *Extensions) DockerFiles(kind string, path string, logger loggi
 			case DockerfileKindBuild:
 				// will implement later
 			case DockerfileKindRun:
-				buildpack.ValidateRunDockerfile(dockerfile, logger)
+				buildpack.ValidateRunDockerfile(dockerfile.Info, logger)
 			default:
 				return nil, fmt.Errorf("unknown dockerfile kind: %s", kind)
 			}
@@ -52,15 +71,33 @@ func (extensions *Extensions) DockerFiles(kind string, path string, logger loggi
 	return dockerfiles, nil
 }
 
-func (extensions *Extensions) ReadDockerFile(path string, kind string, extID string) (*buildpack.DockerfileInfo, error) {
+func (extensions *Extensions) ReadDockerFile(path string, kind string, extID string) (*DockerfileInfo, error) {
 	dockerfilePath := filepath.Join(path, kind, escapeID(extID), "Dockerfile")
 	if _, err := os.Stat(dockerfilePath); err != nil {
 		return nil, nil
 	}
-	return &buildpack.DockerfileInfo{
-		ExtensionID: extID,
-		Kind:        kind,
-		Path:        dockerfilePath,
+	configPath := filepath.Join(path, kind, escapeID(extID), "extend-config.toml")
+	var config Config
+	_, err := toml.DecodeFile(configPath, &config)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+
+	var args []Arg
+	if kind == buildpack.DockerfileKindBuild {
+		args = config.Build.Args
+	} else {
+		args = config.Run.Args
+	}
+	return &DockerfileInfo{
+		Info: &buildpack.DockerfileInfo{
+			ExtensionID: extID,
+			Kind:        kind,
+			Path:        dockerfilePath,
+		},
+		Args: args,
 	}, nil
 }
 
