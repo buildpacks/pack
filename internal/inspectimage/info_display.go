@@ -3,7 +3,7 @@ package inspectimage
 import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/pkg/client"
@@ -46,6 +46,7 @@ type InfoDisplay struct {
 	Buildpacks      []dist.ModuleInfo       `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
 	Extensions      []dist.ModuleInfo       `json:"extensions" yaml:"extensions" toml:"extensions"`
 	Processes       []ProcessDisplay        `json:"processes" yaml:"processes" toml:"processes"`
+	Rebasable       bool                    `json:"rebasable" yaml:"rebasable" toml:"rebasable"`
 }
 
 type InspectOutput struct {
@@ -66,6 +67,7 @@ func NewInfoDisplay(info *client.ImageInfo, generalInfo GeneralInfo) *InfoDispla
 			Buildpacks:      displayBuildpacks(info.Buildpacks),
 			Extensions:      displayExtensions(info.Extensions),
 			Processes:       displayProcesses(info.Processes),
+			Rebasable:       info.Rebasable,
 		}
 	}
 	return &InfoDisplay{
@@ -74,6 +76,7 @@ func NewInfoDisplay(info *client.ImageInfo, generalInfo GeneralInfo) *InfoDispla
 		RunImageMirrors: displayMirrors(info, generalInfo),
 		Buildpacks:      displayBuildpacks(info.Buildpacks),
 		Processes:       displayProcesses(info.Processes),
+		Rebasable:       info.Rebasable,
 	}
 }
 
@@ -95,7 +98,7 @@ func getConfigMirrors(info *client.ImageInfo, imageMirrors []config.RunImage) []
 	return nil
 }
 
-func displayBase(base platform.RunImageForRebase) BaseDisplay {
+func displayBase(base files.RunImageForRebase) BaseDisplay {
 	return BaseDisplay{
 		TopLayer:  base.TopLayer,
 		Reference: base.Reference,

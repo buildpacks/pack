@@ -12,17 +12,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/buildpacks/pack/pkg/cache"
+	"github.com/buildpacks/pack/buildpackage"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
-	"github.com/buildpacks/lifecycle/platform"
-
-	"github.com/buildpacks/pack/internal/paths"
-
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/volume/mounts"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -33,12 +30,14 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	internalConfig "github.com/buildpacks/pack/internal/config"
 	pname "github.com/buildpacks/pack/internal/name"
+	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/internal/termui"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -452,7 +451,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
 
-	if len(bldr.OrderExtensions()) > 0 {
+	if len(bldr.OrderExtensions()) > 0 || len(ephemeralBuilder.OrderExtensions()) > 0 {
 		if !c.experimental {
 			return fmt.Errorf("experimental features must be enabled when builder contains image extensions")
 		}
@@ -487,12 +486,12 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	projectMetadata := platform.ProjectMetadata{}
+	projectMetadata := files.ProjectMetadata{}
 	if c.experimental {
 		version := opts.ProjectDescriptor.Project.Version
 		sourceURL := opts.ProjectDescriptor.Project.SourceURL
 		if version != "" || sourceURL != "" {
-			projectMetadata.Source = &platform.ProjectSource{
+			projectMetadata.Source = &files.ProjectSource{
 				Type:     "project",
 				Version:  map[string]interface{}{"declared": version},
 				Metadata: map[string]interface{}{"url": sourceURL},
@@ -1045,8 +1044,43 @@ func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir 
 		fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
 		mainBPInfo := mainBP.Descriptor().Info()
 		moduleInfo = &mainBPInfo
+
+		packageCfgPath := filepath.Join(bp, "package.toml")
+		_, err = os.Stat(packageCfgPath)
+		if err == nil {
+			fetchedDeps, err := c.fetchBuildpackDependencies(ctx, bp, packageCfgPath, downloadOptions)
+			if err != nil {
+				return nil, nil, errors.Wrapf(err, "fetching package.toml dependencies (path=%s)", style.Symbol(packageCfgPath))
+			}
+			fetchedBPs = append(fetchedBPs, fetchedDeps...)
+		}
 	}
 	return fetchedBPs, moduleInfo, nil
+}
+
+func (c *Client) fetchBuildpackDependencies(ctx context.Context, bp string, packageCfgPath string, downloadOptions buildpack.DownloadOptions) ([]buildpack.BuildModule, error) {
+	packageReader := buildpackage.NewConfigReader()
+	packageCfg, err := packageReader.Read(packageCfgPath)
+	if err == nil {
+		fetchedBPs := []buildpack.BuildModule{}
+		for _, dep := range packageCfg.Dependencies {
+			mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
+				RegistryName:    downloadOptions.RegistryName,
+				ImageOS:         downloadOptions.ImageOS,
+				Daemon:          downloadOptions.Daemon,
+				PullPolicy:      downloadOptions.PullPolicy,
+				RelativeBaseDir: filepath.Join(bp, packageCfg.Buildpack.URI),
+			})
+
+			if err != nil {
+				return nil, errors.Wrapf(err, "fetching dependencies (uri=%s,image=%s)", style.Symbol(dep.URI), style.Symbol(dep.ImageName))
+			}
+
+			fetchedBPs = append(append(fetchedBPs, mainBP), deps...)
+		}
+		return fetchedBPs, nil
+	}
+	return nil, err
 }
 
 func getBuildpackLocator(bp projectTypes.Buildpack, stackID string) (string, error) {

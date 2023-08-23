@@ -9,7 +9,7 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/launch"
-	"github.com/buildpacks/lifecycle/platform"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -37,13 +37,15 @@ var ignorePlatformAPI = []cmp.Option{
 
 func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 	var (
-		subject                *Client
-		mockImageFetcher       *testmocks.MockImageFetcher
-		mockDockerClient       *testmocks.MockCommonAPIClient
-		mockController         *gomock.Controller
-		mockImage              *testmocks.MockImage
-		mockImageWithExtension *testmocks.MockImage
-		out                    bytes.Buffer
+		subject                        *Client
+		mockImageFetcher               *testmocks.MockImageFetcher
+		mockDockerClient               *testmocks.MockCommonAPIClient
+		mockController                 *gomock.Controller
+		mockImage                      *testmocks.MockImage
+		mockImageNoRebasable           *testmocks.MockImage
+		mockImageRebasableWithoutLabel *testmocks.MockImage
+		mockImageWithExtension         *testmocks.MockImage
+		out                            bytes.Buffer
 	)
 
 	it.Before(func() {
@@ -58,6 +60,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 		mockImage = testmocks.NewImage("some/image", "", nil)
 		h.AssertNil(t, mockImage.SetWorkingDir("/test-workdir"))
 		h.AssertNil(t, mockImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
+		h.AssertNil(t, mockImage.SetLabel("io.buildpacks.rebasable", "true"))
 		h.AssertNil(t, mockImage.SetLabel(
 			"io.buildpacks.lifecycle.metadata",
 			`{
@@ -114,9 +117,129 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 }`,
 		))
 
+		mockImageNoRebasable = testmocks.NewImage("some/imageNoRebasable", "", nil)
+		h.AssertNil(t, mockImageNoRebasable.SetWorkingDir("/test-workdir"))
+		h.AssertNil(t, mockImageNoRebasable.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
+		h.AssertNil(t, mockImageNoRebasable.SetLabel("io.buildpacks.rebasable", "false"))
+		h.AssertNil(t, mockImageNoRebasable.SetLabel(
+			"io.buildpacks.lifecycle.metadata",
+			`{
+  "stack": {
+    "runImage": {
+      "image": "some-run-image-no-rebasable",
+      "mirrors": [
+        "some-mirror",
+        "other-mirror"
+      ]
+    }
+  },
+  "runImage": {
+    "topLayer": "some-top-layer",
+    "reference": "some-run-image-reference"
+  }
+}`,
+		))
+		h.AssertNil(t, mockImageNoRebasable.SetLabel(
+			"io.buildpacks.build.metadata",
+			`{
+  "bom": [
+    {
+      "name": "some-bom-element"
+    }
+  ],
+  "buildpacks": [
+    {
+      "id": "some-buildpack",
+      "version": "some-version"
+    },
+    {
+      "id": "other-buildpack",
+      "version": "other-version"
+    }
+  ],
+  "processes": [
+    {
+      "type": "other-process",
+      "command": "/other/process",
+      "args": ["opt", "1"],
+      "direct": true
+    },
+    {
+      "type": "web",
+      "command": "/start/web-process",
+      "args": ["-p", "1234"],
+      "direct": false
+    }
+  ],
+  "launcher": {
+    "version": "0.5.0"
+  }
+}`,
+		))
+
+		mockImageRebasableWithoutLabel = testmocks.NewImage("some/imageRebasableWithoutLabel", "", nil)
+		h.AssertNil(t, mockImageNoRebasable.SetWorkingDir("/test-workdir"))
+		h.AssertNil(t, mockImageNoRebasable.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
+		h.AssertNil(t, mockImageNoRebasable.SetLabel(
+			"io.buildpacks.lifecycle.metadata",
+			`{
+  "stack": {
+    "runImage": {
+      "image": "some-run-image-no-rebasable",
+      "mirrors": [
+        "some-mirror",
+        "other-mirror"
+      ]
+    }
+  },
+  "runImage": {
+    "topLayer": "some-top-layer",
+    "reference": "some-run-image-reference"
+  }
+}`,
+		))
+		h.AssertNil(t, mockImageNoRebasable.SetLabel(
+			"io.buildpacks.build.metadata",
+			`{
+  "bom": [
+    {
+      "name": "some-bom-element"
+    }
+  ],
+  "buildpacks": [
+    {
+      "id": "some-buildpack",
+      "version": "some-version"
+    },
+    {
+      "id": "other-buildpack",
+      "version": "other-version"
+    }
+  ],
+  "processes": [
+    {
+      "type": "other-process",
+      "command": "/other/process",
+      "args": ["opt", "1"],
+      "direct": true
+    },
+    {
+      "type": "web",
+      "command": "/start/web-process",
+      "args": ["-p", "1234"],
+      "direct": false
+    }
+  ],
+  "launcher": {
+    "version": "0.5.0"
+  }
+}`,
+		))
+
 		mockImageWithExtension = testmocks.NewImage("some/imageWithExtension", "", nil)
 		h.AssertNil(t, mockImageWithExtension.SetWorkingDir("/test-workdir"))
 		h.AssertNil(t, mockImageWithExtension.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
+		h.AssertNil(t, mockImageWithExtension.SetLabel("io.buildpacks.rebasable", "true"))
 		h.AssertNil(t, mockImageWithExtension.SetLabel(
 			"io.buildpacks.lifecycle.metadata",
 			`{
@@ -195,9 +318,13 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					if useDaemon {
 						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/image", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(mockImage, nil).AnyTimes()
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/imageNoRebasable", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(mockImageNoRebasable, nil).AnyTimes()
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/imageRebasableWithoutLabel", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(mockImageRebasableWithoutLabel, nil).AnyTimes()
 						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/imageWithExtension", image.FetchOptions{Daemon: true, PullPolicy: image.PullNever}).Return(mockImageWithExtension, nil).AnyTimes()
 					} else {
 						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/image", image.FetchOptions{Daemon: false, PullPolicy: image.PullNever}).Return(mockImage, nil).AnyTimes()
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/imageNoRebasable", image.FetchOptions{Daemon: false, PullPolicy: image.PullNever}).Return(mockImageNoRebasable, nil).AnyTimes()
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/imageRebasableWithoutLabel", image.FetchOptions{Daemon: false, PullPolicy: image.PullNever}).Return(mockImageRebasableWithoutLabel, nil).AnyTimes()
 						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/imageWithExtension", image.FetchOptions{Daemon: false, PullPolicy: image.PullNever}).Return(mockImageWithExtension, nil).AnyTimes()
 					}
 				})
@@ -208,7 +335,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, info.StackID, "test.stack.id")
 				})
 
-				it("returns the stack ID", func() {
+				it("returns the stack ID with extension", func() {
 					infoWithExtension, err := subject.InspectImage("some/imageWithExtension", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, infoWithExtension.StackID, "test.stack.id")
@@ -228,15 +355,15 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					info, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.Stack,
-						platform.StackMetadata{RunImage: platform.RunImageForExport{Image: "is everything"}})
+						files.Stack{RunImage: files.RunImageForExport{Image: "is everything"}})
 				})
 
 				it("returns the stack", func() {
 					info, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.Stack,
-						platform.StackMetadata{
-							RunImage: platform.RunImageForExport{
+						files.Stack{
+							RunImage: files.RunImageForExport{
 								Image: "some-run-image",
 								Mirrors: []string{
 									"some-mirror",
@@ -247,12 +374,12 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					)
 				})
 
-				it("returns the stack", func() {
+				it("returns the stack with extension", func() {
 					infoWithExtension, err := subject.InspectImage("some/imageWithExtension", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, infoWithExtension.Stack,
-						platform.StackMetadata{
-							RunImage: platform.RunImageForExport{
+						files.Stack{
+							RunImage: files.RunImageForExport{
 								Image: "some-run-image",
 								Mirrors: []string{
 									"some-mirror",
@@ -267,22 +394,46 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					info, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.Base,
-						platform.RunImageForRebase{
+						files.RunImageForRebase{
 							TopLayer:  "some-top-layer",
 							Reference: "some-run-image-reference",
 						},
 					)
 				})
 
-				it("returns the base image", func() {
+				it("returns the base image with extension", func() {
 					infoWithExtension, err := subject.InspectImage("some/imageWithExtension", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, infoWithExtension.Base,
-						platform.RunImageForRebase{
+						files.RunImageForRebase{
 							TopLayer:  "some-top-layer",
 							Reference: "some-run-image-reference",
 						},
 					)
+				})
+
+				it("returns the rebasable image", func() {
+					info, err := subject.InspectImage("some/image", useDaemon)
+					h.AssertNil(t, err)
+					h.AssertEq(t, info.Rebasable, true)
+				})
+
+				it("returns the rebasable image true if the label has not been set", func() {
+					info, err := subject.InspectImage("some/imageRebasableWithoutLabel", useDaemon)
+					h.AssertNil(t, err)
+					h.AssertEq(t, info.Rebasable, true)
+				})
+
+				it("returns the no rebasable image", func() {
+					info, err := subject.InspectImage("some/imageNoRebasable", useDaemon)
+					h.AssertNil(t, err)
+					h.AssertEq(t, info.Rebasable, false)
+				})
+
+				it("returns the rebasable image with Extension", func() {
+					infoRebasableWithExtension, err := subject.InspectImage("some/imageWithExtension", useDaemon)
+					h.AssertNil(t, err)
+					h.AssertEq(t, infoRebasableWithExtension.Rebasable, true)
 				})
 
 				it("returns the BOM", func() {
@@ -314,7 +465,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, info.Buildpacks[1].Version, "other-version")
 				})
 
-				it("returns the buildpacks", func() {
+				it("returns the buildpacks with extension", func() {
 					infoWithExtension, err := subject.InspectImage("some/imageWithExtension", useDaemon)
 					h.AssertNil(t, err)
 
@@ -811,7 +962,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 				Return(fakes.NewImage("missing/labels", "", nil), nil)
 			info, err := subject.InspectImage("missing/labels", true)
 			h.AssertNil(t, err)
-			h.AssertEq(t, info, &ImageInfo{}, ignorePlatformAPI...)
+			h.AssertEq(t, info, &ImageInfo{Rebasable: true}, ignorePlatformAPI...)
 		})
 	})
 
@@ -864,7 +1015,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 			info, err := subject.InspectImage("old/image", true)
 			h.AssertNil(t, err)
 			h.AssertEq(t, info.Base,
-				platform.RunImageForRebase{
+				files.RunImageForRebase{
 					TopLayer:  "some-top-layer",
 					Reference: "",
 				},

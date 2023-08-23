@@ -11,12 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/pack/pkg/cache"
-
 	"github.com/BurntSushi/toml"
 	"github.com/apex/log"
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -24,10 +23,10 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/paths"
-
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
+	"github.com/buildpacks/pack/internal/paths"
+	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -69,6 +68,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		lifecycle        *build.LifecycleExecution
 		fakeBuildCache   = newFakeVolumeCache()
 		fakeLaunchCache  *fakes.FakeCache
+		fakeKanikoCache  *fakes.FakeCache
 		fakePhase        *fakes.FakePhase
 		fakePhaseFactory *fakes.FakePhaseFactory
 		fakeFetcher      fakeImageFetcher
@@ -138,14 +138,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			_, err = os.Create(filepath.Join(tmpDir, "build", "some-dockerfile"))
 			h.AssertNil(t, err)
 		}
-		type runImage struct {
-			Extend bool   `toml:"extend,omitempty"`
-			Image  string `toml:"image"`
-		}
-		type analyzedMD struct {
-			RunImage *runImage `toml:"run-image,omitempty"`
-		}
-		amd := analyzedMD{RunImage: &runImage{
+		amd := files.Analyzed{RunImage: &files.RunImage{
 			Extend: false,
 			Image:  "",
 		}}
@@ -163,6 +156,10 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		fakeLaunchCache = fakes.NewFakeCache()
 		fakeLaunchCache.ReturnForType = cache.Volume
 		fakeLaunchCache.ReturnForName = "some-launch-cache"
+
+		fakeKanikoCache = fakes.NewFakeCache()
+		fakeKanikoCache.ReturnForType = cache.Volume
+		fakeKanikoCache.ReturnForName = "some-kaniko-cache"
 
 		fakePhase = &fakes.FakePhase{}
 		fakePhaseFactory = fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
@@ -556,6 +553,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 			when("extensions", func() {
 				providedUseCreator = false
+				providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
 
 				when("for build", func() {
 					when("present <layers>/generated/build", func() {
@@ -1396,6 +1394,21 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("platform >= 0.12", func() {
+			platformAPI = api.MustParse("0.12")
+
+			it("passes run", func() {
+				h.AssertIncludeAllExpectedPatterns(t,
+					configProvider.ContainerConfig().Cmd,
+					[]string{"-run", "/layers/run.toml"},
+				)
+				h.AssertSliceNotContains(t,
+					configProvider.ContainerConfig().Cmd,
+					"-stack",
+				)
+			})
+		})
+
 		when("publish", func() {
 			providedPublish = true
 
@@ -1637,7 +1650,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Restore", func() {
 		it.Before(func() {
-			err := lifecycle.Restore(context.Background(), fakeBuildCache, fakePhaseFactory)
+			err := lifecycle.Restore(context.Background(), fakeBuildCache, fakeKanikoCache, fakePhaseFactory)
 			h.AssertNil(t, err)
 
 			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1687,6 +1700,27 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			expectedBind := "some-cache:/cache"
 
 			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBind)
+		})
+
+		when("there are extensions", func() {
+			platformAPI = api.MustParse("0.12")
+			providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+
+			when("for build", func() {
+				extensionsForBuild = true
+
+				it("configures the phase with registry access", func() {
+					h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
+				})
+			})
+
+			when("for run", func() {
+				extensionsForRun = true
+
+				it("configures the phase with registry access", func() {
+					h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
+				})
+			})
 		})
 
 		when("using cache image", func() {
@@ -1740,6 +1774,8 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("extensions", func() {
+			providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+
 			when("for build", func() {
 				when("present in <layers>/generated/build", func() {
 					extensionsForBuild = true
@@ -1749,7 +1785,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 						it("does not provide -build-image or /kaniko bind", func() {
 							h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-build-image")
-							h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+							h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-kaniko-cache:/kaniko")
 						})
 					})
 
@@ -1759,7 +1795,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						it("provides -build-image and /kaniko bind", func() {
 							h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-build-image", providedBuilderImage)
 							h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
-							h.AssertSliceContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+							h.AssertSliceContains(t, configProvider.HostConfig().Binds, "some-kaniko-cache:/kaniko")
 						})
 					})
 				})
@@ -1769,7 +1805,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 					it("does not provide -build-image or /kaniko bind", func() {
 						h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-build-image")
-						h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+						h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-kaniko-cache:/kaniko")
 					})
 				})
 			})
@@ -1783,7 +1819,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							platformAPI = api.MustParse("0.12")
 
 							it("provides /kaniko bind", func() {
-								h.AssertSliceContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+								h.AssertSliceContains(t, configProvider.HostConfig().Binds, "some-kaniko-cache:/kaniko")
 							})
 						})
 
@@ -1791,7 +1827,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							platformAPI = api.MustParse("0.11")
 
 							it("does not provide /kaniko bind", func() {
-								h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+								h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-kaniko-cache:/kaniko")
 							})
 						})
 					})
@@ -1800,9 +1836,27 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						platformAPI = api.MustParse("0.12")
 
 						it("does not provide /kaniko bind", func() {
-							h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-cache:/kaniko")
+							h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-kaniko-cache:/kaniko")
 						})
 					})
+				})
+			})
+		})
+
+		when("publish is false", func() {
+			when("platform >= 0.12", func() {
+				platformAPI = api.MustParse("0.12")
+
+				it("configures the phase with daemon access", func() {
+					h.AssertEq(t, configProvider.ContainerConfig().User, "root")
+					h.AssertSliceContains(t, configProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
+				})
+
+				it("configures the phase with the expected arguments", func() {
+					h.AssertIncludeAllExpectedPatterns(t,
+						configProvider.ContainerConfig().Cmd,
+						[]string{"-daemon"},
+					)
 				})
 			})
 		})
@@ -1843,7 +1897,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 	when("#ExtendBuild", func() {
 		it.Before(func() {
-			err := lifecycle.ExtendBuild(context.Background(), fakeBuildCache, fakePhaseFactory)
+			err := lifecycle.ExtendBuild(context.Background(), fakeKanikoCache, fakePhaseFactory)
 			h.AssertNil(t, err)
 
 			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1865,7 +1919,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		it("configures the phase with binds", func() {
 			expectedBinds := providedVolumes
-			expectedBinds = append(expectedBinds, "some-cache:/kaniko")
+			expectedBinds = append(expectedBinds, "some-kaniko-cache:/kaniko")
 
 			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 		})
@@ -1885,7 +1939,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 	when("#ExtendRun", func() {
 		it.Before(func() {
-			err := lifecycle.ExtendRun(context.Background(), fakeBuildCache, fakePhaseFactory)
+			err := lifecycle.ExtendRun(context.Background(), fakeKanikoCache, fakePhaseFactory)
 			h.AssertNil(t, err)
 
 			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1906,6 +1960,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		when("extensions change the run image", func() {
 			extensionsRunImage = "some-new-run-image"
+			providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
 
 			it("runs the phase with the new run image", func() {
 				h.AssertEq(t, configProvider.ContainerConfig().Image, "some-new-run-image")
@@ -1921,7 +1976,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		it("configures the phase with binds", func() {
 			expectedBinds := providedVolumes
-			expectedBinds = append(expectedBinds, "some-cache:/kaniko", fmt.Sprintf("%s:/cnb", filepath.Join(tmpDir, "cnb")))
+			expectedBinds = append(expectedBinds, "some-kaniko-cache:/kaniko", fmt.Sprintf("%s:/cnb", filepath.Join(tmpDir, "cnb")))
 
 			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 		})
@@ -1941,7 +1996,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Export", func() {
 		it.Before(func() {
-			err := lifecycle.Export(context.Background(), fakeBuildCache, fakeLaunchCache, fakePhaseFactory)
+			err := lifecycle.Export(context.Background(), fakeBuildCache, fakeLaunchCache, fakeKanikoCache, fakePhaseFactory)
 			h.AssertNil(t, err)
 
 			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1979,12 +2034,20 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-stack")
 			})
 
-			when("extensions", func() {
+			when("there are extensions", func() {
+				providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+
 				when("for run", func() {
 					extensionsForRun = true
 
 					it("sets CNB_EXPERIMENTAL_MODE=warn in the environment", func() {
 						h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
+					})
+
+					it("configures the phase with binds", func() {
+						expectedBinds := []string{"some-cache:/cache", "some-launch-cache:/launch-cache", "some-kaniko-cache:/kaniko"}
+
+						h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 					})
 				})
 			})

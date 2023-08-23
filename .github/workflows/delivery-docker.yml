@@ -59,15 +59,18 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Pack Build/Publish
-        uses: dfreilich/pack-action@v2.1.1
-        env:
-          BP_GO_BUILD_LDFLAGS: "-s -w -X 'github.com/buildpacks/pack.Version=${{ steps.version.outputs.result }}'"
-        with:
-          args: 'build ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} --builder ${{ env.BUILDER }} --env BP_GO_BUILD_LDFLAGS --publish'
+      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-buildx-action@v2
+      - uses: buildpacks/github-actions/setup-tools@v5.3.1
+      - name: Buildx Build/Publish
+        run: |
+          docker buildx build . \
+            --tag ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} \
+            --platform linux/amd64,linux/arm64 \
+            --build-arg pack_version=${{ steps.version.outputs.result }} \
+            --provenance=false \
+            --push
       - name: Tag Image as Latest
         if: ${{ github.event.release != '' || github.event.inputs.tag_latest }}
         run: |
-          docker pull ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }}
-          docker tag ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} ${{ env.IMG_NAME }}:latest
-          docker push ${{ env.IMG_NAME }}:latest
+          crane copy ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} ${{ env.IMG_NAME }}:latest

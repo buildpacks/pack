@@ -160,7 +160,7 @@ install-goimports:
 ## install-golangci-lint: Install golangci-lint dependency
 install-golangci-lint:
 	@echo "=====> Installing golangci-lint..."
-	cd tools && $(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint
+	cd tools && $(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.1
 
 ## mod-tidy: Tidy Go modules
 mod-tidy:

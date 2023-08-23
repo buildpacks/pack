@@ -797,12 +797,12 @@ func testAcceptance(
 					it("creates builder", func() {
 						// Linux containers (including Linux containers on Windows)
 						extSimpleLayersDiffID := "sha256:b9e4a0ddfb650c7aa71d1e6aceea1665365e409b3078bfdc1e51c2b07ab2b423"
-						extReadEnvDiffID := "sha256:ab7419c5e0b1a0789bd07cef2ed0573ec6e98eb05d7f05eb95d4f035243e331c"
+						extReadEnvDiffID := "sha256:4490d78f2b056cdb99ad9cd3892f3c0617c5a485fb300dd90c572ce375ee45b2"
 						bpSimpleLayersDiffID := "sha256:285ff6683c99e5ae19805f6a62168fb40dca64d813c53b782604c9652d745c70"
 						bpReadEnvDiffID := "sha256:dd1e0efcbf3f08b014ef6eff9cfe7a9eac1cf20bd9b6a71a946f0a74575aa56f"
 						if imageManager.HostOS() == "windows" { // Windows containers on Windows
 							extSimpleLayersDiffID = "sha256:a063cf949b9c267133e451ac8cd95b4e77571bb7c629dd817461dca769170810"
-							extReadEnvDiffID = "sha256:a4e7f114efa3692939974da9c9f08e47b3fdb5c779688dc8f5a950e0f804bef1"
+							extReadEnvDiffID = "sha256:ae9520eef7d84f69da6adf2597266660ce3fa5fd8ddac716cbfbecb67ded50e5"
 							bpSimpleLayersDiffID = "sha256:ccd1234cc5685e8a412b70c5f9a8e7b584b8e4f2a20c987ec242c9055de3e45e"
 							bpReadEnvDiffID = "sha256:8b22a7742ffdfbdd978787c6937456b68afb27c3585a3903048be7434d251e3f"
 						}
@@ -865,33 +865,54 @@ func testAcceptance(
 						})
 
 						when("there are run image extensions", func() {
-							it.Before(func() {
-								h.SkipIf(t, !pack.SupportsFeature(invoke.RunImageExtensions), "")
-								h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
+							when("switching the run image", func() {
+								it.Before(func() {
+									h.SkipIf(t, !pack.SupportsFeature(invoke.RunImageExtensions), "")
+									h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
+								})
+
+								it("uses the 5 phases, and tries to pull the new run image before restore", func() {
+									output, _ := pack.Run(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--network", "host",
+										"-B", builderName,
+										"--env", "EXT_RUN_SWITCH=1",
+									)
+									h.AssertContains(t, output, "ERROR: failed to build: executing lifecycle: resolve auth for ref some-not-exist-run-image!")
+									h.AssertNotContains(t, output, "RESTORING")
+								})
 							})
 
-							it("uses the 5 phases, and runs the extender (run)", func() {
-								output := pack.RunSuccessfully(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--network", "host", // export target is the daemon, but we need to be able to reach the registry where the builder image and run image are saved
-									"-B", builderName,
-									"--env", "EXT_RUN=1",
-								)
+							when("extending the run image", func() {
+								it.Before(func() {
+									h.SkipIf(t, !pack.SupportsFeature(invoke.RunImageExtensions), "")
+									h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
+								})
 
-								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+								it("uses the 5 phases, and runs the extender (run)", func() {
+									output := pack.RunSuccessfully(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--network", "host", // export target is the daemon, but we need to be able to reach the registry where the builder image and run image are saved
+										"-B", builderName,
+										"--env", "EXT_RUN=1",
+									)
 
-								assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-								assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
-								assertOutput.IncludesSeparatePhasesWithRunExtension()
+									assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
-								t.Log("inspecting image")
-								inspectCmd := "inspect"
-								if !pack.Supports("inspect") {
-									inspectCmd = "inspect-image"
-								}
+									assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
+									assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+									assertOutput.IncludesSeparatePhasesWithRunExtension()
 
-								output = pack.RunSuccessfully(inspectCmd, repoName)
+									t.Log("inspecting image")
+									inspectCmd := "inspect"
+									if !pack.Supports("inspect") {
+										inspectCmd = "inspect-image"
+									}
+
+									output = pack.RunSuccessfully(inspectCmd, repoName)
+								})
 							})
 						})
 					})
@@ -1153,6 +1174,7 @@ func testAcceptance(
 									"hello_args":             helloArgs,
 									"hello_args_prefix":      helloArgsPrefix,
 									"image_workdir":          imageWorkdir,
+									"rebasable":              true,
 								},
 							)
 
@@ -1449,6 +1471,43 @@ func testAcceptance(
 
 								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
 								assertBuildpackOutput.ReportsBuildStep("Local Buildpack")
+							})
+						})
+
+						when("the argument is meta-buildpack directory", func() {
+							var tmpDir string
+
+							it.Before(func() {
+								var err error
+								tmpDir, err = os.MkdirTemp("", "folder-buildpack-tests-")
+								assert.Nil(err)
+							})
+
+							it.After(func() {
+								_ = os.RemoveAll(tmpDir)
+							})
+
+							it("adds the buildpacks to the builder and runs it", func() {
+								h.SkipIf(t, runtime.GOOS == "windows", "buildpack directories not supported on windows")
+								// This only works if pack is new, therefore skip if pack is old
+								h.SkipIf(t, !pack.SupportsFeature(invoke.MetaBuildpackFolder), "")
+
+								buildpackManager.PrepareBuildModules(tmpDir, buildpacks.MetaBpFolder)
+								buildpackManager.PrepareBuildModules(tmpDir, buildpacks.MetaBpDependency)
+
+								output := pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--buildpack", buildpacks.MetaBpFolder.FullPathIn(tmpDir),
+								)
+
+								assertOutput := assertions.NewOutputAssertionManager(t, output)
+								assertOutput.ReportsAddingBuildpack("local/meta-bp", "local-meta-bp-version")
+								assertOutput.ReportsAddingBuildpack("local/meta-bp-dep", "local-meta-bp-version")
+								assertOutput.ReportsSuccessfulImageBuild(repoName)
+
+								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+								assertBuildpackOutput.ReportsBuildStep("Local Meta-Buildpack Dependency")
 							})
 						})
 
@@ -1826,6 +1885,7 @@ func testAcceptance(
 										"hello_args":           helloArgs,
 										"hello_args_prefix":    helloArgsPrefix,
 										"image_workdir":        imageWorkdir,
+										"rebasable":            true,
 									},
 								)
 
@@ -2253,6 +2313,92 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 					})
 				})
+
+				when("build --buildpack <flattened buildpack>", func() {
+					var (
+						tmpDir                         string
+						flattenedPackageName           string
+						simplePackageConfigFixtureName = "package.toml"
+					)
+
+					generateAggregatePackageToml := func(buildpackURI, nestedPackageName, operatingSystem string) string {
+						t.Helper()
+						packageTomlFile, err := os.CreateTemp(tmpDir, "package_aggregate-*.toml")
+						assert.Nil(err)
+
+						pack.FixtureManager().TemplateFixtureToFile(
+							"package_aggregate.toml",
+							packageTomlFile,
+							map[string]interface{}{
+								"BuildpackURI": buildpackURI,
+								"PackageName":  nestedPackageName,
+								"OS":           operatingSystem,
+							},
+						)
+
+						assert.Nil(packageTomlFile.Close())
+						return packageTomlFile.Name()
+					}
+
+					it.Before(func() {
+						h.SkipIf(t, !pack.SupportsFeature(invoke.BuildpackFlatten), "")
+						h.SkipIf(t, imageManager.HostOS() == "windows", "buildpack directories not supported on windows")
+
+						var err error
+						tmpDir, err = os.MkdirTemp("", "buildpack-package-flattened-tests")
+						assert.Nil(err)
+
+						buildpackManager = buildpacks.NewBuildModuleManager(t, assert)
+						buildpackManager.PrepareBuildModules(tmpDir, buildpacks.BpSimpleLayersParent, buildpacks.BpSimpleLayers)
+
+						// set up a flattened buildpack
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+						nestedPackageName := "test/flattened-package-" + h.RandString(10)
+						nestedPackage := buildpacks.NewPackageImage(
+							t,
+							pack,
+							nestedPackageName,
+							packageTomlPath,
+							buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayers),
+						)
+						buildpackManager.PrepareBuildModules(tmpDir, nestedPackage)
+						assertImage.ExistsLocally(nestedPackageName)
+
+						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
+						flattenedPackageName = "test/package-" + h.RandString(10)
+
+						_ = pack.RunSuccessfully(
+							"buildpack", "package", flattenedPackageName,
+							"-c", aggregatePackageToml,
+							"--flatten",
+						)
+
+						assertImage.ExistsLocally(flattenedPackageName)
+						assertImage.HasLengthLayers(flattenedPackageName, 1)
+					})
+
+					it.After(func() {
+						assert.Nil(os.RemoveAll(tmpDir))
+						imageManager.CleanupImages(flattenedPackageName)
+					})
+
+					when("--flatten", func() {
+						it("does not write duplicate tar files when creating the ephemeral builder", func() {
+							output := pack.RunSuccessfully(
+								"build", repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--buildpack", fmt.Sprintf("docker://%s", flattenedPackageName),
+								"--builder", builderName,
+							)
+							// buildpack returning an empty tar file is non-deterministic,
+							// but we expect one of them to throw the warning
+							h.AssertContainsMatch(t, output, "Buildpack '(simple/layers@simple-layers-version|simple/layers/parent@simple-layers-parent-version)' is a component of a flattened buildpack that will be added elsewhere, skipping...")
+
+							// simple/layers BP exists on the builder and in the flattened buildpack
+							h.AssertContainsMatch(t, output, "Buildpack 'simple/layers@simple-layers-version' already exists on builder with same contents, skipping...")
+						})
+					})
+				})
 			})
 
 			when("inspecting builder", func() {
@@ -2639,11 +2785,15 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 
 						it("uses provided run image", func() {
-							output := pack.RunSuccessfully(
-								"rebase", repoName,
+							args := []string{
+								repoName,
 								"--run-image", runAfter,
 								"--pull-policy", "never",
-							)
+							}
+							if pack.SupportsFeature(invoke.ForceRebase) {
+								args = append(args, "--force")
+							}
+							output := pack.RunSuccessfully("rebase", args...)
 
 							assert.Contains(output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
 							assertImage.RunsWithOutput(
@@ -2668,7 +2818,11 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 
 						it("prefers the local mirror", func() {
-							output := pack.RunSuccessfully("rebase", repoName, "--pull-policy", "never")
+							args := []string{repoName, "--pull-policy", "never"}
+							if pack.SupportsFeature(invoke.ForceRebase) {
+								args = append(args, "--force")
+							}
+							output := pack.RunSuccessfully("rebase", args...)
 
 							assertOutput := assertions.NewOutputAssertionManager(t, output)
 							assertOutput.ReportsSelectingRunImageMirrorFromLocalConfig(localRunImageMirror)
@@ -2723,7 +2877,11 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 
 						it("uses provided run image", func() {
-							output := pack.RunSuccessfully("rebase", repoName, "--publish", "--run-image", runAfter)
+							args := []string{repoName, "--publish", "--run-image", runAfter}
+							if pack.SupportsFeature(invoke.ForceRebase) {
+								args = append(args, "--force")
+							}
+							output := pack.RunSuccessfully("rebase", args...)
 
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulRebase(repoName)
 							assertImage.CanBePulledFromRegistry(repoName)
