@@ -245,7 +245,7 @@ func WithRoot() PhaseConfigProviderOperation {
 	}
 }
 
-func WithoutPrivilege(uid int, gid int) PhaseConfigProviderOperation {
+func WithUser(uid int, gid int) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
 		provider.ctrConf.User = strconv.Itoa(uid) + ":" + strconv.Itoa(gid)
 	}

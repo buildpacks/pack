@@ -19,7 +19,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/google/go-containerregistry/pkg/v1/daemon"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -266,24 +265,11 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 				return err
 			}
 		}
-		var start time.Time
 		if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {
-			if l.opts.Publish {
-				group.Go(func() error {
-					l.logger.Info(style.Step("EXTENDING (RUN)"))
-					return l.ExtendRun(ctx, buildCache, phaseFactory)
-				})
-			} else {
-				start = time.Now()
-				group.Go(func() error {
-					l.logger.Info(style.Step("EXTENDING (RUN) BY DAEMON"))
-					defer func() {
-						duration := time.Since(start)
-						fmt.Println("Execution time:", duration)
-					}()
-					return l.ExtendRunByDaemon(ctx, group, &currentRunImage)
-				})
-			}
+			group.Go(func() error {
+				l.logger.Info(style.Step("EXTENDING (RUN)"))
+				return l.ExtendRun(ctx, buildCache, phaseFactory)
+			})
 		}
 		if err := group.Wait(); err != nil {
 			return err
@@ -445,8 +431,6 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.tmpDir))),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
 			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.tmpDir))),
-		If(l.hasExtensions(), WithPostContainerRunOperations(
-			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated", "run"), l.tmpDir))),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
 			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "group.toml"), l.tmpDir))),
 		envOp,
@@ -675,7 +659,7 @@ func (l *LifecycleExecution) Build(ctx context.Context, phaseFactory PhaseFactor
 		WithBinds(l.opts.Volumes...),
 		WithFlags(flags...),
 		If((!l.opts.Publish && l.hasExtensionsForBuild()), WithImage(l.opts.BuilderImage+"-extended")),
-		If((!l.opts.Publish && l.hasExtensionsForBuild()), WithoutPrivilege(l.opts.Builder.UID(), l.opts.Builder.GID())),
+		If((!l.opts.Publish && l.hasExtensionsForBuild()), WithUser(l.opts.Builder.UID(), l.opts.Builder.GID())),
 	)
 
 	build := phaseFactory.New(configProvider)
@@ -795,7 +779,7 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 		}
 		defer response.Body.Close()
 		fmt.Println("build response for the extend: ", response.Body)
-		_, err = io.Copy(os.Stdout, response.Body)
+		_, err = io.Copy(l.logger.Writer(), response.Body)
 		if err != nil {
 			return err
 		}
@@ -805,89 +789,6 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 	l.logger.Debugf("docker apply time: %v", time.Since(dockerapplytime))
 	l.logger.Debugf("Build extend time: %v", time.Since(extendtime))
 
-	return nil
-}
-
-func (l *LifecycleExecution) ExtendRunByDaemon(ctx context.Context, group *errgroup.Group, currentRunImage *string) error {
-	defaultFilterFunc := func(file string) bool { return true }
-	var extensions Extensions
-	l.logger.Debugf("extending run image %s", *currentRunImage)
-	time1 := time.Now()
-	extensions.SetExtensions(l.tmpDir, l.logger)
-	fmt.Println("extensions.SetExtensions took", time.Since(time1))
-	time2 := time.Now()
-	dockerfiles, err := extensions.DockerFiles(DockerfileKindRun, l.tmpDir, l.logger)
-	if err != nil {
-		return fmt.Errorf("getting %s.Dockerfiles: %w", DockerfileKindRun, err)
-	}
-	fmt.Println("extensions.DockerFiles took", time.Since(time2))
-	nestedCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	nestedGroup, _ := errgroup.WithContext(nestedCtx)
-	var origTopLayerHash = ""
-	time3 := time.Now()
-	nestedGroup.Go(func() error {
-		defer func() {
-			fmt.Println("topLayerHash took", time.Since(time3))
-		}()
-		origTopLayerHash, err = topLayerHash(currentRunImage)
-		if err != nil {
-			return fmt.Errorf("getting top layer hash of run image: %w", err)
-		}
-		return nil
-	})
-	dockerapplytime := time.Now()
-	for _, dockerfile := range dockerfiles {
-		if dockerfile.Info.Extend {
-			buildContext := archive.ReadDirAsTar(filepath.Dir(dockerfile.Info.Path), "/", 0, 0, -1, true, false, defaultFilterFunc)
-			buildArguments := map[string]*string{}
-			if dockerfile.Info.WithBase == "" {
-				buildArguments["base_image"] = currentRunImage
-			}
-			buildOptions := types.ImageBuildOptions{
-				Context:    buildContext,
-				Dockerfile: "Dockerfile",
-				Tags:       []string{"run-image"},
-				Remove:     true,
-				BuildArgs:  buildArguments,
-			}
-			response, err := l.docker.ImageBuild(ctx, buildContext, buildOptions)
-			if err != nil {
-				return err
-			}
-			defer response.Body.Close()
-			_, err = io.Copy(os.Stdout, response.Body)
-			if err != nil {
-				return err
-			}
-			l.logger.Debugf("build response for the extend: %v", response)
-		}
-	}
-	l.logger.Debugf("docker apply time: %v", time.Since(dockerapplytime))
-	time4 := time.Now()
-	ref, err := name.ParseReference("run-image:latest")
-	if err != nil {
-		return fmt.Errorf("failed to parse reference: %v", err)
-	}
-	image, err := daemon.Image(ref)
-	if err != nil {
-		return fmt.Errorf("failed to get v1.Image: %v", err)
-	}
-	imageHash, err := image.Digest()
-	if err != nil {
-		return fmt.Errorf("getting image hash: %w", err)
-	}
-	dest := filepath.Join(l.tmpDir, "extended-new", "run", imageHash.String())
-	fmt.Println("exporting to OCI took", time.Since(time4))
-	waiterr := nestedGroup.Wait()
-	if waiterr != nil {
-		return err
-	}
-	var savetime *time.Duration
-	if savetime, err = SaveLayers(group, image, origTopLayerHash, dest); err != nil {
-		return fmt.Errorf("copying selective image to output directory: %w", err)
-	}
-	fmt.Println("Total Save execution time:", savetime)
 	return nil
 }
 
@@ -915,12 +816,6 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		if l.hasExtensionsForRun() {
 			expEnv = WithEnv("CNB_EXPERIMENTAL_MODE=warn")
 		}
-	}
-
-	extDirEnv := NullOp()
-	if !l.opts.Publish {
-		l.logger.Debug("export for extend by daemon")
-		extDirEnv = WithEnv("CNB_EXTENDED_DIR=" + filepath.Join("/", "extended-new"))
 	}
 
 	if l.platformAPI.LessThan("0.7") {
@@ -959,7 +854,6 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		),
 		WithArgs(append([]string{l.opts.Image.String()}, l.opts.AdditionalTags...)...),
 		WithRoot(),
-		WithBinds(filepath.Join(l.tmpDir, "extended-new") + ":/extended-new"),
 		WithNetwork(l.opts.Network),
 		cacheBindOp,
 		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os)),
@@ -976,7 +870,6 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 			CopyOut(l.opts.Termui.ReadLayers, l.mountPaths.layersDir(), l.mountPaths.appDir()))),
 		epochEnv,
 		expEnv,
-		extDirEnv,
 	}
 
 	var export RunnerCleaner

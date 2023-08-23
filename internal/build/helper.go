@@ -2,20 +2,13 @@ package build
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpacks/imgutil/layout/sparse"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
-	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/daemon"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -131,94 +124,4 @@ func readExtensionsGroup(path string) ([]buildpack.GroupElement, error) {
 
 func escapeID(id string) string {
 	return strings.ReplaceAll(id, "/", "_")
-}
-
-func SaveLayers(group *errgroup.Group, image v1.Image, origTopLayerHash string, dest string) (*time.Duration, error) {
-	var totalSaveExecutionTime time.Duration
-	savetime := time.Now()
-	layoutPath, err := sparse.NewImage(dest, image)
-	if err != nil {
-		fmt.Println("sparse.NewImage err", err)
-		return nil, err
-	}
-	if err = layoutPath.Save(); err != nil {
-		return nil, err
-	}
-	if err != nil {
-		fmt.Println("sparse.NewImage err", err)
-		return nil, err
-	}
-	layers, err := image.Layers()
-	if err != nil {
-		return nil, fmt.Errorf("getting image layers: %w", err)
-	}
-	var (
-		currentHash  v1.Hash
-		needsCopying bool
-	)
-	if origTopLayerHash == "" {
-		needsCopying = true
-	}
-	for _, currentLayer := range layers {
-		currentHash, err = currentLayer.Digest()
-		if err != nil {
-			return nil, fmt.Errorf("getting layer hash: %w", err)
-		}
-		switch {
-		case needsCopying:
-			currentLayer := currentLayer
-			start := time.Now()
-			group.Go(func() error {
-				defer func() {
-					duration := time.Since(start)
-					totalSaveExecutionTime += duration
-				}()
-				return copyLayer(currentLayer, dest)
-			})
-		case currentHash.String() == origTopLayerHash:
-			needsCopying = true
-			continue
-		default:
-			continue
-		}
-	}
-	totalSaveExecutionTime += time.Since(savetime)
-	return &totalSaveExecutionTime, nil
-}
-
-func copyLayer(layer v1.Layer, toSparseImage string) error {
-	digest, err := layer.Digest()
-	if err != nil {
-		return err
-	}
-	f, err := os.Create(filepath.Join(toSparseImage, "blobs", digest.Algorithm, digest.Hex))
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	rc, err := layer.Compressed()
-	if err != nil {
-		return err
-	}
-	defer rc.Close()
-	_, err = io.Copy(f, rc)
-	return err
-}
-
-func topLayerHash(image *string) (string, error) {
-	baseRef, err := name.ParseReference(*image)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse reference: %v", err)
-	}
-	baseImage, err := daemon.Image(baseRef)
-	if err != nil {
-		return "", fmt.Errorf("failed to get v1.Image: %v", err)
-	}
-	baseManifest, err := baseImage.Manifest()
-	if err != nil {
-		return "", fmt.Errorf("getting image manifest: %w", err)
-	}
-	baseLayers := baseManifest.Layers
-	topLayerHash := baseLayers[len(baseLayers)-1].Digest.String()
-	return topLayerHash, nil
 }
