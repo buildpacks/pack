@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/BurntSushi/toml"
 
@@ -234,24 +233,18 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 
 		group, _ := errgroup.WithContext(context.TODO())
 		if l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild() {
-			if false {
-				group.Go(func() error {
-					l.logger.Info(style.Step("EXTENDING (BUILD)"))
-					return l.ExtendBuild(ctx, buildCache, phaseFactory)
-				})
-			} else {
-				group.Go(func() error {
-					l.logger.Info(style.Step("EXTENDING (BUILD) BY DAEMON"))
-					start := time.Now()
-					if err := l.ExtendBuildByDaemon(ctx); err != nil {
-						return err
-					}
-					l.Build(ctx, phaseFactory)
-					elapsed := time.Since(start)
-					l.logger.Debugf("EXTENDING (BUILD) took %s", elapsed)
-					return nil
-				})
-			}
+			/*
+				[RFC #0105] - As decided, Pack should support build image extension with Docker #1623. We removed the previous implementation that was using kaniko in the extend lifecycle phase and shifted the implementation to use docker daemon to extend the build Image. As pack already has access to a daemon, it can apply the dockerfiles directly, saving the extended build base image in the daemon. Thus it will not need to use the extender phase of lifecycle. Additionally it dropped the requirement that the image being extended must be published to a registry. This implementation resulted us to have build Extension Improved by 87.3578% wrt kaniko implementation with caching and 20.5567% wrt kaniko implementation without caching.
+
+			*/
+			group.Go(func() error {
+				l.logger.Info(style.Step("EXTENDING (BUILD) BY DAEMON"))
+				if err := l.ExtendBuildByDaemon(ctx); err != nil {
+					return err
+				}
+				l.Build(ctx, phaseFactory)
+				return nil
+			})
 		} else {
 			group.Go(func() error {
 				l.logger.Info(style.Step("BUILDING"))
@@ -697,6 +690,10 @@ func (l *LifecycleExecution) ExtendBuild(ctx context.Context, buildCache Cache, 
 	return extend.Run(ctx)
 }
 
+/*
+	Note: - Run Image Extension by docker daemon was much worse than kaniko because of saving layers on disk.
+*/
+
 func (l *LifecycleExecution) ExtendRun(ctx context.Context, buildCache Cache, phaseFactory PhaseFactory) error {
 	flags := []string{"-app", l.mountPaths.appDir(), "-kind", "run"}
 
@@ -735,22 +732,26 @@ const (
 	argGroupID = "group_id"
 )
 
+/*
+	This implementation of ExtendBuildByDaemon is based on the RFC #0105 which uses docker daemon to extend the build Image instead of kaniko.
+	* Parsing the `group.toml` from the temp directory of buildpack and set the extensions.
+	* Reading the dockerfiles that were generated during the `generate` phase and also parsing the Arguments given by the user from
+	`extend-config.toml`.
+	* Using ImageBuild method of docker API client to extend the Image and save it to the daemon.
+	* Invoking Build phase of lifecycle by creating a container from the extended Image and dropping the privileges.
+
+*/
+
 func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
-	extendtime := time.Now()
 	builderImageName := l.opts.BuilderImage
 	extendedBuilderImageName := l.opts.BuilderImage + "-extended"
 	defaultFilterFunc := func(file string) bool { return true }
 	var extensions Extensions
-	time1 := time.Now()
 	extensions.SetExtensions(l.tmpDir, l.logger)
-	l.logger.Debugf("extensions.SetExtensions for build took %s", time.Since(time1))
-	time2 := time.Now()
 	dockerfiles, err := extensions.DockerFiles(DockerfileKindBuild, l.tmpDir, l.logger)
 	if err != nil {
 		return fmt.Errorf("getting %s.Dockerfiles: %w", DockerfileKindBuild, err)
 	}
-	l.logger.Debugf("extensions.DockerFiles for build took %s", time.Since(time2))
-	dockerapplytime := time.Now()
 	for _, dockerfile := range dockerfiles {
 		dockerfile.Args = append([]Arg{
 			{Name: argBuildID, Value: uuid.New().String()},
@@ -759,7 +760,6 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 		}, dockerfile.Args...)
 		buildContext := archive.ReadDirAsTar(filepath.Dir(dockerfile.Info.Path), "/", 0, 0, -1, true, false, defaultFilterFunc)
 		buildArguments := map[string]*string{}
-		fmt.Println("builderImageName: ", builderImageName)
 		buildArguments["base_image"] = &builderImageName
 		for i := range dockerfile.Args {
 			arg := &dockerfile.Args[i]
@@ -772,22 +772,17 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 			Remove:     true,
 			BuildArgs:  buildArguments,
 		}
-		fmt.Println("buildContext: ", buildContext)
 		response, err := l.docker.ImageBuild(ctx, buildContext, buildOptions)
 		if err != nil {
 			return err
 		}
 		defer response.Body.Close()
-		fmt.Println("build response for the extend: ", response.Body)
 		_, err = io.Copy(l.logger.Writer(), response.Body)
 		if err != nil {
 			return err
 		}
-		l.logger.Debugf("build response for the extend: %v", response)
 		builderImageName = l.opts.BuilderImage + "-extended"
 	}
-	l.logger.Debugf("docker apply time: %v", time.Since(dockerapplytime))
-	l.logger.Debugf("Build extend time: %v", time.Since(extendtime))
 
 	return nil
 }
