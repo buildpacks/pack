@@ -538,6 +538,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		SBOMDestinationDir:   opts.SBOMDestinationDir,
 		CreationTime:         opts.CreationTime,
 		Layout:               opts.Layout(),
+		Keychain:             c.keychain,
 	}
 
 	switch {
