@@ -280,8 +280,6 @@ jobs:
           prerelease: true
           files: pack-v${{ env.PACK_VERSION }}-*
           body: |
-            > This is a **beta** pre-release of the Cloud Native Buildpack local CLI. This platform implementation should be relatively stable and reliable, but breaking changes in the underlying [specification](https://github.com/buildpack/spec) may be implemented without notice.
-
             ## Prerequisites
 
             - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/getting-started/) must be available to execute builds.
@@ -350,8 +348,6 @@ jobs:
           draft: true
           files: pack-v${{ env.PACK_VERSION }}-*
           body: |
-            > This is a **beta** release of the Cloud Native Buildpack local CLI. This platform implementation should be relatively stable and reliable, but breaking changes in the underlying [specification](https://github.com/buildpack/spec) may be implemented without notice.
-
             ## Prerequisites
 
             - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/getting-started/) must be available to execute builds.
