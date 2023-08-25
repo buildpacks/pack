@@ -52,7 +52,7 @@ func tryInitSSHDockerClient() (dockerClient.CommonAPIClient, error) {
 	dockerClientOpts := []dockerClient.Opt{
 		dockerClient.WithVersion(client.DockerAPIVersion),
 		dockerClient.WithHTTPClient(httpClient),
-		dockerClient.WithHost("http://dummy/"),
+		dockerClient.WithHost("http://dummy"),
 		dockerClient.WithDialContext(dialContext),
 	}
 
