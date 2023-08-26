@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/builder"
@@ -98,6 +99,7 @@ type LifecycleOptions struct {
 	ReportDestinationDir string
 	SBOMDestinationDir   string
 	CreationTime         *time.Time
+	Keychain             authn.Keychain
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker DockerClient) *LifecycleExecutor {
