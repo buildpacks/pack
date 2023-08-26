@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -71,10 +72,14 @@ func testBuildDockerfiles(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("Extend Build Image By Docker", func() {
+		if runtime.GOOS == "windows" {
+			t.Skip("Skipping test on Windows OS")
+		}
+
 		it("should extend build image using 1 extension", func() {
 			// set tmp directory
-			tmpDir = "./testdata/fake-tmp/build-extension/single"
-			lifecycle = getTestLifecycleExec(t, true, tmpDir, mockDockerClient, lifecycleOps...)
+			filepath.Join()
+			lifecycle = getTestLifecycleExec(t, true, filepath.Join(".", "testdata", "fake-tmp", "build-extension", "single"), mockDockerClient, lifecycleOps...)
 			expectedBuilder := lifecycle.Builder()
 			expectedBuildContext := archive.ReadDirAsTar(filepath.Dir(filepath.Join(tmpDir, "fake-tmp", "build-extension", "single", "build", "samples_test", "Dockerfile")), "/", 0, 0, -1, true, false, func(file string) bool { return true })
 			// Set up expected Build Args

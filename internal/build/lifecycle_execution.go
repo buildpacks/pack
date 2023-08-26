@@ -683,61 +683,13 @@ func (l *LifecycleExecution) Build(ctx context.Context, phaseFactory PhaseFactor
 		WithNetwork(l.opts.Network),
 		WithBinds(l.opts.Volumes...),
 		WithFlags(flags...),
-		If((!l.opts.Publish && l.hasExtensionsForBuild()), WithImage(l.opts.BuilderImage+"-extended")),
-		If((!l.opts.Publish && l.hasExtensionsForBuild()), WithUser(l.opts.Builder.UID(), l.opts.Builder.GID())),
+		If((l.hasExtensionsForBuild()), WithImage(l.opts.BuilderImage+"-extended")),
+		If((l.hasExtensionsForBuild()), WithUser(l.opts.Builder.UID(), l.opts.Builder.GID())),
 	)
 
 	build := phaseFactory.New(configProvider)
 	defer build.Cleanup()
 	return build.Run(ctx)
-}
-
-func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory) error {
-	flags := []string{"-app", l.mountPaths.appDir()}
-
-	configProvider := NewPhaseConfigProvider(
-		"extender",
-		l,
-		WithLogPrefix("extender (build)"),
-		WithArgs(l.withLogLevel()...),
-		WithBinds(l.opts.Volumes...),
-		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
-		WithFlags(flags...),
-		WithNetwork(l.opts.Network),
-		WithRoot(),
-		WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir())),
-	)
-
-	extend := phaseFactory.New(configProvider)
-	defer extend.Cleanup()
-	return extend.Run(ctx)
-}
-
-/*
-	Note: - Run Image Extension by docker daemon was much worse than kaniko because of saving layers on disk.
-*/
-
-func (l *LifecycleExecution) ExtendRun(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory) error {
-	flags := []string{"-app", l.mountPaths.appDir(), "-kind", "run"}
-
-	configProvider := NewPhaseConfigProvider(
-		"extender",
-		l,
-		WithLogPrefix("extender (run)"),
-		WithArgs(l.withLogLevel()...),
-		WithBinds(l.opts.Volumes...),
-		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
-		WithFlags(flags...),
-		WithNetwork(l.opts.Network),
-		WithRoot(),
-		WithImage(l.runImageAfterExtensions()),
-		WithBinds(fmt.Sprintf("%s:%s", filepath.Join(l.tmpDir, "cnb"), l.mountPaths.cnbDir())),
-		WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir())),
-	)
-
-	extend := phaseFactory.New(configProvider)
-	defer extend.Cleanup()
-	return extend.Run(ctx)
 }
 
 const (
@@ -791,7 +743,7 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 			return err
 		}
 		defer response.Body.Close()
-		_, err = io.Copy(l.logger.Writer(), response.Body)
+		_, err = io.Copy(logging.NewPrefixWriter(logging.GetWriterForLevel(l.logger, logging.InfoLevel), "extender (build)"), response.Body)
 		if err != nil {
 			return err
 		}
@@ -799,6 +751,58 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+/*
+	Deprecated: Check RFC #0105 for the new implementation of ExtendBuild using docker daemon #1623.
+*/
+
+func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory) error {
+	flags := []string{"-app", l.mountPaths.appDir()}
+
+	configProvider := NewPhaseConfigProvider(
+		"extender",
+		l,
+		WithLogPrefix("extender (build)"),
+		WithArgs(l.withLogLevel()...),
+		WithBinds(l.opts.Volumes...),
+		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
+		WithFlags(flags...),
+		WithNetwork(l.opts.Network),
+		WithRoot(),
+		WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir())),
+	)
+
+	extend := phaseFactory.New(configProvider)
+	defer extend.Cleanup()
+	return extend.Run(ctx)
+}
+
+/*
+	Note: - Run Image Extension by docker daemon was much worse than kaniko because of saving layers on disk.
+*/
+
+func (l *LifecycleExecution) ExtendRun(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory) error {
+	flags := []string{"-app", l.mountPaths.appDir(), "-kind", "run"}
+
+	configProvider := NewPhaseConfigProvider(
+		"extender",
+		l,
+		WithLogPrefix("extender (run)"),
+		WithArgs(l.withLogLevel()...),
+		WithBinds(l.opts.Volumes...),
+		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
+		WithFlags(flags...),
+		WithNetwork(l.opts.Network),
+		WithRoot(),
+		WithImage(l.runImageAfterExtensions()),
+		WithBinds(fmt.Sprintf("%s:%s", filepath.Join(l.tmpDir, "cnb"), l.mountPaths.cnbDir())),
+		WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir())),
+	)
+
+	extend := phaseFactory.New(configProvider)
+	defer extend.Cleanup()
+	return extend.Run(ctx)
 }
 
 func determineDefaultProcessType(platformAPI *api.Version, providedValue string) string {
