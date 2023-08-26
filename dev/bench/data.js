@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1693064109894,
+  "lastUpdate": 1693066795524,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2098,6 +2098,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 86711939122,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0562a9d5bde5cf461c4f42277f2a49a4b078ac9d",
+          "message": "Merge pull request #1872 from buildpacks/fix/client-withkeychain\n\nProvides client keychain to lifecycle instead of the default keychain",
+          "timestamp": "2023-08-26T11:17:36-05:00",
+          "tree_id": "3364652c2e2c22c4048e876289a62e0a1bd7261c",
+          "url": "https://github.com/buildpacks/pack/commit/0562a9d5bde5cf461c4f42277f2a49a4b078ac9d"
+        },
+        "date": 1693066794664,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6152504773,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1347898099,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 89951405291,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
