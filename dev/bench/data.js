@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1693057190511,
+  "lastUpdate": 1693062430082,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2014,6 +2014,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 76906085680,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bdf71578ca18be189811dd34e4ec0a51673147c0",
+          "message": "Merge pull request #1874 from dlion/remove-legacy-warning\n\nRemove legacy beta release message",
+          "timestamp": "2023-08-26T10:05:04-05:00",
+          "tree_id": "61339caf85c88ae459136c2a7a37bb5d45ed0782",
+          "url": "https://github.com/buildpacks/pack/commit/bdf71578ca18be189811dd34e4ec0a51673147c0"
+        },
+        "date": 1693062429377,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4182612815,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 939895494,
+            "unit": "ns/op",
+            "extra": "2 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 75421317923,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
