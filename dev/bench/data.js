@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1693055636253,
+  "lastUpdate": 1693057190511,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -1972,6 +1972,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 96259808328,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cdd0757037ba4a16f52728dde5622324fc9005bd",
+          "message": "Merge pull request #1873 from buildpacks/fix/version-project-toml\n\nWhen additional buildpack is missing version, try to use the latest one",
+          "timestamp": "2023-08-26T08:37:53-05:00",
+          "tree_id": "6ff36b6e73759a2078aadda9f2549f2e833886f2",
+          "url": "https://github.com/buildpacks/pack/commit/cdd0757037ba4a16f52728dde5622324fc9005bd"
+        },
+        "date": 1693057189850,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4321433709,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 859969624,
+            "unit": "ns/op",
+            "extra": "2 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 76906085680,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
