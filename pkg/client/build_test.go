@@ -1284,6 +1284,29 @@ api = "0.2"
 				)
 			})
 
+			when("from project descriptor", func() {
+				when("id - no version is provided", func() {
+					it("resolves version", func() {
+						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							ProjectDescriptor: projectTypes.Descriptor{
+								Build: projectTypes.Build{Buildpacks: []projectTypes.Buildpack{{ID: "buildpack.1.id"}}},
+							},
+						}))
+						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+
+						assertOrderEquals(`[[order]]
+
+  [[order.group]]
+    id = "buildpack.1.id"
+    version = "buildpack.1.version"
+`)
+					})
+				})
+			})
+
 			when("buildpacks include URIs", func() {
 				var buildpackTgz string
 
@@ -1405,6 +1428,7 @@ api = "0.2"
 							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
 						})
 					})
+
 					it("adds the pre buildpack from the project descriptor", func() {
 						err := subject.Build(context.TODO(), BuildOptions{
 							Image:      "some/app",
@@ -1519,6 +1543,7 @@ api = "0.2"
 							{ID: "buildpack.2.id", Version: "buildpack.2.version"},
 						})
 					})
+
 					it("not added from the project descriptor", func() {
 						err := subject.Build(context.TODO(), BuildOptions{
 							Image:      "some/app",
@@ -1716,7 +1741,7 @@ api = "0.2"
 							ProjectDescriptorBaseDir: tmpDir,
 						})
 
-						h.AssertEq(t, "Invalid buildpack defined in project descriptor", err.Error())
+						h.AssertEq(t, "Invalid buildpack definition", err.Error())
 					})
 
 					it("ignores script if there is a URI", func() {
