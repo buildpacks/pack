@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1693066795524,
+  "lastUpdate": 1693069150795,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2140,6 +2140,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 89951405291,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b0d4f27aeddc5b075275fcad2c8da92187025a8b",
+          "message": "Merge pull request #1871 from buildpacks/quotes-to-help\n\nImprovements to --cache help",
+          "timestamp": "2023-08-26T11:56:54-05:00",
+          "tree_id": "045a895ffcf2c66e41f5cc41073fcf957d1c8d3e",
+          "url": "https://github.com/buildpacks/pack/commit/b0d4f27aeddc5b075275fcad2c8da92187025a8b"
+        },
+        "date": 1693069149629,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6460024720,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1876604341,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 87752531694,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
