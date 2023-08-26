@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1691760078215,
+  "lastUpdate": 1693055636253,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -1930,6 +1930,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 83882086727,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e03ab0ba1e5f486d66208c743465e6aba3cf273a",
+          "message": "Merge pull request #1876 from buildpacks/bugfix/jjbustamante/issue-1870\n\nFixing error connecting to a remote daemon over ssh",
+          "timestamp": "2023-08-26T08:11:29-05:00",
+          "tree_id": "23925426487d0491b687285d3577294bba971302",
+          "url": "https://github.com/buildpacks/pack/commit/e03ab0ba1e5f486d66208c743465e6aba3cf273a"
+        },
+        "date": 1693055635131,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7073743988,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1628422458,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 96259808328,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
