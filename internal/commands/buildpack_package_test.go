@@ -316,6 +316,20 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertError(t, cmd.Execute(), "parsing pull policy")
 			})
 		})
+
+		when("--label cannot be parsed", func() {
+			it("errors with a descriptive message", func() {
+				cmd := packageCommand()
+				cmd.SetArgs([]string{
+					"some-image-name", "--config", "/path/to/some/file",
+					"--label", "name+value",
+				})
+
+				err := cmd.Execute()
+				h.AssertNotNil(t, err)
+				h.AssertError(t, err, "invalid argument \"name+value\" for \"-l, --label\" flag: name+value must be formatted as key=value")
+			})
+		})
 	})
 }
 
