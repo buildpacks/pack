@@ -8,4 +8,5 @@ RUN make build
 FROM scratch
 COPY --from=builder /app/out/pack /usr/local/bin/pack
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /tmp /tmp
 ENTRYPOINT [ "/usr/local/bin/pack" ]
