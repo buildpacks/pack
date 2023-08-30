@@ -15,7 +15,6 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/docker/docker/api/types"
-	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -400,7 +399,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, buildCache, launchCache
 	}
 
 	if l.opts.Publish || l.opts.Layout {
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
+		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
 		}
@@ -498,7 +497,7 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 	// for auths
 	registryOp := NullOp()
 	if len(registryImages) > 0 {
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, registryImages...)
+		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, registryImages...)
 		if err != nil {
 			return err
 		}
@@ -622,7 +621,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 
 	var analyze RunnerCleaner
 	if l.opts.Publish {
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
+		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
 		}
@@ -891,7 +890,7 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 
 	var export RunnerCleaner
 	if l.opts.Publish {
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
+		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
 		}

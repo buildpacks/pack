@@ -18,6 +18,7 @@ import (
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -89,6 +90,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		opts.UseCreator = providedUseCreator
 		opts.Volumes = providedVolumes
 		opts.Layout = providedLayout
+		opts.Keychain = authn.DefaultKeychain
 
 		targetImageRef, err := name.ParseReference(providedTargetImage)
 		h.AssertNil(t, err)

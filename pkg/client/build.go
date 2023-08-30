@@ -538,6 +538,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		SBOMDestinationDir:   opts.SBOMDestinationDir,
 		CreationTime:         opts.CreationTime,
 		Layout:               opts.Layout(),
+		Keychain:             c.keychain,
 	}
 
 	switch {
@@ -1099,8 +1100,10 @@ func getBuildpackLocator(bp projectTypes.Buildpack, stackID string) (string, err
 		return bp.URI, nil
 	case bp.ID != "" && bp.Version != "":
 		return fmt.Sprintf("%s@%s", bp.ID, bp.Version), nil
+	case bp.ID != "" && bp.Version == "":
+		return bp.ID, nil
 	default:
-		return "", errors.New("Invalid buildpack defined in project descriptor")
+		return "", errors.New("Invalid buildpack definition")
 	}
 }
 
