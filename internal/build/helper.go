@@ -57,7 +57,7 @@ func (extensions *Extensions) DockerFiles(kind string, path string, logger loggi
 			logger.Debugf("Found %s Dockerfile for extension '%s'", kind, ext.ID)
 			switch kind {
 			case DockerfileKindBuild:
-				// will implement later
+				break
 			case DockerfileKindRun:
 				buildpack.ValidateRunDockerfile(dockerfile.Info, logger)
 			default:
@@ -113,7 +113,6 @@ func (extensions *Extensions) SetExtensions(path string, logger logging.Logger) 
 		}
 	}
 	extensions.Extensions = groupExt
-	fmt.Println("extensions.Extensions", extensions.Extensions)
 	return nil
 }
 
