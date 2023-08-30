@@ -78,7 +78,7 @@ func GenerateTarWithWriter(genFn func(TarWriter) error, twf TarWriterFactory) io
 		err := genFn(tw)
 
 		closeErr := tw.Close()
-		closeErr = aggregateError(closeErr, pw.CloseWithError(err))
+		closeErr = AggregateError(closeErr, pw.CloseWithError(err))
 
 		errChan <- closeErr
 	}()
@@ -94,12 +94,12 @@ func GenerateTarWithWriter(genFn func(TarWriter) error, twf TarWriterFactory) io
 		// closing the reader ensures that if anything attempts
 		// further reading it doesn't block waiting for content
 		if err := pr.Close(); err != nil {
-			completeErr = aggregateError(completeErr, err)
+			completeErr = AggregateError(completeErr, err)
 		}
 
 		// wait until everything closes properly
 		if err := <-errChan; err != nil {
-			completeErr = aggregateError(completeErr, err)
+			completeErr = AggregateError(completeErr, err)
 		}
 
 		closed = true
@@ -107,7 +107,7 @@ func GenerateTarWithWriter(genFn func(TarWriter) error, twf TarWriterFactory) io
 	})
 }
 
-func aggregateError(base, addition error) error {
+func AggregateError(base, addition error) error {
 	if addition == nil {
 		return base
 	}
@@ -317,6 +317,33 @@ func WriteZipToTar(tw TarWriter, srcZip, basePath string, uid, gid int, mode int
 	}
 
 	return nil
+}
+
+func WriteFileToTar(tw TarWriter, srcFile, destPath string, uid, gid int, mode int64, normalizeModTime bool) error {
+	f, err := os.Open(srcFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	fi, err := f.Stat()
+	if err != nil {
+		return err
+	}
+
+	header, err := tar.FileInfoHeader(fi, "")
+	if err != nil {
+		return err
+	}
+
+	header.Name = destPath
+	err = writeHeader(header, uid, gid, mode, normalizeModTime, tw)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(tw, f)
+	return err
 }
 
 // NormalizeHeader normalizes a tar.Header

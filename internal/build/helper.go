@@ -1,7 +1,10 @@
 package build
 
 import (
+	"archive/tar"
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +12,8 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+
+	"github.com/buildpacks/pack/pkg/archive"
 
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -124,4 +129,31 @@ func readExtensionsGroup(path string) ([]buildpack.GroupElement, error) {
 
 func escapeID(id string) string {
 	return strings.ReplaceAll(id, "/", "_")
+}
+
+func (dockerfile *DockerfileInfo) CreateBuildContext(path string) (io.Reader, error) {
+	defaultFilterFunc := func(file string) bool { return true }
+	buf := new(bytes.Buffer)
+	tarWriter := tar.NewWriter(buf)
+	var completeErr error
+
+	defer func() {
+		if err := tarWriter.Close(); err != nil {
+			fmt.Println("Error closing tar writer:", err)
+			completeErr = archive.AggregateError(completeErr, err)
+		}
+	}()
+	if err := archive.WriteDirToTar(tarWriter, path, "/workspace", 0, 0, -1, true, false, defaultFilterFunc); err != nil {
+		tarWriter.Close()
+		fmt.Println("Error adding workspace:", err)
+		completeErr = archive.AggregateError(completeErr, err)
+	}
+
+	if err := archive.WriteFileToTar(tarWriter, dockerfile.Info.Path, filepath.Join(".", "Dockerfile"), 0, 0, -1, true); err != nil {
+		tarWriter.Close()
+		fmt.Println("Error adding dockerfile:", err)
+		completeErr = archive.AggregateError(completeErr, err)
+	}
+
+	return buf, completeErr
 }

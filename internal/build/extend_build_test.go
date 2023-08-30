@@ -13,6 +13,8 @@ import (
 
 	"github.com/apex/log"
 
+	"github.com/buildpacks/lifecycle/buildpack"
+
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
 
@@ -22,7 +24,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 
@@ -78,10 +79,15 @@ func testBuildDockerfiles(t *testing.T, when spec.G, it spec.S) {
 
 		it("should extend build image using 1 extension", func() {
 			// set tmp directory
-			filepath.Join()
-			lifecycle = getTestLifecycleExec(t, true, filepath.Join(".", "testdata", "fake-tmp", "build-extension", "single"), mockDockerClient, lifecycleOps...)
+			tmpDir = filepath.Join(".", "testdata", "fake-tmp", "build-extension", "single")
+			lifecycle = getTestLifecycleExec(t, true, tmpDir, mockDockerClient, lifecycleOps...)
+			dockerfile := build.DockerfileInfo{
+				Info: &buildpack.DockerfileInfo{
+					Path: filepath.Join(".", "testdata", "fake-tmp", "build-extension", "single", "build", "samples_test", "Dockerfile"),
+				},
+			}
 			expectedBuilder := lifecycle.Builder()
-			expectedBuildContext := archive.ReadDirAsTar(filepath.Dir(filepath.Join(tmpDir, "fake-tmp", "build-extension", "single", "build", "samples_test", "Dockerfile")), "/", 0, 0, -1, true, false, func(file string) bool { return true })
+			expectedBuildContext, _ := dockerfile.CreateBuildContext(lifecycle.AppPath())
 			// Set up expected Build Args
 			UID := strconv.Itoa(expectedBuilder.UID())
 			GID := strconv.Itoa(expectedBuilder.GID())
@@ -100,7 +106,7 @@ func testBuildDockerfiles(t *testing.T, when spec.G, it spec.S) {
 				Body:   io.NopCloser(strings.NewReader("mock-build-response-body")),
 				OSType: "linux",
 			}
-			mockDockerClient.EXPECT().ImageBuild(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, buildContext io.ReadCloser, buildOptions types.ImageBuildOptions) {
+			mockDockerClient.EXPECT().ImageBuild(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, buildContext io.Reader, buildOptions types.ImageBuildOptions) {
 				compBuildOptions(t, expectedBuildOptions, buildOptions)
 			}).Return(mockResponse, nil).Times(1)
 			err := lifecycle.ExtendBuildByDaemon(context.Background())
@@ -109,7 +115,7 @@ func testBuildDockerfiles(t *testing.T, when spec.G, it spec.S) {
 
 		it("should extend build image using multiple extension", func() {
 			// set tmp directory
-			tmpDir = "./testdata/fake-tmp/build-extension/multi"
+			tmpDir = filepath.Join(".", "testdata", "fake-tmp", "build-extension", "multi")
 			lifecycle = getTestLifecycleExec(t, true, tmpDir, mockDockerClient, lifecycleOps...)
 			mockResponse := types.ImageBuildResponse{
 				Body:   io.NopCloser(strings.NewReader("mock-build-response-body")),

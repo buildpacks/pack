@@ -24,7 +24,6 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -711,7 +710,6 @@ const (
 func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 	builderImageName := l.opts.BuilderImage
 	extendedBuilderImageName := l.opts.BuilderImage + "-extended"
-	defaultFilterFunc := func(file string) bool { return true }
 	var extensions Extensions
 	extensions.SetExtensions(l.tmpDir, l.logger)
 	dockerfiles, err := extensions.DockerFiles(DockerfileKindBuild, l.tmpDir, l.logger)
@@ -724,12 +722,15 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 			{Name: argUserID, Value: strconv.Itoa(l.opts.Builder.UID())},
 			{Name: argGroupID, Value: strconv.Itoa(l.opts.Builder.GID())},
 		}, dockerfile.Args...)
-		buildContext := archive.ReadDirAsTar(filepath.Dir(dockerfile.Info.Path), "/", 0, 0, -1, true, false, defaultFilterFunc)
 		buildArguments := map[string]*string{}
 		buildArguments["base_image"] = &builderImageName
 		for i := range dockerfile.Args {
 			arg := &dockerfile.Args[i]
 			buildArguments[arg.Name] = &arg.Value
+		}
+		buildContext, err := dockerfile.CreateBuildContext(l.opts.AppPath)
+		if err != nil {
+			return err
 		}
 		buildOptions := types.ImageBuildOptions{
 			Context:    buildContext,
