@@ -58,6 +58,7 @@ func testBuildDockerfiles(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
+		h.SkipIf(t, runtime.GOOS == "windows", "extensions not supported on windows")
 		var err error
 		mockController = gomock.NewController(t)
 		mockDockerClient = mockdocker.NewMockDockerClient(mockController)
@@ -73,10 +74,6 @@ func testBuildDockerfiles(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("Extend Build Image By Docker", func() {
-		if runtime.GOOS == "windows" {
-			t.Skip("Skipping test on Windows OS")
-		}
-
 		it("should extend build image using 1 extension", func() {
 			// set tmp directory
 			tmpDir = filepath.Join(".", "testdata", "fake-tmp", "build-extension", "single")
