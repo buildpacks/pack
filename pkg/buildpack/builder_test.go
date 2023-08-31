@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"os"
 	"path"
@@ -724,6 +725,47 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 		})
 
+		it("should report an error when custom label cannot be set", func() {
+			mockImageFactory = func(expectedImageOS string) *testmocks.MockImageFactory {
+				var imageWithLabelError = &imageWithLabelError{Image: fakes.NewImage("some/package", "", nil)}
+				imageFactory := testmocks.NewMockImageFactory(mockController)
+				imageFactory.EXPECT().NewImage("some/package", true, expectedImageOS).Return(imageWithLabelError, nil).MaxTimes(1)
+				return imageFactory
+			}
+
+			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+				WithAPI: api.MustParse("0.2"),
+				WithInfo: dist.ModuleInfo{
+					ID:          "bp.1.id",
+					Version:     "bp.1.version",
+					Name:        "One",
+					Description: "some description",
+					Homepage:    "https://example.com/homepage",
+					Keywords:    []string{"some-keyword"},
+					Licenses: []dist.License{
+						{
+							Type: "MIT",
+							URI:  "https://example.com/license",
+						},
+					},
+				},
+				WithStacks: []dist.Stack{
+					{ID: "stack.id.1"},
+					{ID: "stack.id.2"},
+				},
+				WithOrder: nil,
+			}, 0644)
+			h.AssertNil(t, err)
+
+			builder := buildpack.NewBuilder(mockImageFactory("linux"))
+			builder.SetBuildpack(buildpack1)
+
+			var customLabels = map[string]string{"test.label.fail": "true"}
+
+			_, err = builder.SaveAsImage("some/package", false, "linux", customLabels)
+			h.AssertError(t, err, "adding label test.label.fail=true")
+		})
+
 		when("flatten is set", func() {
 			var (
 				buildpack1   buildpack.BuildModule
@@ -1058,4 +1100,12 @@ func computeLayerSHA(reader io.ReadCloser) (string, error) {
 	}
 
 	return digest.Hex, nil
+}
+
+type imageWithLabelError struct {
+	*fakes.Image
+}
+
+func (i *imageWithLabelError) SetLabel(string, string) error {
+	return errors.New("Label could not be set")
 }
