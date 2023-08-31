@@ -6,12 +6,13 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"testing"
+
+	"github.com/pkg/errors"
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/imgutil/layer"
