@@ -446,14 +446,9 @@ func toNLayerTar(origID, origVersion string, firstHeader *tar.Header, tr *tar.Re
 			return fmt.Errorf("failed to write header for '%s': %w", header.Name, err)
 		}
 
-		buf, err := io.ReadAll(tr)
+		_, err = io.Copy(mt.writer, tr)
 		if err != nil {
-			return fmt.Errorf("failed to read contents of '%s': %w", header.Name, err)
-		}
-
-		_, err = mt.writer.Write(buf)
-		if err != nil {
-			return fmt.Errorf("failed to write contents to '%s': %w", header.Name, err)
+			return errors.Wrapf(err, "failed to write contents to '%s'", header.Name)
 		}
 	}
 }
