@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694007401374,
+  "lastUpdate": 1694011716096,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2266,6 +2266,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 74191789357,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2f00a053de35d4ac03d418f18a2400f8f4f12893",
+          "message": "Merge pull request #1878 from buildpacks/bugfix/jjbustamante/issue-1759\n\nAdding support for reading docker context",
+          "timestamp": "2023-09-06T09:45:02-05:00",
+          "tree_id": "5d3485ed671a68fcee5b9ba3680ae9f6318928bb",
+          "url": "https://github.com/buildpacks/pack/commit/2f00a053de35d4ac03d418f18a2400f8f4f12893"
+        },
+        "date": 1694011714917,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6714745317,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1539947726,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 94157909223,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
