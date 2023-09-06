@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694005709401,
+  "lastUpdate": 1694007401374,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2224,6 +2224,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 88694655915,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "549e7b807fd97b540670b8dab9ee42ced8e49c56",
+          "message": "Merge pull request #1879 from buildpacks/bugfix/jjbustamante/issue-1875\n\nAdding /tmp folder to pack image distribution",
+          "timestamp": "2023-09-06T08:34:25-05:00",
+          "tree_id": "9f2962f9f83b3d351d5d05f797056f53327c404d",
+          "url": "https://github.com/buildpacks/pack/commit/549e7b807fd97b540670b8dab9ee42ced8e49c56"
+        },
+        "date": 1694007400455,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4234759542,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 899704480,
+            "unit": "ns/op",
+            "extra": "2 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 74191789357,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
