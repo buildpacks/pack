@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1693069150795,
+  "lastUpdate": 1694005709401,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2182,6 +2182,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 87752531694,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d225948b6e05dbe2d4f8e926e108750b5c97faed",
+          "message": "Merge pull request #1882 from buildpacks/bugfix/jjbustamante/issue-1881\n\nAdding configuration to OCI Layout format when executing phases 1 by 1",
+          "timestamp": "2023-09-06T08:06:10-05:00",
+          "tree_id": "0e84de46436bc28213b8ca464f9a87e3b808ede2",
+          "url": "https://github.com/buildpacks/pack/commit/d225948b6e05dbe2d4f8e926e108750b5c97faed"
+        },
+        "date": 1694005708431,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5734843337,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1374549647,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 88694655915,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
