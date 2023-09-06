@@ -491,8 +491,16 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 		registryOp = WithRegistryAccess(authConfig)
 	}
 
+	// for export to OCI layout
+	layoutOp := NullOp()
+	layoutBindOp := NullOp()
+	if l.opts.Layout && l.platformAPI.AtLeast("0.12") {
+		layoutOp = withLayoutOperation()
+		layoutBindOp = WithBinds(l.opts.Volumes...)
+	}
+
 	dockerOp := NullOp()
-	if !l.opts.Publish && l.platformAPI.AtLeast("0.12") {
+	if !l.opts.Publish && !l.opts.Layout && l.platformAPI.AtLeast("0.12") {
 		dockerOp = WithDaemonAccess(l.opts.DockerHost)
 		flags = append(flags, "-daemon")
 	}
@@ -517,6 +525,8 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 		flagsOp,
 		kanikoCacheBindOp,
 		registryOp,
+		layoutOp,
+		layoutBindOp,
 	)
 
 	restore := phaseFactory.New(configProvider)
@@ -604,10 +614,15 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 		}
 	}
 
+	layoutOp := NullOp()
+	if l.opts.Layout && l.platformAPI.AtLeast("0.12") {
+		layoutOp = withLayoutOperation()
+	}
+
 	flagsOp := WithFlags(flags...)
 
 	var analyze RunnerCleaner
-	if l.opts.Publish {
+	if l.opts.Publish || l.opts.Layout {
 		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
@@ -627,6 +642,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 			cacheBindOp,
 			stackOp,
 			runOp,
+			layoutOp,
 		)
 
 		analyze = phaseFactory.New(configProvider)
@@ -802,8 +818,17 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		expEnv,
 	}
 
+	if l.opts.Layout && l.platformAPI.AtLeast("0.12") {
+		var err error
+		opts, err = l.appendLayoutOperations(opts)
+		if err != nil {
+			return err
+		}
+		opts = append(opts, WithBinds(l.opts.Volumes...))
+	}
+
 	var export RunnerCleaner
-	if l.opts.Publish {
+	if l.opts.Publish || l.opts.Layout {
 		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
@@ -892,9 +917,13 @@ func (l *LifecycleExecution) runImageChanged() bool {
 }
 
 func (l *LifecycleExecution) appendLayoutOperations(opts []PhaseConfigProviderOperation) ([]PhaseConfigProviderOperation, error) {
-	layoutDir := filepath.Join(paths.RootDir, "layout-repo")
-	opts = append(opts, WithEnv("CNB_USE_LAYOUT=true", "CNB_LAYOUT_DIR="+layoutDir, "CNB_EXPERIMENTAL_MODE=warn"))
+	opts = append(opts, withLayoutOperation())
 	return opts, nil
+}
+
+func withLayoutOperation() PhaseConfigProviderOperation {
+	layoutDir := filepath.Join(paths.RootDir, "layout-repo")
+	return WithEnv("CNB_USE_LAYOUT=true", "CNB_LAYOUT_DIR="+layoutDir, "CNB_EXPERIMENTAL_MODE=warn")
 }
 
 func prependArg(arg string, args []string) []string {
