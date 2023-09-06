@@ -53,7 +53,7 @@ jobs:
           git config --global core.autocrlf false
           git config --global core.eol lf
           git config --global core.symlinks true
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Derive pack version from branch name Unix
         if: runner.os != 'Windows'
         run: |
@@ -176,7 +176,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up go
         uses: actions/setup-go@v4
         with:
@@ -197,7 +197,7 @@ jobs:
     needs: build-additional-archs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Derive pack version from branch name
         shell: bash
         run: |
