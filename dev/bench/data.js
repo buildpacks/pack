@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694011716096,
+  "lastUpdate": 1694013831924,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2308,6 +2308,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 94157909223,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6329e898bcd87af7f64f6f2e1ed922059268802e",
+          "message": "Merge pull request #1877 from colincasey/add_image_labels_to_buildpack\n\nAdd custom label metadata to packaged buildpacks",
+          "timestamp": "2023-09-06T10:22:02-05:00",
+          "tree_id": "1f2aa70f83b65c31f8291e2f2943f44c320f8e94",
+          "url": "https://github.com/buildpacks/pack/commit/6329e898bcd87af7f64f6f2e1ed922059268802e"
+        },
+        "date": 1694013831250,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3738026269,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 812264163,
+            "unit": "ns/op",
+            "extra": "2 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 60967582605,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
