@@ -39,12 +39,12 @@ jobs:
 
             return tag.replace(/^v/, '');
       - name: Checkout source at tag
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: v${{ steps.version.outputs.result }}
       # This has to come after the first checkout, so it isn't clobbered
       - name: Checkout delivery configuration
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: ./head
       - name: Setup Working Dir
