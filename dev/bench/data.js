@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694020333344,
+  "lastUpdate": 1694098852011,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2392,6 +2392,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 81970422347,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ad32136e58dd61036fdce394a677d2b325ada828",
+          "message": "Merge pull request #1887 from buildpacks/bugfix/jjbustamante/issue-1886\n\nFixing out of memory using `pack builder create` on pack 0.30.0",
+          "timestamp": "2023-09-07T09:58:41-05:00",
+          "tree_id": "51627841c2dfa8cebc89423a95a147a94ca168c9",
+          "url": "https://github.com/buildpacks/pack/commit/ad32136e58dd61036fdce394a677d2b325ada828"
+        },
+        "date": 1694098851028,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5681375601,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1436047336,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 79235795532,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
