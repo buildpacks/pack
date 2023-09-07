@@ -165,6 +165,30 @@ func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, strings.TrimSpace(outBuf.String()), "docker context is default or empty, skipping it")
 			})
 		})
+
+		when("docker config folder doesn't exists", func() {
+			it.Before(func() {
+				setDockerConfig(t, errorCase, "no-docker-folder")
+			})
+
+			it("docker context process is skip", func() {
+				err := docker.ProcessDockerContext(logger)
+				h.AssertNil(t, err)
+				h.AssertContains(t, strings.TrimSpace(outBuf.String()), "docker context is default or empty, skipping it")
+			})
+		})
+
+		when("config.json config doesn't exists", func() {
+			it.Before(func() {
+				setDockerConfig(t, errorCase, "config-does-not-exist")
+			})
+
+			it("docker context process is skip", func() {
+				err := docker.ProcessDockerContext(logger)
+				h.AssertNil(t, err)
+				h.AssertContains(t, strings.TrimSpace(outBuf.String()), "docker context is default or empty, skipping it")
+			})
+		})
 	})
 }
 
