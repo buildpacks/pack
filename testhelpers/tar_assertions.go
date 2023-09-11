@@ -20,6 +20,8 @@ var gzipMagicHeader = []byte{'\x1f', '\x8b'}
 
 type TarEntryAssertion func(t *testing.T, header *tar.Header, data []byte)
 
+type TarEntriesAssertion func(t *testing.T, header1 *tar.Header, data1 []byte, header2 *tar.Header, data2 []byte)
+
 func AssertOnTarEntry(t *testing.T, tarPath, entryPath string, assertFns ...TarEntryAssertion) {
 	t.Helper()
 
@@ -45,6 +47,27 @@ func AssertOnNestedTar(nestedEntryPath string, assertions ...TarEntryAssertion) 
 		for _, assertion := range assertions {
 			assertion(t, header, data)
 		}
+	}
+}
+
+func AssertOnTarEntries(t *testing.T, tarPath string, entryPath1, entryPath2 string, assertFns ...TarEntriesAssertion) {
+	t.Helper()
+
+	tarFile, err := os.Open(filepath.Clean(tarPath))
+	AssertNil(t, err)
+	defer tarFile.Close()
+
+	header1, data1, err := readTarFileEntry(tarFile, entryPath1)
+	AssertNil(t, err)
+
+	_, err = tarFile.Seek(0, io.SeekStart)
+	AssertNil(t, err)
+
+	header2, data2, err := readTarFileEntry(tarFile, entryPath2)
+	AssertNil(t, err)
+
+	for _, fn := range assertFns {
+		fn(t, header1, data1, header2, data2)
 	}
 }
 
@@ -109,6 +132,19 @@ func SymlinksTo(expectedTarget string) TarEntryAssertion {
 
 		if header.Linkname != expectedTarget {
 			t.Fatalf("symlink '%s' does not point to '%s', instead it points to '%s'", header.Name, expectedTarget, header.Linkname)
+		}
+	}
+}
+
+func HardLinks() TarEntriesAssertion {
+	return func(t *testing.T, header1 *tar.Header, _ []byte, header2 *tar.Header, _ []byte) {
+		t.Helper()
+		if header1.Typeflag != tar.TypeLink && header2.Typeflag != tar.TypeLink {
+			t.Fatalf("path '%s' and '%s' are not hardlinks, type flags are '%c' and '%c'", header1.Name, header2.Name, header1.Typeflag, header2.Typeflag)
+		}
+
+		if header1.Linkname != header2.Name && header2.Linkname != header1.Name {
+			t.Fatalf("'%s' and '%s' are not the same file", header1.Name, header2.Name)
 		}
 	}
 }

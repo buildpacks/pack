@@ -176,6 +176,7 @@ func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int
 		}
 	}
 
+	hardLinkFiles := map[uint64]string{}
 	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
 		var relPath string
 		if fileFilter != nil {
@@ -218,12 +219,27 @@ func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int
 		}
 
 		header.Name = getHeaderNameFromBaseAndRelPath(basePath, relPath)
+		if hasHardlinks(fi) {
+			inode, err := getInodeFromStat(fi.Sys())
+			if err != nil {
+				return err
+			}
+
+			if previousPath, ok := hardLinkFiles[inode]; ok {
+				header.Typeflag = tar.TypeLink
+				header.Linkname = previousPath
+				header.Size = 0
+			} else {
+				hardLinkFiles[inode] = header.Name
+			}
+		}
+
 		err = writeHeader(header, uid, gid, mode, normalizeModTime, tw)
 		if err != nil {
 			return err
 		}
 
-		if hasRegularMode(fi) {
+		if hasRegularMode(fi) && header.Size > 0 {
 			f, err := os.Open(filepath.Clean(file))
 			if err != nil {
 				return err

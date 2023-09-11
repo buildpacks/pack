@@ -17,6 +17,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/pkg/archive"
+	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -509,6 +510,39 @@ version = "1.2.3"
 					archive.DefaultTarWriterFactory(),
 				)
 				h.AssertNil(t, err)
+			})
+		})
+
+		when("hardlink is present", func() {
+			var bpRootFolder string
+
+			it.Before(func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "Skipping on windows")
+				bpRootFolder = filepath.Join("testdata", "buildpack-with-hardlink")
+				// create a hard link
+				err := os.Link(filepath.Join(bpRootFolder, "original-file"), filepath.Join(bpRootFolder, "original-file-2"))
+				h.AssertNil(t, err)
+			})
+
+			it.After(func() {
+				os.RemoveAll(filepath.Join(bpRootFolder, "original-file-2"))
+			})
+
+			it("hardlink is preserved in the output tar file", func() {
+				bp, err := buildpack.FromBuildpackRootBlob(
+					blob.NewBlob(bpRootFolder),
+					archive.DefaultTarWriterFactory(),
+				)
+				h.AssertNil(t, err)
+
+				tarPath := writeBlobToFile(bp)
+				defer os.Remove(tarPath)
+
+				h.AssertOnTarEntries(t, tarPath,
+					"/cnb/buildpacks/bp.one/1.2.3/original-file",
+					"/cnb/buildpacks/bp.one/1.2.3/original-file-2",
+					h.HardLinks(),
+				)
 			})
 		})
 	})

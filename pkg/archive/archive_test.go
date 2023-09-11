@@ -442,6 +442,38 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("hard link files are present", func() {
+			it.Before(func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "Skipping on windows")
+				src = filepath.Join("testdata", "dir-to-tar-with-hardlink")
+				// create a hard link
+				err := os.Link(filepath.Join(src, "original-file"), filepath.Join(src, "original-file-2"))
+				h.AssertNil(t, err)
+			})
+
+			it.After(func() {
+				os.RemoveAll(filepath.Join(src, "original-file-2"))
+			})
+
+			it("tar file file doesn't include duplicated data", func() {
+				outputFilename := filepath.Join(tmpDir, "file-with-hard-links.tar")
+				fh, err := os.Create(outputFilename)
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+				err = archive.WriteDirToTar(tw, src, "/nested/dir", 1234, 2345, 0777, true, false, nil)
+
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+				h.AssertOnTarEntries(t, outputFilename,
+					"/nested/dir/original-file",
+					"/nested/dir/original-file-2",
+					h.HardLinks(),
+				)
+			})
+		})
 	})
 
 	when("#WriteZipToTar", func() {
