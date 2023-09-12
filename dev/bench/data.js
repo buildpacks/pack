@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694480488162,
+  "lastUpdate": 1694531891780,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2518,6 +2518,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 67317556910,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6ec6d74ee47e5b37fd81fb56910e58db354b25da",
+          "message": "Merge pull request #1892 from buildpacks/dependabot/go_modules/github.com/docker/cli-24.0.6incompatible\n\nbuild(deps): bump github.com/docker/cli from 24.0.5+incompatible to 24.0.6+incompatible",
+          "timestamp": "2023-09-12T10:13:13-05:00",
+          "tree_id": "3f519f444b56f94be433fe6cde0b2b9c5358e770",
+          "url": "https://github.com/buildpacks/pack/commit/6ec6d74ee47e5b37fd81fb56910e58db354b25da"
+        },
+        "date": 1694531890422,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7194949910,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1923898393,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 85870388452,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
