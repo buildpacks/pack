@@ -66,7 +66,7 @@ func (b *BuildpackDescriptor) EnsureTargetSupport(os, arch, distroName, distroVe
 	}
 	for _, target := range b.Targets() {
 		if target.OS == os {
-			if target.Arch == "*" || arch == "" || target.Arch == arch {
+			if target.Arch == "" || arch == "" || target.Arch == arch {
 				if len(target.Distributions) == 0 || distroName == "" || distroVersion == "" {
 					return nil
 				}
