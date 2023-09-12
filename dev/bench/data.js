@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694098852011,
+  "lastUpdate": 1694479159618,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2434,6 +2434,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 79235795532,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "64de584c91c796458f389860e953c9b935a78eb9",
+          "message": "Merge pull request #1897 from buildpacks/fix/target-validation\n\nFix target validation when buildpack fails to declare field",
+          "timestamp": "2023-09-11T19:36:49-05:00",
+          "tree_id": "64239c57d28dfdc3978e3ebe906195c4d3e1348a",
+          "url": "https://github.com/buildpacks/pack/commit/64de584c91c796458f389860e953c9b935a78eb9"
+        },
+        "date": 1694479158251,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7203188427,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2158725186,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 80282732723,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
