@@ -108,6 +108,9 @@ func readConfigFile(configDir string) (*configFile, error) {
 	config := &configFile{}
 	file, err := os.Open(filename)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return &configFile{}, nil
+		}
 		return &configFile{}, err
 	}
 	defer file.Close()
