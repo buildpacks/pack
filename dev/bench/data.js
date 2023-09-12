@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694479159618,
+  "lastUpdate": 1694480488162,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2476,6 +2476,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 80282732723,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3b7a55cbf547623508ccce78b71263fcf2c46bc4",
+          "message": "Merge pull request #1894 from buildpacks/bugfix/jjbustamante/issue-1759-2\n\nMissing test case when handling docker context - continuation of the solution to fix 1759",
+          "timestamp": "2023-09-11T19:59:36-05:00",
+          "tree_id": "d450339426a7a4afcbcef8ab0f0a369b54530392",
+          "url": "https://github.com/buildpacks/pack/commit/3b7a55cbf547623508ccce78b71263fcf2c46bc4"
+        },
+        "date": 1694480487486,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3913118508,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 901406828,
+            "unit": "ns/op",
+            "extra": "2 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 67317556910,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
