@@ -135,7 +135,7 @@ jobs:
           verbose: true
       - name: Prepare Codecov
         if: matrix.os == 'windows'
-        uses: crazy-max/ghaction-chocolatey@v2
+        uses: crazy-max/ghaction-chocolatey@v3
         with:
           args: install codecov -y
       - name: run Codecov
