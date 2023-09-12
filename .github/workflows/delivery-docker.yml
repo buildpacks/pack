@@ -60,7 +60,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - uses: docker/setup-qemu-action@v2
-      - uses: docker/setup-buildx-action@v2
+      - uses: docker/setup-buildx-action@v3
       - uses: buildpacks/github-actions/setup-tools@v5.4.0
       - name: Buildx Build/Publish
         run: |
