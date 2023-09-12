@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694531891780,
+  "lastUpdate": 1694534877471,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2560,6 +2560,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 85870388452,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f364382ce6e8e0154d144eb3c1c4063530a1e7ee",
+          "message": "Merge pull request #1898 from buildpacks/dependabot/github_actions/crazy-max/ghaction-chocolatey-3\n\nbuild(deps): bump crazy-max/ghaction-chocolatey from 2 to 3",
+          "timestamp": "2023-09-12T11:05:10-05:00",
+          "tree_id": "726ab6fcb3cf732d697d8af3a4e856d285f4117a",
+          "url": "https://github.com/buildpacks/pack/commit/f364382ce6e8e0154d144eb3c1c4063530a1e7ee"
+        },
+        "date": 1694534876269,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6071212199,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1678267981,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 83236475050,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
