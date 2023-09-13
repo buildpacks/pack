@@ -225,9 +225,9 @@ func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int
 				return err
 			}
 
-			if previousPath, ok := hardLinkFiles[inode]; ok {
+			if processedPath, ok := hardLinkFiles[inode]; ok {
 				header.Typeflag = tar.TypeLink
-				header.Linkname = previousPath
+				header.Linkname = processedPath
 				header.Size = 0
 			} else {
 				hardLinkFiles[inode] = header.Name
