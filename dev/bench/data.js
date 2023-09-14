@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694708808698,
+  "lastUpdate": 1694710838283,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2644,6 +2644,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 69873434965,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6f111018375d7b9f4c75334579bd51c407073eaf",
+          "message": "Merge pull request #1904 from buildpacks/jkutner/deps\n\nDependency updates for GHA",
+          "timestamp": "2023-09-14T11:57:51-05:00",
+          "tree_id": "1a5e9c1c267abb5d75c4c85ff761da486bd33953",
+          "url": "https://github.com/buildpacks/pack/commit/6f111018375d7b9f4c75334579bd51c407073eaf"
+        },
+        "date": 1694710837241,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6347509021,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1462306866,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 77254036967,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
