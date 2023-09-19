@@ -51,15 +51,6 @@ type PackageBuildpackOptions struct {
 	// add buildpacks to a package.
 	Registry string
 
-	// Flatten layers
-	Flatten bool
-
-	// Max depth for flattening compose buildpacks.
-	Depth int
-
-	// List of buildpack images to exclude from the package been flatten.
-	FlattenExclude []string
-
 	// Map of labels to add to the Buildpack
 	Labels map[string]string
 }
@@ -84,12 +75,11 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return errors.Wrap(err, "creating layer writer factory")
 	}
 
-	var packageBuilderOpts []buildpack.PackageBuilderOption
-	if opts.Flatten {
-		packageBuilderOpts = append(packageBuilderOpts, buildpack.WithFlatten(opts.Depth, opts.FlattenExclude),
-			buildpack.WithLayerWriterFactory(writerFactory), buildpack.WithLogger(c.logger))
-	}
-	packageBuilder := buildpack.NewBuilder(c.imageFactory, packageBuilderOpts...)
+	packageBuilder := buildpack.NewBuilder(
+		c.imageFactory,
+		buildpack.WithLayerWriterFactory(writerFactory),
+		buildpack.WithLogger(c.logger),
+	)
 
 	bpURI := opts.Config.Buildpack.URI
 	if bpURI == "" {
@@ -109,6 +99,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 	packageBuilder.SetBuildpack(bp)
 
 	for _, dep := range opts.Config.Dependencies {
+		var depBPs []buildpack.BuildModule
 		mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
 			RegistryName:    opts.Registry,
 			RelativeBaseDir: opts.RelativeBaseDir,
@@ -122,7 +113,10 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 			return errors.Wrapf(err, "packaging dependencies (uri=%s,image=%s)", style.Symbol(dep.URI), style.Symbol(dep.ImageName))
 		}
 
-		packageBuilder.AddDependencies(mainBP, deps)
+		depBPs = append([]buildpack.BuildModule{mainBP}, deps...)
+		for _, depBP := range depBPs {
+			packageBuilder.AddDependency(depBP)
+		}
 	}
 
 	switch opts.Format {

@@ -233,7 +233,6 @@ const (
 	RunImageExtensions
 	StackValidation
 	ForceRebase
-	BuildpackFlatten
 	MetaBuildpackFolder
 )
 
@@ -254,9 +253,6 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 		return !i.atLeast("v0.30.0")
 	},
 	ForceRebase: func(i *PackInvoker) bool {
-		return i.atLeast("v0.30.0")
-	},
-	BuildpackFlatten: func(i *PackInvoker) bool {
 		return i.atLeast("v0.30.0")
 	},
 	MetaBuildpackFolder: func(i *PackInvoker) bool {

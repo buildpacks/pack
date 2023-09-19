@@ -2,11 +2,9 @@ package commands
 
 import (
 	"fmt"
-	"path/filepath"
-	"strings"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"path/filepath"
 
 	"github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/config"
@@ -18,13 +16,10 @@ import (
 
 // BuilderCreateFlags define flags provided to the CreateBuilder command
 type BuilderCreateFlags struct {
-	Flatten         bool
 	Publish         bool
 	BuilderTomlPath string
 	Registry        string
 	Policy          string
-	FlattenExclude  []string
-	Depth           int
 }
 
 // CreateBuilder creates a builder image, based on a builder config
@@ -83,9 +78,6 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				Publish:         flags.Publish,
 				Registry:        flags.Registry,
 				PullPolicy:      pullPolicy,
-				Flatten:         flags.Flatten,
-				FlattenExclude:  flags.FlattenExclude,
-				Depth:           flags.Depth,
 			}); err != nil {
 				return err
 			}
@@ -102,9 +94,6 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
-	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten each composite buildpack into a single layer")
-	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpacks to exclude from flattening, in the form of '<buildpack-id>@<buildpack-version>'")
-	cmd.Flags().IntVar(&flags.Depth, "depth", -1, "Max depth to flatten each composite buildpack.\nOmission of this flag or values < 0 will flatten the entire tree.")
 
 	AddHelpFlag(cmd, "create")
 	return cmd
@@ -125,14 +114,6 @@ func validateCreateFlags(flags *BuilderCreateFlags, cfg config.Config) error {
 
 	if flags.BuilderTomlPath == "" {
 		return errors.Errorf("Please provide a builder config path, using --config.")
-	}
-
-	if flags.Flatten && len(flags.FlattenExclude) > 0 {
-		for _, exclude := range flags.FlattenExclude {
-			if strings.Count(exclude, "@") != 1 {
-				return errors.Errorf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", exclude)
-			}
-		}
 	}
 
 	return nil

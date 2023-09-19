@@ -403,8 +403,6 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 				})
-
-				// TODO add test case when builder is flattened
 			})
 		}
 	})

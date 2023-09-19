@@ -120,46 +120,6 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 						h.AssertContains(t, outBuf.String(), "'.gz' is not a valid extension for a packaged buildpack. Packaged buildpacks must have a '.cnb' extension")
 					})
 				})
-				when("flatten is set to true", func() {
-					when("experimental is true", func() {
-						when("flatten exclude doesn't have format <buildpack>@<version>", func() {
-							it("errors with a descriptive message", func() {
-								cmd := packageCommand(withClientConfig(config.Config{Experimental: true}), withBuildpackPackager(fakeBuildpackPackager))
-								cmd.SetArgs([]string{"test", "-f", "file", "--flatten", "--flatten-exclude", "some-buildpack"})
-
-								err := cmd.Execute()
-								h.AssertError(t, err, fmt.Sprintf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", "some-buildpack"))
-							})
-						})
-
-						when("no exclusions", func() {
-							it("creates package with correct image name and warns flatten is being used", func() {
-								cmd := packageCommand(
-									withClientConfig(config.Config{Experimental: true}),
-									withBuildpackPackager(fakeBuildpackPackager),
-									withLogger(logger),
-								)
-								cmd.SetArgs([]string{"my-flatten-image", "-f", "file", "--flatten"})
-								err := cmd.Execute()
-								h.AssertNil(t, err)
-
-								receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-								h.AssertEq(t, receivedOptions.Name, "my-flatten-image.cnb")
-								h.AssertContains(t, outBuf.String(), "Flattening a buildpack package could break the distribution specification. Please use it with caution.")
-							})
-						})
-					})
-
-					when("experimental is false", func() {
-						it("errors with a descriptive message", func() {
-							cmd := packageCommand(withClientConfig(config.Config{Experimental: false}), withBuildpackPackager(fakeBuildpackPackager))
-							cmd.SetArgs([]string{"test", "-f", "file", "--flatten"})
-
-							err := cmd.Execute()
-							h.AssertError(t, err, "Flattening a buildpack package is currently experimental.")
-						})
-					})
-				})
 			})
 
 			when("there is a path flag", func() {
