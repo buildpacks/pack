@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/buildpacks/pack/internal/builder"
-
 	"github.com/buildpacks/pack/testhelpers"
 )
 
@@ -20,17 +18,11 @@ type BuildModuleManager struct {
 
 type BuildModuleManagerModifier func(b *BuildModuleManager)
 
-func WithBuildpackAPIVersion(apiVersion string) func(b *BuildModuleManager) {
-	return func(b *BuildModuleManager) {
-		b.sourceDir = filepath.Join("testdata", "mock_buildpacks", apiVersion)
-	}
-}
-
 func NewBuildModuleManager(t *testing.T, assert testhelpers.AssertionManager, modifiers ...BuildModuleManagerModifier) BuildModuleManager {
 	m := BuildModuleManager{
 		testObject: t,
 		assert:     assert,
-		sourceDir:  filepath.Join("testdata", "mock_buildpacks", builder.DefaultBuildpackAPIVersion),
+		sourceDir:  filepath.Join("testdata", "mock_buildpacks"),
 	}
 
 	for _, mod := range modifiers {
