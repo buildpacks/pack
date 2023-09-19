@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695145075188,
+  "lastUpdate": 1695146531231,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2770,6 +2770,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 63575780211,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "465730a8ad6bf16ed3f8f864dbd0ab6f56daf9e4",
+          "message": "Merge pull request #1908 from buildpacks/deps/jjbustamante/update-to-lifecycle-0_17_1\n\nBump default lifecycle version & lifecycle library version",
+          "timestamp": "2023-09-19T12:57:58-05:00",
+          "tree_id": "5c03bf419cead9599fe504743bcc350d1bd4d805",
+          "url": "https://github.com/buildpacks/pack/commit/465730a8ad6bf16ed3f8f864dbd0ab6f56daf9e4"
+        },
+        "date": 1695146530497,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4004754286,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 813711474,
+            "unit": "ns/op",
+            "extra": "2 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 62450772851,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
