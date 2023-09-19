@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1694710838283,
+  "lastUpdate": 1695138043614,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2686,6 +2686,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 77254036967,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "df5a7c2c0503481cb7e47f836f1ac9a0eb9a32ad",
+          "message": "Merge pull request #1911 from buildpacks/fix/acceptance\n\nSimplifies acceptance tests by moving fixtures up one directory",
+          "timestamp": "2023-09-19T10:33:49-05:00",
+          "tree_id": "26784177e228dbceff6b6d64fd66e77341936491",
+          "url": "https://github.com/buildpacks/pack/commit/df5a7c2c0503481cb7e47f836f1ac9a0eb9a32ad"
+        },
+        "date": 1695138042603,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5911954887,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1361431105,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 79156527457,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
