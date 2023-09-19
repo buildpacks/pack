@@ -8,7 +8,7 @@ echo making launch layer %launch_dir%\launch-layer
 mkdir %launch_dir%\launch-layer
 echo Launch Dep Contents > "%launch_dir%\launch-layer\launch-dep
 mklink /j launch-deps %launch_dir%\launch-layer
-echo "[types]" > %launch_dir%\launch-layer.toml
+echo [types] > %launch_dir%\launch-layer.toml
 echo launch = true >> %launch_dir%\launch-layer.toml
 
 :: makes a cached launch layer
@@ -17,12 +17,12 @@ if not exist %launch_dir%\cached-launch-layer.toml (
     mkdir %launch_dir%\cached-launch-layer
     echo Cached Dep Contents > %launch_dir%\cached-launch-layer\cached-dep
     mklink /j cached-deps %launch_dir%\cached-launch-layer
-    echo "[types]" > %launch_dir%\cached-launch-layer.toml
+    echo [types] > %launch_dir%\cached-launch-layer.toml
     echo launch = true >> %launch_dir%\cached-launch-layer.toml
     echo cache = true >> %launch_dir%\cached-launch-layer.toml
 ) else (
     echo reusing cached launch layer %launch_dir%\cached-launch-layer
-    echo "[types]" > %launch_dir%\cached-launch-layer.toml
+    echo [types] > %launch_dir%\cached-launch-layer.toml
     echo launch = true >> %launch_dir%\cached-launch-layer.toml
     echo cache = true >> %launch_dir%\cached-launch-layer.toml
     mklink /j cached-deps %launch_dir%\cached-launch-layer

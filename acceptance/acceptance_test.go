@@ -798,15 +798,14 @@ func testAcceptance(
 							// Linux containers (including Linux containers on Windows)
 							extSimpleLayersDiffID := "sha256:d24758b8b75b13292746fe7a06666f28a9499da31826a60afe6ee6b8cba29b73"
 							extReadEnvDiffID := "sha256:4490d78f2b056cdb99ad9cd3892f3c0617c5a485fb300dd90c572ce375ee45b2"
-							bpSimpleLayersDiffID := "sha256:ff38769b05fb483c8e24dade16476f7153707ef9cdcb3f43cdc8d2d65dbc66ae"
-							bpReadEnvDiffID := "sha256:b22ad0adcc5f9fb0d2bb358e6483e9f50f4375e659472217ff564cd8d11ea955"
+							bpSimpleLayersDiffID := "sha256:ade9da86859fa4ea50a513757f9b242bf1038667abf92dad3d018974a17f0ea7"
+							bpReadEnvDiffID := "sha256:db0797077ba8deff7054ab5578133b8f0206b6393de34b5bfd795cf50f6afdbd"
 							// extensions
 							assertImage.HasLabelWithData(builderName, "io.buildpacks.extension.layers", `{"read/env":{"read-env-version":{"api":"0.9","layerDiffID":"`+extReadEnvDiffID+`","name":"Read Env Extension"}},"simple/layers":{"simple-layers-version":{"api":"0.7","layerDiffID":"`+extSimpleLayersDiffID+`","name":"Simple Layers Extension"}}}`)
 							assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.order-extensions", `[{"group":[{"id":"read/env","version":"read-env-version"},{"id":"simple/layers","version":"simple-layers-version"}]}]`)
 							// buildpacks
 							assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.layers", `{"read/env":{"read-env-version":{"api":"0.7","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpReadEnvDiffID+`","name":"Read Env Buildpack"}},"simple/layers":{"simple-layers-version":{"api":"0.7","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpSimpleLayersDiffID+`","name":"Simple Layers Buildpack"}}}`)
 							assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.order", `[{"group":[{"id":"read/env","version":"read-env-version","optional":true},{"id":"simple/layers","version":"simple-layers-version","optional":true}]}]`)
-
 						}
 					})
 
