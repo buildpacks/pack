@@ -11,7 +11,8 @@ if exist %platform_dir%\env\ENV1_CONTENTS (
     set /p contents=<%platform_dir%\env\ENV1_CONTENTS
     echo !contents!> %launch_dir%\env1-launch-layer\env1-launch-dep
     mklink /j env1-launch-deps %launch_dir%\env1-launch-layer
-    echo launch = true> %launch_dir%\env1-launch-layer.toml
+    echo "[types]" > %launch_dir%\env1-launch-layer.toml
+    echo launch = true >> %launch_dir%\env1-launch-layer.toml
 )
 
 :: makes a launch layer
@@ -21,7 +22,8 @@ if exist %platform_dir%\env\ENV2_CONTENTS (
     set /p contents=<%platform_dir%\env\ENV2_CONTENTS
     echo !contents!> %launch_dir%\env2-launch-layer\env2-launch-dep
     mklink /j env2-launch-deps %launch_dir%\env2-launch-layer
-    echo launch = true> %launch_dir%\env2-launch-layer.toml
+    echo "[types]" > %launch_dir%\env2-launch-layer.toml
+    echo launch = true >> %launch_dir%\env2-launch-layer.toml
 )
 
 echo --- Done

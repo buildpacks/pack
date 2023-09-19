@@ -17,7 +17,8 @@ echo "Color: [0mStyled"
 mkdir "$launch_dir/launch-layer"
 echo "Launch Dep Contents" > "$launch_dir/launch-layer/launch-dep"
 ln -snf "$launch_dir/launch-layer" launch-deps
-echo "launch = true" > "$launch_dir/launch-layer.toml"
+echo "[types]" > "$launch_dir/launch-layer.toml"
+echo "launch = true" >> "$launch_dir/launch-layer.toml"
 
 ## makes a cached launch layer
 if [[ ! -f "$launch_dir/cached-launch-layer.toml" ]]; then
@@ -25,10 +26,14 @@ if [[ ! -f "$launch_dir/cached-launch-layer.toml" ]]; then
     mkdir "$launch_dir/cached-launch-layer"
     echo "Cached Dep Contents" > "$launch_dir/cached-launch-layer/cached-dep"
     ln -snf "$launch_dir/cached-launch-layer" cached-deps
-    echo "launch = true" > "$launch_dir/cached-launch-layer.toml"
+    echo "[types]" > "$launch_dir/cached-launch-layer.toml"
+    echo "launch = true" >> "$launch_dir/cached-launch-layer.toml"
     echo "cache = true" >> "$launch_dir/cached-launch-layer.toml"
 else
   echo "reusing cached launch layer"
+  echo "[types]" > "$launch_dir/cached-launch-layer.toml"
+  echo "launch = true" >> "$launch_dir/cached-launch-layer.toml"
+  echo "cache = true" >> "$launch_dir/cached-launch-layer.toml"
   ln -snf "$launch_dir/cached-launch-layer" cached-deps
 fi
 
@@ -38,6 +43,7 @@ cat <<EOF > "$launch_dir/launch.toml"
   type = "web"
   command = "./run"
   args = ["8080"]
+  default = true
 
 [[processes]]
   type = "hello"
