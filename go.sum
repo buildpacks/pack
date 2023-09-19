@@ -97,8 +97,8 @@ github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230522190001-
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
 github.com/buildpacks/imgutil v0.0.0-20230626185301-726f02e4225c h1:HlRuSz+JGAzudNtNCfHIzXe0AEuHX6Vx8uZgmjvX02o=
 github.com/buildpacks/imgutil v0.0.0-20230626185301-726f02e4225c/go.mod h1:mBG5M3GJW5nknCEOOqtmMHyPYnSpw/5GEiciuYU/COw=
-github.com/buildpacks/lifecycle v0.17.0 h1:vX/kpQfuh4LZvsIhi1wNkx/zahvwiF72bgc46rQ+3z0=
-github.com/buildpacks/lifecycle v0.17.0/go.mod h1:WFzcNp1WG4bwgHuXtKxMg4tdU3AguL44ZlP3knANeVs=
+github.com/buildpacks/lifecycle v0.17.1 h1:sCNj83TH1YE8Z3+CKHoFx/HK+llCVF1RlQUbj3xdNBQ=
+github.com/buildpacks/lifecycle v0.17.1/go.mod h1:WFzcNp1WG4bwgHuXtKxMg4tdU3AguL44ZlP3knANeVs=
 github.com/bwesterb/go-ristretto v1.2.3/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7NFEuV9ekS419A0=
 github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589 h1:krfRl01rzPzxSxyLyrChD+U+MzsBXbm0OwYYB67uF+4=
 github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589/go.mod h1:OuDyvmLnMCwa2ep4Jkm6nyA0ocJuZlGyk2gGseVzERM=
