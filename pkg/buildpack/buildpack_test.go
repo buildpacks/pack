@@ -835,35 +835,3 @@ func assertBuildpacksToTar(t *testing.T, actual []buildpack.ModuleTar, expected 
 		h.AssertTrue(t, found)
 	}
 }
-
-func assertWindowsBuildpacksToTar(t *testing.T, actual []buildpack.ModuleTar, expected []expectedBuildpack) {
-	t.Helper()
-	for _, expectedBP := range expected {
-		found := false
-		for _, moduleTar := range actual {
-			if expectedBP.id == moduleTar.Info().ID && expectedBP.version == moduleTar.Info().Version {
-				found = true
-				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("Files/cnb/buildpacks/%s", expectedBP.id),
-					h.IsDirectory(),
-				)
-				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("Files/cnb/buildpacks/%s/%s", expectedBP.id, expectedBP.version),
-					h.IsDirectory(),
-				)
-				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("Files/cnb/buildpacks/%s/%s/bin", expectedBP.id, expectedBP.version),
-					h.IsDirectory(),
-				)
-				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("Files/cnb/buildpacks/%s/%s/bin/build.bat", expectedBP.id, expectedBP.version),
-					h.HasFileMode(0700),
-				)
-				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("Files/cnb/buildpacks/%s/%s/bin/detect.bat", expectedBP.id, expectedBP.version),
-					h.HasFileMode(0700),
-				)
-				h.AssertOnTarEntry(t, moduleTar.Path(), fmt.Sprintf("Files/cnb/buildpacks/%s/%s/buildpack.toml", expectedBP.id, expectedBP.version),
-					h.HasFileMode(0700),
-				)
-				break
-			}
-		}
-		h.AssertTrue(t, found)
-	}
-}

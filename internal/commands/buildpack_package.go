@@ -2,9 +2,10 @@ package commands
 
 import (
 	"context"
+	"path/filepath"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"path/filepath"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/config"

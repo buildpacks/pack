@@ -3,6 +3,9 @@ package buildpack
 import (
 	"archive/tar"
 	"compress/gzip"
+	"io"
+	"os"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layer"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -11,8 +14,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/pkg/errors"
-	"io"
-	"os"
 
 	"github.com/buildpacks/pack/pkg/logging"
 
@@ -33,12 +34,6 @@ type WorkableImage interface {
 
 type layoutImage struct {
 	v1.Image
-}
-
-type toAdd struct {
-	tarPath string
-	diffID  string
-	module  BuildModule
 }
 
 func (i *layoutImage) SetLabel(key string, val string) error {

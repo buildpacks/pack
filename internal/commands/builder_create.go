@@ -2,9 +2,10 @@ package commands
 
 import (
 	"fmt"
+	"path/filepath"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"path/filepath"
 
 	"github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/config"
