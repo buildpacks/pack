@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695146531231,
+  "lastUpdate": 1695152591767,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2812,6 +2812,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 62450772851,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "491fd8370690b4aa572f237e43478ded01d9ebc1",
+          "message": "Merge pull request #1905 from buildpacks/dependabot/go_modules/github.com/opencontainers/image-spec-1.1.0-rc5\n\nbuild(deps): bump github.com/opencontainers/image-spec from 1.1.0-rc4 to 1.1.0-rc5",
+          "timestamp": "2023-09-19T14:39:27-05:00",
+          "tree_id": "b18c759662d0e44660861f58ff191f196d3abc49",
+          "url": "https://github.com/buildpacks/pack/commit/491fd8370690b4aa572f237e43478ded01d9ebc1"
+        },
+        "date": 1695152590326,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7724225673,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2172037518,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 85154623447,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
