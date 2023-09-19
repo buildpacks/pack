@@ -1,4 +1,4 @@
-api = "0.2"
+api = "0.7"
 
 [buildpack]
   id = "local/meta-bp-dep"
