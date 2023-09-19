@@ -635,7 +635,7 @@ func testAcceptance(
 	var (
 		pack, createBuilderPack *invoke.PackInvoker
 		buildpackManager        buildpacks.BuildModuleManager
-		bpDir                   = buildModulesDir(lifecycle.EarliestBuildpackAPIVersion())
+		bpDir                   = buildModulesDir()
 		assert                  = h.NewAssertionManager(t)
 	)
 
@@ -649,7 +649,6 @@ func testAcceptance(
 		buildpackManager = buildpacks.NewBuildModuleManager(
 			t,
 			assert,
-			buildpacks.WithBuildpackAPIVersion(lifecycle.EarliestBuildpackAPIVersion()),
 		)
 	})
 
@@ -2898,8 +2897,8 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 	})
 }
 
-func buildModulesDir(bpAPIVersion string) string {
-	return filepath.Join("testdata", "mock_buildpacks", bpAPIVersion)
+func buildModulesDir() string {
+	return filepath.Join("testdata", "mock_buildpacks")
 }
 
 func createComplexBuilder(t *testing.T,
