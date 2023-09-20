@@ -566,6 +566,7 @@ version = "1.0"
 					h.AssertNil(t, command.Execute())
 				})
 			})
+
 			when("file has a builder specified", func() {
 				var projectTomlPath string
 
@@ -608,6 +609,7 @@ builder = "my-builder"
 					})
 				})
 			})
+
 			when("file is invalid", func() {
 				var projectTomlPath string
 

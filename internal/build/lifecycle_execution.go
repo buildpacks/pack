@@ -12,7 +12,6 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/platform/files"
-	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -240,6 +239,13 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			}
 		}
 
+		currentRunImage := l.runImageAfterExtensions()
+		if currentRunImage != "" && currentRunImage != l.opts.RunImage {
+			if err := l.opts.FetchRunImage(currentRunImage); err != nil {
+				return err
+			}
+		}
+
 		l.logger.Info(style.Step("RESTORING"))
 		if l.opts.ClearCache && l.PlatformAPI().LessThan("0.10") {
 			l.logger.Info("Skipping 'restore' due to clearing cache")
@@ -258,13 +264,6 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 				l.logger.Info(style.Step("BUILDING"))
 				return l.Build(ctx, phaseFactory)
 			})
-		}
-
-		currentRunImage := l.runImageAfterExtensions()
-		if currentRunImage != "" && currentRunImage != l.opts.RunImage {
-			if err := l.opts.FetchRunImage(currentRunImage); err != nil {
-				return err
-			}
 		}
 
 		if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {
@@ -389,7 +388,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, buildCache, launchCache
 	}
 
 	if l.opts.Publish || l.opts.Layout {
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
+		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
 		}
@@ -485,11 +484,25 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 	// for auths
 	registryOp := NullOp()
 	if len(registryImages) > 0 {
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, registryImages...)
+		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, registryImages...)
 		if err != nil {
 			return err
 		}
 		registryOp = WithRegistryAccess(authConfig)
+	}
+
+	// for export to OCI layout
+	layoutOp := NullOp()
+	layoutBindOp := NullOp()
+	if l.opts.Layout && l.platformAPI.AtLeast("0.12") {
+		layoutOp = withLayoutOperation()
+		layoutBindOp = WithBinds(l.opts.Volumes...)
+	}
+
+	dockerOp := NullOp()
+	if !l.opts.Publish && !l.opts.Layout && l.platformAPI.AtLeast("0.12") {
+		dockerOp = WithDaemonAccess(l.opts.DockerHost)
+		flags = append(flags, "-daemon")
 	}
 
 	flagsOp := WithFlags(flags...)
@@ -507,10 +520,13 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 		WithNetwork(l.opts.Network),
 		If(l.hasExtensionsForRun(), WithPostContainerRunOperations(
 			CopyOutToMaybe(l.mountPaths.cnbDir(), l.tmpDir))), // FIXME: this is hacky; we should get the lifecycle binaries from the lifecycle image
-		flagsOp,
 		cacheBindOp,
-		registryOp,
+		dockerOp,
+		flagsOp,
 		kanikoCacheBindOp,
+		registryOp,
+		layoutOp,
+		layoutBindOp,
 	)
 
 	restore := phaseFactory.New(configProvider)
@@ -598,11 +614,16 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 		}
 	}
 
+	layoutOp := NullOp()
+	if l.opts.Layout && l.platformAPI.AtLeast("0.12") {
+		layoutOp = withLayoutOperation()
+	}
+
 	flagsOp := WithFlags(flags...)
 
 	var analyze RunnerCleaner
-	if l.opts.Publish {
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
+	if l.opts.Publish || l.opts.Layout {
+		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
 		}
@@ -621,6 +642,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 			cacheBindOp,
 			stackOp,
 			runOp,
+			layoutOp,
 		)
 
 		analyze = phaseFactory.New(configProvider)
@@ -796,9 +818,18 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 		expEnv,
 	}
 
+	if l.opts.Layout && l.platformAPI.AtLeast("0.12") {
+		var err error
+		opts, err = l.appendLayoutOperations(opts)
+		if err != nil {
+			return err
+		}
+		opts = append(opts, WithBinds(l.opts.Volumes...))
+	}
+
 	var export RunnerCleaner
-	if l.opts.Publish {
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
+	if l.opts.Publish || l.opts.Layout {
+		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
 		}
@@ -835,6 +866,9 @@ func (l *LifecycleExecution) hasExtensions() bool {
 }
 
 func (l *LifecycleExecution) hasExtensionsForBuild() bool {
+	if !l.hasExtensions() {
+		return false
+	}
 	// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
 	fis, err := os.ReadDir(filepath.Join(l.tmpDir, "build"))
 	if err != nil {
@@ -844,6 +878,9 @@ func (l *LifecycleExecution) hasExtensionsForBuild() bool {
 }
 
 func (l *LifecycleExecution) hasExtensionsForRun() bool {
+	if !l.hasExtensions() {
+		return false
+	}
 	var amd files.Analyzed
 	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
 		l.logger.Warnf("failed to parse analyzed.toml file, assuming no run image extensions: %s", err)
@@ -858,6 +895,9 @@ func (l *LifecycleExecution) hasExtensionsForRun() bool {
 }
 
 func (l *LifecycleExecution) runImageAfterExtensions() string {
+	if !l.hasExtensions() {
+		return l.opts.RunImage
+	}
 	var amd files.Analyzed
 	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
 		l.logger.Warnf("failed to parse analyzed.toml file, assuming run image did not change: %s", err)
@@ -877,9 +917,13 @@ func (l *LifecycleExecution) runImageChanged() bool {
 }
 
 func (l *LifecycleExecution) appendLayoutOperations(opts []PhaseConfigProviderOperation) ([]PhaseConfigProviderOperation, error) {
-	layoutDir := filepath.Join(paths.RootDir, "layout-repo")
-	opts = append(opts, WithEnv("CNB_USE_LAYOUT=true", "CNB_LAYOUT_DIR="+layoutDir, "CNB_EXPERIMENTAL_MODE=warn"))
+	opts = append(opts, withLayoutOperation())
 	return opts, nil
+}
+
+func withLayoutOperation() PhaseConfigProviderOperation {
+	layoutDir := filepath.Join(paths.RootDir, "layout-repo")
+	return WithEnv("CNB_USE_LAYOUT=true", "CNB_LAYOUT_DIR="+layoutDir, "CNB_EXPERIMENTAL_MODE=warn")
 }
 
 func prependArg(arg string, args []string) []string {

@@ -18,6 +18,7 @@ import (
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -89,6 +90,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		opts.UseCreator = providedUseCreator
 		opts.Volumes = providedVolumes
 		opts.Layout = providedLayout
+		opts.Keychain = authn.DefaultKeychain
 
 		targetImageRef, err := name.ParseReference(providedTargetImage)
 		h.AssertNil(t, err)
@@ -553,6 +555,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 			when("extensions", func() {
 				providedUseCreator = false
+				providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
 
 				when("for build", func() {
 					when("present <layers>/generated/build", func() {
@@ -1406,6 +1409,17 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					"-stack",
 				)
 			})
+
+			when("layout is true", func() {
+				providedLayout = true
+
+				it("configures the phase with the expected environment variables", func() {
+					layoutDir := filepath.Join(paths.RootDir, "layout-repo")
+					h.AssertSliceContains(t,
+						configProvider.ContainerConfig().Env, "CNB_USE_LAYOUT=true", fmt.Sprintf("CNB_LAYOUT_DIR=%s", layoutDir),
+					)
+				})
+			})
 		})
 
 		when("publish", func() {
@@ -1703,6 +1717,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		when("there are extensions", func() {
 			platformAPI = api.MustParse("0.12")
+			providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
 
 			when("for build", func() {
 				extensionsForBuild = true
@@ -1772,6 +1787,8 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("extensions", func() {
+			providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+
 			when("for build", func() {
 				when("present in <layers>/generated/build", func() {
 					extensionsForBuild = true
@@ -1835,6 +1852,43 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-kaniko-cache:/kaniko")
 						})
 					})
+				})
+			})
+		})
+
+		when("publish is false", func() {
+			when("platform >= 0.12", func() {
+				platformAPI = api.MustParse("0.12")
+
+				it("configures the phase with daemon access", func() {
+					h.AssertEq(t, configProvider.ContainerConfig().User, "root")
+					h.AssertSliceContains(t, configProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
+				})
+
+				it("configures the phase with the expected arguments", func() {
+					h.AssertIncludeAllExpectedPatterns(t,
+						configProvider.ContainerConfig().Cmd,
+						[]string{"-daemon"},
+					)
+				})
+			})
+		})
+
+		when("layout is true", func() {
+			when("platform >= 0.12", func() {
+				platformAPI = api.MustParse("0.12")
+				providedLayout = true
+
+				it("it configures the phase with access to provided volumes", func() {
+					// this is required to read the /layout-repo
+					h.AssertSliceContains(t, configProvider.HostConfig().Binds, providedVolumes...)
+				})
+
+				it("configures the phase with the expected environment variables", func() {
+					layoutDir := filepath.Join(paths.RootDir, "layout-repo")
+					h.AssertSliceContains(t,
+						configProvider.ContainerConfig().Env, "CNB_USE_LAYOUT=true", fmt.Sprintf("CNB_LAYOUT_DIR=%s", layoutDir),
+					)
 				})
 			})
 		})
@@ -1938,6 +1992,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		when("extensions change the run image", func() {
 			extensionsRunImage = "some-new-run-image"
+			providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
 
 			it("runs the phase with the new run image", func() {
 				h.AssertEq(t, configProvider.ContainerConfig().Image, "some-new-run-image")
@@ -2012,6 +2067,8 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("there are extensions", func() {
+				providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+
 				when("for run", func() {
 					extensionsForRun = true
 
@@ -2024,6 +2081,22 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 					})
+				})
+			})
+
+			when("layout is true", func() {
+				providedLayout = true
+
+				it("it configures the phase with access to provided volumes", func() {
+					// this is required to read the /layout-repo
+					h.AssertSliceContains(t, configProvider.HostConfig().Binds, providedVolumes...)
+				})
+
+				it("configures the phase with the expected environment variables", func() {
+					layoutDir := filepath.Join(paths.RootDir, "layout-repo")
+					h.AssertSliceContains(t,
+						configProvider.ContainerConfig().Env, "CNB_USE_LAYOUT=true", fmt.Sprintf("CNB_LAYOUT_DIR=%s", layoutDir),
+					)
 				})
 			})
 		})

@@ -635,7 +635,7 @@ func testAcceptance(
 	var (
 		pack, createBuilderPack *invoke.PackInvoker
 		buildpackManager        buildpacks.BuildModuleManager
-		bpDir                   = buildModulesDir(lifecycle.EarliestBuildpackAPIVersion())
+		bpDir                   = buildModulesDir()
 		assert                  = h.NewAssertionManager(t)
 	)
 
@@ -649,7 +649,6 @@ func testAcceptance(
 		buildpackManager = buildpacks.NewBuildModuleManager(
 			t,
 			assert,
-			buildpacks.WithBuildpackAPIVersion(lifecycle.EarliestBuildpackAPIVersion()),
 		)
 	})
 
@@ -795,23 +794,19 @@ func testAcceptance(
 					})
 
 					it("creates builder", func() {
-						// Linux containers (including Linux containers on Windows)
-						extSimpleLayersDiffID := "sha256:b9e4a0ddfb650c7aa71d1e6aceea1665365e409b3078bfdc1e51c2b07ab2b423"
-						extReadEnvDiffID := "sha256:6801a0398d023ff06a43c4fd03ef325a45daaa4540fc3ee140e2fb22bf5143a7"
-						bpSimpleLayersDiffID := "sha256:285ff6683c99e5ae19805f6a62168fb40dca64d813c53b782604c9652d745c70"
-						bpReadEnvDiffID := "sha256:dd1e0efcbf3f08b014ef6eff9cfe7a9eac1cf20bd9b6a71a946f0a74575aa56f"
-						if imageManager.HostOS() == "windows" { // Windows containers on Windows
-							extSimpleLayersDiffID = "sha256:a063cf949b9c267133e451ac8cd95b4e77571bb7c629dd817461dca769170810"
-							extReadEnvDiffID = "sha256:4c37e22595762315d28805f32e1f5fd48b4ddfc293ef7b41e0e609a4241b8479"
-							bpSimpleLayersDiffID = "sha256:ccd1234cc5685e8a412b70c5f9a8e7b584b8e4f2a20c987ec242c9055de3e45e"
-							bpReadEnvDiffID = "sha256:8b22a7742ffdfbdd978787c6937456b68afb27c3585a3903048be7434d251e3f"
+						if imageManager.HostOS() != "windows" {
+							// Linux containers (including Linux containers on Windows)
+							extSimpleLayersDiffID := "sha256:d24758b8b75b13292746fe7a06666f28a9499da31826a60afe6ee6b8cba29b73"
+							extReadEnvDiffID := "sha256:4490d78f2b056cdb99ad9cd3892f3c0617c5a485fb300dd90c572ce375ee45b2"
+							bpSimpleLayersDiffID := "sha256:ade9da86859fa4ea50a513757f9b242bf1038667abf92dad3d018974a17f0ea7"
+							bpReadEnvDiffID := "sha256:db0797077ba8deff7054ab5578133b8f0206b6393de34b5bfd795cf50f6afdbd"
+							// extensions
+							assertImage.HasLabelWithData(builderName, "io.buildpacks.extension.layers", `{"read/env":{"read-env-version":{"api":"0.9","layerDiffID":"`+extReadEnvDiffID+`","name":"Read Env Extension"}},"simple/layers":{"simple-layers-version":{"api":"0.7","layerDiffID":"`+extSimpleLayersDiffID+`","name":"Simple Layers Extension"}}}`)
+							assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.order-extensions", `[{"group":[{"id":"read/env","version":"read-env-version"},{"id":"simple/layers","version":"simple-layers-version"}]}]`)
+							// buildpacks
+							assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.layers", `{"read/env":{"read-env-version":{"api":"0.7","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpReadEnvDiffID+`","name":"Read Env Buildpack"}},"simple/layers":{"simple-layers-version":{"api":"0.7","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpSimpleLayersDiffID+`","name":"Simple Layers Buildpack"}}}`)
+							assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.order", `[{"group":[{"id":"read/env","version":"read-env-version","optional":true},{"id":"simple/layers","version":"simple-layers-version","optional":true}]}]`)
 						}
-						// extensions
-						assertImage.HasLabelWithData(builderName, "io.buildpacks.extension.layers", `{"read/env":{"read-env-version":{"api":"0.9","layerDiffID":"`+extReadEnvDiffID+`","name":"Read Env Extension"}},"simple/layers":{"simple-layers-version":{"api":"0.2","layerDiffID":"`+extSimpleLayersDiffID+`","name":"Simple Layers Extension"}}}`)
-						assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.order-extensions", `[{"group":[{"id":"read/env","version":"read-env-version"},{"id":"simple/layers","version":"simple-layers-version"}]}]`)
-						// buildpacks
-						assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.layers", `{"read/env":{"read-env-version":{"api":"0.2","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpReadEnvDiffID+`","name":"Read Env Buildpack"}},"simple/layers":{"simple-layers-version":{"api":"0.2","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpSimpleLayersDiffID+`","name":"Simple Layers Buildpack"}}}`)
-						assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.order", `[{"group":[{"id":"read/env","version":"read-env-version","optional":true},{"id":"simple/layers","version":"simple-layers-version","optional":true}]}]`)
 					})
 
 					when("build", func() {
@@ -865,33 +860,54 @@ func testAcceptance(
 						})
 
 						when("there are run image extensions", func() {
-							it.Before(func() {
-								h.SkipIf(t, !pack.SupportsFeature(invoke.RunImageExtensions), "")
-								h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
+							when("switching the run image", func() {
+								it.Before(func() {
+									h.SkipIf(t, !pack.SupportsFeature(invoke.RunImageExtensions), "")
+									h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
+								})
+
+								it("uses the 5 phases, and tries to pull the new run image before restore", func() {
+									output, _ := pack.Run(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--network", "host",
+										"-B", builderName,
+										"--env", "EXT_RUN_SWITCH=1",
+									)
+									h.AssertContains(t, output, "ERROR: failed to build: executing lifecycle: resolve auth for ref some-not-exist-run-image!")
+									h.AssertNotContains(t, output, "RESTORING")
+								})
 							})
 
-							it("uses the 5 phases, and runs the extender (run)", func() {
-								output := pack.RunSuccessfully(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--network", "host", // export target is the daemon, but we need to be able to reach the registry where the builder image and run image are saved
-									"-B", builderName,
-									"--env", "EXT_RUN=1",
-								)
+							when("extending the run image", func() {
+								it.Before(func() {
+									h.SkipIf(t, !pack.SupportsFeature(invoke.RunImageExtensions), "")
+									h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
+								})
 
-								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+								it("uses the 5 phases, and runs the extender (run)", func() {
+									output := pack.RunSuccessfully(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--network", "host", // export target is the daemon, but we need to be able to reach the registry where the builder image and run image are saved
+										"-B", builderName,
+										"--env", "EXT_RUN=1",
+									)
 
-								assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-								assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
-								assertOutput.IncludesSeparatePhasesWithRunExtension()
+									assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
-								t.Log("inspecting image")
-								inspectCmd := "inspect"
-								if !pack.Supports("inspect") {
-									inspectCmd = "inspect-image"
-								}
+									assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
+									assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+									assertOutput.IncludesSeparatePhasesWithRunExtension()
 
-								output = pack.RunSuccessfully(inspectCmd, repoName)
+									t.Log("inspecting image")
+									inspectCmd := "inspect"
+									if !pack.Supports("inspect") {
+										inspectCmd = "inspect-image"
+									}
+
+									output = pack.RunSuccessfully(inspectCmd, repoName)
+								})
 							})
 						})
 					})
@@ -1153,6 +1169,7 @@ func testAcceptance(
 									"hello_args":             helloArgs,
 									"hello_args_prefix":      helloArgsPrefix,
 									"image_workdir":          imageWorkdir,
+									"rebasable":              true,
 								},
 							)
 
@@ -1449,6 +1466,43 @@ func testAcceptance(
 
 								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
 								assertBuildpackOutput.ReportsBuildStep("Local Buildpack")
+							})
+						})
+
+						when("the argument is meta-buildpack directory", func() {
+							var tmpDir string
+
+							it.Before(func() {
+								var err error
+								tmpDir, err = os.MkdirTemp("", "folder-buildpack-tests-")
+								assert.Nil(err)
+							})
+
+							it.After(func() {
+								_ = os.RemoveAll(tmpDir)
+							})
+
+							it("adds the buildpacks to the builder and runs it", func() {
+								h.SkipIf(t, runtime.GOOS == "windows", "buildpack directories not supported on windows")
+								// This only works if pack is new, therefore skip if pack is old
+								h.SkipIf(t, !pack.SupportsFeature(invoke.MetaBuildpackFolder), "")
+
+								buildpackManager.PrepareBuildModules(tmpDir, buildpacks.MetaBpFolder)
+								buildpackManager.PrepareBuildModules(tmpDir, buildpacks.MetaBpDependency)
+
+								output := pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--buildpack", buildpacks.MetaBpFolder.FullPathIn(tmpDir),
+								)
+
+								assertOutput := assertions.NewOutputAssertionManager(t, output)
+								assertOutput.ReportsAddingBuildpack("local/meta-bp", "local-meta-bp-version")
+								assertOutput.ReportsAddingBuildpack("local/meta-bp-dep", "local-meta-bp-version")
+								assertOutput.ReportsSuccessfulImageBuild(repoName)
+
+								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+								assertBuildpackOutput.ReportsBuildStep("Local Meta-Buildpack Dependency")
 							})
 						})
 
@@ -1826,6 +1880,7 @@ func testAcceptance(
 										"hello_args":           helloArgs,
 										"hello_args_prefix":    helloArgsPrefix,
 										"image_workdir":        imageWorkdir,
+										"rebasable":            true,
 									},
 								)
 
@@ -2838,8 +2893,8 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 	})
 }
 
-func buildModulesDir(bpAPIVersion string) string {
-	return filepath.Join("testdata", "mock_buildpacks", bpAPIVersion)
+func buildModulesDir() string {
+	return filepath.Join("testdata", "mock_buildpacks")
 }
 
 func createComplexBuilder(t *testing.T,

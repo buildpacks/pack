@@ -21,7 +21,7 @@ jobs:
   deliver-chocolatey:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Determine version
         uses: actions/github-script@v6
         id: version
@@ -67,7 +67,7 @@ jobs:
           cp LICENSE $file
           cat $file
       - name: build-release
-        uses: crazy-max/ghaction-chocolatey@v2
+        uses: crazy-max/ghaction-chocolatey@v3
         with:
           args: pack ${{ env.CHOCO_PATH }}/pack.nuspec --outputdirectory ${{ env.CHOCO_PATH}}
       - name: list files
@@ -75,12 +75,12 @@ jobs:
           ls ${{ env.CHOCO_PATH }}
           ls ${{ env.CHOCO_PATH }}/tools
       - name: Test Release
-        uses: crazy-max/ghaction-chocolatey@v2
+        uses: crazy-max/ghaction-chocolatey@v3
         with:
           args: install pack -s ${{ env.CHOCO_PATH }}/pack.${{ env.PACK_VERSION }}.nupkg
       - name: Ensure Pack Installed
         run: pack help
       - name: Upload Release
-        uses: crazy-max/ghaction-chocolatey@v2
+        uses: crazy-max/ghaction-chocolatey@v3
         with:
           args: push ${{ env.CHOCO_PATH }}/pack.${{ env.PACK_VERSION }}.nupkg -s https://push.chocolatey.org/ -k ${{ secrets.CHOCO_KEY }}

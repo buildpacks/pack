@@ -262,6 +262,20 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertError(t, bp.EnsureTargetSupport("some-other-os", "fake-arch", "fake-distro", "0.0"),
 				`unable to satisfy target os/arch constraints; build image: {"os":"some-other-os","arch":"fake-arch","distribution":{"name":"fake-distro","version":"0.0"}}, buildpack 'some.buildpack.id@some.buildpack.version': [{"os":"fake-os","arch":"fake-arch","distributions":[{"name":"fake-distro","versions":["0.1"]},{"name":"another-distro","versions":["0.22"]}]}]`)
 		})
+
+		it("succeeds with missing arch", func() {
+			bp := dist.BuildpackDescriptor{
+				WithInfo: dist.ModuleInfo{
+					ID:      "some.buildpack.id",
+					Version: "some.buildpack.version",
+				},
+				WithTargets: []dist.Target{{
+					OS: "fake-os",
+				}},
+			}
+
+			h.AssertNil(t, bp.EnsureTargetSupport("fake-os", "fake-arch", "fake-distro", "0.1"))
+		})
 	})
 
 	when("#Kind", func() {

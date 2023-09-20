@@ -1,9 +1,0 @@
-api = "0.2"
-
-[buildpack]
-  id = "internet/bp"
-  version = "internet-bp-version"
-  name = "Internet Capable Buildpack"
-
-[[stacks]]
-  id = "pack.test.stack"

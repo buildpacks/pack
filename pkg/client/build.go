@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buildpacks/pack/buildpackage"
+
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layout"
@@ -449,7 +451,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
 
-	if len(bldr.OrderExtensions()) > 0 {
+	if len(bldr.OrderExtensions()) > 0 || len(ephemeralBuilder.OrderExtensions()) > 0 {
 		if !c.experimental {
 			return fmt.Errorf("experimental features must be enabled when builder contains image extensions")
 		}
@@ -536,6 +538,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		SBOMDestinationDir:   opts.SBOMDestinationDir,
 		CreationTime:         opts.CreationTime,
 		Layout:               opts.Layout(),
+		Keychain:             c.keychain,
 	}
 
 	switch {
@@ -1042,8 +1045,43 @@ func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir 
 		fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
 		mainBPInfo := mainBP.Descriptor().Info()
 		moduleInfo = &mainBPInfo
+
+		packageCfgPath := filepath.Join(bp, "package.toml")
+		_, err = os.Stat(packageCfgPath)
+		if err == nil {
+			fetchedDeps, err := c.fetchBuildpackDependencies(ctx, bp, packageCfgPath, downloadOptions)
+			if err != nil {
+				return nil, nil, errors.Wrapf(err, "fetching package.toml dependencies (path=%s)", style.Symbol(packageCfgPath))
+			}
+			fetchedBPs = append(fetchedBPs, fetchedDeps...)
+		}
 	}
 	return fetchedBPs, moduleInfo, nil
+}
+
+func (c *Client) fetchBuildpackDependencies(ctx context.Context, bp string, packageCfgPath string, downloadOptions buildpack.DownloadOptions) ([]buildpack.BuildModule, error) {
+	packageReader := buildpackage.NewConfigReader()
+	packageCfg, err := packageReader.Read(packageCfgPath)
+	if err == nil {
+		fetchedBPs := []buildpack.BuildModule{}
+		for _, dep := range packageCfg.Dependencies {
+			mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
+				RegistryName:    downloadOptions.RegistryName,
+				ImageOS:         downloadOptions.ImageOS,
+				Daemon:          downloadOptions.Daemon,
+				PullPolicy:      downloadOptions.PullPolicy,
+				RelativeBaseDir: filepath.Join(bp, packageCfg.Buildpack.URI),
+			})
+
+			if err != nil {
+				return nil, errors.Wrapf(err, "fetching dependencies (uri=%s,image=%s)", style.Symbol(dep.URI), style.Symbol(dep.ImageName))
+			}
+
+			fetchedBPs = append(append(fetchedBPs, mainBP), deps...)
+		}
+		return fetchedBPs, nil
+	}
+	return nil, err
 }
 
 func getBuildpackLocator(bp projectTypes.Buildpack, stackID string) (string, error) {
@@ -1062,8 +1100,10 @@ func getBuildpackLocator(bp projectTypes.Buildpack, stackID string) (string, err
 		return bp.URI, nil
 	case bp.ID != "" && bp.Version != "":
 		return fmt.Sprintf("%s@%s", bp.ID, bp.Version), nil
+	case bp.ID != "" && bp.Version == "":
+		return bp.ID, nil
 	default:
-		return "", errors.New("Invalid buildpack defined in project descriptor")
+		return "", errors.New("Invalid buildpack definition")
 	}
 }
 

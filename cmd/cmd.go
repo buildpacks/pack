@@ -5,6 +5,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/pack/internal/docker"
+
 	"github.com/buildpacks/pack/buildpackage"
 	builderwriter "github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/commands"
@@ -136,6 +138,10 @@ func initConfig() (config.Config, string, error) {
 }
 
 func initClient(logger logging.Logger, cfg config.Config) (*client.Client, error) {
+	if err := docker.ProcessDockerContext(logger); err != nil {
+		return nil, err
+	}
+
 	dc, err := tryInitSSHDockerClient()
 	if err != nil {
 		return nil, err

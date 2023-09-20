@@ -338,7 +338,7 @@ func (b *PackageBuilder) resolvedStacks() []dist.Stack {
 	return stacks
 }
 
-func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
+func (b *PackageBuilder) SaveAsFile(path, imageOS string, labels map[string]string) error {
 	if err := b.validate(); err != nil {
 		return err
 	}
@@ -346,6 +346,13 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 	layoutImage, err := newLayoutImage(imageOS)
 	if err != nil {
 		return errors.Wrap(err, "creating layout image")
+	}
+
+	for labelKey, labelValue := range labels {
+		err = layoutImage.SetLabel(labelKey, labelValue)
+		if err != nil {
+			return errors.Wrapf(err, "adding label %s=%s", labelKey, labelValue)
+		}
 	}
 
 	tempDirName := ""
@@ -430,7 +437,7 @@ func newLayoutImage(imageOS string) (*layoutImage, error) {
 	return &layoutImage{Image: i}, nil
 }
 
-func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS string) (imgutil.Image, error) {
+func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS string, labels map[string]string) (imgutil.Image, error) {
 	if err := b.validate(); err != nil {
 		return nil, err
 	}
@@ -439,6 +446,14 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS stri
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating image")
 	}
+
+	for labelKey, labelValue := range labels {
+		err = image.SetLabel(labelKey, labelValue)
+		if err != nil {
+			return nil, errors.Wrapf(err, "adding label %s=%s", labelKey, labelValue)
+		}
+	}
+
 	tempDirName := ""
 	if b.buildpack != nil {
 		tempDirName = "package-buildpack"
