@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695152591767,
+  "lastUpdate": 1695168067606,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2854,6 +2854,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 85154623447,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a994bdbff7786003682e0aeb06e51c961ab4d4b",
+          "message": "Merge pull request #1913 from buildpacks/update/bp-api\n\nUpdate acceptance fixtures to use newer Buildpack API versions",
+          "timestamp": "2023-09-19T18:59:00-05:00",
+          "tree_id": "ed9f18ca16529b5282821eed9904cff004f49403",
+          "url": "https://github.com/buildpacks/pack/commit/3a994bdbff7786003682e0aeb06e51c961ab4d4b"
+        },
+        "date": 1695168066927,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4638736770,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 856653015,
+            "unit": "ns/op",
+            "extra": "2 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 68904404043,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
