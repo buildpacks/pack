@@ -26,6 +26,7 @@ import (
 	"github.com/pelletier/go-toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+	"github.com/tj/assert"
 
 	"github.com/buildpacks/pack/acceptance/assertions"
 	"github.com/buildpacks/pack/acceptance/buildpacks"
@@ -481,6 +482,21 @@ func testWithoutSpecificBuilderRequirement(
 	})
 
 	when("builder", func() {
+		when("create", func() {
+			when("--flatten=<buildpacks>", func() {
+				it("should flatten together all buildpacks specified", func() {
+					output := pack.RunSuccessfully(
+						"builder",
+						"create",
+						//...
+						"--flatten", //TODO: Add the buildpacks that needs to be flattened
+					) //TODO: Add the rest of the command line parameters
+
+					//TODO: Assert that the output image has the expected number of layers
+				})
+			})
+		})
+
 		when("suggest", func() {
 			it("displays suggested builders", func() {
 				output := pack.RunSuccessfully("builder", "suggest")
@@ -2957,6 +2973,33 @@ func createComplexBuilder(t *testing.T,
 	assert.Succeeds(h.PushImage(dockerCli, bldr, registryConfig))
 
 	return bldr, nil
+}
+
+func createCustomBuilder(t *testing.T) {
+	t.Log("creating custom builder...")
+
+	// Let's create 4 buildpacks
+	packageImageName1 := registryConfig.RepoName("simple-layers-package-image-buildpack1-" + h.RandString(8))
+	packageImageName2 := registryConfig.RepoName("simple-layers-package-image-buildpack2-" + h.RandString(8))
+	packageImageName3 := registryConfig.RepoName("simple-layers-package-image-buildpack3-" + h.RandString(8))
+	packageImageName4 := registryConfig.RepoName("simple-layers-package-image-buildpack4-" + h.RandString(8))
+
+	//Let's create a working temp dir
+	tmpDir, err := os.MkdirTemp("", "create-test-builder")
+	assert.Nil(err)
+	defer os.RemoveAll(tmpDir)
+
+	packageTomlFile, err := os.CreateTemp(tmpDir, "package-*.toml")
+	assert.Nil(err)
+	pack.FixtureManager().TemplateFixtureToFile(
+		"package.toml",
+		packageTomlFile,
+		map[string]interface{}{
+			"OS": imageManager.HostOS(),
+		},
+	)
+
+	//TODO: Continue with the creation of the custom builder
 }
 
 func createBuilder(
