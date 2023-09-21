@@ -26,7 +26,6 @@ import (
 	"github.com/pelletier/go-toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"github.com/tj/assert"
 
 	"github.com/buildpacks/pack/acceptance/assertions"
 	"github.com/buildpacks/pack/acceptance/buildpacks"
@@ -482,17 +481,6 @@ func testWithoutSpecificBuilderRequirement(
 	})
 
 	when("builder", func() {
-		when("create", func() {
-			when("--flatten=<buildpacks>", func() {
-				it.Focus("should flatten together all buildpacks specified", func() {
-					output := createFlattenBuilder(t, assert, buildpackManager, lifecycle, createBuilderPack)
-
-					assertImage.ExistsLocally(output)
-					assertImage.HasLengthLayers(output, 6)
-				})
-			})
-		})
-
 		when("suggest", func() {
 			it("displays suggested builders", func() {
 				output := pack.RunSuccessfully("builder", "suggest")
@@ -2816,6 +2804,17 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 				})
 			})
 		})
+
+		when("create", func() {
+			when("--flatten=<buildpacks>", func() {
+				it.Focus("should flatten together all buildpacks specified", func() {
+					output, err := createFlattenBuilder(t, assert, buildpackManager, lifecycle, createBuilderPack)
+					h.AssertNil(t, err)
+					assertImage.ExistsLocally(output)
+					assertImage.HasLengthLayers(output, 6)
+				})
+			})
+		})
 	})
 }
 
@@ -2977,67 +2976,69 @@ func createFlattenBuilder(
 	buildpackManager buildpacks.BuildModuleManager,
 	lifecycle config.LifecycleAsset,
 	pack *invoke.PackInvoker,
-) {
-	t.Log("creating custom builder...")
+) (string, error) {
+	t.Log("creating flatten builder...")
 
 	packageImageName1 := createBuildpack("simple-layers-package-image-buildpack1")
 	packageImageName2 := createBuildpack("simple-layers-package-image-buildpack2")
 	packageImageName3 := createBuildpack("simple-layers-package-image-buildpack3")
 	packageImageName4 := createBuildpack("simple-layers-package-image-buildpack4")
 
-	tmpRootDir := createTempWorkingDirectory("create-test-builder")
+	tmpRootDir, err := os.MkdirTemp("", "create-test-flatten-builder")
+	assert.Nil(err)
+	defer os.RemoveAll(tmpRootDir)
 
-	layers1Dir := createTempWorkingDirectory(filepath.Join(tmpRootDir, "simple-layers-1"))
-	layers1PackageToml := createTempPackageTomlFile(layers1Dir)
-	fillPackageToml(layers1PackageToml)
+	layers1Dir := createTempWorkingDirectory(filepath.Join(tmpRootDir, "simple-layers-1"), assert)
+	layers1PackageToml := createTempPackageTomlFile(layers1Dir, assert)
+	fillPackageToml(layers1PackageToml, pack, "simple-layers-flatten-buildpack1.tgz")
 
 	packageBuildpack1 := buildpacks.NewPackageImage(
 		t,
 		pack,
 		packageImageName1,
-		layers1PackageToml,
+		layers1PackageToml.Name(),
 		buildpacks.WithRequiredBuildpacks(
 			buildpacks.BpSimpleLayersFlatten1,
 		),
 	)
 
-	layers2Dir := createTempWorkingDirectory(filepath.Join(tmpRootDir, "simple-layers-2"))
-	layers2PackageToml := createTempPackageTomlFile(layers2Dir)
-	fillPackageToml(layers2PackageToml)
+	layers2Dir := createTempWorkingDirectory(filepath.Join(tmpRootDir, "simple-layers-2"), assert)
+	layers2PackageToml := createTempPackageTomlFile(layers2Dir, assert)
+	fillPackageToml(layers2PackageToml, pack, "simple-layers-flatten-buildpack2.tgz")
 
 	packageBuildpack2 := buildpacks.NewPackageImage(
 		t,
 		pack,
 		packageImageName2,
-		layers2PackageToml,
+		layers2PackageToml.Name(),
 		buildpacks.WithRequiredBuildpacks(
 			buildpacks.BpSimpleLayersFlatten2,
 		),
 	)
 
-	layers3Dir := createTempWorkingDirectory(filepath.Join(tmpRootDir, "simple-layers-3"))
-	layers3PackageToml := createTempPackageTomlFile(layers3Dir)
-	fillPackageToml(layers3PackageToml)
+	layers3Dir := createTempWorkingDirectory(filepath.Join(tmpRootDir, "simple-layers-3"), assert)
+	layers3PackageToml := createTempPackageTomlFile(layers3Dir, assert)
+	fillPackageToml(layers3PackageToml, pack, "simple-layers-flatten-buildpack3.tgz")
 
 	packageBuildpack3 := buildpacks.NewPackageImage(
 		t,
 		pack,
 		packageImageName3,
-		layers3PackageToml,
+		layers3PackageToml.Name(),
 		buildpacks.WithRequiredBuildpacks(
 			buildpacks.BpSimpleLayersFlatten3,
 		),
 	)
 
-	layers4Dir := createTempWorkingDirectory(filepath.Join(tmpRootDir, "simple-layers-4"))
-	layers4PackageToml := createTempPackageTomlFile(layers4Dir)
-	fillPackageToml(layers4PackageToml)
+	layers4Dir := createTempWorkingDirectory(filepath.Join(tmpRootDir, "simple-layers-4"), assert)
+	layers4PackageToml := createTempPackageTomlFile(layers4Dir, assert)
+	fillPackageToml(layers4PackageToml, pack, "simple-layers-flatten-buildpack4.tgz")
 
 	packageBuildpack4 := buildpacks.NewPackageImage(
 		t,
 		pack,
 		packageImageName4,
-		layers4PackageToml,
+		layers4PackageToml.Name(),
 		buildpacks.WithRequiredBuildpacks(
 			buildpacks.BpSimpleLayersFlatten4,
 		),
@@ -3045,7 +3046,7 @@ func createFlattenBuilder(
 
 	buildpackManager.PrepareBuildModules(tmpRootDir, packageBuildpack1, packageBuildpack2, packageBuildpack3, packageBuildpack4)
 
-	templateMapping = make(map[string]interface{})
+	var templateMapping = make(map[string]interface{})
 	// ADD lifecycle
 	if lifecycle.HasLocation() {
 		lifecycleURI := lifecycle.EscapedPath()
@@ -3058,7 +3059,7 @@ func createFlattenBuilder(
 	}
 
 	// RENDER builder.toml
-	builderConfigFile, err := os.CreateTemp(tmpDir, "builder_flatten.toml")
+	builderConfigFile, err := os.CreateTemp(tmpRootDir, "builder_flatten.toml")
 	if err != nil {
 		return "", err
 	}
@@ -3087,17 +3088,18 @@ func createFlattenBuilder(
 	return bldr, nil
 }
 
-func fillPackageToml(layers1PackageToml *os.File) {
+func fillPackageToml(layers1PackageToml *os.File, pack *invoke.PackInvoker, uri string) {
 	pack.FixtureManager().TemplateFixtureToFile(
-		"package.toml",
+		"package-flatten.toml",
 		layers1PackageToml,
 		map[string]interface{}{
-			"OS": imageManager.HostOS(),
+			"OS":  imageManager.HostOS(),
+			"URI": uri,
 		},
 	)
 }
 
-func createTempPackageTomlFile(tmpDir string) *os.File {
+func createTempPackageTomlFile(tmpDir string, assert h.AssertionManager) *os.File {
 	packageTomlFile, err := os.CreateTemp(tmpDir, "package-*.toml")
 	assert.Nil(err)
 	return packageTomlFile
@@ -3105,13 +3107,13 @@ func createTempPackageTomlFile(tmpDir string) *os.File {
 
 func createBuildpack(name string) string {
 	packageImageName1 := registryConfig.RepoName(name + "-" + h.RandString(8))
+	return packageImageName1
 }
 
-func createTempWorkingDirectory(name string) string {
-	tmpDir, err := os.MkdirTemp("", name)
+func createTempWorkingDirectory(name string, assert h.AssertionManager) string {
+	err := os.Mkdir(name, os.ModePerm)
 	assert.Nil(err)
-	defer os.RemoveAll(tmpDir)
-	return tmpDir
+	return name
 }
 
 func createBuilder(

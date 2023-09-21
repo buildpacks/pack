@@ -1,0 +1,5 @@
+[buildpack]
+uri = "{{ .URI}}"
+
+[platform]
+os = "{{ .OS }}"
