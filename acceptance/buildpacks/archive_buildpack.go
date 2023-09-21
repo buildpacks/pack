@@ -87,6 +87,10 @@ func (a archiveBuildModule) createTgz(sourceDir string) (string, error) {
 var (
 	BpSimpleLayersParent       = &archiveBuildModule{name: "simple-layers-parent-buildpack"}
 	BpSimpleLayers             = &archiveBuildModule{name: "simple-layers-buildpack"}
+	BpSimpleLayersFlatten1     = &archiveBuildModule{name: "simple-layers-flatten-buildpack1"}
+	BpSimpleLayersFlatten2     = &archiveBuildModule{name: "simple-layers-flatten-buildpack2"}
+	BpSimpleLayersFlatten3     = &archiveBuildModule{name: "simple-layers-flatten-buildpack3"}
+	BpSimpleLayersFlatten4     = &archiveBuildModule{name: "simple-layers-flatten-buildpack4"}
 	BpSimpleLayersDifferentSha = &archiveBuildModule{name: "simple-layers-buildpack-different-sha"}
 	BpInternetCapable          = &archiveBuildModule{name: "internet-capable-buildpack"}
 	BpReadVolume               = &archiveBuildModule{name: "read-volume-buildpack"}

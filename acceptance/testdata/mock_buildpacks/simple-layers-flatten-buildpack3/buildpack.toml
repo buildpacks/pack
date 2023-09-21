@@ -1,0 +1,9 @@
+api = "0.12"
+
+[buildpack]
+  id = "simple-layers-flatten-buildpack3"
+  version = "simple-layers-flatten-version"
+  name = "Simple Layers Flatten Buildpack"
+
+[[stacks]]
+  id = "pack.test.stack"

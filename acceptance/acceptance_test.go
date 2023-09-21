@@ -484,15 +484,11 @@ func testWithoutSpecificBuilderRequirement(
 	when("builder", func() {
 		when("create", func() {
 			when("--flatten=<buildpacks>", func() {
-				it("should flatten together all buildpacks specified", func() {
-					output := pack.RunSuccessfully(
-						"builder",
-						"create",
-						//...
-						"--flatten", //TODO: Add the buildpacks that needs to be flattened
-					) //TODO: Add the rest of the command line parameters
+				it.Focus("should flatten together all buildpacks specified", func() {
+					output := createFlattenBuilder(t, assert, buildpackManager, lifecycle, createBuilderPack)
 
-					//TODO: Assert that the output image has the expected number of layers
+					assertImage.ExistsLocally(output)
+					assertImage.HasLengthLayers(output, 6)
 				})
 			})
 		})
@@ -2975,31 +2971,147 @@ func createComplexBuilder(t *testing.T,
 	return bldr, nil
 }
 
-func createCustomBuilder(t *testing.T) {
+func createFlattenBuilder(
+	t *testing.T,
+	assert h.AssertionManager,
+	buildpackManager buildpacks.BuildModuleManager,
+	lifecycle config.LifecycleAsset,
+	pack *invoke.PackInvoker,
+) {
 	t.Log("creating custom builder...")
 
-	// Let's create 4 buildpacks
-	packageImageName1 := registryConfig.RepoName("simple-layers-package-image-buildpack1-" + h.RandString(8))
-	packageImageName2 := registryConfig.RepoName("simple-layers-package-image-buildpack2-" + h.RandString(8))
-	packageImageName3 := registryConfig.RepoName("simple-layers-package-image-buildpack3-" + h.RandString(8))
-	packageImageName4 := registryConfig.RepoName("simple-layers-package-image-buildpack4-" + h.RandString(8))
+	packageImageName1 := createBuildpack("simple-layers-package-image-buildpack1")
+	packageImageName2 := createBuildpack("simple-layers-package-image-buildpack2")
+	packageImageName3 := createBuildpack("simple-layers-package-image-buildpack3")
+	packageImageName4 := createBuildpack("simple-layers-package-image-buildpack4")
 
-	//Let's create a working temp dir
-	tmpDir, err := os.MkdirTemp("", "create-test-builder")
-	assert.Nil(err)
-	defer os.RemoveAll(tmpDir)
+	tmpRootDir := createTempWorkingDirectory("create-test-builder")
 
-	packageTomlFile, err := os.CreateTemp(tmpDir, "package-*.toml")
-	assert.Nil(err)
+	layers1Dir := createTempWorkingDirectory(filepath.Join(tmpRootDir, "simple-layers-1"))
+	layers1PackageToml := createTempPackageTomlFile(layers1Dir)
+	fillPackageToml(layers1PackageToml)
+
+	packageBuildpack1 := buildpacks.NewPackageImage(
+		t,
+		pack,
+		packageImageName1,
+		layers1PackageToml,
+		buildpacks.WithRequiredBuildpacks(
+			buildpacks.BpSimpleLayersFlatten1,
+		),
+	)
+
+	layers2Dir := createTempWorkingDirectory(filepath.Join(tmpRootDir, "simple-layers-2"))
+	layers2PackageToml := createTempPackageTomlFile(layers2Dir)
+	fillPackageToml(layers2PackageToml)
+
+	packageBuildpack2 := buildpacks.NewPackageImage(
+		t,
+		pack,
+		packageImageName2,
+		layers2PackageToml,
+		buildpacks.WithRequiredBuildpacks(
+			buildpacks.BpSimpleLayersFlatten2,
+		),
+	)
+
+	layers3Dir := createTempWorkingDirectory(filepath.Join(tmpRootDir, "simple-layers-3"))
+	layers3PackageToml := createTempPackageTomlFile(layers3Dir)
+	fillPackageToml(layers3PackageToml)
+
+	packageBuildpack3 := buildpacks.NewPackageImage(
+		t,
+		pack,
+		packageImageName3,
+		layers3PackageToml,
+		buildpacks.WithRequiredBuildpacks(
+			buildpacks.BpSimpleLayersFlatten3,
+		),
+	)
+
+	layers4Dir := createTempWorkingDirectory(filepath.Join(tmpRootDir, "simple-layers-4"))
+	layers4PackageToml := createTempPackageTomlFile(layers4Dir)
+	fillPackageToml(layers4PackageToml)
+
+	packageBuildpack4 := buildpacks.NewPackageImage(
+		t,
+		pack,
+		packageImageName4,
+		layers4PackageToml,
+		buildpacks.WithRequiredBuildpacks(
+			buildpacks.BpSimpleLayersFlatten4,
+		),
+	)
+
+	buildpackManager.PrepareBuildModules(tmpRootDir, packageBuildpack1, packageBuildpack2, packageBuildpack3, packageBuildpack4)
+
+	templateMapping = make(map[string]interface{})
+	// ADD lifecycle
+	if lifecycle.HasLocation() {
+		lifecycleURI := lifecycle.EscapedPath()
+		t.Logf("adding lifecycle path '%s' to builder config", lifecycleURI)
+		templateMapping["lifecycle_uri"] = lifecycleURI
+	} else {
+		lifecycleVersion := lifecycle.Version()
+		t.Logf("adding lifecycle version '%s' to builder config", lifecycleVersion)
+		templateMapping["lifecycle_version"] = lifecycleVersion
+	}
+
+	// RENDER builder.toml
+	builderConfigFile, err := os.CreateTemp(tmpDir, "builder_flatten.toml")
+	if err != nil {
+		return "", err
+	}
+
+	pack.FixtureManager().TemplateFixtureToFile("builder_flatten.toml", builderConfigFile, templateMapping)
+
+	err = builderConfigFile.Close()
+	if err != nil {
+		return "", err
+	}
+
+	// NAME BUILDER
+	bldr := registryConfig.RepoName("test/flatten-builder-" + h.RandString(10))
+
+	// CREATE BUILDER
+	output := pack.RunSuccessfully(
+		"builder", "create", bldr,
+		"-c", builderConfigFile.Name(),
+		"--no-color",
+		"--flatten=simple-layers-package-image-buildpack1:simple-layers-flatten-version,simple-layers-package-image-buildpack2:simple-layers-flatten-version",
+	)
+
+	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
+	assert.Succeeds(h.PushImage(dockerCli, bldr, registryConfig))
+
+	return bldr, nil
+}
+
+func fillPackageToml(layers1PackageToml *os.File) {
 	pack.FixtureManager().TemplateFixtureToFile(
 		"package.toml",
-		packageTomlFile,
+		layers1PackageToml,
 		map[string]interface{}{
 			"OS": imageManager.HostOS(),
 		},
 	)
+}
 
-	//TODO: Continue with the creation of the custom builder
+func createTempPackageTomlFile(tmpDir string) *os.File {
+	packageTomlFile, err := os.CreateTemp(tmpDir, "package-*.toml")
+	assert.Nil(err)
+	return packageTomlFile
+}
+
+func createBuildpack(name string) string {
+	packageImageName1 := registryConfig.RepoName(name + "-" + h.RandString(8))
+}
+
+func createTempWorkingDirectory(name string) string {
+	tmpDir, err := os.MkdirTemp("", name)
+	assert.Nil(err)
+	defer os.RemoveAll(tmpDir)
+	return tmpDir
 }
 
 func createBuilder(

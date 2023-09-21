@@ -1,0 +1,53 @@
+[[buildpacks]]
+  id = "simple-layers-flatten-buildpack1"
+  version = "simple-layers-flatten-version"
+  uri = "simple-layers-flatten-buildpack1.tgz"
+
+[[buildpacks]]
+  id = "simple-layers-flatten-buildpack2"
+  version = "simple-layers-flatten-version"
+  uri = "simple-layers-flatten-buildpack2.tgz"
+
+[[buildpacks]]
+  id = "simple-layers-flatten-buildpack3"
+  version = "simple-layers-flatten-version"
+  uri = "simple-layers-flatten-buildpack3.tgz"
+
+[[buildpacks]]
+  id = "simple-layers-flatten-buildpack4"
+  version = "simple-layers-flatten-version"
+  uri = "simple-layers-flatten-buildpack4.tgz"
+
+[[order]]
+  [[order.group]]
+    id = "simple-layers-flatten-buildpack1"
+    version = "simple-layers-flatten-version"
+    optional = true
+
+  [[order.group]]
+    id = "simple-layers-flatten-buildpack2"
+    version = "simple-layers-flatten-version"
+    optional = true
+
+  [[order.group]]
+    id = "simple-layers-flatten-buildpack3"
+    version = "simple-layers-flatten-version"
+    optional = true
+
+  [[order.group]]
+    id = "simple-layers-flatten-buildpack4"
+    version = "simple-layers-flatten-version"
+    optional = true
+
+[stack]
+  id = "pack.test.stack"
+  build-image = "pack-test/build"
+  run-image = "pack-test/run"
+
+[lifecycle]
+{{- if .lifecycle_uri}}
+  uri = "{{.lifecycle_uri}}"
+{{- end}}
+{{- if .lifecycle_version}}
+  version = "{{.lifecycle_version}}"
+{{- end}}
