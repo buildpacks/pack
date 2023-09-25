@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/dist"
@@ -19,7 +20,9 @@ import (
 type BuildpackNewFlags struct {
 	API     string
 	Path    string
+	// Deprecated: use `targets` instead
 	Stacks  []string
+	Targets []buildpack.TargetMetadata
 	Version string
 }
 
@@ -66,11 +69,29 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 				})
 			}
 
+			var targets []dist.Target
+			var distros []dist.Distribution
+			for _, t := range flags.Targets {
+				var versions []string
+				for _, d := range t.Distros {
+					distros = append(distros, dist.Distribution{
+						Name: d.Name,
+						Versions: append(versions, d.Version),
+					})
+				}
+				targets = append(targets, dist.Target{
+					OS: t.OS,
+					Arch: t.Arch,
+					Distributions: distros,
+				})
+			}
+
 			if err := creator.NewBuildpack(cmd.Context(), client.NewBuildpackOptions{
 				API:     flags.API,
 				ID:      id,
 				Path:    path,
 				Stacks:  stacks,
+				Targets: targets,
 				Version: flags.Version,
 			}); err != nil {
 				return err
