@@ -16,7 +16,7 @@ type BuildpackDescriptor struct {
 	WithAPI          *api.Version `toml:"api"`
 	WithInfo         ModuleInfo   `toml:"buildpack"`
 	WithStacks       []Stack      `toml:"stacks"`
-	WithTargets      []Target     `toml:"targets,omitempty"`
+	WithTargets      Targets     `toml:"targets,omitempty"`
 	WithOrder        Order        `toml:"order"`
 	WithWindowsBuild bool
 	WithLinuxBuild   bool
@@ -134,7 +134,7 @@ func (b *BuildpackDescriptor) Stacks() []Stack {
 	return b.WithStacks
 }
 
-func (b *BuildpackDescriptor) Targets() []Target {
+func (b *BuildpackDescriptor) Targets() Targets {
 	return b.WithTargets
 }
 

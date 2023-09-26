@@ -43,6 +43,6 @@ func (e *ExtensionDescriptor) Stacks() []Stack {
 	return nil
 }
 
-func (e *ExtensionDescriptor) Targets() []Target {
+func (e *ExtensionDescriptor) Targets() Targets {
 	return nil
 }
