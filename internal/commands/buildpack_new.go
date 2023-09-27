@@ -81,6 +81,11 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 				} else {
 					nonDistro = strings.Split(i, "/")
 				}
+				if i, e := getSliceAt[string](target, 1); e != nil {
+					logger.Errorf("invalid target %s, atleast one of [name][version] must be specified", t)
+				} else {
+					distros = strings.Split(i, ";")
+				}
 				for _, d := range distros {
 					distro := strings.Split(d, "@")
 					if l := len(distro); l <= 0 {
@@ -123,7 +128,7 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 	cmd.Flags().StringVarP(&flags.API, "api", "a", "0.8", "Buildpack API compatibility of the generated buildpack")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to generate the buildpack")
 	cmd.Flags().StringVarP(&flags.Version, "version", "V", "1.0.0", "Version of the generated buildpack")
-	cmd.Flags().StringSliceVarP(&flags.Stacks, "stacks", "s", []string{"io.buildpacks.stacks.jammy"}, "Stack(s) this buildpack will be compatible with"+stringSliceHelp("stack"))
+	cmd.Flags().StringSliceVarP(&flags.Stacks, "stacks", "s", []string{}, "Stack(s) this buildpack will be compatible with"+stringSliceHelp("stack"))
 	cmd.Flags().MarkDeprecated("stacks", "")
 	cmd.Flags().StringSliceVarP(&flags.Targets, "targets", "t", []string{"/"},
 		`Targets are the list platforms that one targeting, these are generated as part of scaffolding inside buildpack.toml file. one can provide target platforms in format [os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]

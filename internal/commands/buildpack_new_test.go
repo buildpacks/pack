@@ -64,6 +64,15 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 					ID:     "io.buildpacks.stacks.jammy",
 					Mixins: []string{},
 				}},
+				Targets: []dist.Target{{
+					OS:          "linux",
+					Arch:        "arm",
+					ArchVariant: "v6",
+					Distributions: []dist.Distribution{{
+						Name:     "ubuntu",
+						Versions: []string{"14.04", "16.04"},
+					}},
+				}},
 			}).Return(nil).MaxTimes(1)
 
 			path := filepath.Join(tmpDir, "some-cnb")
