@@ -15,7 +15,7 @@ type Descriptor interface {
 	Info() ModuleInfo
 	Order() Order
 	Stacks() []Stack
-	Targets() Targets
+	Targets() []Target
 }
 
 func LayerDiffID(layerTarPath string) (v1.Hash, error) {

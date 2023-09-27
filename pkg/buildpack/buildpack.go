@@ -41,7 +41,7 @@ type Descriptor interface {
 	Kind() string
 	Order() dist.Order
 	Stacks() []dist.Stack
-	Targets() dist.Targets
+	Targets() []dist.Target
 }
 
 type Blob interface {

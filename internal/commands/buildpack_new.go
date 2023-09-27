@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/client"
@@ -18,11 +19,11 @@ import (
 
 // BuildpackNewFlags define flags provided to the BuildpackNew command
 type BuildpackNewFlags struct {
-	API     string
-	Path    string
-	// Deprecated: use `targets` instead
+	API  string
+	Path string
+	// Deprecated: Stacks are deprecated
 	Stacks  []string
-	Targets dist.Targets
+	Targets []string
 	Version string
 }
 
@@ -69,13 +70,37 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 				})
 			}
 
-			var targets dist.Targets
+			var targets []dist.Target
 			for _, t := range flags.Targets {
+				var distroMap []dist.Distribution
+				var nonDistro []string
+				var distros []string
+				target := strings.Split(t, ":")
+				if i, e := getSliceAt[string](target, 0); e != nil {
+					logger.Errorf("invalid target %s, atleast one of [os][/arch][/archVariant] must be specified", t)
+				} else {
+					nonDistro = strings.Split(i, "/")
+				}
+				for _, d := range distros {
+					distro := strings.Split(d, "@")
+					if l := len(distro); l <= 0 {
+						logger.Error("distro is nil!")
+					} else if l == 1 {
+						logger.Warnf("forgot to specify version for distro %s ?", distro[0])
+					}
+					distroMap = append(distroMap, dist.Distribution{
+						Name:     distro[0],
+						Versions: distro[1:],
+					})
+				}
+				os, _ := getSliceAt[string](nonDistro, 0)
+				arch, _ := getSliceAt[string](nonDistro, 1)
+				variant, _ := getSliceAt[string](nonDistro, 2)
 				targets = append(targets, dist.Target{
-					OS: t.OS,
-					Arch: t.Arch,
-					ArchVariant: t.ArchVariant,
-					Distributions: t.Distributions,
+					OS:            os,
+					Arch:          arch,
+					ArchVariant:   variant,
+					Distributions: distroMap,
 				})
 			}
 
@@ -99,15 +124,23 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to generate the buildpack")
 	cmd.Flags().StringVarP(&flags.Version, "version", "V", "1.0.0", "Version of the generated buildpack")
 	cmd.Flags().StringSliceVarP(&flags.Stacks, "stacks", "s", []string{"io.buildpacks.stacks.jammy"}, "Stack(s) this buildpack will be compatible with"+stringSliceHelp("stack"))
-	cmd.Flags().MarkDeprecated("stacks", "stacks is deprecated in the favor of `targets`")
-	cmd.Flags().Var(&flags.Targets, "targets",
-		`Targets is a list of platforms that you wish to support. one can provide target platforms in format [os][/arch][/variant]:[name@osversion]
-- Base case for two different architectures :  '--targets "linux/amd64" --targets "linux/arm64"'
-- case for distribution versions: '--targets "windows/amd64:windows-nano@10.0.19041.1415"'
-- case for different architecture with distrubuted versions : '--targets "linux/arm/v6:ubuntu@14.04"  --targets "linux/arm/v6:ubuntu@16.04"'
-    - If no name is provided, a random name will be generated.
-`)
+	cmd.Flags().MarkDeprecated("stacks", "")
+	cmd.Flags().StringSliceVarP(&flags.Targets, "targets", "t", []string{"/"},
+		`Targets are the list platforms that one targeting, these are generated as part of scaffolding inside buildpack.toml file. one can provide target platforms in format [os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]
+	- Base case for two different architectures :  '--targets "linux/amd64" --targets "linux/arm64"'
+	- case for distribution version: '--targets "windows/amd64:windows-nano@10.0.19041.1415"'
+	- case for different architecture with distributed versions : '--targets "linux/arm/v6:ubuntu@14.04"  --targets "linux/arm/v6:ubuntu@16.04"'
+	`)
 
 	AddHelpFlag(cmd, "new")
 	return cmd
+}
+
+func getSliceAt[T interface{}](slice []T, index int) (T, error) {
+	if index < 0 || index >= len(slice) {
+		var r T
+		return r, errors.Errorf("index out of bound, cannot access item at index %d of slice with length %d", index, len(slice))
+	}
+
+	return slice[index], nil
 }
