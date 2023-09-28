@@ -95,7 +95,7 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 				}
 				os, arch, variant, err := getPlatform(nonDistro)
 				if err != nil {
-					logger.Error(err.Error())
+					return err
 				}
 				targets = append(targets, dist.Target{
 					OS:            os,

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/buildpacks/pack/pkg/client"
@@ -60,14 +61,14 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 				ID:      "example/some-cnb",
 				Path:    filepath.Join(tmpDir, "some-cnb"),
 				Version: "1.0.0",
-				Stacks: []dist.Stack{{
-					ID:     "io.buildpacks.stacks.jammy",
-					Mixins: []string{},
+				Targets: []dist.Target{{
+					OS:   runtime.GOOS,
+					Arch: runtime.GOARCH,
 				}},
 			}).Return(nil).MaxTimes(1)
 
 			path := filepath.Join(tmpDir, "some-cnb")
-			command.SetArgs([]string{"--path", path, "example/some-cnb", "--stacks", "io.buildpacks.stacks.jammy"})
+			command.SetArgs([]string{"--path", path, "example/some-cnb"})
 
 			err := command.Execute()
 			h.AssertNil(t, err)
@@ -172,27 +173,7 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 					err := command.Execute()
 					h.AssertNil(t, err)
 				})
-
-				it("generate a buildpack.toml file with os and arch as empty strings when flag is not specified", func() {
-					mockClient.EXPECT().NewBuildpack(gomock.Any(), client.NewBuildpackOptions{
-						API:     "0.8",
-						ID:      "example/targets",
-						Path:    filepath.Join(tmpDir, "targets"),
-						Version: "1.0.0",
-						Targets: []dist.Target{{
-							OS:   "",
-							Arch: "",
-						}},
-					}).Return(nil).MaxTimes(1)
-
-					path := filepath.Join(tmpDir, "targets")
-					command.SetArgs([]string{"--path", path, "example/targets"})
-
-					err := command.Execute()
-					h.AssertNil(t, err)
-				})
 			})
-
 			when("stacks ", func() {
 				it("flag should show deprecated message when used", func() {
 					mockClient.EXPECT().NewBuildpack(gomock.Any(), client.NewBuildpackOptions{
@@ -203,6 +184,10 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 						Stacks: []dist.Stack{{
 							ID:     "io.buildpacks.stacks.jammy",
 							Mixins: []string{},
+						}},
+						Targets: []dist.Target{{
+							OS:   runtime.GOOS,
+							Arch: runtime.GOARCH,
 						}},
 					}).Return(nil).MaxTimes(1)
 
@@ -215,27 +200,6 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 					err := command.Execute()
 					h.AssertNil(t, err)
 					h.AssertContains(t, output.String(), "Flag --stacks has been deprecated,")
-				})
-
-				it("should be omitted from buildpack.toml file when flag is not specified", func() {
-					options := client.NewBuildpackOptions{
-						API:     "0.8",
-						ID:      "example/stacks",
-						Path:    filepath.Join(tmpDir, "stacks"),
-						Version: "1.0.0",
-					}
-
-					mockClient.EXPECT().NewBuildpack(gomock.Any(), options).Return(nil).MaxTimes(1)
-
-					path := filepath.Join(tmpDir, "stacks")
-					tomlFile := filepath.Join(path, "buildpack.toml")
-					command.SetArgs([]string{"--path", path, "example/stacks"})
-
-					err := command.Execute()
-					h.AssertNil(t, err)
-					output, err := os.ReadFile(tomlFile)
-					h.AssertNil(t, err)
-					h.AssertNotContains(t, string(output), "[[stacks]]")
 				})
 			})
 		})
