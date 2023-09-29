@@ -1,8 +1,9 @@
 package target
 
 import (
-	"fmt"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/style"
 )
@@ -12,9 +13,9 @@ func getPlatform(t []string) (os, arch, variant string, err error) {
 	arch, _ = getSliceAt[string](t, 1)
 	variant, _ = getSliceAt[string](t, 2)
 	if !SupportsPlatform(os, arch, variant) {
-		return os, arch, variant, fmt.Errorf("unknown target: %s", style.Symbol(strings.Join(t, "/")))
+		return os, arch, variant, errors.Errorf("unknown target: %s", style.Symbol(strings.Join(t, "/")))
 	}
-	return os, arch, variant, err
+	return os, arch, variant, nil
 }
 
 var supportedOSArchs = map[string][]string{
@@ -76,5 +77,5 @@ func supportsVariant(arch, variant string) (supported bool) {
 }
 
 func SupportsPlatform(os, arch, variant string) bool {
-	return supportsArch(os, arch) || supportsVariant(arch, variant)
+	return supportsArch(os, arch) && supportsVariant(arch, variant)
 }

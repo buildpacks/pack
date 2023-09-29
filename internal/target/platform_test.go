@@ -24,7 +24,7 @@ func testPlatforms(t *testing.T, when spec.G, it spec.S) {
 	})
 	when("target#SupportsPlatform", func() {
 		it("should return false when target not supported", func() {
-			b := target.SupportsPlatform("os", "arch", "variant")
+			b := target.SupportsPlatform("os", "arm", "v6")
 			h.AssertFalse(t, b)
 		})
 		it("should parse targets as expected", func() {

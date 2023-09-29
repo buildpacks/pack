@@ -32,7 +32,7 @@ func testParseTargets(t *testing.T, when spec.G, it spec.S) {
 		it("should parse target as expected", func() {
 			output, err := target.ParseTarget("linux/arm/v6")
 			h.AssertNil(t, err)
-			h.AssertEq(t, output, &dist.Target{
+			h.AssertEq(t, output, dist.Target{
 				OS:          "linux",
 				Arch:        "arm",
 				ArchVariant: "v6",
@@ -47,7 +47,7 @@ func testParseTargets(t *testing.T, when spec.G, it spec.S) {
 		it("should parse targets as expected", func() {
 			output, err := target.ParseTargets([]string{"linux/arm/v6", "linux/amd:ubuntu@22.04;debian@8.10@10.06"})
 			h.AssertNil(t, err)
-			h.AssertEq(t, output, &[]dist.Target{
+			h.AssertEq(t, output, []dist.Target{
 				{
 					OS:          "linux",
 					Arch:        "arm",
@@ -72,17 +72,18 @@ func testParseTargets(t *testing.T, when spec.G, it spec.S) {
 	})
 	when("target#ParseDistro", func() {
 		it("should parse distro as expected", func() {
-			output := target.ParseDistro("ubuntu@22.04@20.08")
-			h.AssertEq(t, output, &dist.Distribution{
+			output, err, _ := target.ParseDistro("ubuntu@22.04@20.08")
+			h.AssertEq(t, output, dist.Distribution{
 				Name:     "ubuntu",
 				Versions: []string{"22.04", "20.08"},
 			})
+			h.AssertNil(t, err)
 		})
 	})
 	when("target#ParseDistros", func() {
 		it("should parse distros as expected", func() {
-			output := target.ParseDistros([]string{"ubuntu@22.04@20.08;debian@8.10@10.06"})
-			h.AssertEq(t, output, &[]dist.Distribution{
+			output, err := target.ParseDistros("ubuntu@22.04@20.08;debian@8.10@10.06")
+			h.AssertEq(t, output, []dist.Distribution{
 				{
 					Name:     "ubuntu",
 					Versions: []string{"22.04", "20.08"},
@@ -92,6 +93,12 @@ func testParseTargets(t *testing.T, when spec.G, it spec.S) {
 					Versions: []string{"8.10", "10.06"},
 				},
 			})
+			h.AssertNil(t, err)
+		})
+		it("result should be nil", func() {
+			output, err := target.ParseDistros("")
+			h.AssertEq(t, output, []dist.Distribution(nil))
+			h.AssertNil(t, err)
 		})
 	})
 }
