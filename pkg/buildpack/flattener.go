@@ -1,16 +1,30 @@
 package buildpack
 
-type Flattener interface {
-	FlatBuildpacks()
+import "io"
+
+type BuildFlattenModule interface {
+	Open() (io.ReadCloser, error)
+	Descriptors() []Descriptor
 }
 
-type BuildpacksFlattener struct {
+type buildpacksFlattenerModule struct {
+	descriptors []Descriptor
 }
 
-func NewBuildpacksFlattener() BuildpacksFlattener {
-	return BuildpacksFlattener{}
+func NewBuildpacksFlattenerModule(buildmodules []BuildModule) BuildFlattenModule {
+	var bpFlattenerModule buildpacksFlattenerModule
+
+	for _, module := range buildmodules {
+		bpFlattenerModule.descriptors = append(bpFlattenerModule.descriptors, module.Descriptor())
+	}
+
+	return bpFlattenerModule
 }
 
-func (bp BuildpacksFlattener) FlatBuildpacks(bps []BuildModule) []BuildModule {
-	return bps //TODO: Implementation
+func (bfm buildpacksFlattenerModule) Descriptors() []Descriptor {
+	return bfm.descriptors
+}
+
+func (bfm buildpacksFlattenerModule) Open() (io.ReadCloser, error) {
+	return nil, nil
 }
