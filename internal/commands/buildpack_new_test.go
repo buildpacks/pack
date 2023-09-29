@@ -37,6 +37,10 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 		mockClient     *testmocks.MockPackClient
 		tmpDir         string
 	)
+	targets := []dist.Target{{
+		OS:   runtime.GOOS,
+		Arch: runtime.GOARCH,
+	}}
 
 	it.Before(func() {
 		var err error
@@ -61,10 +65,7 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 				ID:      "example/some-cnb",
 				Path:    filepath.Join(tmpDir, "some-cnb"),
 				Version: "1.0.0",
-				Targets: []dist.Target{{
-					OS:   runtime.GOOS,
-					Arch: runtime.GOARCH,
-				}},
+				Targets: targets,
 			}).Return(nil).MaxTimes(1)
 
 			path := filepath.Join(tmpDir, "some-cnb")
@@ -185,10 +186,7 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 							ID:     "io.buildpacks.stacks.jammy",
 							Mixins: []string{},
 						}},
-						Targets: []dist.Target{{
-							OS:   runtime.GOOS,
-							Arch: runtime.GOARCH,
-						}},
+						Targets: targets,
 					}).Return(nil).MaxTimes(1)
 
 					path := filepath.Join(tmpDir, "stacks")

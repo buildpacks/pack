@@ -10,9 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pkg/errors"
-
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/internal/target"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -71,38 +70,9 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 				})
 			}
 
-			var targets []dist.Target
-			for _, t := range flags.Targets {
-				var distroMap []dist.Distribution
-				target, nonDistro, distros, err := getTarget(t)
-				if err != nil {
-					logger.Error(err.Error())
-				}
-				if i, e := getSliceAt[string](target, 1); e == nil {
-					distros = strings.Split(i, ";")
-				}
-				for _, d := range distros {
-					distro := strings.Split(d, "@")
-					if l := len(distro); l <= 0 {
-						return errors.Errorf("distro is nil!")
-					} else if l == 1 {
-						logger.Warnf("forgot to specify version for distro %s ?", distro[0])
-					}
-					distroMap = append(distroMap, dist.Distribution{
-						Name:     distro[0],
-						Versions: distro[1:],
-					})
-				}
-				os, arch, variant, err := getPlatform(nonDistro)
-				if err != nil {
-					return err
-				}
-				targets = append(targets, dist.Target{
-					OS:            os,
-					Arch:          arch,
-					ArchVariant:   variant,
-					Distributions: distroMap,
-				})
+			targets, err := target.ParseTargets(flags.Targets)
+			if err != nil {
+				return err
 			}
 
 			if err := creator.NewBuildpack(cmd.Context(), client.NewBuildpackOptions{
@@ -135,97 +105,4 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 
 	AddHelpFlag(cmd, "new")
 	return cmd
-}
-
-func getSliceAt[T interface{}](slice []T, index int) (T, error) {
-	if index < 0 || index >= len(slice) {
-		var r T
-		return r, errors.Errorf("index out of bound, cannot access item at index %d of slice with length %d", index, len(slice))
-	}
-
-	return slice[index], nil
-}
-
-var GOOSArch = map[string][]string{
-	"aix":       {"ppc64"},
-	"android":   {"386", "amd64", "arm", "arm64"},
-	"darwin":    {"amd64", "arm64"},
-	"dragonfly": {"amd64"},
-	"freebsd":   {"386", "amd64", "arm"},
-	"illumos":   {"amd64"},
-	"ios":       {"arm64"},
-	"js":        {"wasm"},
-	"linux":     {"386", "amd64", "arm", "arm64", "loong64", "mips", "mipsle", "mips64", "mips64le", "ppc64", "ppc64le", "riscv64", "s390x"},
-	"netbsd":    {"386", "amd64", "arm"},
-	"openbsd":   {"386", "amd64", "arm", "arm64"},
-	"plan9":     {"386", "amd64", "arm"},
-	"solaris":   {"amd64"},
-	"wasip1":    {"wasm"},
-	"windows":   {"386", "amd64", "arm", "arm64"},
-}
-
-var GOArchVariant = map[string][]string{
-	"386":      {"softfloat", "sse2"},
-	"arm":      {"v5", "v6", "v7"},
-	"amd64":    {"v1", "v2", "v3", "v4"},
-	"mips":     {"hardfloat", "softfloat"},
-	"mipsle":   {"hardfloat", "softfloat"},
-	"mips64":   {"hardfloat", "softfloat"},
-	"mips64le": {"hardfloat", "softfloat"},
-	"ppc64":    {"power8", "power9"},
-	"ppc64le":  {"power8", "power9"},
-	"wasm":     {"satconv", "signext"},
-}
-
-func isOS(os string) bool {
-	return GOOSArch[os] != nil
-}
-
-func supportsArch(os string, arch string) bool {
-	if isOS(os) {
-		var supported bool
-		for _, s := range GOOSArch[os] {
-			if s == arch {
-				supported = true
-				break
-			}
-		}
-		return supported
-	}
-	return false
-}
-
-func supportsVariant(arch string, variant string) bool {
-	if variant == "" || len(variant) == 0 {
-		return true
-	}
-	var supported bool
-	for _, s := range GOArchVariant[arch] {
-		if s == variant {
-			supported = true
-			break
-		}
-	}
-	return supported
-}
-
-func getTarget(t string) ([]string, []string, []string, error) {
-	var nonDistro, distro []string
-	target := strings.Split(t, ":")
-	if i, e := getSliceAt[string](target, 0); e != nil {
-		return target, nonDistro, distro, errors.Errorf("invalid target %s, atleast one of [os][/arch][/archVariant] must be specified", t)
-	} else {
-		nonDistro = strings.Split(i, "/")
-	}
-	return target, nonDistro, distro, nil
-}
-
-func getPlatform(t []string) (string, string, string, error) {
-	os, _ := getSliceAt[string](t, 0)
-	arch, _ := getSliceAt[string](t, 1)
-	variant, _ := getSliceAt[string](t, 2)
-	if !isOS(os) || !supportsArch(os, arch) || !supportsVariant(arch, variant) {
-		return os, arch, variant, errors.Errorf("unknown target: %s", style.Symbol(strings.Join(t, "/")))
-	}
-	return os, arch, variant, nil
 }
