@@ -32,7 +32,7 @@ func ParseTarget(t string) (output dist.Target, warn warn.Warn, err error) {
 	if err != nil {
 		return output, warn, err
 	}
-	os, arch, variant,w, err := getPlatform(nonDistro)
+	os, arch, variant, w, err := getPlatform(nonDistro)
 	warn.AddWarn(w)
 	if err != nil {
 		return output, warn, err
@@ -82,12 +82,14 @@ func ParseDistro(distroString string) (distro dist.Distribution, warn warn.Warn,
 
 func getTarget(t string) (nonDistro []string, distros string, warn warn.Warn, err error) {
 	target := strings.Split(t, ":")
-	if i, err := getSliceAt[string](target, 0); err != nil {
+	if _, err := getSliceAt[string](target, 0); err != nil {
 		return nonDistro, distros, warn, errors.Errorf("invalid target %s, atleast one of [os][/arch][/archVariant] must be specified", t)
-	} else if len(target) == 2 && target[0] == "" {
-		v,_ := getSliceAt[string](target, 1)
+	}
+	if len(target) == 2 && target[0] == "" {
+		v, _ := getSliceAt[string](target, 1)
 		warn.Add(style.Warn("adding distros %s without [os][/arch][/variant]", v))
 	} else {
+		i, _ := getSliceAt[string](target, 0)
 		nonDistro = strings.Split(i, "/")
 	}
 	if i, err := getSliceAt[string](target, 1); err == nil {

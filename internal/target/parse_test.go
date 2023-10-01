@@ -30,7 +30,7 @@ func testParseTargets(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNotNil(t, warn.Messages)
 		})
 		it("should parse target as expected", func() {
-			output,_, err := target.ParseTarget("linux/arm/v6")
+			output, _, err := target.ParseTarget("linux/arm/v6")
 			h.AssertNil(t, err)
 			h.AssertEq(t, output, dist.Target{
 				OS:          "linux",
@@ -41,11 +41,11 @@ func testParseTargets(t *testing.T, when spec.G, it spec.S) {
 	})
 	when("target#ParseTargets", func() {
 		it("should throw an error when atleast one target throws error", func() {
-			_,_, err := target.ParseTargets([]string{"linux/arm/v6", ":distro@version"})
+			_, _, err := target.ParseTargets([]string{"linux/arm/v6", ":distro@version"})
 			h.AssertNotNil(t, err)
 		})
 		it("should parse targets as expected", func() {
-			output,_, err := target.ParseTargets([]string{"linux/arm/v6", "linux/amd64:ubuntu@22.04;debian@8.10@10.06"})
+			output, _, err := target.ParseTargets([]string{"linux/arm/v6", "linux/amd64:ubuntu@22.04;debian@8.10@10.06"})
 			h.AssertNil(t, err)
 			h.AssertEq(t, output, []dist.Target{
 				{
