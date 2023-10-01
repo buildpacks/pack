@@ -6,16 +6,26 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/internal/warn"
 )
 
-func getPlatform(t []string) (os, arch, variant string, err error) {
+func getPlatform(t []string) (os, arch, variant string, warn *warn.Warn, err error) {
 	os, _ = getSliceAt[string](t, 0)
 	arch, _ = getSliceAt[string](t, 1)
 	variant, _ = getSliceAt[string](t, 2)
-	if !SupportsPlatform(os, arch, variant) {
-		return os, arch, variant, errors.Errorf("unknown target: %s", style.Symbol(strings.Join(t, "/")))
+	if !supportsOS(os) && supportsVariant(arch, variant) {
+		warn.Add(style.Warn("unknown os %s, is this a typo", os))
 	}
-	return os, arch, variant, nil
+	if supportsArch(os, arch) && !supportsVariant(arch, variant) {
+		warn.Add(style.Warn("unknown variant %s", variant))
+	}
+	if supportsOS(os) && !supportsArch(os, arch) && supportsVariant(arch, variant) {
+		warn.Add(style.Warn("unknown arch %s", arch))
+	}
+	if !SupportsPlatform(os, arch, variant) {
+		return os, arch, variant, warn, errors.Errorf("unknown target: %s", style.Symbol(strings.Join(t, "/")))
+	}
+	return os, arch, variant, warn, err
 }
 
 var supportedOSArchs = map[string][]string{

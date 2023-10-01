@@ -70,7 +70,10 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 				})
 			}
 
-			targets, err := target.ParseTargets(flags.Targets)
+			targets, warn, err := target.ParseTargets(flags.Targets)
+			for _,w := range warn.Messages {
+				logger.Warn(w)
+			}
 			if err != nil {
 				return err
 			}
