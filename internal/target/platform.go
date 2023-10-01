@@ -9,7 +9,7 @@ import (
 	"github.com/buildpacks/pack/internal/warn"
 )
 
-func getPlatform(t []string) (os, arch, variant string, warn *warn.Warn, err error) {
+func getPlatform(t []string) (os, arch, variant string, warn warn.Warn, err error) {
 	os, _ = getSliceAt[string](t, 0)
 	arch, _ = getSliceAt[string](t, 1)
 	variant, _ = getSliceAt[string](t, 2)

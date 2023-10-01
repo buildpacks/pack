@@ -11,7 +11,7 @@ import (
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
-func ParseTargets(t []string) (targets []dist.Target, warn *warn.Warn, err error) {
+func ParseTargets(t []string) (targets []dist.Target, warn warn.Warn, err error) {
 	for _, v := range t {
 		target, w, err := ParseTarget(v)
 		warn.AddWarn(w)
@@ -23,10 +23,10 @@ func ParseTargets(t []string) (targets []dist.Target, warn *warn.Warn, err error
 	return targets, warn, nil
 }
 
-func ParseTarget(t string) (output dist.Target, warn *warn.Warn, err error) {
+func ParseTarget(t string) (output dist.Target, warn warn.Warn, err error) {
 	nonDistro, distros, w, err := getTarget(t)
 	warn.AddWarn(w)
-	if len(nonDistro) <= 1 && nonDistro[0] == "" {
+	if v, _ := getSliceAt[string](nonDistro, 0); len(nonDistro) <= 1 && v == "" {
 		warn.Add(style.Error("os/arch must be defined"))
 	}
 	if err != nil {
@@ -51,7 +51,7 @@ func ParseTarget(t string) (output dist.Target, warn *warn.Warn, err error) {
 	return output, warn, err
 }
 
-func ParseDistros(distroSlice string) (distros []dist.Distribution, warn *warn.Warn, err error) {
+func ParseDistros(distroSlice string) (distros []dist.Distribution, warn warn.Warn, err error) {
 	distro := strings.Split(distroSlice, ";")
 	if l := len(distro); l == 1 && distro[0] == "" {
 		return nil, warn, err
@@ -67,7 +67,7 @@ func ParseDistros(distroSlice string) (distros []dist.Distribution, warn *warn.W
 	return distros, warn, nil
 }
 
-func ParseDistro(distroString string) (distro dist.Distribution, warn *warn.Warn, err error) {
+func ParseDistro(distroString string) (distro dist.Distribution, warn warn.Warn, err error) {
 	d := strings.Split(distroString, "@")
 	if d[0] == "" || len(d) == 0 {
 		return distro, warn, errors.Errorf("distro's versions %s cannot be specified without distro's name", style.Symbol("@"+strings.Join(d[1:], "@")))
@@ -80,12 +80,13 @@ func ParseDistro(distroString string) (distro dist.Distribution, warn *warn.Warn
 	return distro, warn, err
 }
 
-func getTarget(t string) (nonDistro []string, distros string, warn *warn.Warn, err error) {
+func getTarget(t string) (nonDistro []string, distros string, warn warn.Warn, err error) {
 	target := strings.Split(t, ":")
 	if i, err := getSliceAt[string](target, 0); err != nil {
 		return nonDistro, distros, warn, errors.Errorf("invalid target %s, atleast one of [os][/arch][/archVariant] must be specified", t)
 	} else if len(target) == 2 && target[0] == "" {
-		warn.Add(style.Warn("adding distros %s without [os][/arch][/variant]", target[2]))
+		v,_ := getSliceAt[string](target, 1)
+		warn.Add(style.Warn("adding distros %s without [os][/arch][/variant]", v))
 	} else {
 		nonDistro = strings.Split(i, "/")
 	}
