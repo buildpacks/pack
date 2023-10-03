@@ -1874,7 +1874,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("all", func() {
 			it.Before(func() {
 				var err error
-				bldr, err = builder.New(builderImage, "some-builder", builder.WithFlatten())
+				flattenModules, err := buildpack.ParseFlattenBuildModules([]string{"buildpack-1-id@buildpack-1-version-1,buildpack-1-id@buildpack-1-version-2,buildpack-2-id@buildpack-2-version-1"})
+				h.AssertNil(t, err)
+
+				bldr, err = builder.New(builderImage, "some-builder", builder.WithFlatten(flattenModules))
 				h.AssertNil(t, err)
 
 				// Let's add some buildpacks

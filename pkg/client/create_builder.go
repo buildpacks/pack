@@ -45,11 +45,8 @@ type CreateBuilderOptions struct {
 	// Strategy for updating images before a build.
 	PullPolicy image.PullPolicy
 
-	// Flatten layers
-	Flatten bool
-
-	// List of buildpack images to exclude from the package been flatten.
-	FlattenExclude []string
+	// List of buildpack to be flatten
+	Flatten buildpack.FlattenModuleInfos
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.
@@ -154,8 +151,8 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
 
 	var builderOpts []builder.BuilderOption
-	if opts.Flatten {
-		builderOpts = append(builderOpts, builder.WithFlattenExclude(opts.FlattenExclude))
+	if opts.Flatten != nil && len(opts.Flatten.FlattenModules()) > 0 {
+		builderOpts = append(builderOpts, builder.WithFlatten(opts.Flatten))
 	}
 	bldr, err := builder.New(baseImage, opts.BuilderName, builderOpts...)
 	if err != nil {
