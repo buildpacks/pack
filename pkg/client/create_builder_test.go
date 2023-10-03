@@ -1068,9 +1068,11 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("flatten all", func() {
+				var err error
 				it("creates 1 layer for all buildpacks", func() {
 					prepareFetcherWithRunImages()
-					opts.Flatten = true
+					opts.Flatten, err = buildpack.ParseFlattenBuildModules([]string{"flatten/bp-1@1,flatten/bp-2@2,flatten/bp-4@4,flatten/bp-6@6,flatten/bp-7@7,flatten/bp-3@3,flatten/bp-5@5"})
+					h.AssertNil(t, err)
 
 					successfullyCreateFlattenBuilder()
 
@@ -1082,8 +1084,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				when("with exclude", func() {
 					it("creates 1 layer for buildpacks and 1 layer for buildpack excluded", func() {
 						prepareFetcherWithRunImages()
-						opts.Flatten = true
-						opts.FlattenExclude = []string{"flatten/bp-7@7"}
+						opts.Flatten, err = buildpack.ParseFlattenBuildModules([]string{"flatten/bp-1@1,flatten/bp-2@2,flatten/bp-4@4,flatten/bp-6@6,flatten/bp-3@3,flatten/bp-5@5"})
+						h.AssertNil(t, err)
 
 						successfullyCreateFlattenBuilder()
 

@@ -102,7 +102,7 @@ func NewBuilder(imageFactory ImageFactory, ops ...PackageBuilderOption) *Package
 	moduleManager := NewModuleManager(opts.flatten)
 	return &PackageBuilder{
 		imageFactory:             imageFactory,
-		dependencies:             *moduleManager,
+		dependencies:             moduleManager,
 		flattenAllBuildpacks:     opts.flatten,
 		flattenExcludeBuildpacks: opts.exclude,
 		logger:                   opts.logger,

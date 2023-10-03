@@ -34,7 +34,7 @@ func (s *syncPkg) GetLayer(diffID string) (io.ReadCloser, error) {
 }
 
 // extractBuildpacks when provided a flattened buildpack package containing N buildpacks,
-// will return N modules: 1 module with a single tar containing ALL N buildpacks, and N-1 modules with empty tar files.
+// will return N flattenModuleInfos: 1 module with a single tar containing ALL N buildpacks, and N-1 flattenModuleInfos with empty tar files.
 func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, err error) {
 	pkg = &syncPkg{pkg: pkg}
 	md := &Metadata{}

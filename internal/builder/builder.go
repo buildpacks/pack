@@ -68,24 +68,23 @@ const (
 
 // Builder represents a pack builder, used to build images
 type Builder struct {
-	baseImageName            string
-	buildConfigEnv           map[string]string
-	image                    imgutil.Image
-	layerWriterFactory       archive.TarWriterFactory
-	lifecycle                Lifecycle
-	lifecycleDescriptor      LifecycleDescriptor
-	additionalBuildpacks     buildpack.ManagedCollection
-	additionalExtensions     buildpack.ManagedCollection
-	flattenExcludeBuildpacks []string
-	metadata                 Metadata
-	mixins                   []string
-	env                      map[string]string
-	uid, gid                 int
-	StackID                  string
-	replaceOrder             bool
-	order                    dist.Order
-	orderExtensions          dist.Order
-	validateMixins           bool
+	baseImageName        string
+	buildConfigEnv       map[string]string
+	image                imgutil.Image
+	layerWriterFactory   archive.TarWriterFactory
+	lifecycle            Lifecycle
+	lifecycleDescriptor  LifecycleDescriptor
+	additionalBuildpacks buildpack.ManagedCollection
+	additionalExtensions buildpack.ManagedCollection
+	metadata             Metadata
+	mixins               []string
+	env                  map[string]string
+	uid, gid             int
+	StackID              string
+	replaceOrder         bool
+	order                dist.Order
+	orderExtensions      dist.Order
+	validateMixins       bool
 }
 
 type orderTOML struct {
@@ -103,6 +102,7 @@ type moduleWithDiffID struct {
 type BuilderOption func(*options) error
 
 type options struct {
+	modules buildpack.FlattenModuleInfos
 	flatten  bool
 	exclude  []string
 	runImage string
@@ -154,17 +154,16 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 		metadata.Stack.RunImage.Image = opts.runImage
 	}
 	bldr := &Builder{
-		baseImageName:            img.Name(),
-		image:                    img,
-		layerWriterFactory:       layerWriterFactory,
-		metadata:                 metadata,
-		lifecycleDescriptor:      constructLifecycleDescriptor(metadata),
-		env:                      map[string]string{},
-		buildConfigEnv:           map[string]string{},
-		validateMixins:           true,
-		additionalBuildpacks:     *buildpack.NewModuleManager(opts.flatten),
-		additionalExtensions:     *buildpack.NewModuleManager(opts.flatten),
-		flattenExcludeBuildpacks: opts.exclude,
+		baseImageName:        img.Name(),
+		image:                img,
+		layerWriterFactory:   layerWriterFactory,
+		metadata:             metadata,
+		lifecycleDescriptor:  constructLifecycleDescriptor(metadata),
+		env:                  map[string]string{},
+		buildConfigEnv:       map[string]string{},
+		validateMixins:       true,
+		additionalBuildpacks: buildpack.NewModuleManagerV2(opts.modules),
+		additionalExtensions: buildpack.NewModuleManagerV2(opts.modules),
 	}
 
 	if err := addImgLabelsToBuildr(bldr); err != nil {
@@ -178,17 +177,10 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 	return bldr, nil
 }
 
+func WithFlatten(modules buildpack.FlattenModuleInfos) BuilderOption {
 func FlattenAll() BuilderOption {
 	return func(o *options) error {
-		o.flatten = true
-		return nil
-	}
-}
-
-func DoNotFlatten(exclude []string) BuilderOption {
-	return func(o *options) error {
-		o.flatten = true
-		o.exclude = exclude
+		o.modules = modules
 		return nil
 	}
 }
@@ -318,14 +310,14 @@ func (b *Builder) AllModules(kind string) []buildpack.BuildModule {
 	return b.moduleManager(kind).AllModules()
 }
 
-func (b *Builder) moduleManager(kind string) *buildpack.ManagedCollection {
+func (b *Builder) moduleManager(kind string) buildpack.ManagedCollection {
 	switch kind {
 	case buildpack.KindBuildpack:
-		return &b.additionalBuildpacks
+		return b.additionalBuildpacks
 	case buildpack.KindExtension:
-		return &b.additionalExtensions
+		return b.additionalExtensions
 	}
-	return &buildpack.ManagedCollection{}
+	return buildpack.NewModuleManager(false)
 }
 
 func (b *Builder) FlattenedModules(kind string) [][]buildpack.BuildModule {
@@ -674,7 +666,6 @@ func (b *Builder) addFlattenedModules(kind string, logger logging.Logger, tmpDir
 	)
 
 	buildModuleWriter := buildpack.NewBuildModuleWriter(logger, b.layerWriterFactory)
-	excludedModules := buildpack.Set(b.flattenExcludeBuildpacks)
 
 	for i, additionalModules := range flattenModules {
 		modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s-flatten", kind, strconv.Itoa(i)))
@@ -682,7 +673,7 @@ func (b *Builder) addFlattenedModules(kind string, logger logging.Logger, tmpDir
 			return nil, errors.Wrap(err, "creating flatten temp dir")
 		}
 
-		finalTarPath, buildModuleExcluded, err = buildModuleWriter.NToLayerTar(modFlattenTmpDir, fmt.Sprintf("%s-flatten-%s", kind, strconv.Itoa(i)), additionalModules, excludedModules)
+		finalTarPath, buildModuleExcluded, err = buildModuleWriter.NToLayerTar(modFlattenTmpDir, fmt.Sprintf("%s-flatten-%s", kind, strconv.Itoa(i)), additionalModules, nil)
 		if err != nil {
 			return nil, errors.Wrapf(err, "writing layer %s", finalTarPath)
 		}

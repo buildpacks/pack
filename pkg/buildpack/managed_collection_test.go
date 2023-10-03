@@ -30,7 +30,7 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 	 *		            bp31
 	 */
 	var (
-		moduleManager *buildpack.ManagedCollection
+		moduleManager buildpack.ManagedCollection
 		compositeBP1  buildpack.BuildModule
 		bp1           buildpack.BuildModule
 		compositeBP2  buildpack.BuildModule
