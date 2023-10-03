@@ -6,26 +6,26 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/internal/warn"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
-func getPlatform(t []string) (os, arch, variant string, warn warn.Warn, err error) {
+func getPlatform(t []string, logger logging.Logger) (os, arch, variant string, err error) {
 	os, _ = getSliceAt[string](t, 0)
 	arch, _ = getSliceAt[string](t, 1)
 	variant, _ = getSliceAt[string](t, 2)
 	if !supportsOS(os) && supportsVariant(arch, variant) {
-		warn.Add(style.Warn("unknown os %s, is this a typo", os))
+		logger.Warn(style.Warn("unknown os %s, is this a typo", os))
 	}
 	if supportsArch(os, arch) && !supportsVariant(arch, variant) {
-		warn.Add(style.Warn("unknown variant %s", variant))
+		logger.Warn(style.Warn("unknown variant %s", variant))
 	}
 	if supportsOS(os) && !supportsArch(os, arch) && supportsVariant(arch, variant) {
-		warn.Add(style.Warn("unknown arch %s", arch))
+		logger.Warn(style.Warn("unknown arch %s", arch))
 	}
 	if !SupportsPlatform(os, arch, variant) {
-		return os, arch, variant, warn, errors.Errorf("unknown target: %s", style.Symbol(strings.Join(t, "/")))
+		return os, arch, variant, errors.Errorf("unknown target: %s", style.Symbol(strings.Join(t, "/")))
 	}
-	return os, arch, variant, warn, err
+	return os, arch, variant, err
 }
 
 var supportedOSArchs = map[string][]string{

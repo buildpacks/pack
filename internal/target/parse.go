@@ -1,46 +1,41 @@
 package target
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/internal/warn"
 	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
-func ParseTargets(t []string) (targets []dist.Target, warn warn.Warn, err error) {
+func ParseTargets(t []string, logger logging.Logger) (targets []dist.Target, err error) {
 	for _, v := range t {
-		target, w, err := ParseTarget(v)
-		warn.AddWarn(w)
+		target, err := ParseTarget(v, logger)
 		if err != nil {
-			return nil, warn, err
+			return nil, err
 		}
 		targets = append(targets, target)
 	}
-	return targets, warn, nil
+	return targets, nil
 }
 
-func ParseTarget(t string) (output dist.Target, warn warn.Warn, err error) {
-	nonDistro, distros, w, err := getTarget(t)
-	warn.AddWarn(w)
+func ParseTarget(t string, logger logging.Logger) (output dist.Target, err error) {
+	nonDistro, distros, err := getTarget(t, logger)
 	if v, _ := getSliceAt[string](nonDistro, 0); len(nonDistro) <= 1 && v == "" {
-		warn.Add(style.Error("os/arch must be defined"))
+		logger.Warn("os/arch must be defined")
 	}
 	if err != nil {
-		return output, warn, err
+		return output, err
 	}
-	os, arch, variant, w, err := getPlatform(nonDistro)
-	warn.AddWarn(w)
+	os, arch, variant, err := getPlatform(nonDistro, logger)
 	if err != nil {
-		return output, warn, err
+		return output, err
 	}
-	v, w, err := ParseDistros(distros)
-	warn.AddWarn(w)
+	v, err := ParseDistros(distros, logger)
 	if err != nil {
-		return output, warn, err
+		return output, err
 	}
 	output = dist.Target{
 		OS:            os,
@@ -48,46 +43,45 @@ func ParseTarget(t string) (output dist.Target, warn warn.Warn, err error) {
 		ArchVariant:   variant,
 		Distributions: v,
 	}
-	return output, warn, err
+	return output, err
 }
 
-func ParseDistros(distroSlice string) (distros []dist.Distribution, warn warn.Warn, err error) {
+func ParseDistros(distroSlice string, logger logging.Logger) (distros []dist.Distribution, err error) {
 	distro := strings.Split(distroSlice, ";")
 	if l := len(distro); l == 1 && distro[0] == "" {
-		return nil, warn, err
+		return nil, err
 	}
 	for _, d := range distro {
-		v, w, err := ParseDistro(d)
-		warn.AddWarn(w)
+		v, err := ParseDistro(d, logger)
 		if err != nil {
-			return nil, warn, err
+			return nil, err
 		}
 		distros = append(distros, v)
 	}
-	return distros, warn, nil
+	return distros, nil
 }
 
-func ParseDistro(distroString string) (distro dist.Distribution, warn warn.Warn, err error) {
+func ParseDistro(distroString string, logger logging.Logger) (distro dist.Distribution, err error) {
 	d := strings.Split(distroString, "@")
 	if d[0] == "" || len(d) == 0 {
-		return distro, warn, errors.Errorf("distro's versions %s cannot be specified without distro's name", style.Symbol("@"+strings.Join(d[1:], "@")))
+		return distro, errors.Errorf("distro's versions %s cannot be specified without distro's name", style.Symbol("@"+strings.Join(d[1:], "@")))
 	}
-	if len(d) <= 2 && d[0] == "" {
-		warn.Add(fmt.Sprintf("distro with name %s has no specific version!", style.Symbol(d[0])))
+	if len(d) <= 2 && (strings.Contains(strings.Join(d[1:], ""), "") || d[1] == "") {
+		logger.Warnf("distro with name %s has no specific version!", style.Symbol(d[0]))
 	}
 	distro.Name = d[0]
 	distro.Versions = d[1:]
-	return distro, warn, err
+	return distro, err
 }
 
-func getTarget(t string) (nonDistro []string, distros string, warn warn.Warn, err error) {
+func getTarget(t string, logger logging.Logger) (nonDistro []string, distros string, err error) {
 	target := strings.Split(t, ":")
-	if _, err := getSliceAt[string](target, 0); err != nil {
-		return nonDistro, distros, warn, errors.Errorf("invalid target %s, atleast one of [os][/arch][/archVariant] must be specified", t)
+	if (len(target) == 1 && target[0] == "") || len(target) == 0 {
+		return nonDistro, distros, errors.Errorf("invalid target %s, atleast one of [os][/arch][/archVariant] must be specified", t)
 	}
 	if len(target) == 2 && target[0] == "" {
 		v, _ := getSliceAt[string](target, 1)
-		warn.Add(style.Warn("adding distros %s without [os][/arch][/variant]", v))
+		logger.Warn(style.Warn("adding distros %s without [os][/arch][/variant]", v))
 	} else {
 		i, _ := getSliceAt[string](target, 0)
 		nonDistro = strings.Split(i, "/")
@@ -95,7 +89,7 @@ func getTarget(t string) (nonDistro []string, distros string, warn warn.Warn, er
 	if i, err := getSliceAt[string](target, 1); err == nil {
 		distros = i
 	}
-	return nonDistro, distros, warn, err
+	return nonDistro, distros, err
 }
 
 func getSliceAt[T interface{}](slice []T, index int) (value T, err error) {

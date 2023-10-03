@@ -70,12 +70,16 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 				})
 			}
 
-			targets, warn, err := target.ParseTargets(flags.Targets)
-			for _, w := range warn.Messages {
-				logger.Warn(w)
-			}
-			if err != nil {
-				return err
+			var targets []dist.Target
+			if len(flags.Targets) == 0 && len(flags.Stacks) == 0 {
+				targets = []dist.Target{{
+					OS:   runtime.GOOS,
+					Arch: runtime.GOARCH,
+				}}
+			} else {
+				if targets, err = target.ParseTargets(flags.Targets, logger); err != nil {
+					return err
+				}
 			}
 
 			if err := creator.NewBuildpack(cmd.Context(), client.NewBuildpackOptions{
@@ -97,9 +101,9 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 	cmd.Flags().StringVarP(&flags.API, "api", "a", "0.8", "Buildpack API compatibility of the generated buildpack")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to generate the buildpack")
 	cmd.Flags().StringVarP(&flags.Version, "version", "V", "1.0.0", "Version of the generated buildpack")
-	cmd.Flags().StringSliceVarP(&flags.Stacks, "stacks", "s", []string{}, "Stack(s) this buildpack will be compatible with"+stringSliceHelp("stack"))
+	cmd.Flags().StringSliceVarP(&flags.Stacks, "stacks", "s", nil, "Stack(s) this buildpack will be compatible with"+stringSliceHelp("stack"))
 	cmd.Flags().MarkDeprecated("stacks", "prefer `--targets` instead: https://github.com/buildpacks/rfcs/blob/main/text/0096-remove-stacks-mixins.md")
-	cmd.Flags().StringSliceVarP(&flags.Targets, "targets", "t", []string{runtime.GOOS + "/" + runtime.GOARCH},
+	cmd.Flags().StringSliceVarP(&flags.Targets, "targets", "t", nil,
 		`Targets are the list platforms that one targeting, these are generated as part of scaffolding inside buildpack.toml file. one can provide target platforms in format [os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]
 	- Base case for two different architectures :  '--targets "linux/amd64" --targets "linux/arm64"'
 	- case for distribution version: '--targets "windows/amd64:windows-nano@10.0.19041.1415"'

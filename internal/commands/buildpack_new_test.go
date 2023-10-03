@@ -186,7 +186,6 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 							ID:     "io.buildpacks.stacks.jammy",
 							Mixins: []string{},
 						}},
-						Targets: targets,
 					}).Return(nil).MaxTimes(1)
 
 					path := filepath.Join(tmpDir, "stacks")
