@@ -48,9 +48,6 @@ type CreateBuilderOptions struct {
 	// Flatten layers
 	Flatten bool
 
-	// Max depth for flattening compose buildpacks.
-	Depth int
-
 	// List of buildpack images to exclude from the package been flatten.
 	FlattenExclude []string
 }
@@ -158,7 +155,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 
 	var builderOpts []builder.BuilderOption
 	if opts.Flatten {
-		builderOpts = append(builderOpts, builder.WithFlatten(opts.Depth, opts.FlattenExclude))
+		builderOpts = append(builderOpts, builder.WithFlattenExclude(opts.FlattenExclude))
 	}
 	bldr, err := builder.New(baseImage, opts.BuilderName, builderOpts...)
 	if err != nil {

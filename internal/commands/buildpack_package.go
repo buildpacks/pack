@@ -27,7 +27,6 @@ type BuildpackPackageFlags struct {
 	Label             map[string]string
 	Publish           bool
 	Flatten           bool
-	Depth             int
 }
 
 // BuildpackPackager packages buildpacks
@@ -111,7 +110,6 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				Registry:        flags.BuildpackRegistry,
 				Flatten:         flags.Flatten,
 				FlattenExclude:  flags.FlattenExclude,
-				Depth:           flags.Depth,
 				Labels:          flags.Label,
 			}); err != nil {
 				return err
@@ -139,11 +137,9 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")
 	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten the buildpack into a single layer")
 	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpacks to exclude from flattening, in the form of '<buildpack-id>@<buildpack-version>'")
-	cmd.Flags().IntVar(&flags.Depth, "depth", -1, "Max depth to flatten.\nOmission of this flag or values < 0 will flatten the entire tree.")
 	cmd.Flags().StringToStringVarP(&flags.Label, "label", "l", nil, "Labels to add to packaged Buildpack, in the form of '<name>=<value>'")
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("flatten")
-		cmd.Flags().MarkHidden("depth")
 		cmd.Flags().MarkHidden("flatten-exclude")
 	}
 	AddHelpFlag(cmd, "package")

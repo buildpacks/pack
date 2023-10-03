@@ -881,7 +881,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				when("no exclusions", func() {
 					it.Before(func() {
 						builder = buildpack.NewBuilder(mockImageFactory("linux"),
-							buildpack.WithFlatten(-1, nil),
+							buildpack.WithFlatten(),
 							buildpack.WithLogger(logger),
 							buildpack.WithLayerWriterFactory(archive.DefaultTarWriterFactory()))
 					})
@@ -904,7 +904,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 						excluded := []string{bp31.Descriptor().Info().FullName()}
 
 						builder = buildpack.NewBuilder(mockImageFactory("linux"),
-							buildpack.WithFlatten(-1, excluded),
+							buildpack.WithFlattenExclude(excluded),
 							buildpack.WithLogger(logger),
 							buildpack.WithLayerWriterFactory(archive.DefaultTarWriterFactory()))
 					})

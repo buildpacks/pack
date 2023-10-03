@@ -54,9 +54,6 @@ type PackageBuildpackOptions struct {
 	// Flatten layers
 	Flatten bool
 
-	// Max depth for flattening compose buildpacks.
-	Depth int
-
 	// List of buildpack images to exclude from the package been flatten.
 	FlattenExclude []string
 
@@ -86,7 +83,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 	var packageBuilderOpts []buildpack.PackageBuilderOption
 	if opts.Flatten {
-		packageBuilderOpts = append(packageBuilderOpts, buildpack.WithFlatten(opts.Depth, opts.FlattenExclude),
+		packageBuilderOpts = append(packageBuilderOpts, buildpack.WithFlattenExclude(opts.FlattenExclude),
 			buildpack.WithLayerWriterFactory(writerFactory), buildpack.WithLogger(c.logger))
 	}
 	packageBuilder := buildpack.NewBuilder(c.imageFactory, packageBuilderOpts...)

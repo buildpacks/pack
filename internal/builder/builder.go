@@ -104,7 +104,6 @@ type BuilderOption func(*options) error
 
 type options struct {
 	flatten bool
-	depth   int
 	exclude []string
 }
 
@@ -151,8 +150,8 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 		env:                      map[string]string{},
 		buildConfigEnv:           map[string]string{},
 		validateMixins:           true,
-		additionalBuildpacks:     *buildpack.NewModuleManager(opts.flatten, opts.depth),
-		additionalExtensions:     *buildpack.NewModuleManager(opts.flatten, opts.depth),
+		additionalBuildpacks:     *buildpack.NewModuleManager(opts.flatten),
+		additionalExtensions:     *buildpack.NewModuleManager(opts.flatten),
 		flattenExcludeBuildpacks: opts.exclude,
 	}
 
@@ -167,10 +166,16 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 	return bldr, nil
 }
 
-func WithFlatten(depth int, exclude []string) BuilderOption {
+func WithFlatten() BuilderOption {
 	return func(o *options) error {
 		o.flatten = true
-		o.depth = depth
+		return nil
+	}
+}
+
+func WithFlattenExclude(exclude []string) BuilderOption {
+	return func(o *options) error {
+		o.flatten = true
 		o.exclude = exclude
 		return nil
 	}

@@ -1874,7 +1874,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("all", func() {
 			it.Before(func() {
 				var err error
-				bldr, err = builder.New(builderImage, "some-builder", builder.WithFlatten(-1, nil))
+				bldr, err = builder.New(builderImage, "some-builder", builder.WithFlatten())
 				h.AssertNil(t, err)
 
 				// Let's add some buildpacks
@@ -1903,7 +1903,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
-		// TODO add tests for flatten with depth
 	})
 }
 

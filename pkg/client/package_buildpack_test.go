@@ -504,8 +504,6 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 			when("flatten all", func() {
 				it("creates package image with all dependencies", func() {
-					opts.Depth = -1
-
 					successfullyCreateFlattenPackage()
 
 					layers := fakeLayerImage.AddedLayersOrder()
@@ -513,32 +511,6 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				// TODO add test case for flatten all with --flatten-exclude
-			})
-
-			when("with depth", func() {
-				when("depth = 0", func() {
-					it("creates 3 layers [1,2,[3,4,5,6,7]]", func() {
-						opts.Depth = 0
-
-						successfullyCreateFlattenPackage()
-
-						layers := fakeLayerImage.AddedLayersOrder()
-						h.AssertEq(t, len(layers), 3)
-					})
-				})
-
-				when("depth = 1", func() {
-					it("creates 5 layers [1,2,3,4,[5,6,7]]", func() {
-						opts.Depth = 1
-
-						successfullyCreateFlattenPackage()
-
-						layers := fakeLayerImage.AddedLayersOrder()
-						h.AssertEq(t, len(layers), 5)
-					})
-				})
-
-				// TODO add test case for flatten with --depth AND --flatten-exclude
 			})
 		})
 	})
