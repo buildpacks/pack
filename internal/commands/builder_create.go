@@ -23,7 +23,6 @@ type BuilderCreateFlags struct {
 	Registry        string
 	Policy          string
 	Flatten         []string
-	Label           map[string]string
 }
 
 // CreateBuilder creates a builder image, based on a builder config
@@ -82,7 +81,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				return err
 			}
 
-			toFlatten, err := buildpack.ParseFlattenBuildModules(flags.Flatten)
+			flattenBuildpacks, err := buildpack.ParseFlattenBuildModules(flags.Flatten)
 			if err != nil {
 				return err
 			}
@@ -96,8 +95,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				Publish:         flags.Publish,
 				Registry:        flags.Registry,
 				PullPolicy:      pullPolicy,
-				Flatten:         toFlatten,
-				Labels:          flags.Label,
+				Flatten:         flattenBuildpacks,
 			}); err != nil {
 				return err
 			}
@@ -114,8 +112,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "This flag triggers the buildpack to publish the built image to a container registry after the build process is complete. This means that the resulting image is pushed to a specified registry, making it available for deployment and use by others.")
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
-	cmd.Flags().StringSliceVar(&flags.Flatten, "flatten", nil, "List of buildpacks to flatten together into a single layer (format: '<buildpack-id>@<buildpack-version>,<buildpack-id>@<buildpack-version>'")
-	cmd.Flags().StringToStringVarP(&flags.Label, "label", "l", nil, "Labels to add to the builder image, in the form of '<name>=<value>'")
+	cmd.Flags().StringSliceVar(&flags.Flatten, "flatten", nil, "List of Buildpacks to flatten together in one layer (format: '<buildpack-id>@<buildpack-version>,<buildpack-id>@<buildpack-version>'")
 
 	AddHelpFlag(cmd, "create")
 	return cmd

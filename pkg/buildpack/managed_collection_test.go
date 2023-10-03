@@ -30,6 +30,7 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 	 *		            bp31
 	 */
 	var (
+<<<<<<< HEAD
 		moduleManager       buildpack.ManagedCollection
 		compositeBP1        buildpack.BuildModule
 		bp1                 buildpack.BuildModule
@@ -40,6 +41,17 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 		bp31                buildpack.BuildModule
 		flattenBuildModules buildpack.FlattenModuleInfos
 		err                 error
+=======
+		moduleManager buildpack.ManagedCollection
+		compositeBP1  buildpack.BuildModule
+		bp1           buildpack.BuildModule
+		compositeBP2  buildpack.BuildModule
+		bp21          buildpack.BuildModule
+		bp22          buildpack.BuildModule
+		compositeBP3  buildpack.BuildModule
+		bp31          buildpack.BuildModule
+		err           error
+>>>>>>> 70a41dc4 (Implementing RFC-0123)
 	)
 
 	it.Before(func() {
