@@ -1,5 +1,5 @@
 package builder
 
-type BpIdentifier interface {
+type Identifier interface {
 	Id() string
 }
