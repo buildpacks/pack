@@ -70,7 +70,27 @@ type RunImageConfig struct {
 
 // BuildConfig build image configuration
 type BuildConfig struct {
-	Image string `toml:"image"`
+	Image string           `toml:"image"`
+	Env   []BuildConfigEnv `toml:"env"`
+}
+
+type ActionType string
+
+var ActionTypes []ActionType = []ActionType{NONE, DEFAULT, OVERRIDE, APPEND, PREPEND, DELIMIT}
+
+const (
+	NONE     ActionType = ""
+	DEFAULT  ActionType = "default"
+	OVERRIDE ActionType = "override"
+	APPEND   ActionType = "append"
+	PREPEND  ActionType = "prepend"
+	DELIMIT  ActionType = "delim"
+)
+
+type BuildConfigEnv struct {
+	Name   string     `toml:"name"`
+	Value  string     `toml:"value"`
+	Action ActionType `toml:"action"`
 }
 
 // ReadConfig reads a builder configuration from the file path provided and returns the
