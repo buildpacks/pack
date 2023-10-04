@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -75,6 +76,10 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				return errors.Wrap(err, "getting absolute path for config")
 			}
 
+			if err := generateBuildConfigEnvFiles(builderConfig.Build.Env); err != nil {
+				return err
+			}
+
 			imageName := args[0]
 			if err := pack.CreateBuilder(cmd.Context(), client.CreateBuilderOptions{
 				RelativeBaseDir: relativeBaseDir,
@@ -136,4 +141,69 @@ func validateCreateFlags(flags *BuilderCreateFlags, cfg config.Config) error {
 	}
 
 	return nil
+}
+
+func generateBuildConfigEnvFiles(envList []builder.BuildConfigEnv) error {
+	dir, err := createBuildConfigEnvDir()
+	if err != nil {
+		return err
+	}
+	for _, env := range envList {
+		var path string
+		if a := getActionType(env.Action); a == "" || len(a) == 0 {
+			path = env.Name
+		} else {
+			path = env.Name + getActionType(env.Action)
+		}
+		f, err := os.Create(filepath.Join(dir, path))
+		if err != nil {
+			return err
+		}
+		f.WriteString(env.Value)
+		if e := f.Close(); e != nil {
+			return e
+		}
+	}
+	return nil
+}
+
+func cnbBuildConfigDir() string {
+	if v := os.Getenv("CNB_BUILD_CONFIG_DIR"); v == "" || len(v) == 0 {
+		return "/cnb/build-config"
+	} else {
+		return v
+	}
+}
+
+func createBuildConfigEnvDir() (dir string, err error) {
+	dir = filepath.Join(cnbBuildConfigDir(), "env")
+	_, err = os.Stat(dir)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			return dir, err
+		}
+		return dir, nil
+	}
+	return dir, err
+}
+
+func getActionType(action builder.ActionType) string {
+	const delim = "."
+	switch action {
+	case builder.NONE:
+		return ""
+	case builder.DEFAULT:
+		return delim + string(builder.DEFAULT)
+	case builder.OVERRIDE:
+		return delim + string(builder.OVERRIDE)
+	case builder.APPEND:
+		return delim + string(builder.APPEND)
+	case builder.PREPEND:
+		return delim + string(builder.PREPEND)
+	case builder.DELIMIT:
+		return delim + string(builder.DELIMIT)
+	default:
+		return delim + string(builder.DEFAULT)
+	}
 }

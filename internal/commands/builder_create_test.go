@@ -157,15 +157,98 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("uses --builder-config", func() {
+		when("uses --config", func() {
 			it.Before(func() {
 				h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(validConfig), 0666))
+			})
+
+			when("buildConfigEnv files generated", func() {
+				const ActionNONE = validConfig + `
+				[[build.env]]
+				name = "actionNone"
+				value = "actionNoneValue"
+				action = ""
+				`
+				const ActionDEFAULT = validConfig + `
+				[[build.env]]
+				name = "actionDefault"
+				value = "actionDefaultValue"
+				action = "default"
+				`
+				const ActionOVERRIDE = validConfig + `
+				[[build.env]]
+				name = "actionOverride"
+				value = "actionOverrideValue"
+				action = "override"
+				`
+				const ActionAPPEND = validConfig + `
+				[[build.env]]
+				name = "actionAppend"
+				value = "actionAppendValue"
+				action = "append"
+				`
+				const ActionPREPEND = validConfig + `
+				[[build.env]]
+				name = "actionPrepend"
+				value = "actionPrependValue"
+				action = "prepend"
+				`
+				const ActionDELIMIT = validConfig + `
+				[[build.env]]
+				name = "actionDelimit"
+				value = "actionDelimitValue"
+				action = "delim"
+				`
+				const ActionUNKNOWN = validConfig + `
+				[[build.env]]
+				name = "actionUnknown"
+				value = "actionUnknownValue"
+				action = "unknown"
+				`
+				const ActionMULTIPLE = validConfig + `
+				[[build.env]]
+				name = "actionAppend"
+				value = "actionAppendValue"
+				action = "append"
+				[[build.env]]
+				name = "actionPrepend"
+				value = "actionPrependValue"
+				action = "prepend"
+				[[build.env]]
+				name = "actionDelimit"
+				value = "actionDelimitValue"
+				action = "delim"
+				`
+				it("should create content as expected when ActionType `NONE`", func() {
+
+				})
+				it("should create content as expected when ActionType `DEFAULT`", func() {
+
+				})
+				it("should create content as expected when ActionType `OVERRIDE`", func() {
+
+				})
+				it("should create content as expected when ActionType `APPEND`", func() {
+
+				})
+				it("should create content as expected when ActionType `PREPEND`", func() {
+
+				})
+				it("should create content as expected when ActionType `DELIMIT`", func() {
+
+				})
+				it("should create content as expected when unknown ActionType passed", func() {
+
+				})
+				it("should create content as expected when multiple ActionTypes passed", func() {
+
+				})
 			})
 
 			it("errors with a descriptive message", func() {
 				command.SetArgs([]string{
 					"some/builder",
-					"--builder-config", builderConfigPath,
+					"--config", builderConfigPath,
 				})
 				h.AssertError(t, command.Execute(), "unknown flag: --builder-config")
 			})
