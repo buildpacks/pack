@@ -17,9 +17,23 @@ type Buildpack struct {
 	Script  Script `toml:"script"`
 }
 
+type ActionType string
+
+var ActionTypes []ActionType = []ActionType{NONE, DEFAULT, OVERRIDE, APPEND, PREPEND, DELIMIT}
+
+const (
+	NONE     ActionType = ""
+	DEFAULT  ActionType = "default"
+	OVERRIDE ActionType = "override"
+	APPEND   ActionType = "append"
+	PREPEND  ActionType = "prepend"
+	DELIMIT  ActionType = "delim"
+)
+
 type EnvVar struct {
-	Name  string `toml:"name"`
-	Value string `toml:"value"`
+	Name   string     `toml:"name"`
+	Value  string     `toml:"value"`
+	Action ActionType `toml:"action"`
 }
 
 type Build struct {

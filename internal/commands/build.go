@@ -147,6 +147,9 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if err != nil {
 				return errors.Wrapf(err, "parsing creation time %s", flags.DateTime)
 			}
+			if err := generateBuildConfigEnvFiles(descriptor.Build.Env); err != nil {
+				return err
+			}
 			if err := packClient.Build(cmd.Context(), client.BuildOptions{
 				AppPath:           flags.AppPath,
 				Builder:           builder,
@@ -366,4 +369,63 @@ func parseProjectToml(appPath, descriptorPath string) (projectTypes.Descriptor, 
 
 	descriptor, err := project.ReadProjectDescriptor(actualPath)
 	return descriptor, actualPath, err
+}
+
+func generateBuildConfigEnvFiles(envList []projectTypes.EnvVar) error {
+	dir, err := createBuildConfigEnvDir()
+	if err != nil {
+		return err
+	}
+	for _, env := range envList {
+		f, err := os.Create(filepath.Join(dir, env.Name+getActionType(env.Action)))
+		if err != nil {
+			return err
+		}
+		f.WriteString(env.Value)
+		if e := f.Close(); e != nil {
+			return e
+		}
+	}
+	return nil
+}
+
+func cnbBuildConfigDir() string {
+	if v := os.Getenv("CNB_BUILD_CONFIG_DIR"); v == "" {
+		return "/cnb/build-config"
+	} else {
+		return v
+	}
+}
+
+func createBuildConfigEnvDir() (dir string, err error) {
+	dir = filepath.Join(cnbBuildConfigDir(), "env")
+	_, err = os.Stat(dir)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			return dir, err
+		}
+		return dir, nil
+	}
+	return dir, err
+}
+
+func getActionType(action projectTypes.ActionType) string {
+	const delim = "."
+	switch action {
+	case projectTypes.NONE:
+		return ""
+	case projectTypes.DEFAULT:
+		return delim + string(projectTypes.DEFAULT)
+	case projectTypes.OVERRIDE:
+		return delim + string(projectTypes.OVERRIDE)
+	case projectTypes.APPEND:
+		return delim + string(projectTypes.APPEND)
+	case projectTypes.PREPEND:
+		return delim + string(projectTypes.PREPEND)
+	case projectTypes.DELIMIT:
+		return delim + string(projectTypes.DELIMIT)
+	default:
+		return delim + string(projectTypes.DEFAULT)
+	}
 }
