@@ -74,23 +74,23 @@ type BuildConfig struct {
 	Env   []BuildConfigEnv `toml:"env"`
 }
 
-type ActionType string
+type Suffix string
 
-var ActionTypes []ActionType = []ActionType{NONE, DEFAULT, OVERRIDE, APPEND, PREPEND, DELIMIT}
+var SuffixSlice []Suffix = []Suffix{NONE, DEFAULT, OVERRIDE, APPEND, PREPEND}
 
 const (
-	NONE     ActionType = ""
-	DEFAULT  ActionType = "default"
-	OVERRIDE ActionType = "override"
-	APPEND   ActionType = "append"
-	PREPEND  ActionType = "prepend"
-	DELIMIT  ActionType = "delim"
+	NONE     Suffix = ""
+	DEFAULT  Suffix = "default"
+	OVERRIDE Suffix = "override"
+	APPEND   Suffix = "append"
+	PREPEND  Suffix = "prepend"
 )
 
 type BuildConfigEnv struct {
-	Name   string     `toml:"name"`
-	Value  string     `toml:"value"`
-	Action ActionType `toml:"action,omitempty"`
+	Name   string `toml:"name"`
+	Value  string `toml:"value"`
+	Suffix Suffix `toml:"suffix,omitempty"`
+	Delim  string `toml:"delim,omitempty"`
 }
 
 // ReadConfig reads a builder configuration from the file path provided and returns the

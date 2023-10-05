@@ -35,8 +35,9 @@ import (
 const (
 	packName = "Pack CLI"
 
-	cnbDir        = "/cnb"
-	buildpacksDir = "/cnb/buildpacks"
+	cnbDir         = "/cnb"
+	buildConfigDir = "/cnb/build-config"
+	buildpacksDir  = "/cnb/buildpacks"
 
 	orderPath          = "/cnb/order.toml"
 	stackPath          = "/cnb/stack.toml"

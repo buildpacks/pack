@@ -51,61 +51,58 @@ const ActionNONE = validConfig + `
 [[build.env]]
 name = "actionNone"
 value = "actionNoneValue"
-action = ""
 `
 const ActionDEFAULT = validConfig + `
 [[build.env]]
 name = "actionDefault"
 value = "actionDefaultValue"
-action = "default"
+suffix = "default"
 `
 const ActionOVERRIDE = validConfig + `
 [[build.env]]
 name = "actionOverride"
 value = "actionOverrideValue"
-action = "override"
+suffix = "override"
 `
 const ActionAPPEND = validConfig + `
 [[build.env]]
 name = "actionAppend"
 value = "actionAppendValue"
-action = "append"
+suffix = "append"
 `
 const ActionPREPEND = validConfig + `
 [[build.env]]
 name = "actionPrepend"
 value = "actionPrependValue"
-action = "prepend"
+suffix = "prepend"
 `
 const ActionDELIMIT = validConfig + `
 [[build.env]]
 name = "actionDelimit"
-value = ":"
-action = "delim"
+delim = ":"
 `
 const ActionUNKNOWN = validConfig + `
 [[build.env]]
 name = "actionUnknown"
 value = "actionUnknownValue"
-action = "unknown"
+suffix = "unknown"
 `
 const ActionMULTIPLE = validConfig + `
 [[build.env]]
 name = "MY_VAR"
 value = "actionAppendValue"
-action = "append"
+suffix = "append"
+delim = ":"
 [[build.env]]
 name = "MY_VAR"
 value = "actionDefaultValue"
-action = "default"
+suffix = "default"
+delim = ":"
 [[build.env]]
 name = "MY_VAR"
 value = "actionPrependValue"
-action = "prepend"
-[[build.env]]
-name = "MY_VAR"
-value = ":"
-action = "delim"
+suffix = "prepend"
+delim = ":"
 `
 
 const ActionWarning = validConfig + `
@@ -118,7 +115,7 @@ const ActionError = validConfig + `
 [[build.env]]
 name = ""
 value = "some-value"
-action = "default"
+suffix = "default"
 `
 
 func TestCreateCommand(t *testing.T) {
@@ -249,6 +246,8 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 			var fileIndex = 0
 			buildConfigEnvDir := commands.CnbBuildConfigDir()
 			it.Before(func() {
+				err := os.MkdirAll(buildConfigEnvDir, os.ModePerm)
+				h.AssertNil(t, err)
 				h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(getBuildConfigEnvFileContent(fileIndex)), 0666))
 			})
 			it.After(func() {
@@ -494,13 +493,13 @@ func getBuildConfigEnvFileContent(index int) string {
 }
 
 var actionTypesMap = map[int]map[int]map[int]string{
-	0: {0: {0: "ACTIONNONE", 1: "actionNoneValue"}},
-	1: {0: {0: "ACTIONDEFAULT.default", 1: "actionDefaultValue"}},
-	2: {0: {0: "ACTIONOVERRIDE.override", 1: "actionOverrideValue"}},
-	3: {0: {0: "ACTIONAPPEND.append", 1: "actionAppendValue"}},
-	4: {0: {0: "ACTIONPREPEND.prepend", 1: "actionPrependValue"}},
-	5: {0: {0: "ACTIONDELIMIT.delim", 1: ":"}},
-	6: {0: {0: "ACTIONUNKNOWN.unknown", 1: "actionUnknownValue"}},
+	0: {0: {0: "actionNone", 1: "actionNoneValue"}},
+	1: {0: {0: "actionDefault.default", 1: "actionDefaultValue"}},
+	2: {0: {0: "actionOverride.override", 1: "actionOverrideValue"}},
+	3: {0: {0: "actionAppend.append", 1: "actionAppendValue"}},
+	4: {0: {0: "actionPrepend.prepend", 1: "actionPrependValue"}},
+	5: {0: {0: "actionDelim.delim", 1: ":"}},
+	6: {0: {0: "actionUnknown.unknown", 1: "actionUnknownValue"}},
 	7: {
 		0: {0: "MY_VAR.append", 1: "actionAppendValue"},
 		1: {0: "MY_VAR.default", 1: "actionDefaultValue"},
