@@ -186,12 +186,12 @@ func createBuildConfigEnvDir() (dir string, err error) {
 		}
 		return dir, nil
 	}
-	return dir, err
+	return dir, nil
 }
 
-func getActionType(action builder.ActionType) (actionString string, err error) {
+func getActionType(suffix builder.Suffix) (suffixString string, err error) {
 	const delim = "."
-	switch action {
+	switch suffix {
 	case builder.NONE:
 		return "", nil
 	case builder.DEFAULT:
@@ -202,21 +202,24 @@ func getActionType(action builder.ActionType) (actionString string, err error) {
 		return delim + string(builder.APPEND), nil
 	case builder.PREPEND:
 		return delim + string(builder.PREPEND), nil
-	case builder.DELIMIT:
-		return delim + string(builder.DELIMIT), nil
 	default:
-		return actionString, errors.Errorf("unknown action type %s", style.Symbol(string(action)))
+		return suffixString, errors.Errorf("unknown action type %s", style.Symbol(string(suffix)))
 	}
 }
-func GetBuildConfigEnvFileName(env builder.BuildConfigEnv) (path string, err error) {
-	if a, err := getActionType(env.Action); err != nil {
-		return path, err
-	} else if a == "" || len(a) == 0 {
-		path = strings.ToUpper(env.Name)
-	} else {
-		path = strings.ToUpper(env.Name) + a
+func GetBuildConfigEnvFileName(env builder.BuildConfigEnv) (suffixName, delimName string, err error) {
+	suffix, err := getActionType(env.Suffix)
+	if err != nil {
+		return suffixName, delimName, err
 	}
-	return path, err
+	if suffix == "" || len(suffix) == 0 {
+		suffixName = env.Name
+	} else {
+		suffixName = env.Name + suffix
+	}
+	if delim := env.Delim; delim != "" || len(delim) != 0 {
+		delimName = env.Name + ".delim"
+	}
+	return suffixName, delimName, err
 }
 
 func parseBuildConfigEnv(env []builder.BuildConfigEnv, path string) (envMap map[string]string, warnings []string, err error) {
@@ -228,14 +231,20 @@ func parseBuildConfigEnv(env []builder.BuildConfigEnv, path string) (envMap map[
 		if val := v.Value; val == "" || len(val) == 0 {
 			warnings = append(warnings, fmt.Sprintf("empty value for key/name %s", style.Symbol(v.Name)))
 		}
-		val, err := GetBuildConfigEnvFileName(v)
+		suffixName, delimName, err := GetBuildConfigEnvFileName(v)
 		if err != nil {
 			return envMap, warnings, err
 		}
-		if _, e := envMap[val]; e {
-			return nil, nil, errors.Wrapf(errors.Errorf("env with name: %s and action: %s is already defined", style.Symbol(v.Name), style.Symbol(string(v.Action))), "parse contents of '%s'", path)
+		if val, e := envMap[suffixName]; e {
+			warnings = append(warnings, fmt.Sprintf(errors.Errorf("overriding env with name: %s and suffix: %s from %s to %s", style.Symbol(v.Name), style.Symbol(string(v.Suffix)), style.Symbol(val), style.Symbol(v.Value)).Error(), "parse contents of '%s'", path))
 		}
-		envMap[val] = v.Value
+		if val, e := envMap[delimName]; e {
+			warnings = append(warnings, fmt.Sprintf(errors.Errorf("overriding env with name: %s and delim: %s from %s to %s", style.Symbol(v.Name), style.Symbol(v.Delim), style.Symbol(val), style.Symbol(v.Value)).Error(), "parse contents of '%s'", path))
+		}
+		if delim := v.Delim; (delim != "" || len(delim) != 0) && (delimName != "" || len(delimName) != 0) {
+			envMap[delimName] = delim
+		}
+		envMap[suffixName] = v.Value
 	}
 	return envMap, warnings, err
 }
