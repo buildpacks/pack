@@ -90,7 +90,7 @@ const (
 type BuildConfigEnv struct {
 	Name   string     `toml:"name"`
 	Value  string     `toml:"value"`
-	Action ActionType `toml:"action"`
+	Action ActionType `toml:"action,omitempty"`
 }
 
 // ReadConfig reads a builder configuration from the file path provided and returns the

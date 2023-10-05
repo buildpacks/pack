@@ -76,7 +76,14 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				return errors.Wrap(err, "getting absolute path for config")
 			}
 
-			if err := generateBuildConfigEnvFiles(builderConfig.Build.Env); err != nil {
+			envMap, warnings, err := parseBuildConfigEnv(builderConfig.Build.Env, flags.BuilderTomlPath)
+			for _, v := range warnings {
+				logger.Warn(v)
+			}
+			if err != nil {
+				return err
+			}
+			if err := generateBuildConfigEnvFiles(envMap); err != nil {
 				return err
 			}
 
@@ -143,23 +150,17 @@ func validateCreateFlags(flags *BuilderCreateFlags, cfg config.Config) error {
 	return nil
 }
 
-func generateBuildConfigEnvFiles(envList []builder.BuildConfigEnv) error {
+func generateBuildConfigEnvFiles(envMap map[string]string) error {
 	dir, err := createBuildConfigEnvDir()
 	if err != nil {
 		return err
 	}
-	for _, env := range envList {
-		var path string
-		if a := getActionType(env.Action); a == "" || len(a) == 0 {
-			path = env.Name
-		} else {
-			path = env.Name + getActionType(env.Action)
-		}
-		f, err := os.Create(filepath.Join(dir, path))
+	for k, v := range envMap {
+		f, err := os.Create(filepath.Join(dir, k))
 		if err != nil {
 			return err
 		}
-		f.WriteString(env.Value)
+		f.WriteString(v)
 		if e := f.Close(); e != nil {
 			return e
 		}
@@ -167,7 +168,7 @@ func generateBuildConfigEnvFiles(envList []builder.BuildConfigEnv) error {
 	return nil
 }
 
-func cnbBuildConfigDir() string {
+func CnbBuildConfigDir() string {
 	if v := os.Getenv("CNB_BUILD_CONFIG_DIR"); v == "" || len(v) == 0 {
 		return "/cnb/build-config"
 	} else {
@@ -176,7 +177,7 @@ func cnbBuildConfigDir() string {
 }
 
 func createBuildConfigEnvDir() (dir string, err error) {
-	dir = filepath.Join(cnbBuildConfigDir(), "env")
+	dir = filepath.Join(CnbBuildConfigDir(), "env")
 	_, err = os.Stat(dir)
 	if os.IsNotExist(err) {
 		err := os.MkdirAll(dir, os.ModePerm)
@@ -188,22 +189,53 @@ func createBuildConfigEnvDir() (dir string, err error) {
 	return dir, err
 }
 
-func getActionType(action builder.ActionType) string {
+func getActionType(action builder.ActionType) (actionString string, err error) {
 	const delim = "."
 	switch action {
 	case builder.NONE:
-		return ""
+		return "", nil
 	case builder.DEFAULT:
-		return delim + string(builder.DEFAULT)
+		return delim + string(builder.DEFAULT), nil
 	case builder.OVERRIDE:
-		return delim + string(builder.OVERRIDE)
+		return delim + string(builder.OVERRIDE), nil
 	case builder.APPEND:
-		return delim + string(builder.APPEND)
+		return delim + string(builder.APPEND), nil
 	case builder.PREPEND:
-		return delim + string(builder.PREPEND)
+		return delim + string(builder.PREPEND), nil
 	case builder.DELIMIT:
-		return delim + string(builder.DELIMIT)
+		return delim + string(builder.DELIMIT), nil
 	default:
-		return delim + string(builder.DEFAULT)
+		return actionString, errors.Errorf("unknown action type %s", style.Symbol(string(action)))
 	}
+}
+func GetBuildConfigEnvFileName(env builder.BuildConfigEnv) (path string, err error) {
+	if a, err := getActionType(env.Action); err != nil {
+		return path, err
+	} else if a == "" || len(a) == 0 {
+		path = strings.ToUpper(env.Name)
+	} else {
+		path = strings.ToUpper(env.Name) + a
+	}
+	return path, err
+}
+
+func parseBuildConfigEnv(env []builder.BuildConfigEnv, path string) (envMap map[string]string, warnings []string, err error) {
+	envMap = map[string]string{}
+	for _, v := range env {
+		if name := v.Name; name == "" || len(name) == 0 {
+			return nil, nil, errors.Wrapf(errors.Errorf("env name should not be empty"), "parse contents of '%s'", path)
+		}
+		if val := v.Value; val == "" || len(val) == 0 {
+			warnings = append(warnings, fmt.Sprintf("empty value for key/name %s", style.Symbol(v.Name)))
+		}
+		val, err := GetBuildConfigEnvFileName(v)
+		if err != nil {
+			return envMap, warnings, err
+		}
+		if _, e := envMap[val]; e {
+			return nil, nil, errors.Wrapf(errors.Errorf("env with name: %s and action: %s is already defined", style.Symbol(v.Name), style.Symbol(string(v.Action))), "parse contents of '%s'", path)
+		}
+		envMap[val] = v.Value
+	}
+	return envMap, warnings, err
 }
