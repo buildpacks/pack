@@ -13,6 +13,7 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
@@ -47,76 +48,109 @@ const validConfigWithExtensions = `
 
 `
 
-const ActionNONE = validConfig + `
-[[build.env]]
-name = "actionNone"
-value = "actionNoneValue"
-`
-const ActionDEFAULT = validConfig + `
-[[build.env]]
-name = "actionDefault"
-value = "actionDefaultValue"
-suffix = "default"
-`
-const ActionOVERRIDE = validConfig + `
-[[build.env]]
-name = "actionOverride"
-value = "actionOverrideValue"
-suffix = "override"
-`
-const ActionAPPEND = validConfig + `
-[[build.env]]
-name = "actionAppend"
-value = "actionAppendValue"
-suffix = "append"
-`
-const ActionPREPEND = validConfig + `
-[[build.env]]
-name = "actionPrepend"
-value = "actionPrependValue"
-suffix = "prepend"
-`
-const ActionDELIMIT = validConfig + `
-[[build.env]]
-name = "actionDelimit"
-delim = ":"
-`
-const ActionUNKNOWN = validConfig + `
-[[build.env]]
-name = "actionUnknown"
-value = "actionUnknownValue"
-suffix = "unknown"
-`
-const ActionMULTIPLE = validConfig + `
-[[build.env]]
-name = "MY_VAR"
-value = "actionAppendValue"
-suffix = "append"
-delim = ":"
-[[build.env]]
-name = "MY_VAR"
-value = "actionDefaultValue"
-suffix = "default"
-delim = ":"
-[[build.env]]
-name = "MY_VAR"
-value = "actionPrependValue"
-suffix = "prepend"
-delim = ":"
-`
+var BuildConfigEnvSuffixNone = builder.BuildConfigEnv{
+	Name:  "suffixNone",
+	Value: "suffixNoneValue",
+}
 
-const ActionWarning = validConfig + `
-[[build.env]]
-name = "actionWarning"
-value = ""
-`
+var BuildConfigEnvSuffixNoneWithEmptySuffix = builder.BuildConfigEnv{
+	Name:   "suffixNoneWithEmptySuffix",
+	Value:  "suffixNoneWithEmptySuffixValue",
+	Suffix: "",
+}
 
-const ActionError = validConfig + `
-[[build.env]]
-name = ""
-value = "some-value"
-suffix = "default"
-`
+var BuildConfigEnvSuffixDefault = builder.BuildConfigEnv{
+	Name:   "suffixDefault",
+	Value:  "suffixDefaultValue",
+	Suffix: "default",
+}
+
+var BuildConfigEnvSuffixOverride = builder.BuildConfigEnv{
+	Name:   "suffixOverride",
+	Value:  "suffixOverrideValue",
+	Suffix: "override",
+}
+
+var BuildConfigEnvSuffixAppend = builder.BuildConfigEnv{
+	Name:   "suffixAppend",
+	Value:  "suffixAppendValue",
+	Suffix: "append",
+	Delim:  ":",
+}
+
+var BuildConfigEnvSuffixPrepend = builder.BuildConfigEnv{
+	Name:   "suffixPrepend",
+	Value:  "suffixPrependValue",
+	Suffix: "prepend",
+	Delim:  ":",
+}
+
+var BuildConfigEnvDelimWithoutSuffix = builder.BuildConfigEnv{
+	Name:  "delimWithoutSuffix",
+	Delim: ":",
+}
+
+var BuildConfigEnvSuffixUnknown = builder.BuildConfigEnv{
+	Name:   "suffixUnknown",
+	Value:  "suffixUnknownValue",
+	Suffix: "unknown",
+}
+
+var BuildConfigEnvSuffixMultiple = []builder.BuildConfigEnv{
+	{
+		Name:   "MY_VAR",
+		Value:  "suffixAppendValueValue",
+		Suffix: "append",
+		Delim:  ";",
+	},
+	{
+		Name:   "MY_VAR",
+		Value:  "suffixDefaultValue",
+		Suffix: "default",
+		Delim:  "%",
+	},
+	{
+		Name:   "MY_VAR",
+		Value:  "suffixPrependValue",
+		Suffix: "prepend",
+		Delim:  ":",
+	},
+}
+
+var BuildConfigEnvEmptyValue = builder.BuildConfigEnv{
+	Name:  "warning",
+	Value: "",
+}
+
+var BuildConfigEnvEmptyName = builder.BuildConfigEnv{
+	Name:   "",
+	Value:  "suffixUnknownValue",
+	Suffix: "default",
+}
+
+var BuildConfigEnvSuffixPrependWithoutDelim = builder.BuildConfigEnv{
+	Name:   "suffixPrepend",
+	Value:  "suffixPrependValue",
+	Suffix: "prepend",
+}
+
+var BuildConfigEnvDelimWithoutSuffixAppendOrPrepend = builder.BuildConfigEnv{
+	Name:  "delimWithoutActionAppendOrPrepend",
+	Value: "some-value",
+	Delim: ":",
+}
+
+var BuildConfigEnvDelimWithSameSuffixAndName = []builder.BuildConfigEnv{
+	{
+		Name:   "MY_VAR",
+		Value:  "some-value",
+		Suffix: "",
+	},
+	{
+		Name:  "MY_VAR",
+		Value: "some-value",
+	},
+}
 
 func TestCreateCommand(t *testing.T) {
 	color.Disable(true)
@@ -242,183 +276,112 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("buildConfigEnv files generated", func() {
-			var fileIndex = 0
-			buildConfigEnvDir := commands.CnbBuildConfigDir()
-			it.Before(func() {
-				err := os.MkdirAll(buildConfigEnvDir, os.ModePerm)
-				h.AssertNil(t, err)
-				h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(getBuildConfigEnvFileContent(fileIndex)), 0666))
-			})
-			it.After(func() {
-				err := os.RemoveAll(buildConfigEnvDir)
-				h.AssertNil(t, err)
-				fileIndex++
-			})
-			it("should create content as expected when ActionType `NONE`", func() {
-				command.SetArgs([]string{
-					"some/builder",
-					"--config", builderConfigPath,
+		when("#ParseBuildpackConfigEnv", func() {
+			it("should create envMap as expected when suffix is omitted", func() {
+				envMap, warnings, err := commands.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixNone}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixNone.Name: BuildConfigEnvSuffixNone.Value,
 				})
-				h.AssertNil(t, command.Execute())
-				name := actionTypesMap[fileIndex][0][0]
-				file, err := os.Stat(filepath.Clean(filepath.Join(buildConfigEnvDir, name)))
+				h.AssertEq(t, len(warnings), 0)
 				h.AssertNil(t, err)
-				h.AssertEq(t, name, file.Name())
-				content, err := os.ReadFile(filepath.Join(buildConfigEnvDir, file.Name()))
-				h.AssertNil(t, err)
-				h.AssertEq(t, actionTypesMap[fileIndex][0][1], string(content))
 			})
-			it("should create content as expected when ActionType `DEFAULT`", func() {
-				command.SetArgs([]string{
-					"some/builder",
-					"--config", builderConfigPath,
+			it("should create envMap as expected when suffix is empty string", func() {
+				envMap, warnings, err := commands.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixNoneWithEmptySuffix}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixNoneWithEmptySuffix.Name: BuildConfigEnvSuffixNoneWithEmptySuffix.Value,
 				})
-				h.AssertNil(t, command.Execute())
-				name := actionTypesMap[fileIndex][0][0]
-				file, err := os.Stat(filepath.Clean(filepath.Join(buildConfigEnvDir, name)))
+				h.AssertEq(t, len(warnings), 0)
 				h.AssertNil(t, err)
-				h.AssertEq(t, name, file.Name())
-				content, err := os.ReadFile(filepath.Join(buildConfigEnvDir, file.Name()))
-				h.AssertNil(t, err)
-				h.AssertEq(t, actionTypesMap[fileIndex][0][1], string(content))
 			})
-			it("should create content as expected when ActionType `OVERRIDE`", func() {
-				command.SetArgs([]string{
-					"some/builder",
-					"--config", builderConfigPath,
+			it("should create envMap as expected when suffix is `default`", func() {
+				envMap, warnings, err := commands.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixDefault}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixDefault.Name + "." + string(BuildConfigEnvSuffixDefault.Suffix): BuildConfigEnvSuffixDefault.Value,
 				})
-				h.AssertNil(t, command.Execute())
-				name := actionTypesMap[fileIndex][0][0]
-				file, err := os.Stat(filepath.Clean(filepath.Join(buildConfigEnvDir, name)))
+				h.AssertEq(t, len(warnings), 0)
 				h.AssertNil(t, err)
-				h.AssertEq(t, name, file.Name())
-				content, err := os.ReadFile(filepath.Join(buildConfigEnvDir, file.Name()))
-				h.AssertNil(t, err)
-				h.AssertEq(t, actionTypesMap[fileIndex][0][1], string(content))
 			})
-			it("should create content as expected when ActionType `APPEND`", func() {
-				command.SetArgs([]string{
-					"some/builder",
-					"--config", builderConfigPath,
+			it("should create envMap as expected when suffix is `override`", func() {
+				envMap, warnings, err := commands.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixOverride}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixOverride.Name + "." + string(BuildConfigEnvSuffixOverride.Suffix): BuildConfigEnvSuffixOverride.Value,
 				})
-				h.AssertNil(t, command.Execute())
-				name := actionTypesMap[fileIndex][0][0]
-				file, err := os.Stat(filepath.Clean(filepath.Join(buildConfigEnvDir, name)))
+				h.AssertEq(t, len(warnings), 0)
 				h.AssertNil(t, err)
-				h.AssertEq(t, name, file.Name())
-				content, err := os.ReadFile(filepath.Join(buildConfigEnvDir, file.Name()))
-				h.AssertNil(t, err)
-				h.AssertEq(t, actionTypesMap[fileIndex][0][1], string(content))
 			})
-			it("should create content as expected when ActionType `PREPEND`", func() {
-				command.SetArgs([]string{
-					"some/builder",
-					"--config", builderConfigPath,
+			it("should create envMap as expected when suffix is `append`", func() {
+				envMap, warnings, err := commands.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixAppend}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixAppend.Name + "." + string(BuildConfigEnvSuffixAppend.Suffix): BuildConfigEnvSuffixAppend.Value,
+					BuildConfigEnvSuffixAppend.Name + ".delim":                                        BuildConfigEnvSuffixAppend.Delim,
 				})
-				h.AssertNil(t, command.Execute())
-				name := actionTypesMap[fileIndex][0][0]
-				file, err := os.Stat(filepath.Clean(filepath.Join(buildConfigEnvDir, name)))
+				h.AssertEq(t, len(warnings), 0)
 				h.AssertNil(t, err)
-				h.AssertEq(t, name, file.Name())
-				content, err := os.ReadFile(filepath.Join(buildConfigEnvDir, file.Name()))
-				h.AssertNil(t, err)
-				h.AssertEq(t, actionTypesMap[fileIndex][0][1], string(content))
 			})
-			it("should create content as expected when ActionType `DELIMIT`", func() {
-				command.SetArgs([]string{
-					"some/builder",
-					"--config", builderConfigPath,
+			it("should create envMap as expected when suffix is `prepend`", func() {
+				envMap, warnings, err := commands.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixPrepend}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixPrepend.Name + "." + string(BuildConfigEnvSuffixPrepend.Suffix): BuildConfigEnvSuffixPrepend.Value,
+					BuildConfigEnvSuffixPrepend.Name + ".delim":                                         BuildConfigEnvSuffixPrepend.Delim,
 				})
-				h.AssertNil(t, command.Execute())
-				name := actionTypesMap[fileIndex][0][0]
-				file, err := os.Stat(filepath.Clean(filepath.Join(buildConfigEnvDir, name)))
+				h.AssertEq(t, len(warnings), 0)
 				h.AssertNil(t, err)
-				h.AssertEq(t, name, file.Name())
-				content, err := os.ReadFile(filepath.Join(buildConfigEnvDir, file.Name()))
-				h.AssertNil(t, err)
-				h.AssertEq(t, actionTypesMap[fileIndex][0][1], string(content))
 			})
-			it("should return an error when unknown ActionType passed", func() {
-				command.SetArgs([]string{
-					"some/builder",
-					"--config", builderConfigPath,
+			it("should create envMap as expected when delim is specified", func() {
+				envMap, warnings, err := commands.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvDelimWithoutSuffix}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvDelimWithoutSuffix.Name:            BuildConfigEnvDelimWithoutSuffix.Value,
+					BuildConfigEnvDelimWithoutSuffix.Name + ".delim": BuildConfigEnvDelimWithoutSuffix.Delim,
 				})
-				var bufErr bytes.Buffer
-				command.SetErr(&bufErr)
-				h.AssertNil(t, command.Execute())
-				h.AssertNotEq(t, bufErr.String(), "")
-				name := actionTypesMap[fileIndex][0][0]
-				_, err := os.Stat(filepath.Clean(filepath.Join(buildConfigEnvDir, name)))
+				h.AssertNotEq(t, len(warnings), 0)
+				h.AssertNil(t, err)
+			})
+			it("should create envMap with a warning when `value` is empty", func() {
+				envMap, warnings, err := commands.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvEmptyValue}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvEmptyValue.Name: BuildConfigEnvEmptyValue.Value,
+				})
+				h.AssertNotEq(t, len(warnings), 0)
+				h.AssertNil(t, err)
+			})
+			it("should return an error when `name` is empty", func() {
+				envMap, warnings, err := commands.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvEmptyName}, "")
+				h.AssertEq(t, envMap, map[string]string(nil))
+				h.AssertEq(t, len(warnings), 0)
 				h.AssertNotNil(t, err)
 			})
-			it("should create content as expected when multiple ActionTypes passed", func() {
-				command.SetArgs([]string{
-					"some/builder",
-					"--config", builderConfigPath,
+			it("should return warnings when `apprend` or `prepend` is used without `delim`", func() {
+				envMap, warnings, err := commands.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixPrependWithoutDelim}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixPrependWithoutDelim.Name + "." + string(BuildConfigEnvSuffixPrependWithoutDelim.Suffix): BuildConfigEnvSuffixPrependWithoutDelim.Value,
 				})
-				h.AssertNil(t, command.Execute())
-				name := actionTypesMap[fileIndex][0][0]
-				file, err := os.Stat(filepath.Clean(filepath.Join(buildConfigEnvDir, name)))
-				h.AssertNil(t, err)
-				h.AssertEq(t, name, file.Name())
-				content, err := os.ReadFile(filepath.Join(buildConfigEnvDir, file.Name()))
-				h.AssertNil(t, err)
-				h.AssertEq(t, actionTypesMap[fileIndex][0][1], string(content))
-
-				name = actionTypesMap[fileIndex][1][0]
-				file, err = os.Stat(filepath.Clean(filepath.Join(buildConfigEnvDir, name)))
-				h.AssertNil(t, err)
-				h.AssertEq(t, name, file.Name())
-				content, err = os.ReadFile(filepath.Join(buildConfigEnvDir, file.Name()))
-				h.AssertNil(t, err)
-				h.AssertEq(t, actionTypesMap[fileIndex][1][1], string(content))
-
-				name = actionTypesMap[fileIndex][2][0]
-				file, err = os.Stat(filepath.Clean(filepath.Join(buildConfigEnvDir, name)))
-				h.AssertNil(t, err)
-				h.AssertEq(t, name, file.Name())
-				content, err = os.ReadFile(filepath.Join(buildConfigEnvDir, file.Name()))
-				h.AssertNil(t, err)
-				h.AssertEq(t, actionTypesMap[fileIndex][2][1], string(content))
-
-				name = actionTypesMap[fileIndex][3][0]
-				file, err = os.Stat(filepath.Clean(filepath.Join(buildConfigEnvDir, name)))
-				h.AssertNil(t, err)
-				h.AssertEq(t, name, file.Name())
-				content, err = os.ReadFile(filepath.Join(buildConfigEnvDir, file.Name()))
-				h.AssertNil(t, err)
-				h.AssertEq(t, actionTypesMap[fileIndex][3][1], string(content))
-			})
-			it("should show warnings when env value is empty", func() {
-				command.SetArgs([]string{
-					"some/builder",
-					"--config", builderConfigPath,
-				})
-				var bufOut bytes.Buffer
-				command.SetOut(&bufOut)
-				h.AssertNil(t, command.Execute())
-				h.AssertNotEq(t, bufOut.String(), "")
-				name := actionTypesMap[fileIndex][0][0]
-				file, err := os.Stat(filepath.Clean(filepath.Join(buildConfigEnvDir, name)))
-				h.AssertNil(t, err)
-				h.AssertEq(t, name, file.Name())
-				content, err := os.ReadFile(filepath.Join(buildConfigEnvDir, file.Name()))
-				h.AssertNil(t, err)
-				h.AssertEq(t, actionTypesMap[fileIndex][0][1], string(content))
-			})
-			it("should return an error when env.Name is empty", func() {
-				command.SetArgs([]string{
-					"some/builder",
-					"--config", builderConfigPath,
-				})
-				var bufErr bytes.Buffer
-				command.SetErr(&bufErr)
-				h.AssertNil(t, command.Execute())
-				h.AssertNotEq(t, bufErr.String(), "")
-				name := actionTypesMap[fileIndex][0][0]
-				_, err := os.Stat(filepath.Clean(filepath.Join(buildConfigEnvDir, name)))
+				h.AssertNotEq(t, len(warnings), 0)
 				h.AssertNotNil(t, err)
+			})
+			it("should return an error when unknown `suffix` is used", func() {
+				envMap, warnings, err := commands.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixUnknown}, "")
+				h.AssertEq(t, envMap, map[string]string{})
+				h.AssertEq(t, len(warnings), 0)
+				h.AssertNotNil(t, err)
+			})
+			it("should override with the last specified delim when `[[build.env]]` has multiple delims with same `name` with a `append` or `prepend` suffix", func() {
+				envMap, warnings, err := commands.ParseBuildConfigEnv(BuildConfigEnvSuffixMultiple, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixMultiple[0].Name + "." + string(BuildConfigEnvSuffixMultiple[0].Suffix): BuildConfigEnvSuffixMultiple[0].Value,
+					BuildConfigEnvSuffixMultiple[1].Name + "." + string(BuildConfigEnvSuffixMultiple[1].Suffix): BuildConfigEnvSuffixMultiple[1].Value,
+					BuildConfigEnvSuffixMultiple[2].Name + "." + string(BuildConfigEnvSuffixMultiple[2].Suffix): BuildConfigEnvSuffixMultiple[2].Value,
+					BuildConfigEnvSuffixMultiple[2].Name + ".delim":                                             BuildConfigEnvSuffixMultiple[2].Delim,
+				})
+				h.AssertNotEq(t, len(warnings), 0)
+				h.AssertNil(t, err)
+			})
+			it("should override `value` with the last read value when a `[[build.env]]` has same `name` with same `suffix`", func() {
+				envMap, warnings, err := commands.ParseBuildConfigEnv(BuildConfigEnvDelimWithSameSuffixAndName, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvDelimWithSameSuffixAndName[1].Name: BuildConfigEnvDelimWithSameSuffixAndName[1].Value,
+				})
+				h.AssertNotEq(t, len(warnings), 0)
+				h.AssertNil(t, err)
 			})
 		})
 
@@ -463,49 +426,4 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-}
-
-func getBuildConfigEnvFileContent(index int) string {
-	switch index {
-	case 0:
-		return ActionNONE
-	case 1:
-		return ActionDEFAULT
-	case 2:
-		return ActionOVERRIDE
-	case 3:
-		return ActionAPPEND
-	case 4:
-		return ActionPREPEND
-	case 5:
-		return ActionDELIMIT
-	case 6:
-		return ActionUNKNOWN
-	case 7:
-		return ActionMULTIPLE
-	case 8:
-		return ActionWarning
-	case 9:
-		return ActionError
-	default:
-		return ""
-	}
-}
-
-var actionTypesMap = map[int]map[int]map[int]string{
-	0: {0: {0: "actionNone", 1: "actionNoneValue"}},
-	1: {0: {0: "actionDefault.default", 1: "actionDefaultValue"}},
-	2: {0: {0: "actionOverride.override", 1: "actionOverrideValue"}},
-	3: {0: {0: "actionAppend.append", 1: "actionAppendValue"}},
-	4: {0: {0: "actionPrepend.prepend", 1: "actionPrependValue"}},
-	5: {0: {0: "actionDelim.delim", 1: ":"}},
-	6: {0: {0: "actionUnknown.unknown", 1: "actionUnknownValue"}},
-	7: {
-		0: {0: "MY_VAR.append", 1: "actionAppendValue"},
-		1: {0: "MY_VAR.default", 1: "actionDefaultValue"},
-		2: {0: "MY_VAR.prepend", 1: "actionPrependValue"},
-		3: {0: "MY_VAR.delim", 1: ":"},
-	},
-	8: {0: {0: "actionWarning", 1: ""}},
-	9: {0: {0: ".default", 1: "some-value"}},
 }

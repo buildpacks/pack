@@ -29,6 +29,9 @@ type CreateBuilderOptions struct {
 	// Name of the builder.
 	BuilderName string
 
+	// BuildConfigEnv for Builder
+	BuildConfigEnv map[string]string
+
 	// Configuration that defines the functionality a builder provides.
 	Config pubbldr.Config
 
@@ -79,6 +82,11 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		bldr.SetStack(opts.Config.Stack)
 	}
 	bldr.SetRunImage(opts.Config.Run)
+	if opts.BuildConfigEnv == nil || len(opts.BuildConfigEnv) == 0 {
+		bldr.SetBuildConfigEnv(make(map[string]string))
+	} else {
+		bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
+	}
 
 	return bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version})
 }
@@ -191,6 +199,11 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	}
 
 	bldr.SetLifecycle(lifecycle)
+	if opts.BuildConfigEnv == nil || len(opts.BuildConfigEnv) == 0 {
+		bldr.SetBuildConfigEnv(make(map[string]string))
+	} else {
+		bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
+	}
 
 	return bldr, nil
 }
