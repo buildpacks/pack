@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -76,20 +75,18 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				return errors.Wrap(err, "getting absolute path for config")
 			}
 
-			envMap, warnings, err := parseBuildConfigEnv(builderConfig.Build.Env, flags.BuilderTomlPath)
+			envMap, warnings, err := ParseBuildConfigEnv(builderConfig.Build.Env, flags.BuilderTomlPath)
 			for _, v := range warnings {
 				logger.Warn(v)
 			}
 			if err != nil {
 				return err
 			}
-			if err := generateBuildConfigEnvFiles(envMap); err != nil {
-				return err
-			}
 
 			imageName := args[0]
 			if err := pack.CreateBuilder(cmd.Context(), client.CreateBuilderOptions{
 				RelativeBaseDir: relativeBaseDir,
+				BuildConfigEnv:  envMap,
 				BuilderName:     imageName,
 				Config:          builderConfig,
 				Publish:         flags.Publish,
@@ -150,45 +147,6 @@ func validateCreateFlags(flags *BuilderCreateFlags, cfg config.Config) error {
 	return nil
 }
 
-func generateBuildConfigEnvFiles(envMap map[string]string) error {
-	dir, err := createBuildConfigEnvDir()
-	if err != nil {
-		return err
-	}
-	for k, v := range envMap {
-		f, err := os.Create(filepath.Join(dir, k))
-		if err != nil {
-			return err
-		}
-		f.WriteString(v)
-		if e := f.Close(); e != nil {
-			return e
-		}
-	}
-	return nil
-}
-
-func CnbBuildConfigDir() string {
-	if v := os.Getenv("CNB_BUILD_CONFIG_DIR"); v == "" || len(v) == 0 {
-		return "/cnb/build-config"
-	} else {
-		return v
-	}
-}
-
-func createBuildConfigEnvDir() (dir string, err error) {
-	dir = filepath.Join(CnbBuildConfigDir(), "env")
-	_, err = os.Stat(dir)
-	if os.IsNotExist(err) {
-		err := os.MkdirAll(dir, os.ModePerm)
-		if err != nil {
-			return dir, err
-		}
-		return dir, nil
-	}
-	return dir, nil
-}
-
 func getActionType(suffix builder.Suffix) (suffixString string, err error) {
 	const delim = "."
 	switch suffix {
@@ -206,7 +164,21 @@ func getActionType(suffix builder.Suffix) (suffixString string, err error) {
 		return suffixString, errors.Errorf("unknown action type %s", style.Symbol(string(suffix)))
 	}
 }
-func GetBuildConfigEnvFileName(env builder.BuildConfigEnv) (suffixName, delimName string, err error) {
+
+func getFilePrefixSuffix(filename string) (prefix, suffix string, err error) {
+	val := strings.Split(filename, ".")
+	if len(val) <= 1 {
+		return val[0], suffix, errors.Errorf("Suffix might be null")
+	}
+	if len(val) == 2 {
+		suffix = val[1]
+	} else {
+		strings.Join(val[1:], ".")
+	}
+	return val[0], suffix, err
+}
+
+func getBuildConfigEnvFileName(env builder.BuildConfigEnv) (suffixName, delimName string, err error) {
 	suffix, err := getActionType(env.Suffix)
 	if err != nil {
 		return suffixName, delimName, err
@@ -222,8 +194,9 @@ func GetBuildConfigEnvFileName(env builder.BuildConfigEnv) (suffixName, delimNam
 	return suffixName, delimName, err
 }
 
-func parseBuildConfigEnv(env []builder.BuildConfigEnv, path string) (envMap map[string]string, warnings []string, err error) {
+func ParseBuildConfigEnv(env []builder.BuildConfigEnv, path string) (envMap map[string]string, warnings []string, err error) {
 	envMap = map[string]string{}
+	var appendOrPrependWithoutDelim = 0
 	for _, v := range env {
 		if name := v.Name; name == "" || len(name) == 0 {
 			return nil, nil, errors.Wrapf(errors.Errorf("env name should not be empty"), "parse contents of '%s'", path)
@@ -231,7 +204,7 @@ func parseBuildConfigEnv(env []builder.BuildConfigEnv, path string) (envMap map[
 		if val := v.Value; val == "" || len(val) == 0 {
 			warnings = append(warnings, fmt.Sprintf("empty value for key/name %s", style.Symbol(v.Name)))
 		}
-		suffixName, delimName, err := GetBuildConfigEnvFileName(v)
+		suffixName, delimName, err := getBuildConfigEnvFileName(v)
 		if err != nil {
 			return envMap, warnings, err
 		}
@@ -245,6 +218,20 @@ func parseBuildConfigEnv(env []builder.BuildConfigEnv, path string) (envMap map[
 			envMap[delimName] = delim
 		}
 		envMap[suffixName] = v.Value
+	}
+
+	for k := range envMap {
+		name, suffix, err := getFilePrefixSuffix(k)
+		if err != nil {
+			continue
+		}
+		if _, ok := envMap[name+".delim"]; (suffix == "append" || suffix == "prepend") && !ok {
+			warnings = append(warnings, fmt.Sprintf(errors.Errorf("env with name/key %s with suffix %s must to have a %s value", style.Symbol(name), style.Symbol(suffix), style.Symbol("delim")).Error(), "parse contents of '%s'", path))
+			appendOrPrependWithoutDelim++
+		}
+	}
+	if appendOrPrependWithoutDelim > 0 {
+		return envMap, warnings, errors.Errorf("error parsing [[build.env]] in file '%s'", path)
 	}
 	return envMap, warnings, err
 }
