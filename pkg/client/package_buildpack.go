@@ -59,6 +59,9 @@ type PackageBuildpackOptions struct {
 
 	// List of buildpack images to exclude from the package been flatten.
 	FlattenExclude []string
+
+	// Map of labels to add to the Buildpack
+	Labels map[string]string
 }
 
 // PackageBuildpack packages buildpack(s) into either an image or file.
@@ -124,9 +127,9 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 	switch opts.Format {
 	case FormatFile:
-		return packageBuilder.SaveAsFile(opts.Name, opts.Config.Platform.OS)
+		return packageBuilder.SaveAsFile(opts.Name, opts.Config.Platform.OS, opts.Labels)
 	case FormatImage:
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, opts.Config.Platform.OS)
+		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, opts.Config.Platform.OS, opts.Labels)
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))

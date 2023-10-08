@@ -1,9 +1,0 @@
-api = "0.2"
-
-[buildpack]
-  id = "other/stack/bp"
-  version = "other-stack-version"
-  name = "Other Stack Buildpack"
-
-[[stacks]]
-  id = "other.stack"

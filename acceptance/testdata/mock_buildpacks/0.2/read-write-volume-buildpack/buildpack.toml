@@ -1,9 +1,0 @@
-api = "0.2"
-
-[buildpack]
-  id = "rw-volume/bp"
-  version = "rw-volume-bp-version"
-  name = "Read/Write Volume Buildpack"
-
-[[stacks]]
-  id = "pack.test.stack"

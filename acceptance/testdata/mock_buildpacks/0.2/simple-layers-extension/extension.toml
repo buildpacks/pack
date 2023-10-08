@@ -1,6 +1,0 @@
-api = "0.2"
-
-[extension]
-  id = "simple/layers"
-  version = "simple-layers-version"
-  name = "Simple Layers Extension"

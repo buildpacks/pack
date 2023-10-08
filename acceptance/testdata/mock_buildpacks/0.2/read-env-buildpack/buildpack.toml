@@ -1,9 +1,0 @@
-api = "0.2"
-
-[buildpack]
-  id = "read/env"
-  version = "read-env-version"
-  name = "Read Env Buildpack"
-
-[[stacks]]
-  id = "pack.test.stack"

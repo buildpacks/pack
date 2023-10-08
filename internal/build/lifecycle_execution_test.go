@@ -1397,6 +1397,17 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					"-stack",
 				)
 			})
+
+			when("layout is true", func() {
+				providedLayout = true
+
+				it("configures the phase with the expected environment variables", func() {
+					layoutDir := filepath.Join(paths.RootDir, "layout-repo")
+					h.AssertSliceContains(t,
+						configProvider.ContainerConfig().Env, "CNB_USE_LAYOUT=true", fmt.Sprintf("CNB_LAYOUT_DIR=%s", layoutDir),
+					)
+				})
+			})
 		})
 
 		when("publish", func() {
@@ -1850,6 +1861,25 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("layout is true", func() {
+			when("platform >= 0.12", func() {
+				platformAPI = api.MustParse("0.12")
+				providedLayout = true
+
+				it("it configures the phase with access to provided volumes", func() {
+					// this is required to read the /layout-repo
+					h.AssertSliceContains(t, configProvider.HostConfig().Binds, providedVolumes...)
+				})
+
+				it("configures the phase with the expected environment variables", func() {
+					layoutDir := filepath.Join(paths.RootDir, "layout-repo")
+					h.AssertSliceContains(t,
+						configProvider.ContainerConfig().Env, "CNB_USE_LAYOUT=true", fmt.Sprintf("CNB_LAYOUT_DIR=%s", layoutDir),
+					)
+				})
+			})
+		})
 	})
 
 	when("#Build", func() {
@@ -2039,6 +2069,22 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 					})
+				})
+			})
+
+			when("layout is true", func() {
+				providedLayout = true
+
+				it("it configures the phase with access to provided volumes", func() {
+					// this is required to read the /layout-repo
+					h.AssertSliceContains(t, configProvider.HostConfig().Binds, providedVolumes...)
+				})
+
+				it("configures the phase with the expected environment variables", func() {
+					layoutDir := filepath.Join(paths.RootDir, "layout-repo")
+					h.AssertSliceContains(t,
+						configProvider.ContainerConfig().Env, "CNB_USE_LAYOUT=true", fmt.Sprintf("CNB_LAYOUT_DIR=%s", layoutDir),
+					)
 				})
 			})
 		})
