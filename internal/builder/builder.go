@@ -536,15 +536,14 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 	if len(b.buildConfigEnv) > 0 {
 		logger.Debugf("Provided Build Config Environment Variables\n  %s", style.Map(b.env, "  ", "\n"))
-	}
+		buildConfigEnvTar, err := b.buildConfigEnvLayer(tmpDir, b.buildConfigEnv)
+		if err != nil {
+			return errors.Wrap(err, "retrieving build-config-env layer")
+		}
 
-	buildConfigEnvTar, err := b.buildConfigEnvLayer(tmpDir, b.buildConfigEnv)
-	if err != nil {
-		return errors.Wrap(err, "retrieving build-config-env layer")
-	}
-
-	if err := b.image.AddLayer(buildConfigEnvTar); err != nil {
-		return errors.Wrap(err, "adding build-config-env layer")
+		if err := b.image.AddLayer(buildConfigEnvTar); err != nil {
+			return errors.Wrap(err, "adding build-config-env layer")
+		}
 	}
 
 	if len(b.env) > 0 {
