@@ -82,11 +82,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		bldr.SetStack(opts.Config.Stack)
 	}
 	bldr.SetRunImage(opts.Config.Run)
-	if opts.BuildConfigEnv == nil || len(opts.BuildConfigEnv) == 0 {
-		bldr.SetBuildConfigEnv(make(map[string]string))
-	} else {
-		bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
-	}
+	bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
 
 	return bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version})
 }
