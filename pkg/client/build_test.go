@@ -2085,11 +2085,12 @@ api = "0.2"
 					}))
 					h.AssertEq(t, fakeLifecycle.Opts.Publish, true)
 
-					args := fakeImageFetcher.FetchCalls["default/run"]
-					h.AssertEq(t, args.Daemon, false)
-
-					args = fakeImageFetcher.FetchCalls[defaultBuilderName]
+					args := fakeImageFetcher.FetchCalls[defaultBuilderName]
 					h.AssertEq(t, args.Daemon, true)
+
+					args = fakeImageFetcher.FetchCalls["default/run"]
+					h.AssertEq(t, args.Daemon, false)
+					h.AssertEq(t, args.Platform, "linux/amd64")
 				})
 
 				when("builder is untrusted", func() {
