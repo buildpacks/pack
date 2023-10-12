@@ -1032,13 +1032,19 @@ func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir 
 			Version: version,
 		}
 	default:
-		imageOS, err := builderImage.OS()
+		builderOS, err := builderImage.OS()
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "getting OS from %s", style.Symbol(builderImage.Name()))
+			return nil, nil, errors.Wrapf(err, "getting builder OS")
+		}
+
+		builderArch, err := builderImage.Architecture()
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "getting builder architecture")
 		}
 		downloadOptions := buildpack.DownloadOptions{
 			RegistryName:    registry,
-			ImageOS:         imageOS,
+			ImageOS:         builderOS,
+			Platform:        fmt.Sprintf("%s/%s", builderOS, builderArch),
 			RelativeBaseDir: relativeBaseDir,
 			Daemon:          !publish,
 			PullPolicy:      pullPolicy,
@@ -1076,6 +1082,7 @@ func (c *Client) fetchBuildpackDependencies(ctx context.Context, bp string, pack
 			mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
 				RegistryName:    downloadOptions.RegistryName,
 				ImageOS:         downloadOptions.ImageOS,
+				Platform:        downloadOptions.Platform,
 				Daemon:          downloadOptions.Daemon,
 				PullPolicy:      downloadOptions.PullPolicy,
 				RelativeBaseDir: filepath.Join(bp, packageCfg.Buildpack.URI),

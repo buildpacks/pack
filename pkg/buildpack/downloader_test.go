@@ -127,8 +127,12 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			downloadOptions = buildpack.DownloadOptions{ImageOS: "linux"}
 		)
 
-		shouldFetchPackageImageWith := func(demon bool, pull image.PullPolicy) {
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: demon, PullPolicy: pull}).Return(packageImage, nil)
+		shouldFetchPackageImageWith := func(demon bool, pull image.PullPolicy, platform string) {
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{
+				Daemon:     demon,
+				PullPolicy: pull,
+				Platform:   platform,
+			}).Return(packageImage, nil)
 		}
 
 		when("package image lives in cnb registry", func() {
@@ -141,11 +145,12 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					downloadOptions = buildpack.DownloadOptions{
 						RegistryName: "some-registry",
 						ImageOS:      "linux",
+						Platform:     "linux/amd64",
 						Daemon:       true,
 						PullPolicy:   image.PullAlways,
 					}
 
-					shouldFetchPackageImageWith(true, image.PullAlways)
+					shouldFetchPackageImageWith(true, image.PullAlways, "linux/amd64")
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "urn:cnb:registry:example/foo@1.1.0", downloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
@@ -161,7 +166,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						PullPolicy:   image.PullAlways,
 					}
 
-					shouldFetchPackageImageWith(true, image.PullAlways)
+					shouldFetchPackageImageWith(true, image.PullAlways, "")
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "example/foo@1.1.0", downloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
@@ -185,10 +190,11 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						Daemon:     true,
 						PullPolicy: image.PullAlways,
 						ImageOS:    "linux",
+						Platform:   "linux/amd64",
 						ImageName:  "some/package:tag",
 					}
 
-					shouldFetchPackageImageWith(true, image.PullAlways)
+					shouldFetchPackageImageWith(true, image.PullAlways, "linux/amd64")
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
@@ -204,7 +210,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						PullPolicy: image.PullAlways,
 					}
 
-					shouldFetchPackageImageWith(true, image.PullAlways)
+					shouldFetchPackageImageWith(true, image.PullAlways, "")
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
@@ -220,7 +226,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						PullPolicy: image.PullAlways,
 					}
 
-					shouldFetchPackageImageWith(false, image.PullAlways)
+					shouldFetchPackageImageWith(false, image.PullAlways, "")
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
@@ -234,7 +240,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						Daemon:     false,
 						PullPolicy: image.PullAlways,
 					}
-					shouldFetchPackageImageWith(false, image.PullAlways)
+					shouldFetchPackageImageWith(false, image.PullAlways, "")
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), packageImage.Name(), downloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
@@ -250,7 +256,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						PullPolicy: image.PullNever,
 					}
 
-					shouldFetchPackageImageWith(false, image.PullNever)
+					shouldFetchPackageImageWith(false, image.PullNever, "")
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")

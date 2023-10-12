@@ -1240,6 +1240,8 @@ api = "0.2"
 							Version: "child.buildpack.version",
 						},
 					})
+					args := fakeImageFetcher.FetchCalls[fakePackage.Name()]
+					h.AssertEq(t, args.Platform, "linux/amd64")
 				})
 
 				it("fails when no metadata label on package", func() {
