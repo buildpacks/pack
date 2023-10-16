@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695168067606,
+  "lastUpdate": 1697499277664,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -2896,6 +2896,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 68904404043,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "990b1f3a7d1f93e9085bfaef9e181f3a558eb71c",
+          "message": "Merge pull request #1924 from edmorley/heroku-builder-20\n\nSuggest/trust `heroku/builder:20` instead of `heroku/buildpacks:20`",
+          "timestamp": "2023-10-16T18:32:09-05:00",
+          "tree_id": "376f469d21aeb7c0a49f7e7a4f546754988625de",
+          "url": "https://github.com/buildpacks/pack/commit/990b1f3a7d1f93e9085bfaef9e181f3a558eb71c"
+        },
+        "date": 1697499276536,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6685348135,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1851035580,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 80528759740,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
