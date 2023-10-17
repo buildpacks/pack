@@ -15,12 +15,12 @@ var SuggestedBuilders = []SuggestedBuilder{
 	{
 		Vendor:             "Heroku",
 		Image:              "heroku/builder:22",
-		DefaultDescription: "Heroku-22 base image with buildpacks for Go, Java, Node.js, PHP, Python, Scala & Ruby",
+		DefaultDescription: "Heroku-22 (Ubuntu 22.04) base image with buildpacks for Go, Java, Node.js, PHP, Python, Ruby & Scala",
 	},
 	{
 		Vendor:             "Heroku",
-		Image:              "heroku/buildpacks:20",
-		DefaultDescription: "Heroku-20 base image with buildpacks for Go, Java, Node.js, PHP, Python, Scala & Ruby",
+		Image:              "heroku/builder:20",
+		DefaultDescription: "Heroku-20 (Ubuntu 20.04) base image with buildpacks for Go, Java, Node.js, PHP, Python, Ruby & Scala",
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
