@@ -254,7 +254,8 @@ func testBuilderInspectCommand(t *testing.T, when spec.G, it spec.S) {
 
 				assert.Matches(outBuf.String(), regexp.MustCompile(`Paketo Buildpacks:\s+'paketobuildpacks/builder-jammy-base'`))
 				assert.Matches(outBuf.String(), regexp.MustCompile(`Paketo Buildpacks:\s+'paketobuildpacks/builder-jammy-full'`))
-				assert.Matches(outBuf.String(), regexp.MustCompile(`Heroku:\s+'heroku/buildpacks:20'`))
+				assert.Matches(outBuf.String(), regexp.MustCompile(`Heroku:\s+'heroku/builder:20'`))
+				assert.Matches(outBuf.String(), regexp.MustCompile(`Heroku:\s+'heroku/builder:22'`))
 			})
 		})
 

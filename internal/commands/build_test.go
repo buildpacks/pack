@@ -121,9 +121,9 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 						Return(nil)
 
 					logger.WantVerbose(true)
-					command.SetArgs([]string{"image", "--builder", "heroku/buildpacks:20"})
+					command.SetArgs([]string{"image", "--builder", "heroku/builder:22"})
 					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, outBuf.String(), "Builder 'heroku/buildpacks:20' is trusted")
+					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:22' is trusted")
 				})
 			})
 		})
