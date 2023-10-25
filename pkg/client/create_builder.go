@@ -195,11 +195,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	}
 
 	bldr.SetLifecycle(lifecycle)
-	if opts.BuildConfigEnv == nil || len(opts.BuildConfigEnv) == 0 {
-		bldr.SetBuildConfigEnv(make(map[string]string))
-	} else {
-		bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
-	}
+	bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
 
 	return bldr, nil
 }

@@ -397,7 +397,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.HasModTime(archive.NormalizedDateTime),
 				)
 			})
-
 			it("creates the buildpacks dir", func() {
 				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
@@ -1621,8 +1620,44 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("when CNB_BUILD_CONFIG_DIR is defined", func ()  {
+			var buildConfigEnvName = "CNB_BUILD_CONFIG_DIR"
+			var buildConfigEnvValue = "/cnb/dup-build-config-dir"
+			it.Before(func() {
+				os.Setenv(buildConfigEnvName, buildConfigEnvValue)
+				subject.SetBuildConfigEnv(map[string]string{
+					"SOME_KEY":         "some-val",
+					"OTHER_KEY.append": "other-val",
+					"OTHER_KEY.delim":  ":",
+				})
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+				h.AssertEq(t, baseImage.IsSaved(), true)
+			})
+			it.After(func() {
+				os.Unsetenv(buildConfigEnvName)
+			})
+
+			it("adds the env vars as files to the image", func() {
+				layerTar, err := baseImage.FindLayerWithPath(buildConfigEnvValue + "/env/SOME_KEY")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, buildConfigEnvValue + "/env/SOME_KEY",
+					h.ContentEquals(`some-val`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
+				h.AssertOnTarEntry(t, layerTar, buildConfigEnvValue + "/env/OTHER_KEY.append",
+					h.ContentEquals(`other-val`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
+				h.AssertOnTarEntry(t, layerTar, buildConfigEnvValue + "/env/OTHER_KEY.delim",
+					h.ContentEquals(`:`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
+			})
+		})
+
 		when("#SetBuildConfigEnv", func() {
 			it.Before(func() {
+				os.Unsetenv("CNB_BUILD_CONFIG_DIR")
 				subject.SetBuildConfigEnv(map[string]string{
 					"SOME_KEY":         "some-val",
 					"OTHER_KEY.append": "other-val",
