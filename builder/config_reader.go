@@ -270,4 +270,3 @@ func getFilePrefixSuffix(filename string) (prefix, suffix string, err error) {
 	}
 	return val[0], suffix, err
 }
-
