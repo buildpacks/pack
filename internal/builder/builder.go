@@ -1129,13 +1129,11 @@ func (b *Builder) buildConfigEnvLayer(dest string, env map[string]string) (strin
 		return "", err
 	}
 	defer fh.Close()
-
 	lw := b.layerWriterFactory.NewWriter(fh)
 	defer lw.Close()
-
 	for k, v := range env {
 		if err := lw.WriteHeader(&tar.Header{
-			Name:    path.Join(buildConfigDir, "env", k),
+			Name:    path.Join(cnbBuildConfigDir(), "env", k),
 			Size:    int64(len(v)),
 			Mode:    0644,
 			ModTime: archive.NormalizedDateTime,
@@ -1307,9 +1305,9 @@ func (e errModuleTar) Path() string {
 }
 
 func cnbBuildConfigDir() string {
-	if env, ok := os.LookupEnv("CNB_BUILD_CONFIG_DIR"); !ok {
-		return "/cnb/build-config"
-	} else {
+	if env, ok := os.LookupEnv("CNB_BUILD_CONFIG_DIR"); ok {
 		return env
 	}
+
+	return "/cnb/build-config"
 }
