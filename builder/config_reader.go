@@ -229,7 +229,7 @@ func getBuildConfigEnvFileName(env BuildConfigEnv) (suffixName, delimName string
 	if err != nil {
 		return suffixName, delimName, err
 	}
-	if suffix == "" || len(suffix) == 0 {
+	if suffix == "" {
 		suffixName = env.Name
 	} else {
 		suffixName = env.Name + suffix
