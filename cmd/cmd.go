@@ -40,18 +40,24 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 		return nil, err
 	}
 
+	var forceColor bool // Add a variable to store the forceColor flag
+
 	rootCmd := &cobra.Command{
 		Use:   "pack",
 		Short: "CLI for building apps using Cloud Native Buildpacks",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if fs := cmd.Flags(); fs != nil {
-				if flag, err := fs.GetBool("no-color"); err == nil && flag {
-					color.Disable(flag)
-				}
-
-				_, canDisplayColor := term.IsTerminal(logging.GetWriterForLevel(logger, logging.InfoLevel))
-				if !canDisplayColor {
-					color.Disable(true)
+				if forceColor { // Check if the forceColor flag is set
+					color.Enabled()
+				} else {
+					if flag, err := fs.GetBool("no-color"); err == nil && flag {
+						color.Disable(true)
+					} else {
+						_, canDisplayColor := term.IsTerminal(logging.GetWriterForLevel(logger, logging.InfoLevel))
+						if !canDisplayColor {
+							color.Disable(true)
+						}
+					}
 				}
 
 				if flag, err := fs.GetBool("quiet"); err == nil {
