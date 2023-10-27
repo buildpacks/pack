@@ -4,8 +4,13 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      # Check for updates to GitHub Actions every weekday
-      interval: "daily"
+      interval: "weekly"
+    groups:
+      # Group all minor/patch go dependencies into a single PR.
+      go-dependencies:
+        update-types:
+          - "minor"
+          - "patch"
     labels:
       - "dependencies"
       - "go"
@@ -15,8 +20,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      # Check for updates to GitHub Actions every weekday
-      interval: "daily"
+      interval: "weekly"
     labels:
       - "dependencies"
       - "github_actions"
