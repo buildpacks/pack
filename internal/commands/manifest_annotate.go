@@ -1,8 +1,9 @@
 package commands
 
 import (
-	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/spf13/cobra"
+
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 // ManifestAnnotateFlags define flags provided to the ManifestAnnotate
@@ -15,8 +16,8 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 	var flags ManifestAnnotateFlags
 
 	cmd := &cobra.Command{
-		Use: "pack manifest annotate [OPTIONS] <manifest-list> <manifest> [flags]",
-		Args: cobra.MatchAll(cobra.ExactArgs(2), cobra.OnlyValidArgs),
+		Use:   "pack manifest annotate [OPTIONS] <manifest-list> <manifest> [flags]",
+		Args:  cobra.MatchAll(cobra.ExactArgs(2), cobra.OnlyValidArgs),
 		Short: "manifest annotate modifies a manifest list (Image index) and update the platform information for an image included in the manifest list.",
 		Example: `pack manifest annotate cnbs/sample-package:hello-universe-multiarch \ 
 		cnbs/sample-package:hello-universe --arch amd64`,

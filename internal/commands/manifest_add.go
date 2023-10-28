@@ -1,8 +1,9 @@
 package commands
 
 import (
-	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/spf13/cobra"
+
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 // ManifestAddFlags define flags provided to the ManifestAdd
@@ -16,8 +17,8 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 	var flags ManifestAddFlags
 
 	cmd := &cobra.Command{
-		Use: "pack manifest add [OPTIONS] <manifest-list> <manifest> [flags]",
-		Args: cobra.MatchAll(cobra.ExactArgs(2), cobra.OnlyValidArgs),
+		Use:   "pack manifest add [OPTIONS] <manifest-list> <manifest> [flags]",
+		Args:  cobra.MatchAll(cobra.ExactArgs(2), cobra.OnlyValidArgs),
 		Short: "manifest add modifies a manifest list (Image index) and add a new image to the list of manifests.",
 		Example: `pack manifest add cnbs/sample-package:hello-multiarch-universe \
 		cnbs/sample-package:hello-universe-riscv-linux`,

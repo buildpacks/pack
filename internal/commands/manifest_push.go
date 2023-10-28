@@ -1,13 +1,14 @@
 package commands
 
 import (
-	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/spf13/cobra"
+
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 // ManifestPushFlags define flags provided to the ManifestPush
 type ManifestPushFlags struct {
-	format string
+	format          string
 	insecure, purge bool
 }
 
@@ -16,9 +17,9 @@ func ManifestPush(logger logging.Logger, pack PackClient) *cobra.Command {
 	var flags ManifestPushFlags
 
 	cmd := &cobra.Command{
-		Use: "pack manifest push [OPTIONS] <manifest-list> [flags]",
-		Args: cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
-		Short: "manifest push pushes a manifest list (Image index) to a registry.",
+		Use:     "pack manifest push [OPTIONS] <manifest-list> [flags]",
+		Args:    cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Short:   "manifest push pushes a manifest list (Image index) to a registry.",
 		Example: `pack manifest push cnbs/sample-package:hello-multiarch-universe`,
 		Long: `manifest push pushes a manifest list (Image index) to a registry.
 

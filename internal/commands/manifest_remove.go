@@ -1,8 +1,9 @@
 package commands
 
 import (
-	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/spf13/cobra"
+
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 // ManifestDeleteFlags define flags provided to the ManifestDelete
@@ -14,9 +15,9 @@ func ManifestDelete(logger logging.Logger, pack PackClient) *cobra.Command {
 	// var flags ManifestDeleteFlags
 
 	cmd := &cobra.Command{
-		Use: "pack manifest remove [manifest-list] [manifest-list...] [flags]",
-		Args: cobra.MatchAll(cobra.MinimumNArgs(1), cobra.OnlyValidArgs),
-		Short: "Delete one or more manifest lists from local storage",
+		Use:     "pack manifest remove [manifest-list] [manifest-list...] [flags]",
+		Args:    cobra.MatchAll(cobra.MinimumNArgs(1), cobra.OnlyValidArgs),
+		Short:   "Delete one or more manifest lists from local storage",
 		Example: `pack manifest remove cnbs/sample-package:hello-multiarch-universe`,
 		Long: `Delete one or more manifest lists from local storage.
 

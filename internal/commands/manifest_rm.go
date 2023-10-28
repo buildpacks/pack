@@ -1,8 +1,9 @@
 package commands
 
 import (
-	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/spf13/cobra"
+
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 // ManifestRemoveFlags define flags provided to the ManifestRemove
@@ -14,8 +15,8 @@ func ManifestRemove(logger logging.Logger, pack PackClient) *cobra.Command {
 	// var flags ManifestRemoveFlags
 
 	cmd := &cobra.Command{
-		Use: "pack manifest rm [manifest-list] [manifest] [manifest...] [flags]",
-		Args: cobra.MatchAll(cobra.MinimumNArgs(2), cobra.OnlyValidArgs),
+		Use:   "pack manifest rm [manifest-list] [manifest] [manifest...] [flags]",
+		Args:  cobra.MatchAll(cobra.MinimumNArgs(2), cobra.OnlyValidArgs),
 		Short: "manifest rm will remove the specified image manifest if it is already referenced in the index",
 		Example: `pack manifest rm cnbs/sample-package:hello-multiarch-universe \
 		cnbs/sample-package:hello-universe-windows`,

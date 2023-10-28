@@ -22,6 +22,13 @@ type PackClient interface {
 	InspectImage(string, bool) (*client.ImageInfo, error)
 	Rebase(context.Context, client.RebaseOptions) error
 	CreateBuilder(context.Context, client.CreateBuilderOptions) error
+	CreateManifest(context.Context, string, []string) (imageID string, err error)
+	AnnotateManifest() error
+	AddManifest() error
+	DeleteManifest() error
+	RemoveManifest() error
+	PushManifest() error
+	InspectManifest() error
 	NewBuildpack(context.Context, client.NewBuildpackOptions) error
 	PackageBuildpack(ctx context.Context, opts client.PackageBuildpackOptions) error
 	PackageExtension(ctx context.Context, opts client.PackageBuildpackOptions) error
