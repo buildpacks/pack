@@ -1322,7 +1322,7 @@ func createInlineBuildpack(bp projectTypes.Buildpack, stackID string) (string, e
 		bp.Version = "0.0.0"
 	}
 
-	if err = createBuildpackTOML(pathToInlineBuilpack, bp.ID, bp.Version, bp.Script.API, []dist.Stack{{ID: stackID}}, nil); err != nil {
+	if err = createBuildpackTOML(pathToInlineBuilpack, bp.ID, bp.Version, bp.Script.API, []dist.Stack{{ID: stackID}}, []dist.Target{}, nil); err != nil {
 		return pathToInlineBuilpack, err
 	}
 
