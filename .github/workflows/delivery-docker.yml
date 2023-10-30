@@ -70,6 +70,10 @@ jobs:
             --build-arg base_image=${{ matrix.base_image }} \
             --provenance=false \
             --push
+      - name: Tag Image as Base
+        if: ${{ (github.event.release != '' || github.event.inputs.tag_latest) && matrix.config == 'base' }}
+        run: |
+          crane copy ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} ${{ env.IMG_NAME }}:base
       - name: Tag Image as Latest
         if: ${{ (github.event.release != '' || github.event.inputs.tag_latest) && matrix.config != 'base' }}
         run: |
