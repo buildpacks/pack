@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1698698162747,
+  "lastUpdate": 1698703224403,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3058,6 +3058,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Trusted_Builder",
             "value": 1601344144,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a1bc205a9f86c852cb569a1b5badb10236380281",
+          "message": "Merge pull request #1951 from buildpacks/pack-image\n\nAdd buildpacksio/pack:<version>-base images to delivery",
+          "timestamp": "2023-10-30T16:58:32-05:00",
+          "tree_id": "fbb35e443c32fed9f5f23e169e062aaaf73d0c2e",
+          "url": "https://github.com/buildpacks/pack/commit/a1bc205a9f86c852cb569a1b5badb10236380281"
+        },
+        "date": 1698703223227,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7419280475,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2152003491,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
