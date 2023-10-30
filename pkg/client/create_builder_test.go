@@ -843,12 +843,22 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					buildpackBlob := blob.NewBlob(filepath.Join("testdata", "buildpack-api-0.4"))
 					bp, err := buildpack.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
 					h.AssertNil(t, err)
-					mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz", gomock.Any()).Return(bp, bpDependencies, nil)
+					mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz", gomock.Any()).DoAndReturn(
+						func(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error) {
+							// test options
+							h.AssertEq(t, opts.Platform, "linux/amd64")
+							return bp, bpDependencies, nil
+						})
 
 					extensionBlob := blob.NewBlob(filepath.Join("testdata", "extension-api-0.9"))
 					extension, err := buildpack.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory())
 					h.AssertNil(t, err)
-					mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/ext-one-with-api-9.tgz", gomock.Any()).Return(extension, nil, nil)
+					mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/ext-one-with-api-9.tgz", gomock.Any()).DoAndReturn(
+						func(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error) {
+							// test options
+							h.AssertEq(t, opts.Platform, "linux/amd64")
+							return extension, nil, nil
+						})
 
 					successfullyCreateDeterministicBuilder()
 

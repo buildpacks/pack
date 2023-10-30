@@ -67,6 +67,9 @@ type DownloadOptions struct {
 	// The OS of the builder image
 	ImageOS string
 
+	// The OS/Architecture to download
+	Platform string
+
 	// Deprecated: the older alternative to buildpack URI
 	ImageName string
 
@@ -102,7 +105,11 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 	case PackageLocator:
 		imageName := ParsePackageLocator(moduleURI)
 		c.logger.Debugf("Downloading %s from image: %s", kind, style.Symbol(imageName))
-		mainBP, depBPs, err = extractPackaged(ctx, kind, imageName, c.imageFetcher, image.FetchOptions{Daemon: opts.Daemon, PullPolicy: opts.PullPolicy})
+		mainBP, depBPs, err = extractPackaged(ctx, kind, imageName, c.imageFetcher, image.FetchOptions{
+			Daemon:     opts.Daemon,
+			PullPolicy: opts.PullPolicy,
+			Platform:   opts.Platform,
+		})
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from registry %s", style.Symbol(moduleURI))
 		}
@@ -113,7 +120,11 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 			return nil, nil, errors.Wrapf(err, "locating in registry: %s", style.Symbol(moduleURI))
 		}
 
-		mainBP, depBPs, err = extractPackaged(ctx, kind, address, c.imageFetcher, image.FetchOptions{Daemon: opts.Daemon, PullPolicy: opts.PullPolicy})
+		mainBP, depBPs, err = extractPackaged(ctx, kind, address, c.imageFetcher, image.FetchOptions{
+			Daemon:     opts.Daemon,
+			PullPolicy: opts.PullPolicy,
+			Platform:   opts.Platform,
+		})
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from registry %s", style.Symbol(moduleURI))
 		}
