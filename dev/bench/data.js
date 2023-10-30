@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1698703224403,
+  "lastUpdate": 1698706456508,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3094,6 +3094,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Trusted_Builder",
             "value": 2152003491,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "94f859fd834f91eaaa0309ce4a208e94c82dc80f",
+          "message": "Merge pull request #1950 from edmorley/dependabot-grouping\n\nGroup minor/patch version Go Dependabot updates into one PR",
+          "timestamp": "2023-10-30T17:52:42-05:00",
+          "tree_id": "49ddecd1a7c3db9dbfea3f007660616787f08439",
+          "url": "https://github.com/buildpacks/pack/commit/94f859fd834f91eaaa0309ce4a208e94c82dc80f"
+        },
+        "date": 1698706455883,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4181623027,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1017473640,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
