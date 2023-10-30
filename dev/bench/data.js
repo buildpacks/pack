@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1697576255595,
+  "lastUpdate": 1698698162747,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3022,6 +3022,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 62659284944,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "13802c2c92fd5d0e2165faf9f3e4a250ef6479b0",
+          "message": "Merge pull request #1933 from buildpacks/fix/run-image-multi-arch\n\nEnsure the downloaded os/arch always matches the expected os/arch",
+          "timestamp": "2023-10-30T15:34:04-05:00",
+          "tree_id": "50914a63602694ffdcf1449a94b6b6a470bf4936",
+          "url": "https://github.com/buildpacks/pack/commit/13802c2c92fd5d0e2165faf9f3e4a250ef6479b0"
+        },
+        "date": 1698698161699,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6379165787,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1601344144,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
