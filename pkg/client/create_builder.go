@@ -256,14 +256,20 @@ func (c *Client) addExtensionsToBuilder(ctx context.Context, opts CreateBuilderO
 func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.ModuleConfig, opts CreateBuilderOptions, bldr *builder.Builder) error {
 	c.logger.Debugf("Looking up %s %s", kind, style.Symbol(config.DisplayString()))
 
-	imageOS, err := bldr.Image().OS()
+	builderOS, err := bldr.Image().OS()
 	if err != nil {
-		return errors.Wrapf(err, "getting OS from %s", style.Symbol(bldr.Image().Name()))
+		return errors.Wrapf(err, "getting builder OS")
 	}
+	builderArch, err := bldr.Image().Architecture()
+	if err != nil {
+		return errors.Wrapf(err, "getting builder architecture")
+	}
+
 	mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, config.URI, buildpack.DownloadOptions{
 		Daemon:          !opts.Publish,
 		ImageName:       config.ImageName,
-		ImageOS:         imageOS,
+		ImageOS:         builderOS,
+		Platform:        fmt.Sprintf("%s/%s", builderOS, builderArch),
 		ModuleKind:      kind,
 		PullPolicy:      opts.PullPolicy,
 		RegistryName:    opts.Registry,

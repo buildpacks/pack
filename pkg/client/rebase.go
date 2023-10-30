@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -60,6 +61,16 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return err
 	}
 
+	appOS, err := appImage.OS()
+	if err != nil {
+		return errors.Wrapf(err, "getting app OS")
+	}
+
+	appArch, err := appImage.Architecture()
+	if err != nil {
+		return errors.Wrapf(err, "getting app architecture")
+	}
+
 	var md files.LayersMetadataCompat
 	if ok, err := dist.GetLabel(appImage, platform.LifecycleMetadataLabel, &md); err != nil {
 		return err
@@ -90,7 +101,11 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return errors.New("run image must be specified")
 	}
 
-	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
+	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, image.FetchOptions{
+		Daemon:     !opts.Publish,
+		PullPolicy: opts.PullPolicy,
+		Platform:   fmt.Sprintf("%s/%s", appOS, appArch),
+	})
 	if err != nil {
 		return err
 	}
