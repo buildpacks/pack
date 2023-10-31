@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1698761025896,
+  "lastUpdate": 1698765679400,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3202,6 +3202,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Trusted_Builder",
             "value": 2305189589,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e41bb2af73d5af7799ed2d14896ed5ae3154d379",
+          "message": "Merge pull request #1919 from buildpacks/fix/log\n\nFix misleading log message when publishing a buildpack package",
+          "timestamp": "2023-10-31T10:19:44-05:00",
+          "tree_id": "66498fa4890d6ecea4f7ccdecf3462a790b759b3",
+          "url": "https://github.com/buildpacks/pack/commit/e41bb2af73d5af7799ed2d14896ed5ae3154d379"
+        },
+        "date": 1698765678293,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6530889656,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1722190093,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
