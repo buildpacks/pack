@@ -29,6 +29,9 @@ type CreateBuilderOptions struct {
 	// Name of the builder.
 	BuilderName string
 
+	// BuildConfigEnv for Builder
+	BuildConfigEnv map[string]string
+
 	// Configuration that defines the functionality a builder provides.
 	Config pubbldr.Config
 
@@ -79,6 +82,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		bldr.SetStack(opts.Config.Stack)
 	}
 	bldr.SetRunImage(opts.Config.Run)
+	bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
 
 	return bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version})
 }
@@ -191,6 +195,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	}
 
 	bldr.SetLifecycle(lifecycle)
+	bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
 
 	return bldr, nil
 }
@@ -256,14 +261,20 @@ func (c *Client) addExtensionsToBuilder(ctx context.Context, opts CreateBuilderO
 func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.ModuleConfig, opts CreateBuilderOptions, bldr *builder.Builder) error {
 	c.logger.Debugf("Looking up %s %s", kind, style.Symbol(config.DisplayString()))
 
-	imageOS, err := bldr.Image().OS()
+	builderOS, err := bldr.Image().OS()
 	if err != nil {
-		return errors.Wrapf(err, "getting OS from %s", style.Symbol(bldr.Image().Name()))
+		return errors.Wrapf(err, "getting builder OS")
 	}
+	builderArch, err := bldr.Image().Architecture()
+	if err != nil {
+		return errors.Wrapf(err, "getting builder architecture")
+	}
+
 	mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, config.URI, buildpack.DownloadOptions{
 		Daemon:          !opts.Publish,
 		ImageName:       config.ImageName,
-		ImageOS:         imageOS,
+		ImageOS:         builderOS,
+		Platform:        fmt.Sprintf("%s/%s", builderOS, builderArch),
 		ModuleKind:      kind,
 		PullPolicy:      opts.PullPolicy,
 		RegistryName:    opts.Registry,

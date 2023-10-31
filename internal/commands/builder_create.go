@@ -75,9 +75,18 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				return errors.Wrap(err, "getting absolute path for config")
 			}
 
+			envMap, warnings, err := builder.ParseBuildConfigEnv(builderConfig.Build.Env, flags.BuilderTomlPath)
+			for _, v := range warnings {
+				logger.Warn(v)
+			}
+			if err != nil {
+				return err
+			}
+
 			imageName := args[0]
 			if err := pack.CreateBuilder(cmd.Context(), client.CreateBuilderOptions{
 				RelativeBaseDir: relativeBaseDir,
+				BuildConfigEnv:  envMap,
 				BuilderName:     imageName,
 				Config:          builderConfig,
 				Publish:         flags.Publish,
