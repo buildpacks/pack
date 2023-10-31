@@ -13,6 +13,7 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
@@ -46,6 +47,110 @@ const validConfigWithExtensions = `
 		id = "some.extension"
 
 `
+
+var BuildConfigEnvSuffixNone = builder.BuildConfigEnv{
+	Name:  "suffixNone",
+	Value: "suffixNoneValue",
+}
+
+var BuildConfigEnvSuffixNoneWithEmptySuffix = builder.BuildConfigEnv{
+	Name:   "suffixNoneWithEmptySuffix",
+	Value:  "suffixNoneWithEmptySuffixValue",
+	Suffix: "",
+}
+
+var BuildConfigEnvSuffixDefault = builder.BuildConfigEnv{
+	Name:   "suffixDefault",
+	Value:  "suffixDefaultValue",
+	Suffix: "default",
+}
+
+var BuildConfigEnvSuffixOverride = builder.BuildConfigEnv{
+	Name:   "suffixOverride",
+	Value:  "suffixOverrideValue",
+	Suffix: "override",
+}
+
+var BuildConfigEnvSuffixAppend = builder.BuildConfigEnv{
+	Name:   "suffixAppend",
+	Value:  "suffixAppendValue",
+	Suffix: "append",
+	Delim:  ":",
+}
+
+var BuildConfigEnvSuffixPrepend = builder.BuildConfigEnv{
+	Name:   "suffixPrepend",
+	Value:  "suffixPrependValue",
+	Suffix: "prepend",
+	Delim:  ":",
+}
+
+var BuildConfigEnvDelimWithoutSuffix = builder.BuildConfigEnv{
+	Name:  "delimWithoutSuffix",
+	Delim: ":",
+}
+
+var BuildConfigEnvSuffixUnknown = builder.BuildConfigEnv{
+	Name:   "suffixUnknown",
+	Value:  "suffixUnknownValue",
+	Suffix: "unknown",
+}
+
+var BuildConfigEnvSuffixMultiple = []builder.BuildConfigEnv{
+	{
+		Name:   "MY_VAR",
+		Value:  "suffixAppendValueValue",
+		Suffix: "append",
+		Delim:  ";",
+	},
+	{
+		Name:   "MY_VAR",
+		Value:  "suffixDefaultValue",
+		Suffix: "default",
+		Delim:  "%",
+	},
+	{
+		Name:   "MY_VAR",
+		Value:  "suffixPrependValue",
+		Suffix: "prepend",
+		Delim:  ":",
+	},
+}
+
+var BuildConfigEnvEmptyValue = builder.BuildConfigEnv{
+	Name:  "warning",
+	Value: "",
+}
+
+var BuildConfigEnvEmptyName = builder.BuildConfigEnv{
+	Name:   "",
+	Value:  "suffixUnknownValue",
+	Suffix: "default",
+}
+
+var BuildConfigEnvSuffixPrependWithoutDelim = builder.BuildConfigEnv{
+	Name:   "suffixPrepend",
+	Value:  "suffixPrependValue",
+	Suffix: "prepend",
+}
+
+var BuildConfigEnvDelimWithoutSuffixAppendOrPrepend = builder.BuildConfigEnv{
+	Name:  "delimWithoutActionAppendOrPrepend",
+	Value: "some-value",
+	Delim: ":",
+}
+
+var BuildConfigEnvDelimWithSameSuffixAndName = []builder.BuildConfigEnv{
+	{
+		Name:   "MY_VAR",
+		Value:  "some-value",
+		Suffix: "",
+	},
+	{
+		Name:  "MY_VAR",
+		Value: "some-value",
+	},
+}
 
 func TestCreateCommand(t *testing.T) {
 	color.Disable(true)
@@ -168,6 +273,115 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 					"--builder-config", builderConfigPath,
 				})
 				h.AssertError(t, command.Execute(), "unknown flag: --builder-config")
+			})
+		})
+
+		when("#ParseBuildpackConfigEnv", func() {
+			it("should create envMap as expected when suffix is omitted", func() {
+				envMap, warnings, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixNone}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixNone.Name: BuildConfigEnvSuffixNone.Value,
+				})
+				h.AssertEq(t, len(warnings), 0)
+				h.AssertNil(t, err)
+			})
+			it("should create envMap as expected when suffix is empty string", func() {
+				envMap, warnings, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixNoneWithEmptySuffix}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixNoneWithEmptySuffix.Name: BuildConfigEnvSuffixNoneWithEmptySuffix.Value,
+				})
+				h.AssertEq(t, len(warnings), 0)
+				h.AssertNil(t, err)
+			})
+			it("should create envMap as expected when suffix is `default`", func() {
+				envMap, warnings, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixDefault}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixDefault.Name + "." + string(BuildConfigEnvSuffixDefault.Suffix): BuildConfigEnvSuffixDefault.Value,
+				})
+				h.AssertEq(t, len(warnings), 0)
+				h.AssertNil(t, err)
+			})
+			it("should create envMap as expected when suffix is `override`", func() {
+				envMap, warnings, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixOverride}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixOverride.Name + "." + string(BuildConfigEnvSuffixOverride.Suffix): BuildConfigEnvSuffixOverride.Value,
+				})
+				h.AssertEq(t, len(warnings), 0)
+				h.AssertNil(t, err)
+			})
+			it("should create envMap as expected when suffix is `append`", func() {
+				envMap, warnings, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixAppend}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixAppend.Name + "." + string(BuildConfigEnvSuffixAppend.Suffix): BuildConfigEnvSuffixAppend.Value,
+					BuildConfigEnvSuffixAppend.Name + ".delim":                                        BuildConfigEnvSuffixAppend.Delim,
+				})
+				h.AssertEq(t, len(warnings), 0)
+				h.AssertNil(t, err)
+			})
+			it("should create envMap as expected when suffix is `prepend`", func() {
+				envMap, warnings, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixPrepend}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixPrepend.Name + "." + string(BuildConfigEnvSuffixPrepend.Suffix): BuildConfigEnvSuffixPrepend.Value,
+					BuildConfigEnvSuffixPrepend.Name + ".delim":                                         BuildConfigEnvSuffixPrepend.Delim,
+				})
+				h.AssertEq(t, len(warnings), 0)
+				h.AssertNil(t, err)
+			})
+			it("should create envMap as expected when delim is specified", func() {
+				envMap, warnings, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvDelimWithoutSuffix}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvDelimWithoutSuffix.Name:            BuildConfigEnvDelimWithoutSuffix.Value,
+					BuildConfigEnvDelimWithoutSuffix.Name + ".delim": BuildConfigEnvDelimWithoutSuffix.Delim,
+				})
+				h.AssertNotEq(t, len(warnings), 0)
+				h.AssertNil(t, err)
+			})
+			it("should create envMap with a warning when `value` is empty", func() {
+				envMap, warnings, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvEmptyValue}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvEmptyValue.Name: BuildConfigEnvEmptyValue.Value,
+				})
+				h.AssertNotEq(t, len(warnings), 0)
+				h.AssertNil(t, err)
+			})
+			it("should return an error when `name` is empty", func() {
+				envMap, warnings, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvEmptyName}, "")
+				h.AssertEq(t, envMap, map[string]string(nil))
+				h.AssertEq(t, len(warnings), 0)
+				h.AssertNotNil(t, err)
+			})
+			it("should return warnings when `apprend` or `prepend` is used without `delim`", func() {
+				envMap, warnings, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixPrependWithoutDelim}, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixPrependWithoutDelim.Name + "." + string(BuildConfigEnvSuffixPrependWithoutDelim.Suffix): BuildConfigEnvSuffixPrependWithoutDelim.Value,
+				})
+				h.AssertNotEq(t, len(warnings), 0)
+				h.AssertNotNil(t, err)
+			})
+			it("should return an error when unknown `suffix` is used", func() {
+				envMap, warnings, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{BuildConfigEnvSuffixUnknown}, "")
+				h.AssertEq(t, envMap, map[string]string{})
+				h.AssertEq(t, len(warnings), 0)
+				h.AssertNotNil(t, err)
+			})
+			it("should override with the last specified delim when `[[build.env]]` has multiple delims with same `name` with a `append` or `prepend` suffix", func() {
+				envMap, warnings, err := builder.ParseBuildConfigEnv(BuildConfigEnvSuffixMultiple, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvSuffixMultiple[0].Name + "." + string(BuildConfigEnvSuffixMultiple[0].Suffix): BuildConfigEnvSuffixMultiple[0].Value,
+					BuildConfigEnvSuffixMultiple[1].Name + "." + string(BuildConfigEnvSuffixMultiple[1].Suffix): BuildConfigEnvSuffixMultiple[1].Value,
+					BuildConfigEnvSuffixMultiple[2].Name + "." + string(BuildConfigEnvSuffixMultiple[2].Suffix): BuildConfigEnvSuffixMultiple[2].Value,
+					BuildConfigEnvSuffixMultiple[2].Name + ".delim":                                             BuildConfigEnvSuffixMultiple[2].Delim,
+				})
+				h.AssertNotEq(t, len(warnings), 0)
+				h.AssertNil(t, err)
+			})
+			it("should override `value` with the last read value when a `[[build.env]]` has same `name` with same `suffix`", func() {
+				envMap, warnings, err := builder.ParseBuildConfigEnv(BuildConfigEnvDelimWithSameSuffixAndName, "")
+				h.AssertEq(t, envMap, map[string]string{
+					BuildConfigEnvDelimWithSameSuffixAndName[1].Name: BuildConfigEnvDelimWithSameSuffixAndName[1].Value,
+				})
+				h.AssertNotEq(t, len(warnings), 0)
+				h.AssertNil(t, err)
 			})
 		})
 
