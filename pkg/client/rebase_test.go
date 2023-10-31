@@ -258,6 +258,8 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, fakeAppImage.Base(), "some/run")
 							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 							h.AssertContains(t, lbl, `"runImage":{"topLayer":"remote-top-layer-sha","reference":"remote-digest"`)
+							args := fakeImageFetcher.FetchCalls["some/run"]
+							h.AssertEq(t, args.Platform, "linux/amd64")
 						})
 					})
 				})
