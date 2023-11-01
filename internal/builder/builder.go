@@ -32,6 +32,8 @@ import (
 	lifecycleplatform "github.com/buildpacks/lifecycle/platform"
 )
 
+var buildConfigDir = cnbBuildConfigDir()
+
 const (
 	packName = "Pack CLI"
 
@@ -67,6 +69,7 @@ const (
 // Builder represents a pack builder, used to build images
 type Builder struct {
 	baseImageName            string
+	buildConfigEnv           map[string]string
 	image                    imgutil.Image
 	layerWriterFactory       archive.TarWriterFactory
 	lifecycle                Lifecycle
@@ -146,6 +149,7 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 		metadata:                 metadata,
 		lifecycleDescriptor:      constructLifecycleDescriptor(metadata),
 		env:                      map[string]string{},
+		buildConfigEnv:           map[string]string{},
 		validateMixins:           true,
 		additionalBuildpacks:     *buildpack.NewModuleManager(opts.flatten, opts.depth),
 		additionalExtensions:     *buildpack.NewModuleManager(opts.flatten, opts.depth),
@@ -349,6 +353,11 @@ func (b *Builder) SetEnv(env map[string]string) {
 	b.env = env
 }
 
+// SetBuildConfigEnv sets an environment variable to a value that will take action on platform environment variables basedon filename suffix
+func (b *Builder) SetBuildConfigEnv(env map[string]string) {
+	b.buildConfigEnv = env
+}
+
 // SetOrder sets the order of the builder
 func (b *Builder) SetOrder(order dist.Order) {
 	b.order = order
@@ -523,6 +532,18 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	}
 	if err := b.image.AddLayer(runImageTar); err != nil {
 		return errors.Wrap(err, "adding run.tar layer")
+	}
+
+	if len(b.buildConfigEnv) > 0 {
+		logger.Debugf("Provided Build Config Environment Variables\n  %s", style.Map(b.env, "  ", "\n"))
+		buildConfigEnvTar, err := b.buildConfigEnvLayer(tmpDir, b.buildConfigEnv)
+		if err != nil {
+			return errors.Wrap(err, "retrieving build-config-env layer")
+		}
+
+		if err := b.image.AddLayer(buildConfigEnvTar); err != nil {
+			return errors.Wrap(err, "adding build-config-env layer")
+		}
 	}
 
 	if len(b.env) > 0 {
@@ -903,7 +924,7 @@ func (b *Builder) defaultDirsLayer(dest string) (string, error) {
 	}
 
 	// can't use filepath.Join(), to ensure Windows doesn't transform it to Windows join
-	for _, path := range []string{cnbDir, dist.BuildpacksDir, dist.ExtensionsDir, platformDir, platformDir + "/env"} {
+	for _, path := range []string{cnbDir, dist.BuildpacksDir, dist.ExtensionsDir, platformDir, platformDir + "/env", buildConfigDir, buildConfigDir + "/env"} {
 		if err := lw.WriteHeader(b.rootOwnedDir(path, ts)); err != nil {
 			return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(path))
 		}
@@ -1102,6 +1123,31 @@ func (b *Builder) envLayer(dest string, env map[string]string) (string, error) {
 	return fh.Name(), nil
 }
 
+func (b *Builder) buildConfigEnvLayer(dest string, env map[string]string) (string, error) {
+	fh, err := os.Create(filepath.Join(dest, "build-config-env.tar"))
+	if err != nil {
+		return "", err
+	}
+	defer fh.Close()
+	lw := b.layerWriterFactory.NewWriter(fh)
+	defer lw.Close()
+	for k, v := range env {
+		if err := lw.WriteHeader(&tar.Header{
+			Name:    path.Join(cnbBuildConfigDir(), "env", k),
+			Size:    int64(len(v)),
+			Mode:    0644,
+			ModTime: archive.NormalizedDateTime,
+		}); err != nil {
+			return "", err
+		}
+		if _, err := lw.Write([]byte(v)); err != nil {
+			return "", err
+		}
+	}
+
+	return fh.Name(), nil
+}
+
 func (b *Builder) whiteoutLayer(tmpDir string, i int, bpInfo dist.ModuleInfo) (string, error) {
 	bpWhiteoutsTmpDir := filepath.Join(tmpDir, strconv.Itoa(i)+"_whiteouts")
 	if err := os.MkdirAll(bpWhiteoutsTmpDir, os.ModePerm); err != nil {
@@ -1256,4 +1302,12 @@ func (e errModuleTar) Info() dist.ModuleInfo {
 
 func (e errModuleTar) Path() string {
 	return ""
+}
+
+func cnbBuildConfigDir() string {
+	if env, ok := os.LookupEnv("CNB_BUILD_CONFIG_DIR"); ok {
+		return env
+	}
+
+	return "/cnb/build-config"
 }
