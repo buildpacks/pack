@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1698853098702,
+  "lastUpdate": 1698939146743,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3310,6 +3310,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Trusted_Builder",
             "value": 1618722542,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jpkutner@gmail.com",
+            "name": "Joe Kutner",
+            "username": "jkutner"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b12c9b3a0a8b3e9e0df590eaf901af44e5c82f06",
+          "message": "Merge pull request #1957 from jericop/imgutil-default-platform-change-test\n\nImgutil default platform change",
+          "timestamp": "2023-11-02T10:29:44-05:00",
+          "tree_id": "6a97f3580d1fc57ec5a9d0e4b707cb0858e90541",
+          "url": "https://github.com/buildpacks/pack/commit/b12c9b3a0a8b3e9e0df590eaf901af44e5c82f06"
+        },
+        "date": 1698939145568,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 8115277026,
+            "unit": "ns/op",
+            "extra": "1 times\n2 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2375459155,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
           }
