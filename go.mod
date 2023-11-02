@@ -125,3 +125,5 @@ require (
 )
 
 go 1.20
+
+replace github.com/buildpacks/imgutil => github.com/jericop/imgutil v1.0.0
