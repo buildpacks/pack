@@ -24,6 +24,9 @@ func ManifestRemove(logger logging.Logger, pack PackClient) *cobra.Command {
 
 		Sometimes users can just experiment with the feature locally and they want to discard all the local information created by pack. 'rm' command just delete the local manifest list`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+			if err := pack.RemoveManifest(cmd.Context(), args[0], args[1:]); err != nil {
+				return err
+			}
 			return nil
 		}),
 	}

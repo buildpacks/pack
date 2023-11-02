@@ -23,6 +23,9 @@ func ManifestDelete(logger logging.Logger, pack PackClient) *cobra.Command {
 
 		When a manifest list exits locally, users can remove existing images from a manifest list`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+			if err := pack.DeleteManifest(cmd.Context(), args); err != nil {
+				return err
+			}
 			return nil
 		}),
 	}

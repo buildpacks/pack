@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
+	// "github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -26,6 +27,24 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 		
 		When a manifest list exits locally, user can add a new image to the manifest list using this command`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+			// imageIndex := args[0]
+			// manifests := args[1:]
+			// if err := validateManifestAddFlags(flags); err != nil {
+			// 	return err
+			// }
+
+			// imageID, err := pack.AddManifest(cmd.Context(), imageIndex, manifests, client.ManifestAddOptions{
+			// 	OS: flags.os,
+			// 	Arch: flags.arch,
+			// 	Variant: flags.variant,
+			// 	All: flags.all,
+			// })
+
+			// if err != nil {
+			// 	return err
+			// }
+
+			// logger.Infof(imageID)
 			return nil
 		}),
 	}
@@ -37,4 +56,8 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 
 	AddHelpFlag(cmd, "add")
 	return cmd
+}
+
+func validateManifestAddFlags(flags ManifestAddFlags) error {
+	return nil
 }
