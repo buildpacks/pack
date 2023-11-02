@@ -97,6 +97,8 @@ github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.0.0-20230522190001-
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
 github.com/buildpacks/imgutil v0.0.0-20230626185301-726f02e4225c h1:HlRuSz+JGAzudNtNCfHIzXe0AEuHX6Vx8uZgmjvX02o=
 github.com/buildpacks/imgutil v0.0.0-20230626185301-726f02e4225c/go.mod h1:mBG5M3GJW5nknCEOOqtmMHyPYnSpw/5GEiciuYU/COw=
+github.com/buildpacks/imgutil v0.0.0-20231102131059-84d632186b59 h1:5g+dMdOO6Ufx/bDa5gUH/Aw9FN6wt7T3HzKSkHVvue4=
+github.com/buildpacks/imgutil v0.0.0-20231102131059-84d632186b59/go.mod h1:PsazEB9yz+NG/cgm0Z1oQ0Xq6rD/U7eNMt5Su41afYY=
 github.com/buildpacks/lifecycle v0.17.2 h1:CfJYWHIC5v996idgjDamYHBTk+G+c1Qt7Yk80MlbWpw=
 github.com/buildpacks/lifecycle v0.17.2/go.mod h1:h8MrqltqMM+HQnn2F2JOQaKWmeybZ54qvlNV3pAiAqw=
 github.com/bwesterb/go-ristretto v1.2.3/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7NFEuV9ekS419A0=
