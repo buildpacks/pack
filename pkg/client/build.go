@@ -318,6 +318,16 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
 	}
 
+	builderOS, err := rawBuilderImage.OS()
+	if err != nil {
+		return errors.Wrapf(err, "getting builder OS")
+	}
+
+	builderArch, err := rawBuilderImage.Architecture()
+	if err != nil {
+		return errors.Wrapf(err, "getting builder architecture")
+	}
+
 	bldr, err := c.getBuilder(rawBuilderImage)
 	if err != nil {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
@@ -325,7 +335,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish)
 
-	fetchOptions := image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy}
+	fetchOptions := image.FetchOptions{
+		Daemon:     !opts.Publish,
+		PullPolicy: opts.PullPolicy,
+		Platform:   fmt.Sprintf("%s/%s", builderOS, builderArch),
+	}
 	if opts.Layout() {
 		targetRunImagePath, err := layout.ParseRefToPath(runImageName)
 		if err != nil {
@@ -361,11 +375,6 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	imgOS, err := rawBuilderImage.OS()
-	if err != nil {
-		return errors.Wrapf(err, "getting builder OS")
-	}
-
 	// Default mode: if the TrustBuilder option is not set, trust the suggested builders.
 	if opts.TrustBuilder == nil {
 		opts.TrustBuilder = IsSuggestedBuilderFunc
@@ -396,15 +405,14 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				lifecycleImageName = fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, lifecycleVersion.String())
 			}
 
-			imgArch, err := rawBuilderImage.Architecture()
-			if err != nil {
-				return errors.Wrapf(err, "getting builder architecture")
-			}
-
 			lifecycleImage, err := c.imageFetcher.Fetch(
 				ctx,
 				lifecycleImageName,
-				image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy, Platform: fmt.Sprintf("%s/%s", imgOS, imgArch)},
+				image.FetchOptions{
+					Daemon:     true,
+					PullPolicy: opts.PullPolicy,
+					Platform:   fmt.Sprintf("%s/%s", builderOS, builderArch),
+				},
 			)
 			if err != nil {
 				return fmt.Errorf("fetching lifecycle image: %w", err)
@@ -455,7 +463,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		if !c.experimental {
 			return fmt.Errorf("experimental features must be enabled when builder contains image extensions")
 		}
-		if imgOS == "windows" {
+		if builderOS == "windows" {
 			return fmt.Errorf("builder contains image extensions which are not supported for Windows builds")
 		}
 		if !(opts.PullPolicy == image.PullAlways) {
@@ -467,7 +475,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		opts.ContainerConfig.Volumes = appendLayoutVolumes(opts.ContainerConfig.Volumes, pathsConfig)
 	}
 
-	processedVolumes, warnings, err := processVolumes(imgOS, opts.ContainerConfig.Volumes)
+	processedVolumes, warnings, err := processVolumes(builderOS, opts.ContainerConfig.Volumes)
 	if err != nil {
 		return err
 	}
@@ -1024,13 +1032,19 @@ func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir 
 			Version: version,
 		}
 	default:
-		imageOS, err := builderImage.OS()
+		builderOS, err := builderImage.OS()
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "getting OS from %s", style.Symbol(builderImage.Name()))
+			return nil, nil, errors.Wrapf(err, "getting builder OS")
+		}
+
+		builderArch, err := builderImage.Architecture()
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "getting builder architecture")
 		}
 		downloadOptions := buildpack.DownloadOptions{
 			RegistryName:    registry,
-			ImageOS:         imageOS,
+			ImageOS:         builderOS,
+			Platform:        fmt.Sprintf("%s/%s", builderOS, builderArch),
 			RelativeBaseDir: relativeBaseDir,
 			Daemon:          !publish,
 			PullPolicy:      pullPolicy,
@@ -1068,6 +1082,7 @@ func (c *Client) fetchBuildpackDependencies(ctx context.Context, bp string, pack
 			mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
 				RegistryName:    downloadOptions.RegistryName,
 				ImageOS:         downloadOptions.ImageOS,
+				Platform:        downloadOptions.Platform,
 				Daemon:          downloadOptions.Daemon,
 				PullPolicy:      downloadOptions.PullPolicy,
 				RelativeBaseDir: filepath.Join(bp, packageCfg.Buildpack.URI),

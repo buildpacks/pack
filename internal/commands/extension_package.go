@@ -84,15 +84,16 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 			}); err != nil {
 				return err
 			}
+
 			action := "created"
+			location := "docker daemon"
 			if flags.Publish {
 				action = "published"
+				location = "registry"
 			}
-			location := "docker daemon"
 			if flags.Format == client.FormatFile {
 				location = "file"
 			}
-
 			logger.Infof("Successfully %s package %s and saved to %s", action, style.Symbol(name), location)
 			return nil
 		}),
