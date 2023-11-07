@@ -14,14 +14,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestManifestExistsCommand(t *testing.T) {
+func TestManifestCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 
-	spec.Run(t, "Commands", testManifestExistsCommand, spec.Random(), spec.Report(report.Terminal{}))
+	spec.Run(t, "Commands", testManifestCommand, spec.Random(), spec.Report(report.Terminal{}))
 }
 
-func testManifestExistsCommand(t *testing.T, when spec.G, it spec.S) {
+func testManifestCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
 		command        *cobra.Command
 		logger         *logging.LogWithWriters
@@ -35,25 +35,32 @@ func testManifestExistsCommand(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 
-		command = commands.ManifestExists(logger, mockClient)
+		command = commands.NewManifestCommand(logger, mockClient)
 	})
 
-	when("#ManifestExists", func() {
-		when("only one arg is passed", func() {
+	when("#ManifestAdd", func() {
+		when("no flags specified", func() {
 
 		})
-		when("when more than one arg passed", func() {
+		when("add is passed as flag", func() {
 
 		})
-		when("when passed arg is manifest list", func() {
-			it("if exists locally", func() {
-
-			})
-			it("if exists at registry only", func() {
-
-			})
+		when("create is passed as flag", func() {
+			
 		})
-		when("when passed arg is manifest", func() {
+		when("annotate is passed as flag", func() {
+			
+		})
+		when("remove is passed as flag", func() {
+			
+		})
+		when("inspect is passed as flag", func() {
+			
+		})
+		when("rm is passed as flag", func() {
+			
+		})
+		when("push is passed as flag", func() {
 			
 		})
 	})

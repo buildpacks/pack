@@ -21,6 +21,6 @@ func NewManifestCommand(logger logging.Logger, client PackClient) *cobra.Command
 	cmd.AddCommand(ManifestPush(logger, client))
 	cmd.AddCommand(ManifestRemove(logger, client))
 
-	AddHelpFlag(cmd, "builder")
+	AddHelpFlag(cmd, "manifest")
 	return cmd
 }
