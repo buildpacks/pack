@@ -11,7 +11,7 @@ import (
 
 // ManifestCreateFlags define flags provided to the ManifestCreate
 type ManifestCreateFlags struct {
-	format, registry, os, arch  string
+	format, registry, os, arch    string
 	insecure, publish, all, amend bool
 }
 
@@ -48,10 +48,10 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 			}
 
 			id, err := pack.CreateManifest(cmd.Context(), imageIndex, manifests, client.CreateManifestOptions{
-				Format: flags.format,
+				Format:   flags.format,
 				Registry: flags.registry,
 				Insecure: flags.insecure,
-				Publish: flags.publish,
+				Publish:  flags.publish,
 			})
 
 			if err != nil {

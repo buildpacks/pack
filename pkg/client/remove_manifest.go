@@ -13,15 +13,15 @@ func (c *Client) RemoveManifest(ctx context.Context, name string, images []strin
 	}
 
 	for _, image := range images {
-		d, err := c.runtime.ParseDigest(image)
+		_, err := c.runtime.ParseReference(image)
 		if err != nil {
 			fmt.Errorf(`Invalid instance "%s": %v`, image, err)
 		}
-		if err := imgIndex.Remove(d); err != nil {
+		if err := imgIndex.Remove(image); err != nil {
 			return err
 		}
-		fmt.Printf("%s: %s\n", imgIndex.ID(), d.String())
+		fmt.Printf("Successfully removed %s from %s", image, name)
 	}
-	
+
 	return nil
 }

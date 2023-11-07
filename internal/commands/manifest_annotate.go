@@ -8,7 +8,7 @@ import (
 
 // ManifestAnnotateFlags define flags provided to the ManifestAnnotate
 type ManifestAnnotateFlags struct {
-	os, arch, variant, osVersion string
+	os, arch, variant, osVersion      string
 	features, osFeatures, annotations []string
 }
 
@@ -37,7 +37,6 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd.Flags().StringSliceVar(&flags.features, "features", nil, "override the `features` of the specified image")
 	cmd.Flags().StringSliceVar(&flags.osFeatures, "os-features", nil, "override the os `features` of the specified image")
 	cmd.Flags().StringSliceVar(&flags.annotations, "annotations", nil, "set an `annotation` for the specified image")
-
 
 	AddHelpFlag(cmd, "annotate")
 	return cmd

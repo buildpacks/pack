@@ -9,7 +9,7 @@ import (
 
 // ManifestPushFlags define flags provided to the ManifestPush
 type ManifestPushFlags struct {
-	format          string
+	format                      string
 	insecure, purge, all, quite bool
 }
 
@@ -31,9 +31,9 @@ func ManifestPush(logger logging.Logger, pack PackClient) *cobra.Command {
 			}
 
 			imageID, err := pack.PushManifest(cmd.Context(), args[0], client.PushManifestOptions{
-				Format: flags.format,
+				Format:   flags.format,
 				Insecure: flags.insecure,
-				Purge: flags.purge,
+				Purge:    flags.purge,
 			})
 
 			if err != nil {

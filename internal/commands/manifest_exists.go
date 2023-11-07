@@ -19,7 +19,7 @@ func ManifestExists(logger logging.Logger, pack PackClient) *cobra.Command {
 		Args:    cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		Short:   "Delete one or more manifest lists from local storage",
 		Example: `pack manifest exists cnbs/sample-package:hello-multiarch-universe`,
-		Long: `Checks if a manifest list exists in local storage`,
+		Long:    `Checks if a manifest list exists in local storage`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if err := pack.ExistsManifest(cmd.Context(), args[0]); err != nil {
 				return err

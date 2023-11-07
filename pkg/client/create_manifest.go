@@ -6,11 +6,12 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/imgutil"
+
 	packErrors "github.com/buildpacks/pack/pkg/errors"
 )
 
 type CreateManifestOptions struct {
-	Format, Registry  string
+	Format, Registry              string
 	Insecure, Publish, amend, all bool
 }
 
@@ -21,23 +22,14 @@ func (c *Client) CreateManifest(ctx context.Context, name string, images []strin
 		return
 	}
 	index.Create()
-	names, err := c.runtime.ExpandIndexNames([]string{name})
 	if err != nil {
 		return
 	}
-	var imageIndexID string
-	if imageIndexID, err = index.Save("", names, c.runtime.ImageType(opts.Format)); err != nil {
+	if imageID, err = index.Save(name, c.runtime.ImageType(opts.Format)); err != nil {
 		if errors.Is(err, packErrors.ErrDuplicateName) && opts.amend {
-			for _, idxName := range names {
-				imageIndex, err := c.runtime.LookupImageIndex(idxName)
-				if err != nil {
-					fmt.Printf("no list named %q found: %v", name, err)
-				}
-				if _, index, err = c.runtime.LoadFromImage(imageIndex.ID()); err != nil {
-					fmt.Printf("no list found in %q", idxName)
-				}
-				imageIndexID = imageIndex.ID()
-				break
+			_, err := c.runtime.LookupImageIndex(name)
+			if err != nil {
+				fmt.Printf("no list named %q found: %v", name, err)
 			}
 
 			if index == nil {
@@ -53,7 +45,7 @@ func (c *Client) CreateManifest(ctx context.Context, name string, images []strin
 		if err != nil {
 			return imageID, err
 		}
-		if localRef, _, err := c.runtime.FindImage(img); err == nil {
+		if localRef, _, err := c.imageFactory.FindImage(img); err == nil {
 			ref = localRef
 		}
 		if _, err = index.Add(ctx, ref, opts.all); err != nil {
@@ -61,14 +53,18 @@ func (c *Client) CreateManifest(ctx context.Context, name string, images []strin
 		}
 	}
 
-	imageID, err = index.Save(imageIndexID, names, c.runtime.ImageType(opts.Format))
+	imageID, err = index.Save(name, c.runtime.ImageType(opts.Format))
 	if err == nil {
 		fmt.Printf("%s\n", imageID)
+	}
+
+	if opts.Publish {
+		
 	}
 
 	return imageID, err
 }
 
-func parseOptsToIndexOptions(opts CreateManifestOptions) imgutil.IndexOptions {
-	return opts
+func parseOptsToIndexOptions(opts CreateManifestOptions) (idxOpts imgutil.IndexOptions) {
+	return idxOpts
 }

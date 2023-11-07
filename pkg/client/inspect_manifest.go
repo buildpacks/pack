@@ -7,11 +7,11 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+
 	packErrors "github.com/buildpacks/pack/pkg/errors"
 )
 
 type InspectManifestOptions struct {
-	
 }
 
 // InspectManifest implements commands.PackClient.
@@ -31,16 +31,16 @@ func (c *Client) InspectManifest(ctx context.Context, name string, opts InspectM
 	// locally.
 	manifestList, err := c.runtime.LookupImageIndex(name)
 	if err == nil {
-		schema2List, err := manifestList.Inspect()
+		schema2List, err := manifestList.Index.Inspect()
 		if err != nil {
 			rawSchema2List, err := json.Marshal(schema2List)
 			if err != nil {
 				return err
 			}
-	
+
 			return printManifest(rawSchema2List)
 		}
-		if !errors.Is(err, packErrors.ErrImageUnknown) && !errors.Is(err, packErrors.ErrNotAManifestList) {
+		if !errors.Is(err, packErrors.ErrIndexUnknown) && !errors.Is(err, packErrors.ErrNotAddManifestList) {
 			return err
 		}
 
@@ -49,7 +49,7 @@ func (c *Client) InspectManifest(ctx context.Context, name string, opts InspectM
 			fmt.Printf("error parsing reference to image %q: %v", name, err)
 		}
 
-		index, err := c.runtime.FetchIndex(name)
+		index, err := c.indexFactory.FetchIndex(name)
 
 		if err != nil {
 			return err

@@ -36,7 +36,7 @@ func (m *MockPackClient) EXPECT() *MockPackClientMockRecorder {
 }
 
 // AddManifest mocks base method.
-func (m *MockPackClient) AddManifest(arg0 context.Context, arg1 string, arg2 []string, arg3 client.ManifestAddOptions) (string, error) {
+func (m *MockPackClient) AddManifest(arg0 context.Context, arg1, arg2 string, arg3 client.ManifestAddOptions) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddManifest", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(string)

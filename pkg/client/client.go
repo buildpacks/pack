@@ -31,6 +31,7 @@ import (
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/build"
 	iconfig "github.com/buildpacks/pack/internal/config"
+	runtime "github.com/buildpacks/pack/internal/runtime"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
@@ -73,6 +74,39 @@ type ImageFactory interface {
 	// NewImage initializes an image object with required settings so that it
 	// can be written either locally or to a registry.
 	NewImage(repoName string, local bool, imageOS string) (imgutil.Image, error)
+	// loads an image from the local storage
+	// LoadImage(repoName string, platform imgutil.Platform) (imgutil.Image, error)
+	// FindImage locates the locally-stored image which corresponds to a given name.
+	FindImage(name string) (ref name.Reference, image imgutil.Image, err error)
+}
+
+// IndexFactory is an interface representing the ability to create a ImageIndex/ManifestList.
+type IndexFactory interface {
+	NewIndex(reponame string, opts imgutil.IndexOptions) (imgutil.Index, error)
+	// Fetch ManifestList from Registry with the given name
+	FetchIndex(name string) (imgutil.Index, error)
+}
+
+type Runtime interface {
+	// LookupManifestList looks up a manifest list with the specified name in the
+	// containers storage.
+	LookupImageIndex(name string) (index runtime.ImageIndex, err error)
+	// LoadFromImage reads the manifest list or image index, and additional
+	// information about where the various instances that it contains live, from an
+	// image record with the specified ID in local storage.
+	// LoadFromImage(name string) (imageID string, index imgutil.Index, err error)
+	// ExpandNames takes unqualified names, parses them as image names, and returns
+	// the fully expanded result, including a tag.  Names which don't include a registry
+	// name will be marked for the most-preferred registry
+	// ExpandIndexNames(names []string) (images []string, err error)
+	// ImageType returns the MediaType of the given image's format
+	ImageType(format string) (manifestType imgutil.MediaTypes)
+	// parse name reference
+	ParseReference(image string) (name.Reference, error)
+	// parses the digest reference
+	ParseDigest(image string) (name.Digest, error)
+	// RemoveManifests will delete manifest/manifestList from the local stroage
+	RemoveManifests(ctx context.Context, names []string) (err error)
 }
 
 // IndexFactory is an interface representing the ability to create a ImageIndex/ManifestList.
@@ -123,8 +157,8 @@ type Client struct {
 
 	keychain            authn.Keychain
 	imageFactory        ImageFactory
-	indexFactory		IndexFactory
-	runtime				Runtime
+	indexFactory        IndexFactory
+	runtime             Runtime
 	imageFetcher        ImageFetcher
 	downloader          BlobDownloader
 	lifecycleExecutor   LifecycleExecutor
@@ -153,11 +187,25 @@ func WithImageFactory(f ImageFactory) Option {
 	}
 }
 
+// WithIndexFactory supply your own index factory
+func WithIndexFactory(f IndexFactory) Option {
+	return func(c *Client) {
+		c.indexFactory = f
+	}
+}
+
 // WithFetcher supply your own Fetcher.
 // A Fetcher retrieves both local and remote images to make them available.
 func WithFetcher(f ImageFetcher) Option {
 	return func(c *Client) {
 		c.imageFetcher = f
+	}
+}
+
+// WithRuntime supply your own runtime
+func WithRuntime(f Runtime) Option {
+	return func(c *Client) {
+		c.runtime = f
 	}
 }
 
@@ -255,7 +303,7 @@ func NewClient(opts ...Option) (*Client, error) {
 	}
 
 	if client.runtime == nil {
-		client.runtime = runtime.NewRuntime()
+		client.runtime, _ = runtime.NewRuntime()
 	}
 
 	if client.imageFactory == nil {
@@ -320,20 +368,50 @@ func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (i
 	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform))
 }
 
+func (f *imageFactory) LoadImage(repoName string, platform imgutil.Platform) (img imgutil.Image, err error) {
+	img, err = local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(platform), local.WithPreviousImage(repoName))
+	if err == nil {
+		return
+	}
+
+	img, err = layout.NewImage(repoName, layout.WithPreviousImage(repoName), layout.WithDefaultPlatform(platform))
+	if err == nil {
+		return
+	}
+	return nil, errors.Errorf("Image: '%s' not found", repoName)
+}
+
+func (f *imageFactory) FindImage(repoName string) (ref name.Reference, img imgutil.Image, err error) {
+	img, err = local.NewImage(repoName, f.dockerClient, local.WithPreviousImage(repoName))
+	if err == nil {
+		return
+	}
+
+	img, err = layout.NewImage(repoName, layout.WithPreviousImage(repoName))
+	if err == nil {
+		return
+	}
+	return ref, img, errors.Errorf("Image: '%s' not found", repoName)
+}
+
 type indexFactory struct {
 	keychain authn.Keychain
 }
 
-func(f *indexFactory) NewIndex(name string, opts imgutil.IndexOptions) (index imgutil.Index, err error) {
+func (f *indexFactory) NewIndex(name string, opts imgutil.IndexOptions) (index imgutil.Index, err error) {
 
 	index, err = remote.NewIndex(name, f.keychain, opts)
 	if err != nil {
 		if opts.MediaType == imgutil.MediaTypes.OCI {
-			return layout.NewIndex(name, f.keychain, opts)
+			return layout.NewIndex(name, opts)
 		} else {
-			return local.NewIndex(name, f.keychain, opts)
+			return local.NewIndex(name, opts)
 		}
 	}
 
 	return index, err
+}
+
+func (f *indexFactory) FetchIndex(repoName string) (index imgutil.Index, err error) {
+	return remote.NewIndex(repoName, f.keychain, imgutil.IndexOptions{})
 }

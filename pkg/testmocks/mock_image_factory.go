@@ -9,6 +9,7 @@ import (
 
 	imgutil "github.com/buildpacks/imgutil"
 	gomock "github.com/golang/mock/gomock"
+	name "github.com/google/go-containerregistry/pkg/name"
 )
 
 // MockImageFactory is a mock of ImageFactory interface.
@@ -32,6 +33,37 @@ func NewMockImageFactory(ctrl *gomock.Controller) *MockImageFactory {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockImageFactory) EXPECT() *MockImageFactoryMockRecorder {
 	return m.recorder
+}
+
+// FindImage mocks base method.
+func (m *MockImageFactory) FindImage(arg0 string) (name.Reference, imgutil.Image, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindImage", arg0)
+	ret0, _ := ret[0].(name.Reference)
+	ret1, _ := ret[1].(imgutil.Image)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// FindImage indicates an expected call of FindImage.
+func (mr *MockImageFactoryMockRecorder) FindImage(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindImage", reflect.TypeOf((*MockImageFactory)(nil).FindImage), arg0)
+}
+
+// LoadImage mocks base method.
+func (m *MockImageFactory) LoadImage(arg0 string, arg1 imgutil.Platform) (imgutil.Image, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoadImage", arg0, arg1)
+	ret0, _ := ret[0].(imgutil.Image)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LoadImage indicates an expected call of LoadImage.
+func (mr *MockImageFactoryMockRecorder) LoadImage(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadImage", reflect.TypeOf((*MockImageFactory)(nil).LoadImage), arg0, arg1)
 }
 
 // NewImage mocks base method.
