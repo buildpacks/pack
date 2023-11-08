@@ -75,9 +75,9 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.PersistentFlags().Bool("no-color", false, "Disable color output")
 	rootCmd.PersistentFlags().Bool("timestamps", false, "Enable timestamps in output")
+	rootCmd.PersistentFlags().Bool("force-color", false, "Force color output")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Show less output")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Show more output")
-	rootCmd.PersistentFlags().BoolVar(&forceColor, "force-color", false, "Force color output")
 	rootCmd.Flags().Bool("version", false, "Show current 'pack' version")
 
 	commands.AddHelpFlag(rootCmd, "pack")
