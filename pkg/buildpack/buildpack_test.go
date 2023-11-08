@@ -517,7 +517,6 @@ version = "1.2.3"
 			var bpRootFolder string
 
 			it.Before(func() {
-				h.SkipIf(t, runtime.GOOS == "windows", "Skipping on windows")
 				bpRootFolder = filepath.Join("testdata", "buildpack-with-hardlink")
 				// create a hard link
 				err := os.Link(filepath.Join(bpRootFolder, "original-file"), filepath.Join(bpRootFolder, "original-file-2"))
@@ -528,7 +527,7 @@ version = "1.2.3"
 				os.RemoveAll(filepath.Join(bpRootFolder, "original-file-2"))
 			})
 
-			it("hardlink is preserved in the output tar file", func() {
+			it.Focus("hardlink is preserved in the output tar file", func() {
 				bp, err := buildpack.FromBuildpackRootBlob(
 					blob.NewBlob(bpRootFolder),
 					archive.DefaultTarWriterFactory(),

@@ -40,7 +40,10 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 	it.After(func() {
 		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Fatalf("failed to clean up tmp dir %s: %s", tmpDir, err)
+			if runtime.GOOS != "windows" {
+				// skip "The process cannot access the file because it is being used by another process" on windows
+				t.Fatalf("failed to clean up tmp dir %s: %s", tmpDir, err)
+			}
 		}
 	})
 
@@ -445,8 +448,10 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 		when("hard link files are present", func() {
 			it.Before(func() {
-				h.SkipIf(t, runtime.GOOS == "windows", "Skipping on windows")
 				src = filepath.Join("testdata", "dir-to-tar-with-hardlink")
+				if runtime.GOOS == "windows" {
+					src = filepath.Join(".", "testdata", "dir-to-tar-with-hardlink")
+				}
 				// create a hard link
 				err := os.Link(filepath.Join(src, "original-file"), filepath.Join(src, "original-file-2"))
 				h.AssertNil(t, err)

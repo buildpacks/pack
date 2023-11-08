@@ -219,19 +219,8 @@ func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int
 		}
 
 		header.Name = getHeaderNameFromBaseAndRelPath(basePath, relPath)
-		if hasHardlinks(fi) {
-			inode, err := getInodeFromStat(fi.Sys())
-			if err != nil {
-				return err
-			}
-
-			if processedPath, ok := hardLinkFiles[inode]; ok {
-				header.Typeflag = tar.TypeLink
-				header.Linkname = processedPath
-				header.Size = 0
-			} else {
-				hardLinkFiles[inode] = header.Name
-			}
+		if err = processHardLinks(file, fi, hardLinkFiles, header); err != nil {
+			return err
 		}
 
 		err = writeHeader(header, uid, gid, mode, normalizeModTime, tw)
@@ -253,6 +242,32 @@ func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int
 
 		return nil
 	})
+}
+
+func processHardLinks(file string, fi os.FileInfo, hardLinkFiles map[uint64]string, header *tar.Header) error {
+	var (
+		err       error
+		hardlinks bool
+		inode     uint64
+	)
+	if hardlinks, err = hasHardlinks(fi, file); err != nil {
+		return err
+	}
+	if hardlinks {
+		inode, err = getInodeFromStat(fi.Sys(), file)
+		if err != nil {
+			return err
+		}
+
+		if processedPath, ok := hardLinkFiles[inode]; ok {
+			header.Typeflag = tar.TypeLink
+			header.Linkname = processedPath
+			header.Size = 0
+		} else {
+			hardLinkFiles[inode] = header.Name
+		}
+	}
+	return nil
 }
 
 // WriteZipToTar writes the contents of a zip file to a tar writer.
