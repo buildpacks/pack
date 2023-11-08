@@ -29,36 +29,36 @@ type ConfigurableLogger interface {
 //
 //nolint:staticcheck
 func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
-    cobra.EnableCommandSorting = false
-    cfg, cfgPath, err := initConfig()
-    if err != nil {
-        return nil, err
-    }
+	cobra.EnableCommandSorting = false
+	cfg, cfgPath, err := initConfig()
+	if err != nil {
+		return nil, err
+	}
 
-    packClient, err := initClient(logger, cfg)
-    if err != nil {
-        return nil, err
-    }
+	packClient, err := initClient(logger, cfg)
+	if err != nil {
+		return nil, err
+	}
 
-    var forceColor bool
+	var forceColor bool
 
-    rootCmd := &cobra.Command{
-        Use:   "pack",
-        Short: "CLI for building apps using Cloud Native Buildpacks",
-        PersistentPreRun: func(cmd *cobra.Command, args []string) {
-            if fs := cmd.Flags(); fs != nil {
-                if forceColor {
-                    color.Enabled()
-                } else {
-                    if flag, err := fs.GetBool("no-color"); err == nil && flag {
-                        color.Disable(true)
-                    } else {
-                        _, canDisplayColor := term.IsTerminal(logging.GetWriterForLevel(logger, logging.InfoLevel))
-                        if !canDisplayColor {
-                            color.Disable(true)
-                        }
-                    }
-                }
+	rootCmd := &cobra.Command{
+		Use:   "pack",
+		Short: "CLI for building apps using Cloud Native Buildpacks",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if fs := cmd.Flags(); fs != nil {
+				if forceColor {
+					color.Enabled()
+				} else {
+					if flag, err := fs.GetBool("no-color"); err == nil && flag {
+						color.Disable(true)
+					} else {
+						_, canDisplayColor := term.IsTerminal(logging.GetWriterForLevel(logger, logging.InfoLevel))
+						if !canDisplayColor {
+							color.Disable(true)
+						}
+					}
+				}
 
 				if flag, err := fs.GetBool("quiet"); err == nil {
 					logger.WantQuiet(flag)
