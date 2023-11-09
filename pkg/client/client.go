@@ -20,10 +20,12 @@ import (
 	"path/filepath"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack"
@@ -70,6 +72,15 @@ type ImageFactory interface {
 	// NewImage initializes an image object with required settings so that it
 	// can be written either locally or to a registry.
 	NewImage(repoName string, local bool, imageOS string) (imgutil.Image, error)
+	// FindImage locates the locally-stored image which corresponds to a given name.
+	FindImage(name string) (ref name.Reference, image imgutil.Image, err error)
+}
+
+// IndexFactory is an interface representing the ability to create a ImageIndex/ManifestList.
+type IndexFactory interface {
+	NewIndex(reponame string, opts imgutil.IndexOptions) (imgutil.Index, error)
+	// Fetch ManifestList from Registry with the given name
+	FetchIndex(name string) (imgutil.Index, error)
 }
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_buildpack_downloader.go github.com/buildpacks/pack/pkg/client BuildpackDownloader
@@ -90,6 +101,7 @@ type Client struct {
 	keychain            authn.Keychain
 	imageFactory        ImageFactory
 	imageFetcher        ImageFetcher
+	indexFactory        IndexFactory
 	downloader          BlobDownloader
 	lifecycleExecutor   LifecycleExecutor
 	buildpackDownloader BuildpackDownloader
@@ -114,6 +126,13 @@ func WithLogger(l logging.Logger) Option {
 func WithImageFactory(f ImageFactory) Option {
 	return func(c *Client) {
 		c.imageFactory = f
+	}
+}
+
+// WithIndexFactory supply your own index factory
+func WithIndexFactory(f IndexFactory) Option {
+	return func(c *Client) {
+		c.indexFactory = f
 	}
 }
 
@@ -225,6 +244,12 @@ func NewClient(opts ...Option) (*Client, error) {
 		}
 	}
 
+	if client.indexFactory == nil {
+		client.indexFactory = &indexFactory{
+			keychain: client.keychain,
+		}
+	}
+
 	if client.buildpackDownloader == nil {
 		client.buildpackDownloader = buildpack.NewDownloader(
 			client.logger,
@@ -272,4 +297,52 @@ func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (i
 	}
 
 	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform))
+}
+
+func (f *imageFactory) LoadImage(repoName string, platform imgutil.Platform) (img imgutil.Image, err error) {
+	img, err = local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(platform), local.WithPreviousImage(repoName))
+	if err == nil {
+		return
+	}
+
+	img, err = layout.NewImage(repoName, layout.WithPreviousImage(repoName), layout.WithDefaultPlatform(platform))
+	if err == nil {
+		return
+	}
+	return nil, errors.Errorf("Image: '%s' not found", repoName)
+}
+
+func (f *imageFactory) FindImage(repoName string) (ref name.Reference, img imgutil.Image, err error) {
+	img, err = local.NewImage(repoName, f.dockerClient, local.WithPreviousImage(repoName))
+	if err == nil {
+		return
+	}
+
+	img, err = layout.NewImage(repoName, layout.WithPreviousImage(repoName))
+	if err == nil {
+		return
+	}
+	return ref, img, errors.Errorf("Image: '%s' not found", repoName)
+}
+
+type indexFactory struct {
+	keychain authn.Keychain
+}
+
+func (f *indexFactory) NewIndex(name string, opts imgutil.IndexOptions) (index imgutil.Index, err error) {
+
+	index, err = remote.NewIndex(name, f.keychain, opts)
+	if err != nil {
+		if opts.MediaType == imgutil.MediaTypes.OCI {
+			return layout.NewIndex(name, opts)
+		} else {
+			return local.NewIndex(name, opts)
+		}
+	}
+
+	return index, err
+}
+
+func (f *indexFactory) FetchIndex(repoName string) (index imgutil.Index, err error) {
+	return remote.NewIndex(repoName, f.keychain, imgutil.IndexOptions{})
 }
