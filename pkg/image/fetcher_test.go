@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
+
+	"github.com/buildpacks/imgutil"
 
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
@@ -48,12 +51,17 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 		repoName     string
 		repo         string
 		outBuf       bytes.Buffer
+		osType       string
 	)
 
 	it.Before(func() {
 		repo = "some-org/" + h.RandString(10)
 		repoName = registryConfig.RepoName(repo)
 		imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker)
+
+		info, err := docker.Info(context.TODO())
+		h.AssertNil(t, err)
+		osType = info.OSType
 	})
 
 	when("#Fetch", func() {
@@ -212,6 +220,19 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					it("passes the platform argument to the daemon", func() {
 						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: "some-unsupported-platform"})
 						h.AssertError(t, err, "unknown operating system or architecture")
+					})
+
+					when("remote platform does not match", func() {
+						it.Before(func() {
+							img, err := remote.NewImage(repoName, authn.DefaultKeychain, remote.WithDefaultPlatform(imgutil.Platform{OS: osType, Architecture: ""}))
+							h.AssertNil(t, err)
+							h.AssertNil(t, img.Save())
+						})
+
+						it("retry without setting platform", func() {
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: fmt.Sprintf("%s/%s", osType, runtime.GOARCH)})
+							h.AssertNil(t, err)
+						})
 					})
 				})
 			})
