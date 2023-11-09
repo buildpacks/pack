@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/imgutil"
+	ggcrName "github.com/google/go-containerregistry/pkg/name"
 
 	packErrors "github.com/buildpacks/pack/pkg/errors"
 )
@@ -25,9 +26,9 @@ func (c *Client) CreateManifest(ctx context.Context, name string, images []strin
 	if err != nil {
 		return
 	}
-	if imageID, err = index.Save(name, c.runtime.ImageType(opts.Format)); err != nil {
+	if imageID, err = index.Save(name, imgutil.Index.ImageType(opts.Format)); err != nil {
 		if errors.Is(err, packErrors.ErrDuplicateName) && opts.amend {
-			_, err := c.runtime.LookupImageIndex(name)
+			_, err := c.indexFactory.FindIndex(name)
 			if err != nil {
 				fmt.Printf("no list named %q found: %v", name, err)
 			}
@@ -41,7 +42,7 @@ func (c *Client) CreateManifest(ctx context.Context, name string, images []strin
 	}
 
 	for _, img := range images {
-		ref, err := c.runtime.ParseReference(img)
+		ref, err := ggcrName.ParseReference(img)
 		if err != nil {
 			return imageID, err
 		}
@@ -53,7 +54,7 @@ func (c *Client) CreateManifest(ctx context.Context, name string, images []strin
 		}
 	}
 
-	imageID, err = index.Save(name, c.runtime.ImageType(opts.Format))
+	imageID, err = index.Save(name, imgutil.Index.ImageType(opts.Format))
 	if err == nil {
 		fmt.Printf("%s\n", imageID)
 	}

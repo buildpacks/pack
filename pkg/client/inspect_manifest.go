@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	ggcrName "github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	packErrors "github.com/buildpacks/pack/pkg/errors"
@@ -29,7 +30,7 @@ func (c *Client) InspectManifest(ctx context.Context, name string, opts InspectM
 
 	// Before doing a remote lookup, attempt to resolve the manifest list
 	// locally.
-	manifestList, err := c.runtime.LookupImageIndex(name)
+	manifestList, err := c.indexFactory.FindIndex(name)
 	if err == nil {
 		schema2List, err := manifestList.Index.Inspect()
 		if err != nil {
@@ -44,7 +45,7 @@ func (c *Client) InspectManifest(ctx context.Context, name string, opts InspectM
 			return err
 		}
 
-		_, err = c.runtime.ParseReference(name)
+		_, err = ggcrName.ParseReference(name)
 		if err != nil {
 			fmt.Printf("error parsing reference to image %q: %v", name, err)
 		}

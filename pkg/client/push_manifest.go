@@ -2,8 +2,6 @@ package client
 
 import (
 	"context"
-
-	runtime "github.com/buildpacks/pack/internal/runtime"
 )
 
 type PushManifestOptions struct {
@@ -13,16 +11,14 @@ type PushManifestOptions struct {
 
 // PushManifest implements commands.PackClient.
 func (c *Client) PushManifest(ctx context.Context, index string, opts PushManifestOptions) (imageID string, err error) {
-	manifestList, err := c.runtime.LookupImageIndex(index)
+	manifestList, err := c.indexFactory.FindIndex(index)
 	if err != nil {
 		return
 	}
 
 	_, err = manifestList.Push(ctx, parseFalgsForImgUtil(opts))
 
-	if err == nil && opts.Purge {
-		c.runtime.RemoveManifests(ctx, []string{index})
-	}
+	manifestList.Delete()
 
 	return imageID, err
 }

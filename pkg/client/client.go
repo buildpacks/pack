@@ -25,6 +25,7 @@ import (
 	"github.com/buildpacks/imgutil/remote"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
@@ -78,6 +79,7 @@ type ImageFactory interface {
 
 // IndexFactory is an interface representing the ability to create a ImageIndex/ManifestList.
 type IndexFactory interface {
+	// load ManifestList from local storage with the given name
 	NewIndex(reponame string, opts imgutil.IndexOptions) (imgutil.Index, error)
 	// Fetch ManifestList from Registry with the given name
 	FetchIndex(name string) (imgutil.Index, error)

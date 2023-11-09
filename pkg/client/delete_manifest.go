@@ -2,11 +2,18 @@ package client
 
 import (
 	"context"
-	// "fmt"
-	// "strings"
 )
 
 // DeleteManifest implements commands.PackClient.
 func (c *Client) DeleteManifest(ctx context.Context, names []string) error {
-	return c.runtime.RemoveManifests(ctx, names)
+	for _, name := range names {
+		imgIndex, err := c.indexFactory.FindIndex(name)
+		if err != nil {
+			return err
+		}
+
+		imgIndex.Delete()
+	}
+
+	return nil
 }
