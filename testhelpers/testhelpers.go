@@ -116,16 +116,26 @@ func AssertError(t *testing.T, actual error, expected string) {
 	}
 }
 
-func AssertContains(t *testing.T, actual, expected string) {
+func AssertContains(t *testing.T, actual string, expected ...string) {
 	t.Helper()
-	if !strings.Contains(actual, expected) {
-		t.Fatalf(
-			"Expected '%s' to contain '%s'\n\nDiff:%s",
-			actual,
-			expected,
-			cmp.Diff(expected, actual),
-		)
+	for _, e := range expected {
+		if !strings.Contains(actual, e) {
+			t.Fatalf(
+				"Expected '%s' to contain '%s'\n\nDiff:%s",
+				actual,
+				e,
+				cmp.Diff(expected, actual),
+			)
+		}
 	}
+}
+
+func MapToStringSlice(m map[string]string) []string {
+    var stringSlice []string
+    for key, value := range m {
+        stringSlice = append(stringSlice, fmt.Sprintf("%s=%s", key, value))
+    }
+    return stringSlice
 }
 
 func AssertContainsAllInOrder(t *testing.T, actual bytes.Buffer, expected ...string) {
