@@ -40,24 +40,22 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 		return nil, err
 	}
 
-	var forceColor bool
-
 	rootCmd := &cobra.Command{
 		Use:   "pack",
 		Short: "CLI for building apps using Cloud Native Buildpacks",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if fs := cmd.Flags(); fs != nil {
-				if forceColor {
+				if flag, err := fs.GetBool("force-color"); err == nil && flag {
 					color.Enabled()
-				} else {
-					if flag, err := fs.GetBool("no-color"); err == nil && flag {
-						color.Disable(true)
-					} else {
-						_, canDisplayColor := term.IsTerminal(logging.GetWriterForLevel(logger, logging.InfoLevel))
-						if !canDisplayColor {
-							color.Disable(true)
-						}
-					}
+				}
+
+				if flag, err := fs.GetBool("no-color"); err == nil && flag {
+					color.Disable(flag)
+				}
+
+				_, canDisplayColor := term.IsTerminal(logging.GetWriterForLevel(logger, logging.InfoLevel))
+				if !canDisplayColor {
+					color.Disable(true)
 				}
 
 				if flag, err := fs.GetBool("quiet"); err == nil {
@@ -75,7 +73,6 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.PersistentFlags().Bool("no-color", false, "Disable color output")
 	rootCmd.PersistentFlags().Bool("timestamps", false, "Enable timestamps in output")
-	rootCmd.PersistentFlags().Bool("force-color", false, "Force color output")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Show less output")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Show more output")
 	rootCmd.Flags().Bool("version", false, "Show current 'pack' version")
