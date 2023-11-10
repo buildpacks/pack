@@ -1,6 +1,9 @@
 package commands
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/pkg/client"
@@ -9,7 +12,8 @@ import (
 
 // ManifestAddFlags define flags provided to the ManifestAdd
 type ManifestAddFlags struct {
-	ManifestAnnotateFlags
+	OS, OSVersion, OSArch, OSVariant  string
+	OSFeatures, Annotations, Features string
 	all bool
 }
 
@@ -33,8 +37,21 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 				return err
 			}
 
-			imageID, err := pack.AddManifest(cmd.Context(), imageIndex, manifests, client.ManifestAddOptions{
+			osFeatures:= strings.Split(flags.OSFeatures, ";")
+			features:= strings.Split(flags.Features, ";")
+			annotations, err := stringToKeyValueMap(flags.Annotations)
+			if err != nil {
+				return err
+			}
 
+			imageID, err := pack.AddManifest(cmd.Context(), imageIndex, manifests, client.ManifestAddOptions{
+				OS: flags.OS,
+				OSVersion: flags.OSVersion,
+				OSArch: flags.OSArch,
+				OSVariant: flags.OSVariant,
+				OSFeatures: osFeatures,
+				Features: features,
+				Annotations: annotations,
 				All: flags.all,
 			})
 
@@ -59,3 +76,23 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 func validateManifestAddFlags(flags ManifestAddFlags) error {
 	return nil
 }
+
+func stringToKeyValueMap(s string) (map[string]string, error) {
+	keyValues := strings.Split(s, ";")
+  
+	m := map[string]string{}
+  
+	for _, keyValue := range keyValues {
+	  parts := strings.Split(keyValue, "=")
+	  if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid key-value pair: %s", keyValue)
+	  }
+  
+	  key := parts[0]
+	  value := parts[1]
+  
+	  m[key] = value
+	}
+  
+	return m, nil
+  }

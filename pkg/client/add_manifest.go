@@ -9,7 +9,9 @@ import (
 )
 
 type ManifestAddOptions struct {
-	ManifestAnnotateOptions
+	OS, OSVersion, OSArch, OSVariant  string
+	OSFeatures, Features []string
+	Annotations map[string]string
 	All bool
 }
 
