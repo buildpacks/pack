@@ -1554,6 +1554,7 @@ func testAcceptance(
 
 							when("buildpackage is in a registry", func() {
 								it("adds the buildpacks to the builder and runs them", func() {
+									h.SkipIf(t, !pack.SupportsFeature(invoke.PlatformRetries), "")
 									packageImageName = registryConfig.RepoName("buildpack-" + h.RandString(8))
 
 									packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
