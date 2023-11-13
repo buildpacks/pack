@@ -82,7 +82,6 @@ func NewFetcher(logger logging.Logger, docker DockerClient, opts ...FetcherOptio
 }
 
 var ErrNotFound = errors.New("not found")
-var ErrPlatformNotMatch = errors.New("platform does not match")
 
 func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) (imgutil.Image, error) {
 	name, err := pname.TranslateRegistry(name, f.registryMirrors, f.logger)
@@ -110,10 +109,12 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 	}
 
 	f.logger.Debugf("Pulling image %s", style.Symbol(name))
-	err = f.pullImage(ctx, name, options.Platform)
-	if errors.Is(err, ErrPlatformNotMatch) {
-		f.logger.Info(err.Error())
-		err = f.pullImage(ctx, name, "")
+	if err = f.pullImage(ctx, name, options.Platform); err != nil {
+		// sample error from docker engine:
+		// image with reference <image> was found but does not match the specified platform: wanted linux/amd64, actual: linux
+		if strings.Contains(err.Error(), "does not match the specified platform") {
+			err = f.pullImage(ctx, name, "")
+		}
 	}
 	if err != nil && !errors.Is(err, ErrNotFound) {
 		return nil, err
@@ -197,11 +198,6 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string, platform string
 
 	err = jsonmessage.DisplayJSONMessagesStream(rc, &colorizedWriter{writer}, termFd, isTerm, nil)
 	if err != nil {
-		// sample error from docker engine:
-		// image with reference <image> was found but does not match the specified platform: wanted linux/amd64, actual: linux
-		if strings.Contains(err.Error(), "does not match the specified platform") {
-			return errors.Wrap(ErrPlatformNotMatch, err.Error())
-		}
 		return err
 	}
 

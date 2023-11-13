@@ -1551,6 +1551,44 @@ func testAcceptance(
 								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
 								assertBuildpackOutput.ReportsBuildStep("Simple Layers Buildpack")
 							})
+
+							when("buildpackage is in a registry", func() {
+								it("adds the buildpacks to the builder and runs them", func() {
+									packageImageName = registryConfig.RepoName("buildpack-" + h.RandString(8))
+
+									packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
+									packageImage := buildpacks.NewPackageImage(
+										t,
+										pack,
+										packageImageName,
+										packageTomlPath,
+										buildpacks.WithRequiredBuildpacks(
+											buildpacks.BpFolderSimpleLayersParent,
+											buildpacks.BpFolderSimpleLayers,
+										),
+										buildpacks.WithPublish(),
+									)
+
+									buildpackManager.PrepareBuildModules(tmpDir, packageImage)
+
+									output := pack.RunSuccessfully(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--buildpack", packageImageName,
+									)
+
+									assertOutput := assertions.NewOutputAssertionManager(t, output)
+									assertOutput.ReportsAddingBuildpack(
+										"simple/layers/parent",
+										"simple-layers-parent-version",
+									)
+									assertOutput.ReportsAddingBuildpack("simple/layers", "simple-layers-version")
+									assertOutput.ReportsSuccessfulImageBuild(repoName)
+
+									assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+									assertBuildpackOutput.ReportsBuildStep("Simple Layers Buildpack")
+								})
+							})
 						})
 
 						when("the argument is a buildpackage file", func() {
