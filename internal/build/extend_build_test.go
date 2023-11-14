@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -12,22 +11,18 @@ import (
 	"testing"
 
 	"github.com/apex/log"
-
 	"github.com/buildpacks/lifecycle/buildpack"
-
-	"github.com/buildpacks/pack/internal/build"
-	"github.com/buildpacks/pack/internal/build/fakes"
-
 	"github.com/docker/docker/api/types"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/internal/build"
+	"github.com/buildpacks/pack/internal/build/fakes"
+	mockdocker "github.com/buildpacks/pack/internal/build/mockdocker"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
-
-	mockdocker "github.com/buildpacks/pack/internal/build/mockdocker"
 )
 
 func TestBuildDockerfiles(t *testing.T) {

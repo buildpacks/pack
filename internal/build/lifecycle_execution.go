@@ -10,7 +10,6 @@ import (
 	"strconv"
 
 	"github.com/BurntSushi/toml"
-
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/platform/files"
@@ -794,10 +793,10 @@ func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache,
 	return extend.Run(ctx)
 }
 
-/*
-	Note: - Run Image Extension by docker daemon was much worse than kaniko because of saving layers on disk.
-*/
-
+// ExtendRun extends the run image by invoking the `extender` in the context of the run image
+// to apply the provided Dockerfiles using kaniko - unlike extending the build image, which uses `docker build`.
+// Extending the run image with `docker build` degrades performance
+// due to the extra time spent exporting the extended layers from the daemon.
 func (l *LifecycleExecution) ExtendRun(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory) error {
 	flags := []string{"-app", l.mountPaths.appDir(), "-kind", "run"}
 
