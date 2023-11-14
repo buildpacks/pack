@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1698939146743,
+  "lastUpdate": 1699991456550,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3348,6 +3348,48 @@ window.BENCHMARK_DATA = {
             "value": 2375459155,
             "unit": "ns/op",
             "extra": "1 times\n2 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jbustamante@vmware.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b14250be045dfcdd3011e4c274a662d259dded6b",
+          "message": "Merge pull request #1969 from buildpacks/bugfix/jjbustamante/issue-1968\n\nRetrying logic when pulling an image and platform doesn't match",
+          "timestamp": "2023-11-14T14:49:15-05:00",
+          "tree_id": "f2ad270d77dfe34f64c8c80d467a2feefbfeb0ee",
+          "url": "https://github.com/buildpacks/pack/commit/b14250be045dfcdd3011e4c274a662d259dded6b"
+        },
+        "date": 1699991455474,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 8065935984,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2080810437,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 55860156822,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
           }
         ]
       }
