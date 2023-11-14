@@ -1707,14 +1707,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			platformAPI = api.MustParse("0.12")
 			providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
 
-			when("for build", func() {
-				extensionsForBuild = true
-
-				it("configures the phase with registry access", func() {
-					h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
-				})
-			})
-
 			when("for run", func() {
 				extensionsForRun = true
 
@@ -1787,16 +1779,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						it("does not provide -build-image or /kaniko bind", func() {
 							h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-build-image")
 							h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-kaniko-cache:/kaniko")
-						})
-					})
-
-					when("platform >= 0.10", func() {
-						platformAPI = api.MustParse("0.10")
-
-						it("provides -build-image and /kaniko bind", func() {
-							h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-build-image", providedBuilderImage)
-							h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
-							h.AssertSliceContains(t, configProvider.HostConfig().Binds, "some-kaniko-cache:/kaniko")
 						})
 					})
 				})

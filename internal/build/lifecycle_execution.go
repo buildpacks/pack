@@ -479,16 +479,11 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 
 	// for kaniko
 	kanikoCacheBindOp := NullOp()
-	if (l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild()) ||
-		l.platformAPI.AtLeast("0.12") {
-		if l.hasExtensionsForBuild() {
-			flags = append(flags, "-build-image", l.opts.BuilderImage)
-			registryImages = append(registryImages, l.opts.BuilderImage)
-		}
+	if l.platformAPI.AtLeast("0.12") {
 		if l.runImageChanged() || l.hasExtensionsForRun() {
 			registryImages = append(registryImages, l.runImageAfterExtensions())
 		}
-		if l.hasExtensionsForBuild() || l.hasExtensionsForRun() {
+		if l.hasExtensionsForRun() {
 			kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir()))
 		}
 	}
