@@ -9,6 +9,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+// hasHardlinks returns true if the given file has hard-links associated with it
 func hasHardlinks(fi os.FileInfo, path string) (bool, error) {
 	var numberOfLinks uint32
 	switch v := fi.Sys().(type) {
@@ -25,6 +26,7 @@ func hasHardlinks(fi os.FileInfo, path string) (bool, error) {
 	return numberOfLinks > 1, nil
 }
 
+// getInodeFromStat returns an equivalent representation of unix inode on windows based on FileIndexHigh and FileIndexLow values
 func getInodeFromStat(stat interface{}, path string) (inode uint64, err error) {
 	s, ok := stat.(*syscall.ByHandleFileInformation)
 	if ok {
@@ -38,6 +40,7 @@ func getInodeFromStat(stat interface{}, path string) (inode uint64, err error) {
 	return
 }
 
+// open returns a ByHandleFileInformation object representation of the given file
 func open(path string) (*syscall.ByHandleFileInformation, error) {
 	fPath, err := syscall.UTF16PtrFromString(path)
 	if err != nil {
@@ -58,8 +61,7 @@ func open(path string) (*syscall.ByHandleFileInformation, error) {
 	defer syscall.CloseHandle(handle)
 
 	var info syscall.ByHandleFileInformation
-	err = syscall.GetFileInformationByHandle(handle, &info)
-	if err != nil {
+	if err = syscall.GetFileInformationByHandle(handle, &info); err != nil {
 		return nil, err
 	}
 	return &info, nil

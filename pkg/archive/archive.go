@@ -244,6 +244,9 @@ func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int
 	})
 }
 
+// processHardLinks determine if the given file has hard-links associated with it, the given hardLinkFiles map keeps track
+// of any previous hard-link previously processed. In case the hard-link was already found, the header will be updated with
+// the previous information otherwise the new hard-link found will be tracked into the map
 func processHardLinks(file string, fi os.FileInfo, hardLinkFiles map[uint64]string, header *tar.Header) error {
 	var (
 		err       error

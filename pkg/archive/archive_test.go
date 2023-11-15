@@ -449,9 +449,6 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 		when("hard link files are present", func() {
 			it.Before(func() {
 				src = filepath.Join("testdata", "dir-to-tar-with-hardlink")
-				if runtime.GOOS == "windows" {
-					src = filepath.Join(".", "testdata", "dir-to-tar-with-hardlink")
-				}
 				// create a hard link
 				err := os.Link(filepath.Join(src, "original-file"), filepath.Join(src, "original-file-2"))
 				h.AssertNil(t, err)
