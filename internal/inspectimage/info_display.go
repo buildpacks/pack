@@ -4,7 +4,6 @@ import (
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform/files"
-
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/dist"
@@ -187,12 +186,18 @@ func convertToDisplay(proc launch.Process, isDefault bool) ProcessDisplay {
 	case false:
 		shell = "bash"
 	}
+	var argsToUse []string
+	if proc.Args != nil {
+		argsToUse = proc.Args
+	} else {
+		argsToUse = proc.Command.Entries[1:]
+	}
 	result := ProcessDisplay{
 		Type:    proc.Type,
 		Shell:   shell,
 		Command: proc.Command.Entries[0],
 		Default: isDefault,
-		Args:    proc.Args, // overridable args are supported for platform API >= 0.10 with buildpack API >= 0.9, but we can't determine the buildpack API from the metadata label (to be fixed in platform 0.11)
+		Args:    argsToUse, // overridable args are supported for platform API >= 0.10 with buildpack API >= 0.9, but we can't determine the buildpack API from the metadata label (to be fixed in platform 0.11)
 		WorkDir: proc.WorkingDirectory,
 	}
 
