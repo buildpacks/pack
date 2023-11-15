@@ -65,7 +65,7 @@ jobs:
         run: |
           docker buildx build . \
             --tag ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }}${{ matrix.suffix }} \
-            --platform linux/amd64,linux/arm64 \
+            --platform linux/amd64,linux/arm64,linux/s390x \
             --build-arg pack_version=${{ steps.version.outputs.result }} \
             --build-arg base_image=${{ matrix.base_image }} \
             --provenance=false \

@@ -173,6 +173,9 @@ jobs:
           - name: macos-arm64
             goarch: arm64
             goos: darwin
+          - name: linux-s390x
+            goarch: s390x
+            goos: linux
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -229,6 +232,12 @@ jobs:
           chmod +x pack-linux-arm64/pack
           filename=pack-v${{ env.PACK_VERSION }}-linux-arm64.tgz
           tar -C pack-linux-arm64 -vzcf $filename pack
+          shasum -a 256 $filename > $filename.sha256
+      - name: Package artifacts - linux-s390x
+        run: |
+          chmod +x pack-linux-s390x/pack
+          filename=pack-v${{ env.PACK_VERSION }}-linux-s390x.tgz
+          tar -C pack-linux-s390x -vzcf $filename pack
           shasum -a 256 $filename > $filename.sha256
       - name: Package artifacts - macos-arm64
         run: |
@@ -298,6 +307,12 @@ jobs:
 
             ```bash
             (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux-arm64.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
+
+            ##### S390X
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux-s390x.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
             ```
 
             #### MacOS
