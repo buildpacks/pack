@@ -706,16 +706,12 @@ const (
 	argGroupID = "group_id"
 )
 
-/*
-	This implementation of ExtendBuildByDaemon is based on the RFC #0105 which uses docker daemon to extend the build Image instead of kaniko.
-	* Parsing the `group.toml` from the temp directory of buildpack and set the extensions.
-	* Reading the dockerfiles that were generated during the `generate` phase and also parsing the Arguments given by the user from
-	`extend-config.toml`.
-	* Using ImageBuild method of docker API client to extend the Image and save it to the daemon.
-	* Invoking Build phase of lifecycle by creating a container from the extended Image and dropping the privileges.
-
-*/
-
+// ExtendBuildByDaemon uses a daemon to extend the build image, instead of kaniko via the lifecycle `extender`. It does this by:
+//   - Parsing the detected `group.toml` from a temp directory to find the detected extensions.
+//   - Reading the Dockerfiles that were generated during the `generate` phase and also parsing the arguments
+//     given by the extension in `extend-config.toml`.
+//   - Using the `ImageBuild` method of the docker API client to extend the image and save it to the daemon.
+//   - Invoking the `build` phase of lifecycle by creating a container from the extended image.
 func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 	builderImageName := l.opts.BuilderImage
 	extendedBuilderImageName := l.opts.BuilderImage + "-extended"
@@ -763,10 +759,7 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 	return nil
 }
 
-/*
-	Deprecated: Check RFC #0105 for the new implementation of ExtendBuild using docker daemon #1623.
-*/
-
+// Deprecated: ExtendBuild uses kaniko to extend the build image, via the lifecycle `extender`.
 func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory) error {
 	flags := []string{"-app", l.mountPaths.appDir()}
 
