@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1699991456550,
+  "lastUpdate": 1700077799984,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3388,6 +3388,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 55860156822,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jbustamante@vmware.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9be282bf3432bf170052933cf0b8192e88b30ebc",
+          "message": "Merge pull request #1962 from PratikforCoding/binary\n\nchange in the process of download pr binaries",
+          "timestamp": "2023-11-15T14:48:28-05:00",
+          "tree_id": "5a4e6c27ea2cebca149e91cff996f76b8ec9433c",
+          "url": "https://github.com/buildpacks/pack/commit/9be282bf3432bf170052933cf0b8192e88b30ebc"
+        },
+        "date": 1700077799426,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4522698937,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 912261992,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 54216355115,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
