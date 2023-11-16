@@ -190,7 +190,7 @@ func convertToDisplay(proc launch.Process, isDefault bool) ProcessDisplay {
 	var argsToUse []string
 	if proc.Args != nil {
 		argsToUse = proc.Args
-	} else {
+	} else if len(proc.Command.Entries) > 1 {
 		argsToUse = proc.Command.Entries[1:]
 	}
 	result := ProcessDisplay{
