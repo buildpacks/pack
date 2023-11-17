@@ -281,7 +281,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		return l.Export(ctx, buildCache, launchCache, kanikoCache, phaseFactory)
 	}
 
-	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
+	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() && !l.opts.UseCreatorWithExtensions {
 		return errors.New("builder has an order for extensions which is not supported when using the creator")
 	}
 	return l.Create(ctx, buildCache, launchCache, phaseFactory)

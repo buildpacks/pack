@@ -46,9 +46,10 @@ import (
 )
 
 const (
-	minLifecycleVersionSupportingCreator = "0.7.4"
-	prevLifecycleVersionSupportingImage  = "0.6.1"
-	minLifecycleVersionSupportingImage   = "0.7.5"
+	minLifecycleVersionSupportingCreator               = "0.7.4"
+	prevLifecycleVersionSupportingImage                = "0.6.1"
+	minLifecycleVersionSupportingImage                 = "0.7.5"
+	minLifecycleVersionSupportingCreatorWithExtensions = "0.19.0"
 )
 
 // LifecycleExecutor executes the lifecycle which satisfies the Cloud Native Buildpacks Lifecycle specification.
@@ -514,39 +515,40 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 	lifecycleOpts := build.LifecycleOptions{
-		AppPath:              appPath,
-		Image:                imageRef,
-		Builder:              ephemeralBuilder,
-		BuilderImage:         builderRef.Name(),
-		LifecycleImage:       ephemeralBuilder.Name(),
-		RunImage:             runImageName,
-		FetchRunImage:        fetchRunImage,
-		ProjectMetadata:      projectMetadata,
-		ClearCache:           opts.ClearCache,
-		Publish:              opts.Publish,
-		TrustBuilder:         opts.TrustBuilder(opts.Builder),
-		UseCreator:           useCreator,
-		DockerHost:           opts.DockerHost,
-		Cache:                opts.Cache,
-		CacheImage:           opts.CacheImage,
-		HTTPProxy:            proxyConfig.HTTPProxy,
-		HTTPSProxy:           proxyConfig.HTTPSProxy,
-		NoProxy:              proxyConfig.NoProxy,
-		Network:              opts.ContainerConfig.Network,
-		AdditionalTags:       opts.AdditionalTags,
-		Volumes:              processedVolumes,
-		DefaultProcessType:   opts.DefaultProcessType,
-		FileFilter:           fileFilter,
-		Workspace:            opts.Workspace,
-		GID:                  opts.GroupID,
-		PreviousImage:        opts.PreviousImage,
-		Interactive:          opts.Interactive,
-		Termui:               termui.NewTermui(imageName, ephemeralBuilder, runImageName),
-		ReportDestinationDir: opts.ReportDestinationDir,
-		SBOMDestinationDir:   opts.SBOMDestinationDir,
-		CreationTime:         opts.CreationTime,
-		Layout:               opts.Layout(),
-		Keychain:             c.keychain,
+		AppPath:                  appPath,
+		Image:                    imageRef,
+		Builder:                  ephemeralBuilder,
+		BuilderImage:             builderRef.Name(),
+		LifecycleImage:           ephemeralBuilder.Name(),
+		RunImage:                 runImageName,
+		FetchRunImage:            fetchRunImage,
+		ProjectMetadata:          projectMetadata,
+		ClearCache:               opts.ClearCache,
+		Publish:                  opts.Publish,
+		TrustBuilder:             opts.TrustBuilder(opts.Builder),
+		UseCreator:               useCreator,
+		UseCreatorWithExtensions: supportsCreatorWithExtensions(lifecycleVersion),
+		DockerHost:               opts.DockerHost,
+		Cache:                    opts.Cache,
+		CacheImage:               opts.CacheImage,
+		HTTPProxy:                proxyConfig.HTTPProxy,
+		HTTPSProxy:               proxyConfig.HTTPSProxy,
+		NoProxy:                  proxyConfig.NoProxy,
+		Network:                  opts.ContainerConfig.Network,
+		AdditionalTags:           opts.AdditionalTags,
+		Volumes:                  processedVolumes,
+		DefaultProcessType:       opts.DefaultProcessType,
+		FileFilter:               fileFilter,
+		Workspace:                opts.Workspace,
+		GID:                      opts.GroupID,
+		PreviousImage:            opts.PreviousImage,
+		Interactive:              opts.Interactive,
+		Termui:                   termui.NewTermui(imageName, ephemeralBuilder, runImageName),
+		ReportDestinationDir:     opts.ReportDestinationDir,
+		SBOMDestinationDir:       opts.SBOMDestinationDir,
+		CreationTime:             opts.CreationTime,
+		Layout:                   opts.Layout(),
+		Keychain:                 c.keychain,
 	}
 
 	switch {
@@ -606,6 +608,10 @@ func supportsCreator(lifecycleVersion *builder.Version) bool {
 	// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
 	// have bugs that make using the creator problematic.
 	return !lifecycleVersion.LessThan(semver.MustParse(minLifecycleVersionSupportingCreator))
+}
+
+func supportsCreatorWithExtensions(lifecycleVersion *builder.Version) bool {
+	return !lifecycleVersion.LessThan(semver.MustParse(minLifecycleVersionSupportingCreatorWithExtensions))
 }
 
 func supportsLifecycleImage(lifecycleVersion *builder.Version) bool {
