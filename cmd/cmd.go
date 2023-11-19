@@ -45,19 +45,16 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 		Short: "CLI for building apps using Cloud Native Buildpacks",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if fs := cmd.Flags(); fs != nil {
-				if forceColor, err := fs.GetBool("force-color"); err == nil && forceColor {
-					color.Enabled()
-				} else {
-					if noColor, err := fs.GetBool("no-color"); err == nil && noColor {
+				if forceColor, err := fs.GetBool("force-color"); err == nil && !forceColor {
+					if flag, err := fs.GetBool("no-color"); err == nil && flag {
+						color.Disable(flag)
+					}
+
+					_, canDisplayColor := term.IsTerminal(logging.GetWriterForLevel(logger, logging.InfoLevel))
+					if !canDisplayColor {
 						color.Disable(true)
-					} else {
-						_, canDisplayColor := term.IsTerminal(logging.GetWriterForLevel(logger, logging.InfoLevel))
-						if !canDisplayColor {
-							color.Disable(true)
-						}
 					}
 				}
-
 				if flag, err := fs.GetBool("quiet"); err == nil {
 					logger.WantQuiet(flag)
 				}
