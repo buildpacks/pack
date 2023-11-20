@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1700080002829,
+  "lastUpdate": 1700512172869,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3472,6 +3472,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 49940952317,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jbustamante@vmware.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ea5868415a4e82c26eb196555c5b6a39011f82c3",
+          "message": "Merge pull request #1984 from Juneezee/chore/yaml\n\nReplace `github.com/ghodss/yaml` with `gopkg.in/yaml.v3`",
+          "timestamp": "2023-11-20T15:27:26-05:00",
+          "tree_id": "617716707bba43acbc3208421de1cf587f05c812",
+          "url": "https://github.com/buildpacks/pack/commit/ea5868415a4e82c26eb196555c5b6a39011f82c3"
+        },
+        "date": 1700512172284,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4382221715,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 870092534,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 54149463949,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
