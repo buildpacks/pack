@@ -40,7 +40,7 @@ jobs:
             return updatedTag;
       - name: Setup working dir
         run: |
-          mkdir ${{ env.CHOCO_PATH }}
+          mkdir -p ${{ env.CHOCO_PATH }}/source
           cp -r .github/workflows/delivery/chocolatey/. ${{ env.CHOCO_PATH }}/
           ls -R ${{ env.CHOCO_PATH }}
       - name: Download and unzip Pack (Windows)
@@ -69,7 +69,7 @@ jobs:
       - name: build-release
         uses: crazy-max/ghaction-chocolatey@v3
         with:
-          args: pack ${{ env.CHOCO_PATH }}/pack.nuspec --outputdirectory ${{ env.CHOCO_PATH}}
+          args: pack ${{ env.CHOCO_PATH }}/pack.nuspec --outputdirectory ${{ env.CHOCO_PATH}}/source
       - name: list files
         run: |
           ls ${{ env.CHOCO_PATH }}
@@ -77,10 +77,10 @@ jobs:
       - name: Test Release
         uses: crazy-max/ghaction-chocolatey@v3
         with:
-          args: install pack -s ${{ env.CHOCO_PATH }}/pack.${{ env.PACK_VERSION }}.nupkg
+          args: install pack -s ${{ env.CHOCO_PATH }}/source
       - name: Ensure Pack Installed
         run: pack help
       - name: Upload Release
         uses: crazy-max/ghaction-chocolatey@v3
         with:
-          args: push ${{ env.CHOCO_PATH }}/pack.${{ env.PACK_VERSION }}.nupkg -s https://push.chocolatey.org/ -k ${{ secrets.CHOCO_KEY }}
+          args: push ${{ env.CHOCO_PATH }}/source/pack.${{ env.PACK_VERSION }}.nupkg -s https://push.chocolatey.org/ -k ${{ secrets.CHOCO_KEY }}
