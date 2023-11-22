@@ -32,7 +32,7 @@ jobs:
                 echo "date=$(date +"%a, %d %b %Y %T %z")" >> $GITHUB_OUTPUT
 
           - name: Determine version
-            uses: actions/github-script@v6
+            uses: actions/github-script@v7
             id: version
             with:
               result-encoding: string
