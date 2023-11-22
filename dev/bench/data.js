@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1700684770004,
+  "lastUpdate": 1700685149440,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3598,6 +3598,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 54439655655,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jbustamante@vmware.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b5418c9538a3a650229746366dcb38e7d499ae3c",
+          "message": "Merge pull request #1987 from buildpacks/dependabot/github_actions/buildpacks/github-actions-5.5.1\n\nbuild(deps): bump buildpacks/github-actions from 5.5.0 to 5.5.1",
+          "timestamp": "2023-11-22T15:30:59-05:00",
+          "tree_id": "674927a454880f592229c959b48d0f2d894f49df",
+          "url": "https://github.com/buildpacks/pack/commit/b5418c9538a3a650229746366dcb38e7d499ae3c"
+        },
+        "date": 1700685148863,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3798811934,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 882355385,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 54913858952,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
