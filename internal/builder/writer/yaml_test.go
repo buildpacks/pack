@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ghodss/yaml"
-
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+	yaml "gopkg.in/yaml.v3"
 
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
