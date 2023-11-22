@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1700512172869,
+  "lastUpdate": 1700641710451,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3514,6 +3514,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 54149463949,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "freilich.david@gmail.com",
+            "name": "David Freilich",
+            "username": "dfreilich"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0397ab994d878325f850626385c488243001946e",
+          "message": "Merge pull request #1982 from buildpacks/chore/fix-chocolatey\n\nWhen running `choco install pack --source <package>` we need to point to a folder instead of a nupkg package\r\nSigned-off-by: David Freilich <freilich.david@gmail.com>",
+          "timestamp": "2023-11-22T10:26:46+02:00",
+          "tree_id": "08fca2960e413184d4772638964528b9970bff9b",
+          "url": "https://github.com/buildpacks/pack/commit/0397ab994d878325f850626385c488243001946e"
+        },
+        "date": 1700641709298,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7001480862,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1979552126,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 57481141606,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
