@@ -21,11 +21,11 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/ghodss/yaml"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pelletier/go-toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+	yaml "gopkg.in/yaml.v3"
 
 	"github.com/buildpacks/pack/acceptance/assertions"
 	"github.com/buildpacks/pack/acceptance/buildpacks"
@@ -1550,6 +1550,45 @@ func testAcceptance(
 
 								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
 								assertBuildpackOutput.ReportsBuildStep("Simple Layers Buildpack")
+							})
+
+							when("buildpackage is in a registry", func() {
+								it("adds the buildpacks to the builder and runs them", func() {
+									h.SkipIf(t, !pack.SupportsFeature(invoke.PlatformRetries), "")
+									packageImageName = registryConfig.RepoName("buildpack-" + h.RandString(8))
+
+									packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
+									packageImage := buildpacks.NewPackageImage(
+										t,
+										pack,
+										packageImageName,
+										packageTomlPath,
+										buildpacks.WithRequiredBuildpacks(
+											buildpacks.BpFolderSimpleLayersParent,
+											buildpacks.BpFolderSimpleLayers,
+										),
+										buildpacks.WithPublish(),
+									)
+
+									buildpackManager.PrepareBuildModules(tmpDir, packageImage)
+
+									output := pack.RunSuccessfully(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--buildpack", packageImageName,
+									)
+
+									assertOutput := assertions.NewOutputAssertionManager(t, output)
+									assertOutput.ReportsAddingBuildpack(
+										"simple/layers/parent",
+										"simple-layers-parent-version",
+									)
+									assertOutput.ReportsAddingBuildpack("simple/layers", "simple-layers-version")
+									assertOutput.ReportsSuccessfulImageBuild(repoName)
+
+									assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+									assertBuildpackOutput.ReportsBuildStep("Simple Layers Buildpack")
+								})
 							})
 						})
 
