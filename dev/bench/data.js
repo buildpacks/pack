@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1700689151687,
+  "lastUpdate": 1701122633702,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3682,6 +3682,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 52779117096,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jbustamante@vmware.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c13ef797a2dd001caa7cb95c4dadd0c045e08b3c",
+          "message": "Merge pull request #1946 from sarthaksarthak9/color\n\nAdd --force-color flag",
+          "timestamp": "2023-11-27T17:02:08-05:00",
+          "tree_id": "ac0f7853b61df7d2821f20751231e400ca6a44f0",
+          "url": "https://github.com/buildpacks/pack/commit/c13ef797a2dd001caa7cb95c4dadd0c045e08b3c"
+        },
+        "date": 1701122632536,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6964294322,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2095653631,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 57209465274,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
