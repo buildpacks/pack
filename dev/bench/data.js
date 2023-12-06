@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1701465736390,
+  "lastUpdate": 1701899271667,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3766,6 +3766,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 56078942816,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jbustamante@vmware.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e5d4417a4bfcfd35a526a9ac0079c594368291f3",
+          "message": "Merge pull request #1997 from buildpacks/chore/fix-labeler-issue-with-v5\n\nAction labeler v5.0.0 was released yesterday (12/04) and it broke the definition rules",
+          "timestamp": "2023-12-06T16:46:02-05:00",
+          "tree_id": "5d83f05fd389ba2ad2a823a3d70039432338f845",
+          "url": "https://github.com/buildpacks/pack/commit/e5d4417a4bfcfd35a526a9ac0079c594368291f3"
+        },
+        "date": 1701899270562,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6408382357,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1776258333,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 64072084655,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
