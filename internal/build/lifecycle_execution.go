@@ -282,7 +282,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 	}
 
 	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() && !l.opts.UseCreatorWithExtensions {
-		return errors.New("builder has an order for extensions which is not supported when using the creator")
+		return errors.New("builder has an order for extensions which is not supported when using the creator; re-run without '--trust-builder' or re-tag builder to avoid trusting it")
 	}
 	return l.Create(ctx, buildCache, launchCache, phaseFactory)
 }
