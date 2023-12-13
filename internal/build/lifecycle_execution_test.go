@@ -124,7 +124,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			calledWithArgAtCall: make(map[int]string),
 		}
 		withFakeFetchRunImageFunc := func(opts *build.LifecycleOptions) {
-			opts.FetchRunImage = newFakeFetchRunImageFunc(&fakeFetcher)
+			opts.FetchRunImageWithLifecycleLayer = newFakeFetchRunImageFunc(&fakeFetcher)
 		}
 		lifecycleOps = append(lifecycleOps, fakes.WithBuilder(fakeBuilder), withFakeFetchRunImageFunc)
 
@@ -1971,7 +1971,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 	when("#ExtendRun", func() {
 		it.Before(func() {
-			err := lifecycle.ExtendRun(context.Background(), fakeKanikoCache, fakePhaseFactory)
+			err := lifecycle.ExtendRun(context.Background(), fakeKanikoCache, fakePhaseFactory, "some-run-image")
 			h.AssertNil(t, err)
 
 			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1990,15 +1990,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, configProvider.ContainerConfig().Image, "some-run-image")
 		})
 
-		when("extensions change the run image", func() {
-			extensionsRunImage = "some-new-run-image"
-			providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
-
-			it("runs the phase with the new run image", func() {
-				h.AssertEq(t, configProvider.ContainerConfig().Image, "some-new-run-image")
-			})
-		})
-
 		it("configures the phase with the expected arguments", func() {
 			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Entrypoint, "") // the run image may have an entrypoint configured, override it
 			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-log-level", "debug")
@@ -2008,7 +1999,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		it("configures the phase with binds", func() {
 			expectedBinds := providedVolumes
-			expectedBinds = append(expectedBinds, "some-kaniko-cache:/kaniko", fmt.Sprintf("%s:/cnb", filepath.Join(tmpDir, "cnb")))
+			expectedBinds = append(expectedBinds, "some-kaniko-cache:/kaniko")
 
 			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 		})
@@ -2453,9 +2444,9 @@ func newFakeImageCache() *fakes.FakeCache {
 	return c
 }
 
-func newFakeFetchRunImageFunc(f *fakeImageFetcher) func(name string) error {
-	return func(name string) error {
-		return f.fetchRunImage(name)
+func newFakeFetchRunImageFunc(f *fakeImageFetcher) func(name string) (string, error) {
+	return func(name string) (string, error) {
+		return fmt.Sprintf("ephemeral-%s", name), f.fetchRunImage(name)
 	}
 }
 
