@@ -80,6 +80,13 @@ type BuildpackDownloader interface {
 	Download(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error)
 }
 
+//go:generate mockgen -package testmocks -destination ../testmocks/mock_access_checker.go github.com/buildpacks/pack/pkg/client AccessChecker
+
+// AccessChecker is an interface for checking remote images for read access
+type AccessChecker interface {
+	Check(repo string) bool
+}
+
 // Client is an orchestration object, it contains all parameters needed to
 // build an app image using Cloud Native Buildpacks.
 // All settings on this object should be changed through ClientOption functions.
@@ -90,6 +97,7 @@ type Client struct {
 	keychain            authn.Keychain
 	imageFactory        ImageFactory
 	imageFetcher        ImageFetcher
+	accessChecker       AccessChecker
 	downloader          BlobDownloader
 	lifecycleExecutor   LifecycleExecutor
 	buildpackDownloader BuildpackDownloader
@@ -122,6 +130,14 @@ func WithImageFactory(f ImageFactory) Option {
 func WithFetcher(f ImageFetcher) Option {
 	return func(c *Client) {
 		c.imageFetcher = f
+	}
+}
+
+// WithAccessChecker supply your own AccessChecker.
+// A AccessChecker returns true if an image is accessible for reading.
+func WithAccessChecker(f AccessChecker) Option {
+	return func(c *Client) {
+		c.accessChecker = f
 	}
 }
 
@@ -223,6 +239,10 @@ func NewClient(opts ...Option) (*Client, error) {
 			dockerClient: client.docker,
 			keychain:     client.keychain,
 		}
+	}
+
+	if client.accessChecker == nil {
+		client.accessChecker = image.NewAccessChecker(client.logger, client.keychain)
 	}
 
 	if client.buildpackDownloader == nil {
