@@ -10,7 +10,6 @@ import (
 	"strconv"
 
 	"github.com/BurntSushi/toml"
-
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/platform/files"
