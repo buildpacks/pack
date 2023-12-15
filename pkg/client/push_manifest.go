@@ -3,32 +3,28 @@ package client
 import (
 	"context"
 
-	"github.com/buildpacks/imgutil/local"
-	"github.com/buildpacks/imgutil/remote"
-	"github.com/pkg/errors"
+	"github.com/buildpacks/imgutil"
 )
 
 type PushManifestOptions struct {
-	Index string
-	Path  string
+	Format          string
+	Insecure, Purge bool
 }
 
-func (c *Client) PushManifest(ctx context.Context, opts PushManifestOptions) error {
-	indexManifest, err := local.GetIndexManifest(opts.Index, opts.Path)
+// PushManifest implements commands.PackClient.
+func (c *Client) PushManifest(ctx context.Context, index string, opts PushManifestOptions) (imageID string, err error) {
+	manifestList, err := c.indexFactory.FindIndex(index)
 	if err != nil {
-		return errors.Wrapf(err, "Get local index manifest '%s' from path '%s'", opts.Index, opts.Path)
+		return
 	}
 
-	idx, err := remote.NewIndex(opts.Index, c.keychain, remote.WithManifest(indexManifest))
-	if err != nil {
-		return errors.Wrapf(err, "Create remote index from '%s' local index manifest", opts.Index)
-	}
+	_, err = manifestList.Push(ctx, parseFalgsForImgUtil(opts))
 
-	// Store index
-	err = idx.Save()
-	if err != nil {
-		return errors.Wrapf(err, "Storing index '%s' in registry. Check if all the referenced manifests are in the same repository in registry", opts.Index)
-	}
+	manifestList.Delete()
 
-	return nil
+	return imageID, err
+}
+
+func parseFalgsForImgUtil(opts PushManifestOptions) (idxOptions []imgutil.IndexOption) {
+	return idxOptions
 }

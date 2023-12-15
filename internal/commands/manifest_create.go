@@ -1,99 +1,92 @@
 package commands
 
 import (
-	"path/filepath"
-
-	"github.com/buildpacks/imgutil"
-	"github.com/pkg/errors"
-
-	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/pkg/client"
-	"github.com/buildpacks/pack/pkg/logging"
+	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
+// ManifestCreateFlags define flags provided to the ManifestCreate
 type ManifestCreateFlags struct {
-	Publish  bool
-	Insecure bool
-	Registry string
-	Format   string
+	format, registry, os, arch    string
+	insecure, publish, all, amend bool
 }
 
+// ManifestCreate creates an image-index/image-list for a multi-arch image
 func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 	var flags ManifestCreateFlags
+
 	cmd := &cobra.Command{
-		Use:   "create <manifest-list> <manifest> [<manifest> ... ]",
-		Short: "Creates a manifest list",
-		Args:  cobra.MatchAll(cobra.MinimumNArgs(2)),
-		Example: `pack manifest create create cnbs/sample-package:hello-multiarch-universe \ 
-					cnbs/sample-package:hello-universe \ 
-					cnbs/sample-package:hello-universe-windows`,
-		Long: "manifest create generates a manifest list for a multi-arch image",
+		Use:   "pack manifest create <manifest-list> <manifest> [<manifest> ... ] [flags]",
+		Args:  cobra.MatchAll(cobra.MinimumNArgs(2), cobra.OnlyValidArgs),
+		Short: "manifest create generates a manifest list for a multi-arch image",
+		Example: `pack manifest create cnbs/sample-package:hello-multiarch-universe \
+		cnbs/sample-package:hello-universe \
+		cnbs/sample-package:hello-universe-windows`,
+		Long: `Create a manifest list or image index for the image to support muti architecture for the image, it create a new ManifestList or ImageIndex with the given name and adds the list of Manifests to the newly created ImageIndex or ManifestList
+		
+		If the <manifest-list> already exists in the registry: pack will save a local copy of the remote manifest list,
+		If the <manifest-list> doestn't exist in a registry: pack will create a local representation of the manifest list that will only save on the remote registry if the user publish it`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := validateManifestCreateFlags(&flags); err != nil {
-				return err
-			}
-
-			mediaType, err := validateMediaTypeFlag(flags.Format)
-			if err != nil {
-				return err
-			}
-
-			packHome, err := config.PackHome()
-			if err != nil {
-				return err
-			}
-
-			manifestDir := filepath.Join(packHome, "manifests")
-
-			indexName := args[0]
+			imageIndex := args[0]
 			manifests := args[1:]
-			if err := pack.CreateManifest(cmd.Context(), client.CreateManifestOptions{
-				ManifestName: indexName,
-				Manifests:    manifests,
-				MediaType:    mediaType,
-				Publish:      flags.Publish,
-				Registry:     flags.Registry,
-				ManifestDir:  manifestDir,
-			}); err != nil {
+			cmdFlags := cmd.Flags()
+
+			if err := validateManifestCreateFlags(flags); err != nil {
 				return err
 			}
 
-			logger.Infof("Successfully created image index %s", style.Symbol(indexName))
+			if cmdFlags.Changed("insecure") {
+				flags.insecure = !flags.insecure
+			}
+
+			if cmdFlags.Changed("publish") {
+				flags.publish = !flags.publish
+			}
+
+			id, err := pack.CreateManifest(cmd.Context(), imageIndex, manifests, client.CreateManifestOptions{
+				Format:   flags.format,
+				Registry: flags.registry,
+				Insecure: flags.insecure,
+				Publish:  flags.publish,
+			})
+
+			if err != nil {
+				return err
+			}
+			logger.Infof("Successfully created ImageIndex/ManifestList with imageID: '%s'", id)
 
 			return nil
 		}),
 	}
 
-	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry`)
-	cmd.Flags().BoolVar(&flags.Insecure, "insecure", false, `Allow publishing to insecure registry`)
-	cmd.Flags().StringVarP(&flags.Format, "format", "f", "v2s2", `Format to save image index as ("OCI" or "V2S2")`)
-	cmd.Flags().StringVarP(&flags.Registry, "registry", "r", "", `Registry URL to publish the image index`)
+	cmdFlags := cmd.Flags()
+
+	cmdFlags.StringVarP(&flags.format, "format", "f", "v2s2", "Format to save image index as ('OCI' or 'V2S2') (default 'v2s2')")
+	cmdFlags.StringVarP(&flags.registry, "registry", "r", "", "Publish to registry")
+	cmdFlags.StringVar(&flags.os, "os", "", "If any of the specified images is a list/index, choose the one for `os`")
+	if err := cmdFlags.MarkHidden("os"); err != nil {
+		panic(fmt.Sprintf("error marking --os as hidden: %v", err))
+	}
+	cmdFlags.StringVar(&flags.arch, "arch", "", "If any of the specified images is a list/index, choose the one for `arch`")
+	if err := cmdFlags.MarkHidden("arch"); err != nil {
+		panic(fmt.Sprintf("error marking --arch as hidden: %v", err))
+	}
+	cmdFlags.BoolVar(&flags.insecure, "insecure", false, "Allow publishing to insecure registry")
+	if err := cmdFlags.MarkHidden("insecure"); err != nil {
+		panic(fmt.Sprintf("error marking insecure as hidden: %v", err))
+	}
+	cmdFlags.BoolVar(&flags.publish, "publish", false, "Publish to registry")
+	cmdFlags.BoolVar(&flags.all, "all", false, "Add all of the list's images if the images to add are lists/index")
+	cmdFlags.BoolVar(&flags.amend, "amend", false, "Modify an existing list/index if one with the desired name already exists")
 
 	AddHelpFlag(cmd, "create")
 	return cmd
 }
 
-func validateManifestCreateFlags(p *ManifestCreateFlags) error {
-	if p.Format == "" {
-		return errors.Errorf("--format flag received an empty value")
-	}
+func validateManifestCreateFlags(flags ManifestCreateFlags) error {
 	return nil
-}
-
-func validateMediaTypeFlag(format string) (imgutil.MediaTypes, error) {
-	var mediaType imgutil.MediaTypes
-
-	switch format {
-	case "oci":
-		mediaType = imgutil.OCITypes
-	case "v2s2":
-		mediaType = imgutil.DockerTypes
-	default:
-		return imgutil.MissingTypes, errors.Errorf("unsupported media type given for --format")
-	}
-
-	return mediaType, nil
 }

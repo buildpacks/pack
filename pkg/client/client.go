@@ -16,10 +16,12 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	dockerClient "github.com/docker/docker/client"
@@ -72,8 +74,14 @@ type ImageFactory interface {
 	NewImage(repoName string, local bool, imageOS string) (imgutil.Image, error)
 }
 
+// IndexFactory is an interface representing the ability to create a ImageIndex/ManifestList.
 type IndexFactory interface {
-	NewIndex(CreateManifestOptions) (imgutil.ImageIndex, error)
+	// load ManifestList from local storage with the given name
+	LoadIndex(reponame string, opts ...imgutil.IndexOption) (imgutil.Index, error)
+	// Fetch ManifestList from Registry with the given name
+	FetchIndex(name string, opts ...imgutil.IndexOption) (imgutil.Index, error)
+	// FindIndex will find Index remotly first then on local
+	FindIndex(name string, opts ...imgutil.IndexOption) (imgutil.Index, error)
 }
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_buildpack_downloader.go github.com/buildpacks/pack/pkg/client BuildpackDownloader
@@ -119,6 +127,13 @@ func WithLogger(l logging.Logger) Option {
 func WithImageFactory(f ImageFactory) Option {
 	return func(c *Client) {
 		c.imageFactory = f
+	}
+}
+
+// WithIndexFactory supply your own index factory
+func WithIndexFactory(f IndexFactory) Option {
+	return func(c *Client) {
+		c.indexFactory = f
 	}
 }
 
@@ -232,8 +247,7 @@ func NewClient(opts ...Option) (*Client, error) {
 
 	if client.indexFactory == nil {
 		client.indexFactory = &indexFactory{
-			dockerClient: client.docker,
-			keychain:     client.keychain,
+			keychain: client.keychain,
 		}
 	}
 
@@ -286,21 +300,38 @@ func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (i
 	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform))
 }
 
-type indexFactory struct {
-	dockerClient local.DockerClient
-	keychain     authn.Keychain
-}
-
-func (f *indexFactory) NewIndex(opts CreateManifestOptions) (imgutil.ImageIndex, error) {
-	if opts.Publish {
-		return remote.NewIndex(
-			opts.ManifestName,
-			f.keychain,
-			remote.WithIndexMediaTypes(opts.MediaType))
+func (f *indexFactory) LoadIndex(repoName string, opts ...imgutil.IndexOption) (img imgutil.Index, err error) {
+	img, err = local.NewImage(repoName, true, opts...)
+	if err == nil {
+		return
 	}
 
-	return local.NewIndex(
-		opts.ManifestName,
-		opts.ManifestDir,
-		local.WithIndexMediaTypes(opts.MediaType))
+	img, err = layout.NewImage(repoName, true, opts...)
+	if err == nil {
+		return
+	}
+	return nil, errors.Errorf("Image: '%s' not found", repoName)
+}
+
+type indexFactory struct {
+	keychain authn.Keychain
+}
+
+func (f *indexFactory) FetchIndex(name string, opts ...imgutil.IndexOption) (index imgutil.Index, err error) {
+
+	index, err = remote.NewIndex(name, true, opts.WithKeyChain(f.keychain), opts...)
+	if err != nil {
+		return index, fmt.Errorf("ImageIndex in not available at registry")
+	}
+
+	return index, err
+}
+
+func (f *indexFactory) FindIndex(repoName string, opts ...imgutil.IndexOption) (index imgutil.Index, err error) {
+	index, err = (*f).FetchIndex(repoName, true, opts.WithKeyChain(f.keychain), opts...)
+	if err != nil {
+		return index, err
+	}
+
+	return (*f).FindIndex(repoName, true, opts.WithKeyChain(f.keychain), opts...)
 }

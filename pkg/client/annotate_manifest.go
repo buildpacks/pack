@@ -2,40 +2,77 @@ package client
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
-	"github.com/buildpacks/imgutil/local"
-	"github.com/pkg/errors"
+	ggcrName "github.com/google/go-containerregistry/pkg/name"
 )
 
-type AnnotateManifestOptions struct {
-	Index        string
-	Path         string
-	Manifest     string
-	Architecture string
-	OS           string
-	Variant      string
+type ManifestAnnotateOptions struct {
+	OS, OSVersion, OSArch, OSVariant  string
+	OSFeatures, Features []string
+	Annotations map[string]string
 }
 
-func (c *Client) AnnotateManifest(ctx context.Context, opts AnnotateManifestOptions) error {
-	indexManifest, err := local.GetIndexManifest(opts.Index, opts.Path)
+// AnnotateManifest implements commands.PackClient.
+func (c *Client) AnnotateManifest(ctx context.Context, name string, image string, opts ManifestAnnotateOptions) error {
+	manifestList, err := c.indexFactory.FindIndex(name)
 	if err != nil {
-		return errors.Wrapf(err, "Get local index manifest '%s' from path '%s'", opts.Index, opts.Path)
+		return err
 	}
 
-	idx, err := local.NewIndex(opts.Index, opts.Path, local.WithManifest(indexManifest))
+	digest, err := ggcrName.NewDigest(image)
 	if err != nil {
-		return errors.Wrapf(err, "Create local index from '%s' local index manifest", opts.Index)
+		return err
 	}
 
-	err = idx.AnnotateManifest(
-		opts.Manifest,
-		local.AnnotateFields{
-			Architecture: opts.Architecture,
-			OS:           opts.OS,
-			Variant:      opts.Variant,
-		})
-	if err != nil {
-		return errors.Wrapf(err, "Annotate manifet '%s' of index '%s", opts.Manifest, opts.Index)
+	if opts.OS != "" {
+		if err := manifestList.SetOS(digest, opts.OS); err != nil {
+			return err
+		}
+	}
+	if opts.OSVersion != "" {
+		if err := manifestList.SetOSVersion(digest, opts.OSVersion); err != nil {
+			return err
+		}
+	}
+	if len(opts.OSFeatures) != 0 {
+		if err := manifestList.SetOSFeatures(digest, opts.OSFeatures); err != nil {
+			return err
+		}
+	}
+	if opts.OSArch != "" {
+		if err := manifestList.SetArchitecture(digest, opts.OSArch); err != nil {
+			return err
+		}
+	}
+	if opts.OSVariant != "" {
+		if err := manifestList.SetVariant(digest, opts.OSVariant); err != nil {
+			return err
+		}
+	}
+	if len(opts.Features) != 0 {
+		if err := manifestList.SetFeatures(digest, opts.Features); err != nil {
+			return err
+		}
+	}
+	if len(opts.Annotations) != 0 {
+		annotations := make(map[string]string)
+		for _, annotationSpec := range opts.Annotations {
+			spec := strings.SplitN(annotationSpec, "=", 2)
+			if len(spec) != 2 {
+				return fmt.Errorf("no value given for annotation %q", spec[0])
+			}
+			annotations[spec[0]] = spec[1]
+		}
+		if err := manifestList.SetAnnotations(&digest, annotations); err != nil {
+			return err
+		}
+	}
+
+	updatedListID, err := manifestList.Save()
+	if err == nil {
+		fmt.Printf("%s: %s\n", updatedListID, digest.String())
 	}
 
 	return nil

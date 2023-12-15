@@ -2,38 +2,27 @@ package client
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/buildpacks/imgutil/local"
-	"github.com/pkg/errors"
+	gccrName "github.com/google/go-containerregistry/pkg/name"
 )
 
-type RemoveManifestOptions struct {
-	Index    string
-	Path     string
-	Manifest string
-}
-
-func (c *Client) RemoveManifest(ctx context.Context, opts RemoveManifestOptions) error {
-	indexManifest, err := local.GetIndexManifest(opts.Index, opts.Path)
+// RemoveManifest implements commands.PackClient.
+func (c *Client) RemoveManifest(ctx context.Context, name string, images []string) error {
+	imgIndex, err := c.indexFactory.FindIndex(name)
 	if err != nil {
-		return errors.Wrapf(err, "Get local index manifest '%s' from path '%s'", opts.Index, opts.Path)
+		return err
 	}
 
-	idx, err := local.NewIndex(opts.Index, opts.Path, local.WithManifest(indexManifest))
-	if err != nil {
-		return errors.Wrapf(err, "Create local index from '%s' local index manifest", opts.Index)
-	}
-
-	// Append manifest to local index
-	err = idx.Remove(opts.Manifest)
-	if err != nil {
-		return errors.Wrapf(err, "Removing '%s' manifest from index '%s'", opts.Manifest, opts.Index)
-	}
-
-	// Store index in local storage
-	err = idx.Save()
-	if err != nil {
-		return errors.Wrapf(err, "Save local index '%s' at '%s' path", opts.Index, opts.Path)
+	for _, image := range images {
+		_, err := gccrName.ParseReference(image)
+		if err != nil {
+			fmt.Errorf(`Invalid instance "%s": %v`, image, err)
+		}
+		if err := imgIndex.Remove(image); err != nil {
+			return err
+		}
+		fmt.Printf("Successfully removed %s from %s", image, name)
 	}
 
 	return nil

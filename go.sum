@@ -39,6 +39,10 @@ github.com/Microsoft/go-winio v0.6.1/go.mod h1:LRdKpFKfdobln8UmuiYcKPot9D2v6svN5
 github.com/Microsoft/hcsshim v0.10.0-rc.8 h1:YSZVvlIIDD1UxQpJp0h+dnpLUw+TrY0cx8obKsp3bek=
 github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 h1:kkhsdkhsCvIsutKu5zLMgWtgh9YxGCNAw8Ad8hjwfYg=
 github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371/go.mod h1:EjAoLdwvbIOoOQr3ihjnSoLZRtE8azugULFRteWMNc0=
+github.com/WYGIN/buildpacks-imgutil v0.0.0-20230626185301-726f02e4225c h1:KMziTau8mg/nYMh598Lt0IZ97h0nbQqiRz7/jaE3nM8=
+github.com/WYGIN/buildpacks-imgutil v0.0.0-20230626185301-726f02e4225c/go.mod h1:mBG5M3GJW5nknCEOOqtmMHyPYnSpw/5GEiciuYU/COw=
+github.com/WYGIN/buildpacks-imgutil v0.0.0-20231027205711-0eae658d5962 h1:z6GOX2Wl2+SDLJRret/eAANd5B8tCf35TI4xoopRIbM=
+github.com/WYGIN/buildpacks-imgutil v0.0.0-20231027205711-0eae658d5962/go.mod h1:Ade+4Q1OovFw6Zdzd+/UVaqWptZSlpnZ8n/vlkgS7M8=
 github.com/acomagu/bufpipe v1.0.4 h1:e3H4WUzM3npvo5uv95QuJM3cQspFNtFBzvJ2oNjKIDQ=
 github.com/acomagu/bufpipe v1.0.4/go.mod h1:mxdxdup/WdsKVreO5GpW4+M/1CE2sMG4jeGJ2sYmHc4=
 github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7lmo=
