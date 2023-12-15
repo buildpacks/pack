@@ -134,7 +134,7 @@ func testHelper(t *testing.T, when spec.G, it spec.S) {
 			extensions.SetExtensions(tmpDir, logger)
 			dockerfiles, err := extensions.DockerFiles(build.DockerfileKindBuild, tmpDir, logger)
 			h.AssertNil(t, err)
-			buildContext, err := dockerfiles[0].CreateBuildContext(tmpDir)
+			buildContext, err := dockerfiles[0].CreateBuildContext(tmpDir, logger)
 			h.AssertNil(t, err)
 			tr := tar.NewReader(buildContext)
 			checkDirectoryInTar(t, tr, "/workspace/build")

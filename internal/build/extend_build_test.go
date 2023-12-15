@@ -84,7 +84,8 @@ func testBuildDockerfiles(t *testing.T, when spec.G, it spec.S) {
 				},
 			}
 			expectedBuilder := lifecycle.Builder()
-			expectedBuildContext, _ := dockerfile.CreateBuildContext(lifecycle.AppPath())
+			expectedBuildContext, _ := dockerfile.
+				CreateBuildContext(lifecycle.AppPath(), lifecycle.GetLogger())
 			// Set up expected Build Args
 			UID := strconv.Itoa(expectedBuilder.UID())
 			GID := strconv.Itoa(expectedBuilder.GID())

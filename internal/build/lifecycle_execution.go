@@ -743,7 +743,7 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 			arg := &dockerfile.Args[i]
 			buildArguments[arg.Name] = &arg.Value
 		}
-		buildContext, err := dockerfile.CreateBuildContext(l.opts.AppPath)
+		buildContext, err := dockerfile.CreateBuildContext(l.opts.AppPath, l.logger)
 		if err != nil {
 			return err
 		}
@@ -1005,6 +1005,10 @@ func (l *LifecycleExecution) runImageChanged() bool {
 func (l *LifecycleExecution) appendLayoutOperations(opts []PhaseConfigProviderOperation) ([]PhaseConfigProviderOperation, error) {
 	opts = append(opts, withLayoutOperation())
 	return opts, nil
+}
+
+func (l *LifecycleExecution) GetLogger() logging.Logger {
+	return l.logger
 }
 
 func withLayoutOperation() PhaseConfigProviderOperation {

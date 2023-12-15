@@ -130,7 +130,7 @@ func escapeID(id string) string {
 	return strings.ReplaceAll(id, "/", "_")
 }
 
-func (dockerfile *DockerfileInfo) CreateBuildContext(path string) (io.Reader, error) {
+func (dockerfile *DockerfileInfo) CreateBuildContext(path string, logger logging.Logger) (io.Reader, error) {
 	defaultFilterFunc := func(file string) bool { return true }
 	buf := new(bytes.Buffer)
 	tarWriter := tar.NewWriter(buf)
@@ -138,19 +138,19 @@ func (dockerfile *DockerfileInfo) CreateBuildContext(path string) (io.Reader, er
 
 	defer func() {
 		if err := tarWriter.Close(); err != nil {
-			fmt.Println("Error closing tar writer:", err)
+			logger.Errorf("Error closing tar writer: %s", err)
 			completeErr = archive.AggregateError(completeErr, err)
 		}
 	}()
 	if err := archive.WriteDirToTar(tarWriter, path, "/workspace", 0, 0, -1, true, false, defaultFilterFunc); err != nil {
 		tarWriter.Close()
-		fmt.Println("Error adding workspace:", err)
+		logger.Errorf("Error adding workspace: %s", err)
 		completeErr = archive.AggregateError(completeErr, err)
 	}
 
 	if err := archive.WriteFileToTar(tarWriter, dockerfile.Info.Path, filepath.Join(".", "Dockerfile"), 0, 0, -1, true); err != nil {
 		tarWriter.Close()
-		fmt.Println("Error adding dockerfile:", err)
+		logger.Errorf("Error adding dockerfile: %s", err)
 		completeErr = archive.AggregateError(completeErr, err)
 	}
 
