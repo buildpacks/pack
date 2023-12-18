@@ -57,6 +57,10 @@ func (d *downloader) Download(ctx context.Context, pathOrURI string) (Blob, erro
 			path, err = paths.URIToFilePath(pathOrURI)
 		case "http", "https":
 			path, err = d.handleHTTP(ctx, pathOrURI)
+			if err != nil {
+				// retry
+				path, err = d.handleHTTP(ctx, pathOrURI)
+			}
 		default:
 			err = fmt.Errorf("unsupported protocol %s in URI %s", style.Symbol(parsedURL.Scheme), style.Symbol(pathOrURI))
 		}
