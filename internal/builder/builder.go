@@ -166,14 +166,14 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 	return bldr, nil
 }
 
-func WithFlatten() BuilderOption {
+func FlattenAll() BuilderOption {
 	return func(o *options) error {
 		o.flatten = true
 		return nil
 	}
 }
 
-func WithFlattenExclude(exclude []string) BuilderOption {
+func DoNotFlatten(exclude []string) BuilderOption {
 	return func(o *options) error {
 		o.flatten = true
 		o.exclude = exclude

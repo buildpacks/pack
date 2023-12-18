@@ -1874,7 +1874,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("all", func() {
 			it.Before(func() {
 				var err error
-				bldr, err = builder.New(builderImage, "some-builder", builder.WithFlatten())
+				bldr, err = builder.New(builderImage, "some-builder", builder.FlattenAll())
 				h.AssertNil(t, err)
 
 				// Let's add some buildpacks

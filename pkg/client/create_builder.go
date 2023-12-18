@@ -155,7 +155,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 
 	var builderOpts []builder.BuilderOption
 	if opts.Flatten {
-		builderOpts = append(builderOpts, builder.WithFlattenExclude(opts.FlattenExclude))
+		builderOpts = append(builderOpts, builder.DoNotFlatten(opts.FlattenExclude))
 	}
 	bldr, err := builder.New(baseImage, opts.BuilderName, builderOpts...)
 	if err != nil {

@@ -17,9 +17,7 @@ func NewModuleManager(flatten bool) *ManagedCollection {
 // AllModules returns all explodedModules handle by the manager
 func (f *ManagedCollection) AllModules() []BuildModule {
 	all := f.explodedModules
-	if f.flatten {
-		all = append(all, f.flattenedModules...)
-	}
+	all = append(f.explodedModules, f.flattenedModules...)
 	return all
 }
 
