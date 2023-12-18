@@ -110,14 +110,14 @@ func NewBuilder(imageFactory ImageFactory, ops ...PackageBuilderOption) *Package
 	}
 }
 
-func WithFlatten() PackageBuilderOption {
+func FlattenAll() PackageBuilderOption {
 	return func(o *options) error {
 		o.flatten = true
 		return nil
 	}
 }
 
-func WithFlattenExclude(exclude []string) PackageBuilderOption {
+func DoNotFlatten(exclude []string) PackageBuilderOption {
 	return func(o *options) error {
 		o.flatten = true
 		o.exclude = exclude
