@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1701899271667,
+  "lastUpdate": 1703023146589,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3808,6 +3808,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 64072084655,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jbustamante@vmware.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "17491986ede39906f2cb04b0150d590e13342800",
+          "message": "Merge pull request #2006 from buildpacks/chore/issue-2005\n\nDisabling the progress log when downloading files on windows",
+          "timestamp": "2023-12-19T17:57:21-04:00",
+          "tree_id": "b3ffeffccb1c60ef38c7fb56dd344dc0c21be68f",
+          "url": "https://github.com/buildpacks/pack/commit/17491986ede39906f2cb04b0150d590e13342800"
+        },
+        "date": 1703023145891,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4806890113,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1078181113,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 53284976259,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
