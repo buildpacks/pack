@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1703081741463,
+  "lastUpdate": 1703097833196,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3892,6 +3892,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 63808174718,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jbustamante@vmware.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7b5164c29a4d8288e6c94dd6b928e62fc027d8be",
+          "message": "Merge pull request #1896 from buildpacks/bugfix/jjbustamante/issue-1286\n\nHardlinks are dereferenced in generated archives",
+          "timestamp": "2023-12-20T14:41:54-04:00",
+          "tree_id": "6a5da6219a5dc2196c39f52c9ea91ed8cbd0d1fd",
+          "url": "https://github.com/buildpacks/pack/commit/7b5164c29a4d8288e6c94dd6b928e62fc027d8be"
+        },
+        "date": 1703097832094,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6014580372,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1841218405,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 61966591017,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
