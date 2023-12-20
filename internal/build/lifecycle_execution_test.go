@@ -77,6 +77,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		extensionsForBuild, extensionsForRun bool
 		extensionsRunImage                   string
+		useCreatorWithExtensions             bool
 	)
 
 	var configureDefaultTestLifecycle = func(opts *build.LifecycleOptions) {
@@ -91,6 +92,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		opts.Volumes = providedVolumes
 		opts.Layout = providedLayout
 		opts.Keychain = authn.DefaultKeychain
+		opts.UseCreatorWithExtensions = useCreatorWithExtensions
 
 		targetImageRef, err := name.ParseReference(providedTargetImage)
 		h.AssertNil(t, err)
@@ -379,6 +381,25 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							return fakePhaseFactory
 						})
 						h.AssertNotNil(t, err)
+					})
+
+					when("use creator with extensions supported by the lifecycle", func() {
+						useCreatorWithExtensions = true
+
+						it("allows the build to proceed (but the creator will error if extensions are detected)", func() {
+							err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+								return fakePhaseFactory
+							})
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 1)
+
+							for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+								if entry.Name() == "creator" {
+									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
+								}
+							}
+						})
 					})
 				})
 			})

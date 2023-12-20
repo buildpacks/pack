@@ -79,6 +79,7 @@ type LifecycleOptions struct {
 	Publish                         bool
 	TrustBuilder                    bool
 	UseCreator                      bool
+	UseCreatorWithExtensions        bool
 	Interactive                     bool
 	Layout                          bool
 	Termui                          Termui
