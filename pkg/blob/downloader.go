@@ -57,6 +57,10 @@ func (d *downloader) Download(ctx context.Context, pathOrURI string) (Blob, erro
 			path, err = paths.URIToFilePath(pathOrURI)
 		case "http", "https":
 			path, err = d.handleHTTP(ctx, pathOrURI)
+			if err != nil {
+				// retry as we sometimes see `wsarecv: An existing connection was forcibly closed by the remote host.` on Windows
+				path, err = d.handleHTTP(ctx, pathOrURI)
+			}
 		default:
 			err = fmt.Errorf("unsupported protocol %s in URI %s", style.Symbol(parsedURL.Scheme), style.Symbol(pathOrURI))
 		}
