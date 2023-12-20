@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1703023146589,
+  "lastUpdate": 1703081741463,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3850,6 +3850,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 53284976259,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jbustamante@vmware.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d9fddda305eeae9eaa48d3778961b352f02c7b76",
+          "message": "Merge pull request #2007 from buildpacks/fix/extender-no-such-file\n\nFetch lifecycle binaries from lifecycle image",
+          "timestamp": "2023-12-20T10:13:30-04:00",
+          "tree_id": "dd21000a67897c2e8e978b4555052d96fda4c232",
+          "url": "https://github.com/buildpacks/pack/commit/d9fddda305eeae9eaa48d3778961b352f02c7b76"
+        },
+        "date": 1703081740369,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5784985000,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1661150817,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 63808174718,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
