@@ -1081,7 +1081,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, len(layers), 1)
 				})
 
-				when("with exclude", func() {
+				when("only some modules are flattened", func() {
 					it("creates 1 layer for buildpacks and 1 layer for buildpack excluded", func() {
 						prepareFetcherWithRunImages()
 						opts.Flatten, err = buildpack.ParseFlattenBuildModules([]string{"flatten/bp-1@1,flatten/bp-2@2,flatten/bp-4@4,flatten/bp-6@6,flatten/bp-3@3,flatten/bp-5@5"})
