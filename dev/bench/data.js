@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1703097833196,
+  "lastUpdate": 1703103550524,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3934,6 +3934,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 61966591017,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "18cdd3d9a8c147d3cdf20740ed329c722af7cc53",
+          "message": "Merge pull request #1925 from buildpacks/enhancement/jjbustamante/flatten-1880/part-1\n\nNew flatten buildpacks/builder implementation - Part 1 - removing depth",
+          "timestamp": "2023-12-20T16:17:21-04:00",
+          "tree_id": "6bc2ea7e2fd8e27ccf122a4f798167b4e3014d30",
+          "url": "https://github.com/buildpacks/pack/commit/18cdd3d9a8c147d3cdf20740ed329c722af7cc53"
+        },
+        "date": 1703103549969,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4817553145,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 827873372,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 55029808563,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
