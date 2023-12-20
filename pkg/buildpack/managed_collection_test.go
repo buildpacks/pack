@@ -150,12 +150,20 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("manager is configured in flatten mode", func() {
+<<<<<<< HEAD
 		when("V1 is used", func() {
 			when("flatten all", func() {
 				it.Before(func() {
 					moduleManager = buildpack.NewManagedCollectionV1(true)
 					moduleManager.AddModules(compositeBP1, []buildpack.BuildModule{bp1, compositeBP2, bp21, bp22, compositeBP3, bp31}...)
 				})
+=======
+		when("flatten all", func() {
+			it.Before(func() {
+				moduleManager = buildpack.NewManagedCollectionV1(true)
+				moduleManager.AddModules(compositeBP1, []buildpack.BuildModule{bp1, compositeBP2, bp21, bp22, compositeBP3, bp31}...)
+			})
+>>>>>>> 0edc1a25 (adding feedback from review)
 
 				when("#FlattenedModules", func() {
 					it("returns one flatten module (1 layer)", func() {
@@ -249,9 +257,20 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("manager is not configured in flatten mode", func() {
+<<<<<<< HEAD
 		when("V1 is used", func() {
 			it.Before(func() {
 				moduleManager = buildpack.NewManagedCollectionV1(false)
+=======
+		it.Before(func() {
+			moduleManager = buildpack.NewManagedCollectionV1(false)
+		})
+
+		when("#ExplodedModules", func() {
+			it("returns nil when no explodedModules are added", func() {
+				modules := moduleManager.ExplodedModules()
+				h.AssertEq(t, len(modules), 0)
+>>>>>>> 0edc1a25 (adding feedback from review)
 			})
 
 			when("#ExplodedModules", func() {
