@@ -81,7 +81,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				return err
 			}
 
-			flattenBuildpacks, err := buildpack.ParseFlattenBuildModules(flags.Flatten)
+			toFlatten, err := buildpack.ParseFlattenBuildModules(flags.Flatten)
 			if err != nil {
 				return err
 			}
@@ -95,7 +95,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				Publish:         flags.Publish,
 				Registry:        flags.Registry,
 				PullPolicy:      pullPolicy,
-				Flatten:         flattenBuildpacks,
+				Flatten:         toFlatten,
 			}); err != nil {
 				return err
 			}
@@ -112,7 +112,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
-	cmd.Flags().StringSliceVar(&flags.Flatten, "flatten", nil, "List of Buildpacks to flatten together in one layer (format: '<buildpack-id>@<buildpack-version>,<buildpack-id>@<buildpack-version>'")
+	cmd.Flags().StringSliceVar(&flags.Flatten, "flatten", nil, "List of buildpacks to flatten together into a single layer (format: '<buildpack-id>@<buildpack-version>,<buildpack-id>@<buildpack-version>'")
 
 	AddHelpFlag(cmd, "create")
 	return cmd

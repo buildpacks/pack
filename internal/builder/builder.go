@@ -102,7 +102,7 @@ type moduleWithDiffID struct {
 type BuilderOption func(*options) error
 
 type options struct {
-	modules buildpack.FlattenModuleInfos
+	toFlatten buildpack.FlattenModuleInfos
 }
 
 // FromImage constructs a builder from a builder image
@@ -148,8 +148,8 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 		env:                  map[string]string{},
 		buildConfigEnv:       map[string]string{},
 		validateMixins:       true,
-		additionalBuildpacks: buildpack.NewModuleManagerV2(opts.modules),
-		additionalExtensions: buildpack.NewModuleManagerV2(opts.modules),
+		additionalBuildpacks: buildpack.NewManagedCollectionV2(opts.toFlatten),
+		additionalExtensions: buildpack.NewManagedCollectionV2(opts.toFlatten),
 	}
 
 	if err := addImgLabelsToBuildr(bldr); err != nil {
@@ -163,9 +163,9 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 	return bldr, nil
 }
 
-func WithFlatten(modules buildpack.FlattenModuleInfos) BuilderOption {
+func Flatten(modules buildpack.FlattenModuleInfos) BuilderOption {
 	return func(o *options) error {
-		o.modules = modules
+		o.toFlatten = modules
 		return nil
 	}
 }
@@ -302,7 +302,7 @@ func (b *Builder) moduleManager(kind string) buildpack.ManagedCollection {
 	case buildpack.KindExtension:
 		return b.additionalExtensions
 	}
-	return buildpack.NewModuleManager(false)
+	return nil
 }
 
 func (b *Builder) FlattenedModules(kind string) [][]buildpack.BuildModule {
