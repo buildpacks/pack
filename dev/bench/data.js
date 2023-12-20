@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1703103550524,
+  "lastUpdate": 1703107618220,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -3976,6 +3976,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 55029808563,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c08b2891a2cbe13d630e6bc40058b6b45899fa9c",
+          "message": "Merge pull request #1983 from buildpacks/fix/builder-with-extensions-fails-creator\n\nAllow the build to proceed with /cnb/lifecycle/creator when the order contains extensions",
+          "timestamp": "2023-12-20T17:25:10-04:00",
+          "tree_id": "239ac084796053b54514e9882e8998711340a4da",
+          "url": "https://github.com/buildpacks/pack/commit/c08b2891a2cbe13d630e6bc40058b6b45899fa9c"
+        },
+        "date": 1703107617488,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4470373260,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1082319773,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 52988028163,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
