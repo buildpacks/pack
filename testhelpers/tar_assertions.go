@@ -136,7 +136,7 @@ func SymlinksTo(expectedTarget string) TarEntryAssertion {
 	}
 }
 
-func HardLinks() TarEntriesAssertion {
+func AreEquivalentHardLinks() TarEntriesAssertion {
 	return func(t *testing.T, header1 *tar.Header, _ []byte, header2 *tar.Header, _ []byte) {
 		t.Helper()
 		if header1.Typeflag != tar.TypeLink && header2.Typeflag != tar.TypeLink {

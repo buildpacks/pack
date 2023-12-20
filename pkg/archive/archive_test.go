@@ -472,7 +472,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				h.AssertOnTarEntries(t, outputFilename,
 					"/nested/dir/original-file",
 					"/nested/dir/original-file-2",
-					h.HardLinks(),
+					h.AreEquivalentHardLinks(),
 				)
 			})
 		})

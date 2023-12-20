@@ -527,7 +527,7 @@ version = "1.2.3"
 				os.RemoveAll(filepath.Join(bpRootFolder, "original-file-2"))
 			})
 
-			it.Focus("hardlink is preserved in the output tar file", func() {
+			it("hardlink is preserved in the output tar file", func() {
 				bp, err := buildpack.FromBuildpackRootBlob(
 					blob.NewBlob(bpRootFolder),
 					archive.DefaultTarWriterFactory(),
@@ -540,7 +540,7 @@ version = "1.2.3"
 				h.AssertOnTarEntries(t, tarPath,
 					"/cnb/buildpacks/bp.one/1.2.3/original-file",
 					"/cnb/buildpacks/bp.one/1.2.3/original-file-2",
-					h.HardLinks(),
+					h.AreEquivalentHardLinks(),
 				)
 			})
 		})
