@@ -176,6 +176,7 @@ func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int
 		}
 	}
 
+	hardLinkFiles := map[uint64]string{}
 	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
 		var relPath string
 		if fileFilter != nil {
@@ -218,12 +219,16 @@ func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int
 		}
 
 		header.Name = getHeaderNameFromBaseAndRelPath(basePath, relPath)
+		if err = processHardLinks(file, fi, hardLinkFiles, header); err != nil {
+			return err
+		}
+
 		err = writeHeader(header, uid, gid, mode, normalizeModTime, tw)
 		if err != nil {
 			return err
 		}
 
-		if hasRegularMode(fi) {
+		if hasRegularMode(fi) && header.Size > 0 {
 			f, err := os.Open(filepath.Clean(file))
 			if err != nil {
 				return err
@@ -237,6 +242,35 @@ func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int
 
 		return nil
 	})
+}
+
+// processHardLinks determine if the given file has hard-links associated with it, the given hardLinkFiles map keeps track
+// of any previous hard-link previously processed. In case the hard-link was already found, the header will be updated with
+// the previous information otherwise the new hard-link found will be tracked into the map
+func processHardLinks(file string, fi os.FileInfo, hardLinkFiles map[uint64]string, header *tar.Header) error {
+	var (
+		err       error
+		hardlinks bool
+		inode     uint64
+	)
+	if hardlinks, err = hasHardlinks(fi, file); err != nil {
+		return err
+	}
+	if hardlinks {
+		inode, err = getInodeFromStat(fi.Sys(), file)
+		if err != nil {
+			return err
+		}
+
+		if processedPath, ok := hardLinkFiles[inode]; ok {
+			header.Typeflag = tar.TypeLink
+			header.Linkname = processedPath
+			header.Size = 0
+		} else {
+			hardLinkFiles[inode] = header.Name
+		}
+	}
+	return nil
 }
 
 // WriteZipToTar writes the contents of a zip file to a tar writer.

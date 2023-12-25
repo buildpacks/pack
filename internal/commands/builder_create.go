@@ -24,7 +24,6 @@ type BuilderCreateFlags struct {
 	Registry        string
 	Policy          string
 	FlattenExclude  []string
-	Depth           int
 }
 
 // CreateBuilder creates a builder image, based on a builder config
@@ -94,7 +93,6 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				PullPolicy:      pullPolicy,
 				Flatten:         flags.Flatten,
 				FlattenExclude:  flags.FlattenExclude,
-				Depth:           flags.Depth,
 			}); err != nil {
 				return err
 			}
@@ -113,7 +111,6 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten each composite buildpack into a single layer")
 	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpacks to exclude from flattening, in the form of '<buildpack-id>@<buildpack-version>'")
-	cmd.Flags().IntVar(&flags.Depth, "depth", -1, "Max depth to flatten each composite buildpack.\nOmission of this flag or values < 0 will flatten the entire tree.")
 
 	AddHelpFlag(cmd, "create")
 	return cmd
