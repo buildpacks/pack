@@ -271,6 +271,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			*/
 			group.Go(func() error {
 				l.logger.Info(style.Step("EXTENDING (BUILD) BY DAEMON"))
+				l.logger.Info(style.Warn("WARNING: Extended build image is saved in the docker daemon as <builder-image>-extended"))
 				if err := l.ExtendBuildByDaemon(ctx); err != nil {
 					return err
 				}
