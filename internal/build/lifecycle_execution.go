@@ -729,6 +729,9 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 	extensions.SetExtensions(l.tmpDir, l.logger)
 	origuserID := strconv.Itoa(l.opts.Builder.UID())
 	origgroupID := strconv.Itoa(l.opts.Builder.GID())
+	intermediateUserID := origuserID
+	intermediateGroupID := origgroupID
+	var extendedBuilderImageInfo types.ImageInspect
 	dockerfiles, err := extensions.DockerFiles(DockerfileKindBuild, l.tmpDir, l.logger)
 	if err != nil {
 		return fmt.Errorf("getting %s.Dockerfiles: %w", DockerfileKindBuild, err)
@@ -736,8 +739,8 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 	for _, dockerfile := range dockerfiles {
 		dockerfile.Args = append([]Arg{
 			{Name: argBuildID, Value: uuid.New().String()},
-			{Name: argUserID, Value: strconv.Itoa(l.opts.Builder.UID())},
-			{Name: argGroupID, Value: strconv.Itoa(l.opts.Builder.GID())},
+			{Name: argUserID, Value: intermediateUserID},
+			{Name: argGroupID, Value: intermediateGroupID},
 		}, dockerfile.Args...)
 		buildArguments := map[string]*string{}
 		buildArguments["base_image"] = &builderImageName
@@ -766,17 +769,25 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 			return err
 		}
 		builderImageName = l.opts.BuilderImage + "-extended"
-	}
-	extendedBuilderImageInfo, _, err := l.docker.ImageInspectWithRaw(ctx, extendedBuilderImageName)
-	if err != nil {
-		return fmt.Errorf("inspecting extended builder image: %w", err)
+		extendedBuilderImageInfo, _, err = l.docker.ImageInspectWithRaw(ctx, extendedBuilderImageName)
+		if err != nil {
+			return fmt.Errorf("inspecting extended builder image: %w", err)
+		}
+		userID, groupID := userFrom(extendedBuilderImageInfo)
+		if isRoot(userID) {
+			l.logger.Warnf("Extension from %s changed the user ID from %s to %s; this must not be the final user ID (a following extension must reset the user).", dockerfile.Info.Path, intermediateUserID, userID)
+		}
+		intermediateUserID = userID
+		if groupID != "" {
+			intermediateGroupID = groupID
+		}
 	}
 	userID, groupID := userFrom(extendedBuilderImageInfo)
 	if userID != origuserID {
-		l.logger.Warnf("User ID changed from %s to %s", origuserID, userID)
+		l.logger.Warnf("Final User ID changed from %s to %s", origuserID, userID)
 	}
 	if groupID != origgroupID && groupID != "" {
-		l.logger.Warnf("Group ID changed from %s to %s", origgroupID, groupID)
+		l.logger.Warnf("Final Group ID changed from %s to %s", origgroupID, groupID)
 	}
 	if isRoot(userID) {
 		l.logger.Warnf("Final extension left user as root thus forcing the user to be the original user %s and original group %s", origuserID, origgroupID)
