@@ -13,6 +13,7 @@ import (
 	"github.com/apex/log"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -102,6 +103,11 @@ func testBuildDockerfiles(t *testing.T, when spec.G, it spec.S) {
 			mockDockerClient.EXPECT().ImageBuild(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(_ context.Context, buildContext io.Reader, buildOptions types.ImageBuildOptions) {
 				compBuildOptions(t, expectedBuildOptions, buildOptions)
 			}).Return(mockResponse, nil).Times(1)
+			mockDockerClient.EXPECT().ImageInspectWithRaw(gomock.Any(), gomock.Any()).Return(types.ImageInspect{
+				Config: &container.Config{
+					User: "root",
+				},
+			}, nil, nil).Times(1)
 			err := lifecycle.ExtendBuildByDaemon(context.Background())
 			h.AssertNil(t, err)
 		})
@@ -115,6 +121,10 @@ func testBuildDockerfiles(t *testing.T, when spec.G, it spec.S) {
 				OSType: "linux",
 			}
 			mockDockerClient.EXPECT().ImageBuild(gomock.Any(), gomock.Any(), gomock.Any()).Return(mockResponse, nil).Times(2)
+			mockDockerClient.EXPECT().ImageInspectWithRaw(gomock.Any(), gomock.Any()).Return(types.ImageInspect{
+				Config: &container.Config{
+					User: "root",
+				}}, nil, nil).Times(2)
 			err := lifecycle.ExtendBuildByDaemon(context.Background())
 			h.AssertNil(t, err)
 		})
