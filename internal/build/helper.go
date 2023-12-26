@@ -12,6 +12,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/cmd"
+	"github.com/docker/docker/api/types"
 
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -154,4 +155,16 @@ func (dockerfile *DockerfileInfo) CreateBuildContext(path string, logger logging
 	}
 
 	return buf, completeErr
+}
+
+func userFrom(imageInfo types.ImageInspect) (string, string) {
+	user := strings.Split(imageInfo.Config.User, ":")
+	if len(user) < 2 {
+		return imageInfo.Config.User, ""
+	}
+	return user[0], user[1]
+}
+
+func isRoot(userID string) bool {
+	return userID == "0" || userID == "root"
 }

@@ -702,7 +702,7 @@ func (l *LifecycleExecution) Build(ctx context.Context, phaseFactory PhaseFactor
 		WithBinds(l.opts.Volumes...),
 		WithFlags(flags...),
 		If((l.hasExtensionsForBuild()), WithImage(l.opts.BuilderImage+"-extended")),
-		If((l.hasExtensionsForBuild()), WithUser(l.opts.Builder.UID(), l.opts.Builder.GID())),
+		If((l.hasExtensionsForBuild() && l.opts.isExtendedBuilderImageRoot), WithUser(l.opts.Builder.UID(), l.opts.Builder.GID())),
 	)
 
 	build := phaseFactory.New(configProvider)
@@ -731,6 +731,8 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 	extendedBuilderImageName := l.opts.BuilderImage + "-extended"
 	var extensions Extensions
 	extensions.SetExtensions(l.tmpDir, l.logger)
+	origuserID := strconv.Itoa(l.opts.Builder.UID())
+	origgroupID := strconv.Itoa(l.opts.Builder.GID())
 	dockerfiles, err := extensions.DockerFiles(DockerfileKindBuild, l.tmpDir, l.logger)
 	if err != nil {
 		return fmt.Errorf("getting %s.Dockerfiles: %w", DockerfileKindBuild, err)
@@ -769,7 +771,21 @@ func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
 		}
 		builderImageName = l.opts.BuilderImage + "-extended"
 	}
-
+	extendedBuilderImageInfo, _, err := l.docker.ImageInspectWithRaw(ctx, extendedBuilderImageName)
+	if err != nil {
+		return fmt.Errorf("inspecting extended builder image: %w", err)
+	}
+	userID, groupID := userFrom(extendedBuilderImageInfo)
+	if userID != origuserID {
+		l.logger.Warnf("User ID changed from %s to %s", origuserID, userID)
+	}
+	if groupID != origgroupID && groupID != "" {
+		l.logger.Warnf("Group ID changed from %s to %s", origgroupID, groupID)
+	}
+	if isRoot(userID) {
+		l.logger.Warnf("Final extension left user as root thus forcing the user to be the original user %s and original group %s", origuserID, origgroupID)
+		l.opts.isExtendedBuilderImageRoot = true
+	}
 	return nil
 }
 
