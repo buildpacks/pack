@@ -186,6 +186,9 @@ type BuildOptions struct {
 	// User's group id used to build the image
 	GroupID int
 
+	// User's user id used to build the image
+	UserID int
+
 	// A previous image to set to a particular tag reference, digest reference, or (when performing a daemon build) image ID;
 	PreviousImage string
 
@@ -539,6 +542,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		FileFilter:               fileFilter,
 		Workspace:                opts.Workspace,
 		GID:                      opts.GroupID,
+		UID:                      opts.UserID,
 		PreviousImage:            opts.PreviousImage,
 		Interactive:              opts.Interactive,
 		Termui:                   termui.NewTermui(imageName, ephemeralBuilder, runImageName),
