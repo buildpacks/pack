@@ -26,6 +26,7 @@ import (
 const (
 	defaultProcessType = "web"
 	overrideGID        = 0
+	overrideUID        = 0
 	sourceDateEpochEnv = "SOURCE_DATE_EPOCH"
 )
 
@@ -323,6 +324,10 @@ func (l *LifecycleExecution) Create(ctx context.Context, buildCache, launchCache
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
 
+	if l.opts.UID >= overrideUID {
+		flags = append(flags, "-uid", strconv.Itoa(l.opts.UID))
+	}
+
 	if l.opts.PreviousImage != "" {
 		if l.opts.Image == nil {
 			return errors.New("image can't be nil")
@@ -472,6 +477,10 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
 
+	if l.opts.UID >= overrideUID {
+		flags = append(flags, "-uid", strconv.Itoa(l.opts.UID))
+	}
+
 	// for kaniko
 	kanikoCacheBindOp := NullOp()
 	if (l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild()) ||
@@ -571,6 +580,10 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 
 	if l.opts.GID >= overrideGID {
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
+	}
+
+	if l.opts.UID >= overrideUID {
+		flags = append(flags, "-uid", strconv.Itoa(l.opts.UID))
 	}
 
 	if l.opts.PreviousImage != "" {
@@ -776,6 +789,10 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 	}
 	if l.opts.GID >= overrideGID {
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
+	}
+
+	if l.opts.UID >= overrideUID {
+		flags = append(flags, "-uid", strconv.Itoa(l.opts.UID))
 	}
 
 	cacheBindOp := NullOp()
