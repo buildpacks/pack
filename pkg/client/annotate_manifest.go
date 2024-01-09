@@ -65,15 +65,15 @@ func (c *Client) AnnotateManifest(ctx context.Context, name string, image string
 			}
 			annotations[spec[0]] = spec[1]
 		}
-		if err := manifestList.SetAnnotations(&digest, annotations); err != nil {
+		if err := manifestList.SetAnnotations(digest, annotations); err != nil {
 			return err
 		}
 	}
 
-	updatedListID, err := manifestList.Save()
+	err = manifestList.Save()
 	if err == nil {
-		fmt.Printf("%s: %s\n", updatedListID, digest.String())
+		fmt.Printf("%s annotated \n", digest.String())
 	}
 
-	return nil
+	return err
 }

@@ -12,19 +12,29 @@ type PushManifestOptions struct {
 }
 
 // PushManifest implements commands.PackClient.
-func (c *Client) PushManifest(ctx context.Context, index string, opts PushManifestOptions) (imageID string, err error) {
-	manifestList, err := c.indexFactory.FindIndex(index)
+func (c *Client) PushManifest(ctx context.Context, index string, opts PushManifestOptions) (err error) {
+	idx, err := c.indexFactory.LoadIndex(index)
+	if err != nil {
+		return 
+	}
+
+	err = idx.Push()
 	if err != nil {
 		return
 	}
 
-	_, err = manifestList.Push(ctx, parseFalgsForImgUtil(opts))
+	if opts.Purge {
+		if err = idx.Delete(); err != nil {
+			return
+		}
+	}
 
-	manifestList.Delete()
-
-	return imageID, err
+	return
 }
 
 func parseFalgsForImgUtil(opts PushManifestOptions) (idxOptions []imgutil.IndexOption) {
-	return idxOptions
+	return []imgutil.IndexOption{
+		imgutil.WithFormat(opts.Format),
+		imgutil.WithInsecure(opts.Insecure),
+	}
 }

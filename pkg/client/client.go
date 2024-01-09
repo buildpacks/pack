@@ -240,7 +240,6 @@ func NewClient(opts ...Option) (*Client, error) {
 
 	if client.imageFactory == nil {
 		client.imageFactory = &imageFactory{
-			dockerClient: client.docker,
 			keychain:     client.keychain,
 		}
 	}
@@ -301,12 +300,12 @@ func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (i
 }
 
 func (f *indexFactory) LoadIndex(repoName string, opts ...imgutil.IndexOption) (img imgutil.Index, err error) {
-	img, err = local.NewImage(repoName, true, opts...)
+	img, err = local.NewIndex(repoName, true, opts...)
 	if err == nil {
 		return
 	}
 
-	img, err = layout.NewImage(repoName, true, opts...)
+	img, err = layout.NewIndex(repoName, true, opts...)
 	if err == nil {
 		return
 	}
@@ -318,8 +317,7 @@ type indexFactory struct {
 }
 
 func (f *indexFactory) FetchIndex(name string, opts ...imgutil.IndexOption) (index imgutil.Index, err error) {
-
-	index, err = remote.NewIndex(name, true, opts.WithKeyChain(f.keychain), opts...)
+	index, err = remote.NewIndex(name, true, imgutil.WithKeyChain(f.keychain), opts...)
 	if err != nil {
 		return index, fmt.Errorf("ImageIndex in not available at registry")
 	}
@@ -328,10 +326,10 @@ func (f *indexFactory) FetchIndex(name string, opts ...imgutil.IndexOption) (ind
 }
 
 func (f *indexFactory) FindIndex(repoName string, opts ...imgutil.IndexOption) (index imgutil.Index, err error) {
-	index, err = (*f).FetchIndex(repoName, true, opts.WithKeyChain(f.keychain), opts...)
+	index, err = (*f).FetchIndex(repoName, true, imgutil.WithKeyChain(f.keychain), opts...)
 	if err != nil {
 		return index, err
 	}
 
-	return (*f).FindIndex(repoName, true, opts.WithKeyChain(f.keychain), opts...)
+	return (*f).FindIndex(repoName, true, imgutil.WithKeyChain(f.keychain), opts...)
 }

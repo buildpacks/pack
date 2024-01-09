@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/buildpacks/imgutil"
 	"github.com/google/go-containerregistry/pkg/name"
 )
 
@@ -16,9 +17,8 @@ type ManifestAddOptions struct {
 }
 
 // AddManifest implements commands.PackClient.
-func (c *Client) AddManifest(ctx context.Context, index string, image string, opts ManifestAddOptions) (indexID string, err error) {
-	_, err = name.ParseReference(index)
-	if err != nil {
+func (c *Client) AddManifest(ctx context.Context, index string, image string, opts ManifestAddOptions) (err error) {
+	if _, err = name.ParseReference(index); err != nil {
 		return
 	}
 
@@ -27,43 +27,44 @@ func (c *Client) AddManifest(ctx context.Context, index string, image string, op
 		return
 	}
 
+	digest := ref.Context().Digest(ref.Identifier())
 	imgIndex, err := c.indexFactory.FindIndex(index)
 	if err != nil {
-		return indexID, fmt.Errorf("Error while trying to find image on local storage: %v", image)
+		return fmt.Errorf("Error while trying to find image on local storage: %v", image)
 	}
 
-	digest, err := imgIndex.Add(ctx, ref, opts.All)
+	err = imgIndex.Add(ref, imgutil.WithAll(opts.All))
 	if err != nil {
-		return indexID, fmt.Errorf("Error while trying to add on manifest list: %v", err)
+		return fmt.Errorf("Error while trying to add on manifest list: %v", err)
 	}
 
 	if opts.OS != "" {
-		if _, err := imgIndex.SetOS(digest, opts.OS); err != nil {
-			return indexID, err
+		if err := imgIndex.SetOS(digest, opts.OS); err != nil {
+			return err
 		}
 	}
 
 	if opts.OSArch != "" {
-		if _, err := imgIndex.SetArchitecture(digest, opts.OSArch); err != nil {
-			return indexID, err
+		if err := imgIndex.SetArchitecture(digest, opts.OSArch); err != nil {
+			return err
 		}
 	}
 
 	if opts.OSVariant != "" {
-		if _, err := imgIndex.SetVariant(digest, opts.OSVariant); err != nil {
-			return indexID, err
+		if err := imgIndex.SetVariant(digest, opts.OSVariant); err != nil {
+			return err
 		}
 	}
 
 	if opts.OSVersion != "" {
-		if _, err := imgIndex.SetOSVersion(digest, opts.OSVersion); err != nil {
-			return indexID, err
+		if err := imgIndex.SetOSVersion(digest, opts.OSVersion); err != nil {
+			return err
 		}
 	}
 
 	if len(opts.Features) != 0 {
-		if _, err := imgIndex.SetFeatures(digest, opts.Features); err != nil {
-			return indexID, err
+		if err := imgIndex.SetFeatures(digest, opts.Features); err != nil {
+			return err
 		}
 	}
 
@@ -72,19 +73,19 @@ func (c *Client) AddManifest(ctx context.Context, index string, image string, op
 		for _, annotationSpec := range opts.Annotations {
 			spec := strings.SplitN(annotationSpec, "=", 2)
 			if len(spec) != 2 {
-				return indexID, fmt.Errorf("no value given for annotation %q", spec[0])
+				return fmt.Errorf("no value given for annotation %q", spec[0])
 			}
 			annotations[spec[0]] = spec[1]
 		}
-		if err := imgIndex.SetAnnotations(&digest, annotations); err != nil {
+		if err := imgIndex.SetAnnotations(digest, annotations); err != nil {
 			return err
 		}
 	}
 
-	indexID, err = imgIndex.Save(index, nil, "")
+	err = imgIndex.Save()
 	if err == nil {
-		fmt.Printf("%s: %s\n", indexID, digest.String())
+		fmt.Println("'%s' successfully added to index: '%s'", image, index)
 	}
 
-	return indexID, err
+	return err
 }

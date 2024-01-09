@@ -8,22 +8,22 @@ import (
 )
 
 // RemoveManifest implements commands.PackClient.
-func (c *Client) RemoveManifest(ctx context.Context, name string, images []string) error {
-	imgIndex, err := c.indexFactory.FindIndex(name)
+func (c *Client) RemoveManifest(ctx context.Context, name string, images []string) (errs []error) {
+	imgIndex, err := c.indexFactory.LoadIndex(name)
 	if err != nil {
-		return err
+		return append(errs, err)
 	}
 
 	for _, image := range images {
-		_, err := gccrName.ParseReference(image)
+		ref, err := gccrName.ParseReference(image)
 		if err != nil {
-			fmt.Errorf(`Invalid instance "%s": %v`, image, err)
+			errs = append(errs, fmt.Errorf(`Invalid instance "%s": %v`, image, err))
 		}
-		if err := imgIndex.Remove(image); err != nil {
-			return err
+		if err := imgIndex.Remove(ref.Context().Digest(ref.Identifier())); err != nil {
+			errs = append(errs, err)
 		}
 		fmt.Printf("Successfully removed %s from %s", image, name)
 	}
 
-	return nil
+	return errs
 }

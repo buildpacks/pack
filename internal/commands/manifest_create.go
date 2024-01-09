@@ -47,7 +47,7 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 				flags.publish = !flags.publish
 			}
 
-			id, err := pack.CreateManifest(cmd.Context(), imageIndex, manifests, client.CreateManifestOptions{
+			err := pack.CreateManifest(cmd.Context(), imageIndex, manifests, client.CreateManifestOptions{
 				Format:   flags.format,
 				Registry: flags.registry,
 				Insecure: flags.insecure,
@@ -57,7 +57,7 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			logger.Infof("Successfully created ImageIndex/ManifestList with imageID: '%s'", id)
+			logger.Infof("Successfully created ImageIndex/ManifestList with imageID: '%s'", imageIndex)
 
 			return nil
 		}),

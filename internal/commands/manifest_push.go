@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/pkg/client"
@@ -29,7 +31,7 @@ func ManifestPush(logger logging.Logger, pack PackClient) *cobra.Command {
 				return err
 			}
 
-			imageID, err := pack.PushManifest(cmd.Context(), args[0], client.PushManifestOptions{
+			err := pack.PushManifest(cmd.Context(), args[0], client.PushManifestOptions{
 				Format:   flags.format,
 				Insecure: flags.insecure,
 				Purge:    flags.purge,
@@ -38,8 +40,8 @@ func ManifestPush(logger logging.Logger, pack PackClient) *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			logger.Infof(imageID)
+			fmt.Sprintf("manifest '%s' is successfully pushed to the registry")
+			
 			return nil
 		}),
 	}

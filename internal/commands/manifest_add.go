@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/pkg/client"
@@ -44,7 +45,7 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 				return err
 			}
 
-			imageID, err := pack.AddManifest(cmd.Context(), imageIndex, manifests, client.ManifestAddOptions{
+			err = pack.AddManifest(cmd.Context(), imageIndex, manifests, client.ManifestAddOptions{
 				OS: flags.os,
 				OSVersion: flags.osVersion,
 				OSArch: flags.osArch,
@@ -56,10 +57,9 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 			})
 
 			if err != nil {
-				return err
+				return errors.Wrap(err, "unable to add manifest to the index : ")
 			}
 
-			logger.Infof(imageID)
 			return nil
 		}),
 	}

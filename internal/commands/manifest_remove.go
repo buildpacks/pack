@@ -1,14 +1,13 @@
 package commands
 
 import (
+	"strings"
+
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/pkg/logging"
 )
-
-// ManifestDeleteFlags define flags provided to the ManifestDelete
-// type ManifestDeleteFlags struct {
-// }
 
 // ManifestDelete deletes one or more manifest lists from local storage
 func ManifestDelete(logger logging.Logger, pack PackClient) *cobra.Command {
@@ -22,10 +21,14 @@ func ManifestDelete(logger logging.Logger, pack PackClient) *cobra.Command {
 		Long: `Delete one or more manifest lists from local storage.
 		When a manifest list exits locally, users can remove existing images from a manifest list`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := pack.DeleteManifest(cmd.Context(), args); err != nil {
-				return err
+			var errMsg strings.Builder
+			errs := pack.DeleteManifest(cmd.Context(), args)
+
+			for _, err := range errs {
+				errMsg.WriteString(err.Error() + "\n")
 			}
-			return nil
+
+			return errors.New(errMsg.String())
 		}),
 	}
 
