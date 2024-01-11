@@ -107,16 +107,18 @@ type options struct {
 }
 
 // FromImage constructs a builder from a builder image
-func FromImage(img imgutil.Image) (*Builder, error) {
-	return constructBuilder(img, "", true)
+func FromImage(img imgutil.Image, runImage string, registry string) (*Builder, error) {
+	return constructBuilder(img, runImage, registry, "", true)
 }
 
 // New constructs a new builder from a base image
-func New(baseImage imgutil.Image, name string, ops ...BuilderOption) (*Builder, error) {
-	return constructBuilder(baseImage, name, false, ops...)
+func New(baseImage imgutil.Image, runImage string, registry string, name string, ops ...BuilderOption) (*Builder, error) {
+
+	return constructBuilder(baseImage, runImage, registry, name, false, ops...)
 }
 
-func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool, ops ...BuilderOption) (*Builder, error) {
+func constructBuilder(img imgutil.Image, runImage string, registry string, newName string, errOnMissingLabel bool, ops ...BuilderOption) (*Builder, error) {
+
 	var metadata Metadata
 	if ok, err := dist.GetLabel(img, metadataLabel, &metadata); err != nil {
 		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)
@@ -145,6 +147,11 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 		if err != nil {
 			return nil, errors.Wrapf(err, "adding label %s=%s", labelKey, labelValue)
 		}
+	}
+
+	if registry != "" && runImage != "" {
+		metadata.RunImages[0].Image = registry + "/" + runImage
+		metadata.Stack.RunImage.Image = registry + "/" + runImage
 	}
 
 	bldr := &Builder{
