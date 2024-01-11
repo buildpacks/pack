@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle/phase"
@@ -46,7 +47,12 @@ type RebaseOptions struct {
 	// Pass-through force flag to lifecycle rebase command to skip target data
 	// validated (will not have any effect if API < 0.12).
 	Force bool
+
+	// Tags to be applied to the rebased image.
+	Tags []string
 }
+
+const tagDelim = ":"
 
 // Rebase updates the run image layers in an app image.
 // This operation mutates the image specified in opts.
@@ -56,7 +62,18 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.RepoName)
 	}
 
-	appImage, err := c.imageFetcher.Fetch(ctx, opts.RepoName, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
+	appImageName := opts.RepoName
+
+	if len(opts.Tags) > 0 {
+		parts := strings.SplitN(appImageName, tagDelim, 2)
+		if len(parts) == 2 {
+			appImageName = fmt.Sprintf("%s:%s", parts[0], opts.Tags[0])
+		} else {
+			appImageName = fmt.Sprintf("%s:%s", appImageName, opts.Tags[0])
+		}
+	}
+
+	appImage, err := c.imageFetcher.Fetch(ctx, appImageName, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
 	if err != nil {
 		return err
 	}

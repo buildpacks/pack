@@ -158,6 +158,41 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 			})
+			when("image name and tags are provided", func() {
+				it.Before(func() {
+					runImage := "test/image"
+					testMirror1 := "example.com/some/run1"
+					testMirror2 := "example.com/some/run2"
+
+					cfg.RunImages = []config.RunImage{{
+						Image:   runImage,
+						Mirrors: []string{testMirror1, testMirror2},
+					}}
+					command = commands.Rebase(logger, cfg, mockClient)
+
+					repoName = "test/repo-image"
+					tags := []string{"tag1"}
+					opts = client.RebaseOptions{
+						RepoName:   repoName,
+						Publish:    false,
+						PullPolicy: image.PullAlways,
+						RunImage:   "",
+						AdditionalMirrors: map[string][]string{
+							runImage: {testMirror1, testMirror2},
+						},
+						Tags: tags,
+					}
+				})
+
+				it("works", func() {
+					mockClient.EXPECT().
+						Rebase(gomock.Any(), gomock.Eq(opts)).
+						Return(nil)
+
+					command.SetArgs([]string{repoName, "--tag", "tag1"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
 		})
 	})
 }
