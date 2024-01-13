@@ -131,7 +131,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 
 	cmd.Flags().StringVarP(&flags.PackageTomlPath, "config", "c", "", "Path to package TOML config")
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save package as ("image" or "file")`)
-	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry (applies to "--format=image" only)`)
+	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `This flag triggers the buildpack to publish the built image to a container registry after the build process is complete. This means that the resulting image is pushed to a specified registry, making it available for deployment and use by others. (applies to "--format=image" only)`)
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to the Buildpack that needs to be packaged")
 	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")

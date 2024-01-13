@@ -89,7 +89,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 		cmd.Flags().MarkHidden("buildpack-registry")
 	}
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
-	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
+	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "This flag triggers the buildpack to publish the built image to a container registry after the build process is complete. This means that the resulting image is pushed to a specified registry, making it available for deployment and use by others.")
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	return cmd
 }
