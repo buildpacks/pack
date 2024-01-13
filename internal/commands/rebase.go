@@ -46,7 +46,7 @@ func Rebase(logger logging.Logger, cfg config.Config, pack PackClient) *cobra.Co
 		}),
 	}
 
-	cmd.Flags().BoolVar(&opts.Publish, "publish", false, "Publish the rebased application image directly to the container registry specified in <image-name>, instead of the daemon. The previous application image must also reside in the registry.")
+	cmd.Flags().BoolVar(&opts.Publish, "publish", false, "This flag triggers the buildpack to publish the built image to a container registry after the build process is complete. This means that the resulting image is pushed to a specified registry, making it available for deployment and use by others.")
 	cmd.Flags().StringVar(&opts.RunImage, "run-image", "", "Run image to use for rebasing")
 	cmd.Flags().StringVar(&policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	cmd.Flags().StringSliceVarP(&opts.Tags, "tag", "t", nil, "Comma-separated list of tag to apply to the rebased image")
