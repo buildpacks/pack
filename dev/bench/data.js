@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1705440448508,
+  "lastUpdate": 1705440952204,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -4060,6 +4060,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 51939335296,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3f1ecb280f2c9d3aef948152df286153ddd8bd0e",
+          "message": "Merge pull request #2010 from sap-contributions/ensure-read-access-run-img\n\nEnsure read access when resolving run image location",
+          "timestamp": "2024-01-16T16:33:51-05:00",
+          "tree_id": "3ba9a383587579a05388b5ddbfdb000dcbd23736",
+          "url": "https://github.com/buildpacks/pack/commit/3f1ecb280f2c9d3aef948152df286153ddd8bd0e"
+        },
+        "date": 1705440951050,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6437749084,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2222024575,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 64217432900,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
