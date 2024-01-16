@@ -319,7 +319,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	if err != nil {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
-	
+
 	rawBuilderImage, err := c.imageFetcher.Fetch(ctx, builderRef.Name(), image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy})
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
@@ -334,8 +334,8 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	if err != nil {
 		return errors.Wrapf(err, "getting builder architecture")
 	}
-	
-	bldr, err := c.getBuilder(rawBuilderImage,opts.RunImage,imgRegistry)
+
+	bldr, err := c.getBuilder(rawBuilderImage, opts.RunImage, imgRegistry)
 	if err != nil {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
@@ -460,7 +460,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		buildEnvs[k] = v
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, orderExtensions, fetchedExs, usingPlatformAPI.LessThan("0.12"),opts.RunImage,imgRegistry)
+	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, orderExtensions, fetchedExs, usingPlatformAPI.LessThan("0.12"), opts.RunImage, imgRegistry)
 	if err != nil {
 		return err
 	}
@@ -776,12 +776,12 @@ func (c *Client) processBuilderName(builderName string) (name.Reference, error) 
 	return name.ParseReference(builderName, name.WeakValidation)
 }
 
-func (c *Client) getBuilder(img imgutil.Image,runImage string,registry string) (*builder.Builder, error) {
-	bldr, err := builder.FromImage(img,runImage,registry)
+func (c *Client) getBuilder(img imgutil.Image, runImage string, registry string) (*builder.Builder, error) {
+	bldr, err := builder.FromImage(img, runImage, registry)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if bldr.Stack().RunImage.Image == "" && len(bldr.RunImages()) == 0 {
 		return nil, errors.New("builder metadata is missing run-image")
 	}
@@ -1333,7 +1333,7 @@ func (c *Client) createEphemeralBuilder(
 	registry string,
 ) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
-	bldr, err := builder.New(rawBuilderImage,runImage,registry, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
+	bldr, err := builder.New(rawBuilderImage, runImage, registry, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
 	}

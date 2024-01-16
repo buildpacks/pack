@@ -1048,7 +1048,7 @@ api = "0.2"
 					h.AssertNil(t, err)
 					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
 
-					bldr, err := builder.FromImage(defaultBuilderImage,"","")
+					bldr, err := builder.FromImage(defaultBuilderImage, "", "")
 					h.AssertNil(t, err)
 
 					buildpack1Info := dist.ModuleInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}
@@ -1217,7 +1217,7 @@ api = "0.2"
 
 					h.AssertNil(t, err)
 					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-					bldr, err := builder.FromImage(defaultBuilderImage,"","")
+					bldr, err := builder.FromImage(defaultBuilderImage, "", "")
 					h.AssertNil(t, err)
 					h.AssertEq(t, bldr.Order(), dist.Order{
 						{Group: []dist.ModuleRef{
@@ -1338,7 +1338,7 @@ api = "0.2"
 
 					h.AssertNil(t, err)
 					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-					bldr, err := builder.FromImage(defaultBuilderImage,"","")
+					bldr, err := builder.FromImage(defaultBuilderImage, "", "")
 					h.AssertNil(t, err)
 					buildpack1Info := dist.ModuleInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}
 					buildpack2Info := dist.ModuleInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}
@@ -1388,7 +1388,7 @@ api = "0.2"
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage,"","")
+						bldr, err := builder.FromImage(defaultBuilderImage, "", "")
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.ModuleRef{
@@ -1420,7 +1420,7 @@ api = "0.2"
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage,"","")
+						bldr, err := builder.FromImage(defaultBuilderImage, "", "")
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.ModuleRef{
@@ -1452,7 +1452,7 @@ api = "0.2"
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage,"","")
+						bldr, err := builder.FromImage(defaultBuilderImage, "", "")
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.ModuleRef{
@@ -1489,7 +1489,7 @@ api = "0.2"
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage,"","")
+						bldr, err := builder.FromImage(defaultBuilderImage, "", "")
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.ModuleRef{
@@ -1529,7 +1529,7 @@ api = "0.2"
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage,"","")
+						bldr, err := builder.FromImage(defaultBuilderImage, "", "")
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.ModuleRef{
@@ -1571,7 +1571,7 @@ api = "0.2"
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage,"","")
+						bldr, err := builder.FromImage(defaultBuilderImage, "", "")
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.ModuleRef{
@@ -1657,7 +1657,7 @@ api = "0.2"
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage,"","")
+						bldr, err := builder.FromImage(defaultBuilderImage, "", "")
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.ModuleRef{
@@ -1693,7 +1693,7 @@ api = "0.2"
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage,"","")
+						bldr, err := builder.FromImage(defaultBuilderImage, "", "")
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.ModuleRef{
@@ -1869,7 +1869,7 @@ api = "0.2"
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage,"","")
+						bldr, err := builder.FromImage(defaultBuilderImage, "", "")
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.ModuleRef{

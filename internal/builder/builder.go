@@ -113,12 +113,10 @@ func FromImage(img imgutil.Image, runImage string, registry string) (*Builder, e
 
 // New constructs a new builder from a base image
 func New(baseImage imgutil.Image, runImage string, registry string, name string, ops ...BuilderOption) (*Builder, error) {
-
 	return constructBuilder(baseImage, runImage, registry, name, false, ops...)
 }
 
 func constructBuilder(img imgutil.Image, runImage string, registry string, newName string, errOnMissingLabel bool, ops ...BuilderOption) (*Builder, error) {
-
 	var metadata Metadata
 	if ok, err := dist.GetLabel(img, metadataLabel, &metadata); err != nil {
 		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)

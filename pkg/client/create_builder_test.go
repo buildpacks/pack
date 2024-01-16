@@ -200,7 +200,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, fakeBuildImage.IsSaved(), true)
-			bldr, err := builder.FromImage(fakeBuildImage,"","")
+			bldr, err := builder.FromImage(fakeBuildImage, "", "")
 			h.AssertNil(t, err)
 
 			return bldr
