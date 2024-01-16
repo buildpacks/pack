@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1703107618220,
+  "lastUpdate": 1705440448508,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -4018,6 +4018,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 52988028163,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "50bb26d0df52cc02b61762775b714c93398c1489",
+          "message": "Merge pull request #2020 from sarthaksarthak9/sbom\n\nFeature: Retrieve SBoM from Registry for Remote Images",
+          "timestamp": "2024-01-16T16:25:49-05:00",
+          "tree_id": "1caa778c380a0c8fbcf4f7c940e8bf19367c8990",
+          "url": "https://github.com/buildpacks/pack/commit/50bb26d0df52cc02b61762775b714c93398c1489"
+        },
+        "date": 1705440447974,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3643716527,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 876366408,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 51939335296,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
