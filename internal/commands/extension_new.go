@@ -84,7 +84,7 @@ func ExtensionNew(logger logging.Logger, creator ExtensionCreator) *cobra.Comman
 	cmd.Flags().StringVarP(&flags.Version, "version", "V", "1.0.0", "Version of the generated extension")
 	cmd.Flags().StringSliceVarP(&flags.Stacks, "stacks", "s", nil, "Stack(s) this buildpack will be compatible with"+stringSliceHelp("stack"))
 	cmd.Flags().MarkDeprecated("stacks", "prefer `--targets` instead: https://github.com/buildpacks/rfcs/blob/main/text/0096-remove-stacks-mixins.md")
-	
+
 	AddHelpFlag(cmd, "new")
 	return cmd
 }
