@@ -104,19 +104,28 @@ type BuilderOption func(*options) error
 type options struct {
 	toFlatten buildpack.FlattenModuleInfos
 	labels    map[string]string
+	runImage  string
+}
+
+func WithRunImage(name string) BuilderOption {
+	return func(o *options) error {
+		o.runImage = name
+		return nil
+	}
 }
 
 // FromImage constructs a builder from a builder image
-func FromImage(img imgutil.Image, runImage string, registry string) (*Builder, error) {
-	return constructBuilder(img, runImage, registry, "", true)
+func FromImage(img imgutil.Image, runImage string) (*Builder, error) {
+	return constructBuilder(img, "", true, WithRunImage(runImage))
 }
 
 // New constructs a new builder from a base image
-func New(baseImage imgutil.Image, runImage string, registry string, name string, ops ...BuilderOption) (*Builder, error) {
-	return constructBuilder(baseImage, runImage, registry, name, false, ops...)
+func New(baseImage imgutil.Image, runImage string, name string, ops ...BuilderOption) (*Builder, error) {
+	ops = append(ops, WithRunImage(runImage))
+	return constructBuilder(baseImage, name, false, ops...)
 }
 
-func constructBuilder(img imgutil.Image, runImage string, registry string, newName string, errOnMissingLabel bool, ops ...BuilderOption) (*Builder, error) {
+func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool, ops ...BuilderOption) (*Builder, error) {
 	var metadata Metadata
 	if ok, err := dist.GetLabel(img, metadataLabel, &metadata); err != nil {
 		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)
@@ -147,9 +156,9 @@ func constructBuilder(img imgutil.Image, runImage string, registry string, newNa
 		}
 	}
 
-	if registry != "" && runImage != "" {
-		metadata.RunImages[0].Image = registry + "/" + runImage
-		metadata.Stack.RunImage.Image = registry + "/" + runImage
+	if opts.runImage != "" {
+		metadata.RunImages = []RunImageMetadata{{Image: opts.runImage}}
+		metadata.Stack.RunImage.Image = opts.runImage
 	}
 
 	bldr := &Builder{

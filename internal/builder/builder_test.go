@@ -179,7 +179,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						`{"something-random": ,}`,
 					))
 
-					_, err := builder.FromImage(baseImage, "", "")
+					_, err := builder.FromImage(baseImage, "")
 					h.AssertError(t, err, "getting label")
 				})
 			})
@@ -193,14 +193,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						`{"something-random": ,}`,
 					))
 
-					_, err := builder.FromImage(baseImage, "", "")
+					_, err := builder.FromImage(baseImage, "")
 					h.AssertError(t, err, "getting label")
 				})
 			})
 
 			when("missing CNB_USER_ID", func() {
 				it("returns an error", func() {
-					_, err := builder.New(baseImage, "some/builder", "", "")
+					_, err := builder.New(baseImage, "", "some/builder")
 					h.AssertError(t, err, "image 'base/image' missing required env var 'CNB_USER_ID'")
 				})
 			})
@@ -211,7 +211,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns an error", func() {
-					_, err := builder.New(baseImage, "some/builder", "", "")
+					_, err := builder.New(baseImage, "", "some/builder")
 					h.AssertError(t, err, "image 'base/image' missing required env var 'CNB_GROUP_ID'")
 				})
 			})
@@ -223,7 +223,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns an error", func() {
-					_, err := builder.New(baseImage, "some/builder", "", "")
+					_, err := builder.New(baseImage, "", "some/builder")
 					h.AssertError(t, err, "failed to parse 'CNB_USER_ID', value 'not an int' should be an integer")
 				})
 			})
@@ -235,7 +235,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns an error", func() {
-					_, err := builder.New(baseImage, "some/builder", "", "")
+					_, err := builder.New(baseImage, "", "some/builder")
 					h.AssertError(t, err, "failed to parse 'CNB_GROUP_ID', value 'not an int' should be an integer")
 				})
 			})
@@ -247,7 +247,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("does not return an error", func() {
-					_, err := builder.New(baseImage, "some/builder", "", "")
+					_, err := builder.New(baseImage, "", "some/builder")
 					h.AssertNilE(t, err)
 				})
 			})
@@ -261,7 +261,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				it("returns an error", func() {
 					h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.mixins", `{"mixinX", "mixinY", "build:mixinA"}`))
-					_, err := builder.New(baseImage, "some/builder", "", "")
+					_, err := builder.New(baseImage, "", "some/builder")
 					h.AssertError(t, err, "getting label io.buildpacks.stack.mixins")
 				})
 			})
@@ -275,7 +275,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				it("returns an error", func() {
 					h.AssertNil(t, baseImage.SetLabel("io.buildpacks.buildpack.order", `{"something", }`))
-					_, err := builder.New(baseImage, "some/builder", "", "")
+					_, err := builder.New(baseImage, "", "some/builder")
 					h.AssertError(t, err, "getting label io.buildpacks.buildpack.order")
 				})
 			})
@@ -289,7 +289,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
 			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.mixins", `["mixinX", "mixinY", "build:mixinA"]`))
-			subject, err = builder.New(baseImage, "some/builder", "", "")
+			subject, err = builder.New(baseImage, "", "some/builder")
 			h.AssertNil(t, err)
 
 			subject.SetLifecycle(mockLifecycle)
@@ -872,7 +872,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					var err error
 					fakeLayerImage = &h.FakeAddedLayerImage{Image: baseImage}
-					subject, err = builder.New(fakeLayerImage, "some/builder", "", "")
+					subject, err = builder.New(fakeLayerImage, "", "some/builder")
 					h.AssertNil(t, err)
 					subject.SetLifecycle(mockLifecycle)
 
@@ -1105,7 +1105,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					))
 
 					var err error
-					subject, err = builder.New(baseImage, "some/builder", "", "")
+					subject, err = builder.New(baseImage, "", "some/builder")
 					h.AssertNil(t, err)
 
 					subject.AddBuildpack(bp1v2)
@@ -1190,7 +1190,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					))
 
 					var err error
-					subject, err = builder.New(baseImage, "some/builder", "", "")
+					subject, err = builder.New(baseImage, "", "some/builder")
 					h.AssertNil(t, err)
 
 					subject.AddBuildpack(bp1v1)
@@ -1296,7 +1296,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					))
 
 					var err error
-					subject, err = builder.New(baseImage, "some/builder", "", "")
+					subject, err = builder.New(baseImage, "", "some/builder")
 					h.AssertNil(t, err)
 
 					subject.AddExtension(ext1v2)
@@ -1375,7 +1375,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					))
 
 					var err error
-					subject, err = builder.New(baseImage, "some/builder", "", "")
+					subject, err = builder.New(baseImage, "", "some/builder")
 					h.AssertNil(t, err)
 
 					subject.AddExtension(ext1v1)
@@ -1752,7 +1752,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				var err error
-				bldr, err = builder.FromImage(builderImage, "", "")
+				bldr, err = builder.FromImage(builderImage, "")
 				h.AssertNil(t, err)
 			})
 
@@ -1784,7 +1784,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("should error", func() {
-					_, err := builder.FromImage(builderImage, "", "")
+					_, err := builder.FromImage(builderImage, "")
 					h.AssertError(t, err, "missing label 'io.buildpacks.builder.metadata'")
 				})
 			})
@@ -1876,7 +1876,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("buildpacks to be flattened are NOT defined", func() {
 			it.Before(func() {
 				var err error
-				bldr, err = builder.New(builderImage, "some-builder", "", "")
+				bldr, err = builder.New(builderImage, "", "some-builder")
 				h.AssertNil(t, err)
 
 				// Let's add the buildpacks
@@ -1910,7 +1910,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				flattenModules, err := buildpack.ParseFlattenBuildModules([]string{"buildpack-1-id@buildpack-1-version-1,buildpack-1-id@buildpack-1-version-2,buildpack-2-id@buildpack-2-version-1"})
 				h.AssertNil(t, err)
 
-				bldr, err = builder.New(builderImage, "some-builder", "", "", builder.WithFlattened(flattenModules))
+				bldr, err = builder.New(builderImage, "", "some-builder", builder.WithFlattened(flattenModules))
 				h.AssertNil(t, err)
 
 				// Let's add the buildpacks
@@ -1958,7 +1958,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		it("should set labels to the image", func() {
 			customLabels = map[string]string{"test.label.one": "1", "test.label.two": "2"}
-			subject, err = builder.New(baseImage, "some/builder", "", "", builder.WithLabels(customLabels))
+			subject, err = builder.New(baseImage, "", "some/builder", builder.WithLabels(customLabels))
 			h.AssertNil(t, err)
 
 			imageLabels, err = baseImage.Labels()

@@ -335,7 +335,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "getting builder architecture")
 	}
 
-	bldr, err := c.getBuilder(rawBuilderImage, opts.RunImage, imgRegistry)
+	bldr, err := c.getBuilder(rawBuilderImage, opts.RunImage)
 	if err != nil {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
@@ -552,7 +552,6 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Layout:                   opts.Layout(),
 		Keychain:                 c.keychain,
 	}
-	// fmt.Printf("%v",projectMetadata)
 	switch {
 	case useCreator:
 		lifecycleOpts.UseCreator = true
@@ -776,8 +775,8 @@ func (c *Client) processBuilderName(builderName string) (name.Reference, error) 
 	return name.ParseReference(builderName, name.WeakValidation)
 }
 
-func (c *Client) getBuilder(img imgutil.Image, runImage string, registry string) (*builder.Builder, error) {
-	bldr, err := builder.FromImage(img, runImage, registry)
+func (c *Client) getBuilder(img imgutil.Image, runImage string) (*builder.Builder, error) {
+	bldr, err := builder.FromImage(img, runImage)
 	if err != nil {
 		return nil, err
 	}
@@ -1333,7 +1332,7 @@ func (c *Client) createEphemeralBuilder(
 	registry string,
 ) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
-	bldr, err := builder.New(rawBuilderImage, runImage, registry, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
+	bldr, err := builder.New(rawBuilderImage, runImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
 	}

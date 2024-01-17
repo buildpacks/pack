@@ -161,8 +161,8 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	if opts.Labels != nil && len(opts.Labels) > 0 {
 		builderOpts = append(builderOpts, builder.WithLabels(opts.Labels))
 	}
+	bldr, err := builder.New(baseImage, "", opts.BuilderName, builderOpts...)
 
-	bldr, err := builder.New(baseImage, "", "", opts.BuilderName, builderOpts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid build-image")
 	}
