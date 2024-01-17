@@ -188,11 +188,10 @@ func convertToDisplay(proc launch.Process, isDefault bool) ProcessDisplay {
 		shell = "bash"
 	}
 	var argsToUse []string
-	if proc.Args != nil {
-		argsToUse = proc.Args
-	} else if len(proc.Command.Entries) > 1 {
+	if len(proc.Command.Entries) > 1 {
 		argsToUse = proc.Command.Entries[1:]
 	}
+	argsToUse = append(argsToUse, proc.Args...)
 	result := ProcessDisplay{
 		Type:    proc.Type,
 		Shell:   shell,
