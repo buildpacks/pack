@@ -107,7 +107,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 		cmd.Flags().MarkHidden("buildpack-registry")
 	}
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
-	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "This flag triggers the buildpack to publish the built image to a container registry after the build process is complete. This means that the resulting image is pushed to a specified registry, making it available for deployment and use by others.")
+	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish the builder directly to the container registry specified in <image-name>, instead of the daemon.")
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten each composite buildpack into a single layer")
 	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpacks to exclude from flattening, in the form of '<buildpack-id>@<buildpack-version>'")
