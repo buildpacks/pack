@@ -56,6 +56,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		subject                      *Client
 		fakeImageFetcher             *ifakes.FakeImageFetcher
 		fakeLifecycle                *ifakes.FakeLifecycle
+		fakeAccessChecker            *ifakes.FakeAccessChecker
 		defaultBuilderStackID        = "some.stack.id"
 		defaultWindowsBuilderStackID = "some.windows.stack.id"
 		defaultBuilderImage          *fakes.Image
@@ -80,6 +81,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		var err error
 
 		fakeImageFetcher = ifakes.NewFakeImageFetcher()
+		fakeAccessChecker = ifakes.NewFakeAccessChecker()
 		fakeLifecycle = &ifakes.FakeLifecycle{}
 
 		tmpDir, err = os.MkdirTemp("", "build-test")
@@ -136,6 +138,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			logger:              logger,
 			imageFetcher:        fakeImageFetcher,
 			downloader:          blobDownloader,
+			accessChecker:       fakeAccessChecker,
 			lifecycleExecutor:   fakeLifecycle,
 			docker:              docker,
 			buildpackDownloader: buildpackDownloader,
@@ -2608,6 +2611,40 @@ api = "0.2"
 						})
 
 						h.AssertError(t, err, "supported Lifecycle Buildpack APIs not specified")
+					})
+				})
+			})
+
+			when("use creator with extensions", func() {
+				when("lifecycle is old", func() {
+					it("false", func() {
+						oldLifecycleBuilder := newFakeBuilderImage(t, tmpDir, "example.com/old-lifecycle-builder:tag", defaultBuilderStackID, defaultRunImageName, "0.18.0", newLinuxImage)
+						defer oldLifecycleBuilder.Cleanup()
+						fakeImageFetcher.LocalImages[oldLifecycleBuilder.Name()] = oldLifecycleBuilder
+
+						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+							Image:        "some/app",
+							Builder:      oldLifecycleBuilder.Name(),
+							TrustBuilder: func(string) bool { return true },
+						}))
+
+						h.AssertEq(t, fakeLifecycle.Opts.UseCreatorWithExtensions, false)
+					})
+				})
+
+				when("lifecycle is new", func() {
+					it("true", func() {
+						newLifecycleBuilder := newFakeBuilderImage(t, tmpDir, "example.com/new-lifecycle-builder:tag", defaultBuilderStackID, defaultRunImageName, "0.19.0", newLinuxImage)
+						defer newLifecycleBuilder.Cleanup()
+						fakeImageFetcher.LocalImages[newLifecycleBuilder.Name()] = newLifecycleBuilder
+
+						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+							Image:        "some/app",
+							Builder:      newLifecycleBuilder.Name(),
+							TrustBuilder: func(string) bool { return true },
+						}))
+
+						h.AssertEq(t, fakeLifecycle.Opts.UseCreatorWithExtensions, true)
 					})
 				})
 			})

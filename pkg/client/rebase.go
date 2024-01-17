@@ -95,7 +95,9 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		"",
 		runImageMD,
 		opts.AdditionalMirrors,
-		opts.Publish)
+		opts.Publish,
+		c.accessChecker,
+	)
 
 	if runImageName == "" {
 		return errors.New("run image must be specified")

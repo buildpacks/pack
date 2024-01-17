@@ -141,6 +141,10 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 						server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
 							w.WriteHeader(404)
 						})
+
+						server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
+							w.WriteHeader(404)
+						})
 					})
 
 					it("should return error", func() {

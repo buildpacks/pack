@@ -66,7 +66,7 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 	provider.ctrConf.Entrypoint = []string{""} // override entrypoint in case it is set
 	provider.ctrConf.Cmd = append([]string{"/cnb/lifecycle/" + name}, provider.ctrConf.Cmd...)
 
-	lifecycleExec.logger.Debugf("Running the %s on OS %s with:", style.Symbol(provider.Name()), style.Symbol(provider.os))
+	lifecycleExec.logger.Debugf("Running the %s on OS %s from image %s with:", style.Symbol(provider.Name()), style.Symbol(provider.os), style.Symbol(provider.ctrConf.Image))
 	lifecycleExec.logger.Debug("Container Settings:")
 	lifecycleExec.logger.Debugf("  Args: %s", style.Symbol(strings.Join(provider.ctrConf.Cmd, " ")))
 	lifecycleExec.logger.Debugf("  System Envs: %s", style.Symbol(strings.Join(sanitized(provider.ctrConf.Env), " ")))
