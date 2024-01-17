@@ -28,7 +28,7 @@ func (c *Client) parseTagReference(imageName string) (name.Reference, error) {
 	return ref, nil
 }
 
-func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, runImageMetadata builder.RunImageMetadata, additionalMirrors map[string][]string, publish bool) string {
+func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, runImageMetadata builder.RunImageMetadata, additionalMirrors map[string][]string, publish bool, accessChecker AccessChecker) string {
 	if runImage != "" {
 		c.logger.Debugf("Using provided run-image %s", style.Symbol(runImage))
 		return runImage
@@ -44,6 +44,7 @@ func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, run
 		runImageMetadata.Image,
 		runImageMetadata.Mirrors,
 		additionalMirrors[runImageMetadata.Image],
+		accessChecker,
 	)
 
 	switch {
@@ -107,8 +108,8 @@ func contains(slc []string, v string) bool {
 	return false
 }
 
-func getBestRunMirror(registry string, runImage string, mirrors []string, preferredMirrors []string) string {
-	runImageList := append(append(append([]string{}, preferredMirrors...), runImage), mirrors...)
+func getBestRunMirror(registry string, runImage string, mirrors []string, preferredMirrors []string, accessChecker AccessChecker) string {
+	runImageList := filterImageList(append(append(append([]string{}, preferredMirrors...), runImage), mirrors...), accessChecker)
 	for _, img := range runImageList {
 		ref, err := name.ParseReference(img, name.WeakValidation)
 		if err != nil {
@@ -119,9 +120,17 @@ func getBestRunMirror(registry string, runImage string, mirrors []string, prefer
 		}
 	}
 
-	if len(preferredMirrors) > 0 {
-		return preferredMirrors[0]
+	return runImageList[0]
+}
+
+func filterImageList(imageList []string, accessChecker AccessChecker) []string {
+	var accessibleImages []string
+
+	for i, img := range imageList {
+		if accessChecker.Check(img) {
+			accessibleImages = append(accessibleImages, imageList[i])
+		}
 	}
 
-	return runImage
+	return accessibleImages
 }
