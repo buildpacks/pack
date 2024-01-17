@@ -156,7 +156,7 @@ func WithDaemonAccess(dockerHost string) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
 		WithRoot()(provider)
 		if dockerHost == "inherit" {
-			dockerHost = os.Getenv("DOCKER_HOST")
+			dockerHost = strings.TrimSpace(os.Getenv("DOCKER_HOST"))
 		}
 		var bind string
 		if dockerHost == "" {

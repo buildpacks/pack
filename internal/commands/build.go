@@ -242,10 +242,10 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringArrayVar(&buildFlags.PreBuildpacks, "pre-buildpack", []string{}, "Buildpacks to prepend to the groups in the builder's order")
 	cmd.Flags().StringArrayVar(&buildFlags.PostBuildpacks, "post-buildpack", []string{}, "Buildpacks to append to the groups in the builder's order")
 	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "Publish to registry")
-	cmd.Flags().StringVar(&buildFlags.DockerHost, "docker-host", "",
+	cmd.Flags().StringVar(&buildFlags.DockerHost, "docker-host", "inherit",
 		`Address to docker daemon that will be exposed to the build container.
-If not set (or set to empty string) the standard socket location will be used.
-Special value 'inherit' may be used in which case DOCKER_HOST environment variable will be used.
+By default it's set to inherit and the DOCKER_HOST environment variable will be used.
+If set to empty string the standard socket location will be used.
 This option may set DOCKER_HOST environment variable for the build container if needed.
 `)
 	cmd.Flags().StringVar(&buildFlags.LifecycleImage, "lifecycle-image", cfg.LifecycleImage, `Custom lifecycle image to use for analysis, restore, and export when builder is untrusted.`)

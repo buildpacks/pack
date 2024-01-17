@@ -171,6 +171,47 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					h.AssertSliceContains(t, phaseConfigProvider.HostConfig().Binds, `\\.\pipe\docker_engine:\\.\pipe\docker_engine`)
 				})
 			})
+
+			when("DOCKER_HOST is set", func() {
+				it("should use the value", func() {
+					t.Setenv("DOCKER_HOST", "tcp://127.0.0.1:2375")
+
+					fakeBuilderImage := ifakes.NewImage("fake-builder", "", nil)
+					h.AssertNil(t, fakeBuilderImage.SetOS("osx"))
+
+					fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithImage(fakeBuilderImage))
+					h.AssertNil(t, err)
+
+					lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
+
+					phaseConfigProvider := build.NewPhaseConfigProvider(
+						"some-name",
+						lifecycle,
+						build.WithDaemonAccess("inherit"),
+					)
+					h.AssertSliceContains(t, phaseConfigProvider.ContainerConfig().Env, "DOCKER_HOST=tcp://127.0.0.1:2375")
+					h.AssertSliceNotContains(t, phaseConfigProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
+				})
+			})
+
+			when("DOCKER_HOST is empty", func() {
+				it("falls back to /var/run/docker.sock", func() {
+					fakeBuilderImage := ifakes.NewImage("fake-builder", "", nil)
+					h.AssertNil(t, fakeBuilderImage.SetOS("osx"))
+
+					fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithImage(fakeBuilderImage))
+					h.AssertNil(t, err)
+
+					lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
+
+					phaseConfigProvider := build.NewPhaseConfigProvider(
+						"some-name",
+						lifecycle,
+						build.WithDaemonAccess("inherit"),
+					)
+					h.AssertSliceContains(t, phaseConfigProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
+				})
+			})
 		})
 
 		when("called with WithEnv", func() {
