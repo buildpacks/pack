@@ -74,7 +74,11 @@ func (f *managedCollectionV1) AddModules(main BuildModule, deps ...BuildModule) 
 		f.explodedModules = append(f.explodedModules, append([]BuildModule{main}, deps...)...)
 	} else {
 		// flatten all
-		f.flattenedModules = append(f.flattenedModules, append([]BuildModule{main}, deps...)...)
+		if len(f.flattenedModules) == 1 {
+			f.flattenedModules[0] = append(f.flattenedModules[0], append([]BuildModule{main}, deps...)...)
+		} else {
+			f.flattenedModules = append(f.flattenedModules, append([]BuildModule{main}, deps...))
+		}
 	}
 }
 
