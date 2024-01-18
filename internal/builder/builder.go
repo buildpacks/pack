@@ -115,13 +115,12 @@ func WithRunImage(name string) BuilderOption {
 }
 
 // FromImage constructs a builder from a builder image
-func FromImage(img imgutil.Image, runImage string) (*Builder, error) {
-	return constructBuilder(img, "", true, WithRunImage(runImage))
+func FromImage(img imgutil.Image) (*Builder, error) {
+	return constructBuilder(img, "", true)
 }
 
 // New constructs a new builder from a base image
-func New(baseImage imgutil.Image, runImage string, name string, ops ...BuilderOption) (*Builder, error) {
-	ops = append(ops, WithRunImage(runImage))
+func New(baseImage imgutil.Image, name string, ops ...BuilderOption) (*Builder, error) {
 	return constructBuilder(baseImage, name, false, ops...)
 }
 

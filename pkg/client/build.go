@@ -460,7 +460,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		buildEnvs[k] = v
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, orderExtensions, fetchedExs, usingPlatformAPI.LessThan("0.12"), opts.RunImage, imgRegistry)
+	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, orderExtensions, fetchedExs, usingPlatformAPI.LessThan("0.12"), opts.RunImage)
 	if err != nil {
 		return err
 	}
@@ -776,7 +776,7 @@ func (c *Client) processBuilderName(builderName string) (name.Reference, error) 
 }
 
 func (c *Client) getBuilder(img imgutil.Image, runImage string) (*builder.Builder, error) {
-	bldr, err := builder.FromImage(img, runImage)
+	bldr, err := builder.FromImage(img)
 	if err != nil {
 		return nil, err
 	}
@@ -1329,10 +1329,9 @@ func (c *Client) createEphemeralBuilder(
 	extensions []buildpack.BuildModule,
 	validateMixins bool,
 	runImage string,
-	registry string,
 ) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
-	bldr, err := builder.New(rawBuilderImage, runImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
+	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)), builder.WithRunImage(runImage))
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
 	}
