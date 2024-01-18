@@ -56,6 +56,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		subject                      *Client
 		fakeImageFetcher             *ifakes.FakeImageFetcher
 		fakeLifecycle                *ifakes.FakeLifecycle
+		fakeAccessChecker            *ifakes.FakeAccessChecker
 		defaultBuilderStackID        = "some.stack.id"
 		defaultWindowsBuilderStackID = "some.windows.stack.id"
 		defaultBuilderImage          *fakes.Image
@@ -80,6 +81,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		var err error
 
 		fakeImageFetcher = ifakes.NewFakeImageFetcher()
+		fakeAccessChecker = ifakes.NewFakeAccessChecker()
 		fakeLifecycle = &ifakes.FakeLifecycle{}
 
 		tmpDir, err = os.MkdirTemp("", "build-test")
@@ -136,6 +138,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			logger:              logger,
 			imageFetcher:        fakeImageFetcher,
 			downloader:          blobDownloader,
+			accessChecker:       fakeAccessChecker,
 			lifecycleExecutor:   fakeLifecycle,
 			docker:              docker,
 			buildpackDownloader: buildpackDownloader,
