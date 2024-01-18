@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1705440952204,
+  "lastUpdate": 1705610346250,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -4102,6 +4102,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 64217432900,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5dffab69ab7d750ca0a7a9f1937f98dc3a7cd3bc",
+          "message": "Merge pull request #1977 from kotapeter/fix-args-display-inspect\n\nfix: display `Command` remaining parts if `Args` is `nil`",
+          "timestamp": "2024-01-18T15:37:00-05:00",
+          "tree_id": "4b31b7a3906d4351d0879d97ddc9c88967905e1f",
+          "url": "https://github.com/buildpacks/pack/commit/5dffab69ab7d750ca0a7a9f1937f98dc3a7cd3bc"
+        },
+        "date": 1705610345674,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4867945727,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1114175204,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 57118865248,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
