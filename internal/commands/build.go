@@ -48,6 +48,7 @@ type BuildFlags struct {
 	AdditionalTags       []string
 	Workspace            string
 	GID                  int
+	UID                  int
 	PreviousImage        string
 	SBOMDestinationDir   string
 	ReportDestinationDir string
@@ -143,6 +144,12 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if cmd.Flags().Changed("gid") {
 				gid = flags.GID
 			}
+
+			var uid = -1
+			if cmd.Flags().Changed("uid") {
+				uid = flags.UID
+			}
+
 			dateTime, err := parseTime(flags.DateTime)
 			if err != nil {
 				return errors.Wrapf(err, "parsing creation time %s", flags.DateTime)
@@ -177,6 +184,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Workspace:                flags.Workspace,
 				LifecycleImage:           lifecycleImage,
 				GroupID:                  gid,
+				UserID:                   uid,
 				PreviousImage:            inputPreviousImage.Name(),
 				Interactive:              flags.Interactive,
 				SBOMDestinationDir:       flags.SBOMDestinationDir,
@@ -257,6 +265,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<options>]'.\n- 'host path': Name of the volume or absolute directory path to mount.\n- 'target path': The path where the file or directory is available in the container.\n- 'options' (default \"ro\"): An optional comma separated list of mount options.\n    - \"ro\", volume contents are read-only.\n    - \"rw\", volume contents are readable and writeable.\n    - \"volume-opt=<key>=<value>\", can be specified more than once, takes a key-value pair consisting of the option name and its value."+stringArrayHelp("volume"))
 	cmd.Flags().StringVar(&buildFlags.Workspace, "workspace", "", "Location at which to mount the app dir in the build image")
 	cmd.Flags().IntVar(&buildFlags.GID, "gid", 0, `Override GID of user's group in the stack's build and run images. The provided value must be a positive number`)
+	cmd.Flags().IntVar(&buildFlags.UID, "uid", 0, `Override UID of user in the stack's build and run images. The provided value must be a positive number`)
 	cmd.Flags().StringVar(&buildFlags.PreviousImage, "previous-image", "", "Set previous image to a particular tag reference, digest reference, or (when performing a daemon build) image ID")
 	cmd.Flags().StringVar(&buildFlags.SBOMDestinationDir, "sbom-output-dir", "", "Path to export SBoM contents.\nOmitting the flag will yield no SBoM content.")
 	cmd.Flags().StringVar(&buildFlags.ReportDestinationDir, "report-output-dir", "", "Path to export build report.toml.\nOmitting the flag yield no report file.")
@@ -291,6 +300,10 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, inputImageRef clie
 
 	if flags.GID < 0 {
 		return errors.New("gid flag must be in the range of 0-2147483647")
+	}
+
+	if flags.UID < 0 {
+		return errors.New("uid flag must be in the range of 0-2147483647")
 	}
 
 	if flags.Interactive && !cfg.Experimental {
