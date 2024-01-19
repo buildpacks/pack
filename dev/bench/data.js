@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1705612778935,
+  "lastUpdate": 1705694425395,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -4186,6 +4186,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 58643344474,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a51140efc86fb05cd1e6eb69a5760f8a040c4197",
+          "message": "Merge pull request #2017 from Parthiba-Hazra/override\n\nadd support to override UID for container",
+          "timestamp": "2024-01-19T14:58:40-05:00",
+          "tree_id": "28135c7a6c338436809761847d5a35d3eb64938d",
+          "url": "https://github.com/buildpacks/pack/commit/a51140efc86fb05cd1e6eb69a5760f8a040c4197"
+        },
+        "date": 1705694424670,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4754519430,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1444984497,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 54492527089,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
