@@ -102,7 +102,7 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 	// flags will be added here
 	cmd.Flags().StringVarP(&flags.PackageTomlPath, "config", "c", "", "Path to package TOML config")
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save package as ("image" or "file")`)
-	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry (applies to "--format=image" only)`)
+	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish the extension directly to the container registry specified in <name>, instead of the daemon (applies to "--format=image" only).`)
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	AddHelpFlag(cmd, "package")
 	return cmd
