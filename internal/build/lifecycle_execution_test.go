@@ -1076,6 +1076,31 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("override UID", func() {
+			when("override UID is provided", func() {
+				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+					options.UID = 1001
+				})
+
+				it("configures the phase with the expected arguments", func() {
+					h.AssertIncludeAllExpectedPatterns(t,
+						configProvider.ContainerConfig().Cmd,
+						[]string{"-uid", "1001"},
+					)
+				})
+			})
+
+			when("override UID is not provided", func() {
+				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+					options.UID = -1
+				})
+
+				it("uid is not added to the expected arguments", func() {
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-uid")
+				})
+			})
+		})
+
 		when("-previous-image is used and builder is trusted", func() {
 			when("image is invalid", func() {
 				it("errors", func() {
@@ -1590,6 +1615,31 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 				})
+
+				when("override UID", func() {
+					when("override UID is provided", func() {
+						lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+							options.UID = 1001
+						})
+
+						it("configures the phase with the expected arguments", func() {
+							h.AssertIncludeAllExpectedPatterns(t,
+								configProvider.ContainerConfig().Cmd,
+								[]string{"-uid", "1001"},
+							)
+						})
+					})
+
+					when("override UID is not provided", func() {
+						lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+							options.UID = -1
+						})
+
+						it("uid is not added to the expected arguments", func() {
+							h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-uid")
+						})
+					})
+				})
 			})
 		})
 
@@ -1795,6 +1845,31 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 				it("gid is not added to the expected arguments", func() {
 					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-gid")
+				})
+			})
+		})
+
+		when("override UID", func() {
+			when("override UID is provided", func() {
+				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+					options.UID = 1001
+				})
+
+				it("configures the phase with the expected arguments", func() {
+					h.AssertIncludeAllExpectedPatterns(t,
+						configProvider.ContainerConfig().Cmd,
+						[]string{"-uid", "1001"},
+					)
+				})
+			})
+
+			when("override UID is not provided", func() {
+				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+					options.UID = -1
+				})
+
+				it("uid is not added to the expected arguments", func() {
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-uid")
 				})
 			})
 		})
@@ -2366,6 +2441,31 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 				it("gid is not added to the expected arguments", func() {
 					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-gid")
+				})
+			})
+		})
+
+		when("override UID", func() {
+			when("override UID is provided", func() {
+				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+					options.UID = 1001
+				})
+
+				it("configures the phase with the expected arguments", func() {
+					h.AssertIncludeAllExpectedPatterns(t,
+						configProvider.ContainerConfig().Cmd,
+						[]string{"-uid", "1001"},
+					)
+				})
+			})
+
+			when("override UID is not provided", func() {
+				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+					options.UID = -1
+				})
+
+				it("uid is not added to the expected arguments", func() {
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-uid")
 				})
 			})
 		})

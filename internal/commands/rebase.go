@@ -46,7 +46,7 @@ func Rebase(logger logging.Logger, cfg config.Config, pack PackClient) *cobra.Co
 		}),
 	}
 
-	cmd.Flags().BoolVar(&opts.Publish, "publish", false, "Publish to registry")
+	cmd.Flags().BoolVar(&opts.Publish, "publish", false, "Publish the rebased application image directly to the container registry specified in <image-name>, instead of the daemon. The previous application image must also reside in the registry.")
 	cmd.Flags().StringVar(&opts.RunImage, "run-image", "", "Run image to use for rebasing")
 	cmd.Flags().StringVar(&policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	cmd.Flags().StringVar(&opts.ReportDestinationDir, "report-output-dir", "", "Path to export build report.toml.\nOmitting the flag yield no report file.")
