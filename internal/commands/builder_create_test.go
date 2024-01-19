@@ -408,19 +408,19 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("flatten buildpacks", func() {
+		when("--flatten", func() {
 			it.Before(func() {
 				h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(validConfig), 0666))
 			})
 
-			when("flatten modules doesn't have format <buildpack>@<version>", func() {
+			when("requested buildpack doesn't have format <buildpack>@<version>", func() {
 				it("errors with a descriptive message", func() {
 					command.SetArgs([]string{
 						"some/builder",
 						"--config", builderConfigPath,
 						"--flatten", "some-buildpack",
 					})
-					h.AssertError(t, command.Execute(), fmt.Sprintf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to add buildpacks to be flatten", "some-buildpack"))
+					h.AssertError(t, command.Execute(), fmt.Sprintf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to add buildpacks to be flattened", "some-buildpack"))
 				})
 			})
 		})
