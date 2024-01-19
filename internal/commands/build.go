@@ -249,7 +249,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
 	cmd.Flags().StringArrayVar(&buildFlags.PreBuildpacks, "pre-buildpack", []string{}, "Buildpacks to prepend to the groups in the builder's order")
 	cmd.Flags().StringArrayVar(&buildFlags.PostBuildpacks, "post-buildpack", []string{}, "Buildpacks to append to the groups in the builder's order")
-	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "Publish to registry")
+	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "Publish the application image directly to the container registry specified in <image-name>, instead of the daemon. The run image must also reside in the registry.")
 	cmd.Flags().StringVar(&buildFlags.DockerHost, "docker-host", "",
 		`Address to docker daemon that will be exposed to the build container.
 If not set (or set to empty string) the standard socket location will be used.
