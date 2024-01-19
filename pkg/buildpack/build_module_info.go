@@ -49,7 +49,7 @@ func parseBuildpackName(names string) (ModuleInfos, error) {
 	ids := strings.Split(names, ",")
 	for _, id := range ids {
 		if strings.Count(id, "@") != 1 {
-			return nil, errors.Errorf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to add buildpacks to be flatten", id)
+			return nil, errors.Errorf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to add buildpacks to be flattened", id)
 		}
 		bpFullName := strings.Split(id, "@")
 		if len(bpFullName) != 2 {

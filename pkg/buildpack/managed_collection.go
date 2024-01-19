@@ -1,15 +1,15 @@
 package buildpack
 
-// ManagedCollection defines the required behavior to deal with build modules when adding then to an OCI image.
+// ManagedCollection keeps track of build modules and the manner in which they should be added to an OCI image (as flattened or exploded).
 type ManagedCollection interface {
-	// AllModules returns all build modules handle by the manager
+	// AllModules returns all build modules handled by the manager.
 	AllModules() []BuildModule
 
 	// ExplodedModules returns all build modules that will be added to the output artifact as a single layer
 	// containing a single module.
 	ExplodedModules() []BuildModule
 
-	// AddModules determines whether the explodedModules must be added as flattened or not.
+	// AddModules adds module information to the collection as flattened or not, depending on how the collection is configured.
 	AddModules(main BuildModule, deps ...BuildModule)
 
 	// FlattenedModules returns all build modules that will be added to the output artifact as a single layer
@@ -75,8 +75,10 @@ func (f *managedCollectionV1) AddModules(main BuildModule, deps ...BuildModule) 
 	} else {
 		// flatten all
 		if len(f.flattenedModules) == 1 {
+			// we already have data in the array, append to the first element
 			f.flattenedModules[0] = append(f.flattenedModules[0], append([]BuildModule{main}, deps...)...)
 		} else {
+			// the array is empty, create the first element
 			f.flattenedModules = append(f.flattenedModules, append([]BuildModule{main}, deps...))
 		}
 	}
@@ -128,11 +130,11 @@ func (ff *managedCollectionV2) AddModules(main BuildModule, deps ...BuildModule)
 	}
 }
 
-// flattenedLayerFor given a module it will try to determine to which row (group) this module must be added to in order to
-// be flattened. If it is not found, it means, the module must no me flattened at all
+// flattenedLayerFor given a module will try to determine which row (layer) this module must be added to in order to be flattened.
+// If the layer is not found, it means the module must not be flattened at all.
 func (ff *managedCollectionV2) flattenedLayerFor(module BuildModule) int {
-	// flattenModuleInfos to be flattened are representing a two-dimension array. where each row represents a group of
-	// flattenModuleInfos that must be flattened together in the same layer.
+	// flattenGroups is a two-dimensional array, where each row represents
+	// a group of module infos that must be flattened together in the same layer.
 	for i, flattenGroup := range ff.flattenGroups() {
 		for _, buildModuleInfo := range flattenGroup.BuildModule() {
 			if buildModuleInfo.FullName() == module.Descriptor().Info().FullName() {

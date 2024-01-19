@@ -163,7 +163,7 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 	return bldr, nil
 }
 
-func WithFlatten(modules buildpack.FlattenModuleInfos) BuilderOption {
+func WithFlattened(modules buildpack.FlattenModuleInfos) BuilderOption {
 	return func(o *options) error {
 		o.toFlatten = modules
 		return nil
