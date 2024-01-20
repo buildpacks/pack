@@ -997,6 +997,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			 */
 			var (
 				fakeLayerImage *h.FakeAddedLayerImage
+				err            error
 			)
 
 			var successfullyCreateFlattenBuilder = func() {
@@ -1068,7 +1069,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("flatten all", func() {
-				var err error
+
 				it("creates 1 layer for all buildpacks", func() {
 					prepareFetcherWithRunImages()
 					opts.Flatten, err = buildpack.ParseFlattenBuildModules([]string{"flatten/bp-1@1,flatten/bp-2@2,flatten/bp-4@4,flatten/bp-6@6,flatten/bp-7@7,flatten/bp-3@3,flatten/bp-5@5"})
@@ -1080,18 +1081,29 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					h.AssertEq(t, len(layers), 1)
 				})
+			})
 
-				when("only some modules are flattened", func() {
-					it("creates 1 layer for buildpacks and 1 layer for buildpack excluded", func() {
-						prepareFetcherWithRunImages()
-						opts.Flatten, err = buildpack.ParseFlattenBuildModules([]string{"flatten/bp-1@1,flatten/bp-2@2,flatten/bp-4@4,flatten/bp-6@6,flatten/bp-3@3,flatten/bp-5@5"})
-						h.AssertNil(t, err)
+			when("only some modules are flattened", func() {
+				it("creates 1 layer for buildpacks [1,2,3,4,5,6] and 1 layer for buildpack [7]", func() {
+					prepareFetcherWithRunImages()
+					opts.Flatten, err = buildpack.ParseFlattenBuildModules([]string{"flatten/bp-1@1,flatten/bp-2@2,flatten/bp-4@4,flatten/bp-6@6,flatten/bp-3@3,flatten/bp-5@5"})
+					h.AssertNil(t, err)
 
-						successfullyCreateFlattenBuilder()
+					successfullyCreateFlattenBuilder()
 
-						layers := fakeLayerImage.AddedLayersOrder()
-						h.AssertEq(t, len(layers), 2)
-					})
+					layers := fakeLayerImage.AddedLayersOrder()
+					h.AssertEq(t, len(layers), 2)
+				})
+
+				it("creates 1 layer for buildpacks [1,2,3] and 1 layer for [4,5,6] and 1 layer for [7]", func() {
+					prepareFetcherWithRunImages()
+					opts.Flatten, err = buildpack.ParseFlattenBuildModules([]string{"flatten/bp-1@1,flatten/bp-2@2,flatten/bp-3@3", "flatten/bp-4@4,flatten/bp-6@6,flatten/bp-5@5"})
+					h.AssertNil(t, err)
+
+					successfullyCreateFlattenBuilder()
+
+					layers := fakeLayerImage.AddedLayersOrder()
+					h.AssertEq(t, len(layers), 3)
 				})
 			})
 		})
