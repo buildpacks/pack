@@ -122,3 +122,9 @@ func WithBuilder(builder *FakeBuilder) func(*build.LifecycleOptions) {
 		opts.Builder = builder
 	}
 }
+
+func WithMacAddresss(macAddresss string) func(*build.LifecycleOptions) {
+	return func(opts *build.LifecycleOptions) {
+		opts.MacAddress = macAddresss
+	}
+}
