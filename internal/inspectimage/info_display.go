@@ -187,12 +187,17 @@ func convertToDisplay(proc launch.Process, isDefault bool) ProcessDisplay {
 	case false:
 		shell = "bash"
 	}
+	var argsToUse []string
+	if len(proc.Command.Entries) > 1 {
+		argsToUse = proc.Command.Entries[1:]
+	}
+	argsToUse = append(argsToUse, proc.Args...)
 	result := ProcessDisplay{
 		Type:    proc.Type,
 		Shell:   shell,
 		Command: proc.Command.Entries[0],
 		Default: isDefault,
-		Args:    proc.Args, // overridable args are supported for platform API >= 0.10 with buildpack API >= 0.9, but we can't determine the buildpack API from the metadata label (to be fixed in platform 0.11)
+		Args:    argsToUse, // overridable args are supported for platform API >= 0.10 with buildpack API >= 0.9, but we can't determine the buildpack API from the metadata label (to be fixed in platform 0.11)
 		WorkDir: proc.WorkingDirectory,
 	}
 

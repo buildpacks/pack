@@ -186,6 +186,9 @@ type BuildOptions struct {
 	// User's group id used to build the image
 	GroupID int
 
+	// User's user id used to build the image
+	UserID int
+
 	// A previous image to set to a particular tag reference, digest reference, or (when performing a daemon build) image ID;
 	PreviousImage string
 
@@ -337,7 +340,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
 
-	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish)
+	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish, c.accessChecker)
 
 	fetchOptions := image.FetchOptions{
 		Daemon:     !opts.Publish,
@@ -539,6 +542,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		FileFilter:               fileFilter,
 		Workspace:                opts.Workspace,
 		GID:                      opts.GroupID,
+		UID:                      opts.UserID,
 		PreviousImage:            opts.PreviousImage,
 		Interactive:              opts.Interactive,
 		Termui:                   termui.NewTermui(imageName, ephemeralBuilder, runImageName),
