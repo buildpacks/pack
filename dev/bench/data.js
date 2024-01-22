@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1705957982197,
+  "lastUpdate": 1705961218392,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -4270,6 +4270,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 56105328296,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "11d07a089440eec926ab9022eaad7b4b84a86cc9",
+          "message": "Merge pull request #2027 from buildpacks/bugfix/jjbustamante/issue-2000\n\nBumping imgutil version",
+          "timestamp": "2024-01-22T17:04:49-05:00",
+          "tree_id": "a1db674806e4e28e8d7404a4c808188fabd9e7d5",
+          "url": "https://github.com/buildpacks/pack/commit/11d07a089440eec926ab9022eaad7b4b84a86cc9"
+        },
+        "date": 1705961217819,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3873185439,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 959853300,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 55311978298,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
