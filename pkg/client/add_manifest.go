@@ -24,11 +24,10 @@ func (c *Client) AddManifest(ctx context.Context, index string, image string, op
 
 	ref, err := name.ParseReference(image)
 	if err != nil {
-		return
+		return err
 	}
 
-	digest := ref.Context().Digest(ref.Identifier())
-	imgIndex, err := c.indexFactory.FindIndex(index)
+	imgIndex, err := c.indexFactory.LoadIndex(index)
 	if err != nil {
 		return fmt.Errorf("Error while trying to find image on local storage: %v", image)
 	}
@@ -39,31 +38,31 @@ func (c *Client) AddManifest(ctx context.Context, index string, image string, op
 	}
 
 	if opts.OS != "" {
-		if err := imgIndex.SetOS(digest, opts.OS); err != nil {
+		if err := imgIndex.SetOS(ref.(name.Digest), opts.OS); err != nil {
 			return err
 		}
 	}
 
 	if opts.OSArch != "" {
-		if err := imgIndex.SetArchitecture(digest, opts.OSArch); err != nil {
+		if err := imgIndex.SetArchitecture(ref.(name.Digest), opts.OSArch); err != nil {
 			return err
 		}
 	}
 
 	if opts.OSVariant != "" {
-		if err := imgIndex.SetVariant(digest, opts.OSVariant); err != nil {
+		if err := imgIndex.SetVariant(ref.(name.Digest), opts.OSVariant); err != nil {
 			return err
 		}
 	}
 
 	if opts.OSVersion != "" {
-		if err := imgIndex.SetOSVersion(digest, opts.OSVersion); err != nil {
+		if err := imgIndex.SetOSVersion(ref.(name.Digest), opts.OSVersion); err != nil {
 			return err
 		}
 	}
 
 	if len(opts.Features) != 0 {
-		if err := imgIndex.SetFeatures(digest, opts.Features); err != nil {
+		if err := imgIndex.SetFeatures(ref.(name.Digest), opts.Features); err != nil {
 			return err
 		}
 	}
@@ -77,7 +76,7 @@ func (c *Client) AddManifest(ctx context.Context, index string, image string, op
 			}
 			annotations[spec[0]] = spec[1]
 		}
-		if err := imgIndex.SetAnnotations(digest, annotations); err != nil {
+		if err := imgIndex.SetAnnotations(ref.(name.Digest), annotations); err != nil {
 			return err
 		}
 	}

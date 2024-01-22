@@ -31,7 +31,8 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 		Long: `manifest add modifies a manifest list (Image index) and add a new image to the list of manifests.
 		
 		When a manifest list exits locally, user can add a new image to the manifest list using this command`,
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(logger, func(cmd *cobra.Command, args []string) (err error) {
+			var annotations = map[string]string(nil)
 			imageIndex := args[0]
 			manifests := args[1]
 			if err := validateManifestAddFlags(flags); err != nil {
@@ -40,9 +41,11 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 
 			osFeatures := strings.Split(flags.osFeatures, ";")
 			features := strings.Split(flags.features, ";")
-			annotations, err := StringToKeyValueMap(flags.annotations)
-			if err != nil {
-				return err
+			if flags.annotations != "" {
+				annotations, err = StringToKeyValueMap(flags.annotations)
+				if err != nil {
+					return err
+				}
 			}
 
 			err = pack.AddManifest(cmd.Context(), imageIndex, manifests, client.ManifestAddOptions{
@@ -57,7 +60,7 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 			})
 
 			if err != nil {
-				return errors.Wrap(err, "unable to add manifest to the index : ")
+				return errors.Wrap(err, "unable to add manifest to the index: ")
 			}
 
 			return nil

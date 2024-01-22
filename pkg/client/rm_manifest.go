@@ -15,14 +15,21 @@ func (c *Client) RemoveManifest(ctx context.Context, name string, images []strin
 	}
 
 	for _, image := range images {
-		ref, err := gccrName.ParseReference(image)
+		digest, err := gccrName.NewDigest(image, gccrName.WeakValidation, gccrName.Insecure)
 		if err != nil {
 			errs = append(errs, fmt.Errorf(`invalid instance "%s": %v`, image, err))
 		}
-		if err := imgIndex.Remove(ref.Context().Digest(ref.Identifier())); err != nil {
+		if err = imgIndex.Remove(digest); err != nil {
 			errs = append(errs, err)
 		}
-		fmt.Printf("Successfully removed %s from %s", image, name)
+
+		if err = imgIndex.Save(); err != nil {
+			errs = append(errs, err)
+		}
+
+		if len(errs) == 0 {
+			fmt.Printf("Successfully removed %s from %s \n", image, name)
+		}
 	}
 
 	return errs

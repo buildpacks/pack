@@ -16,7 +16,7 @@ type ManifestAnnotateOptions struct {
 
 // AnnotateManifest implements commands.PackClient.
 func (c *Client) AnnotateManifest(ctx context.Context, name string, image string, opts ManifestAnnotateOptions) error {
-	manifestList, err := c.indexFactory.FindIndex(name)
+	manifestList, err := c.indexFactory.LoadIndex(name)
 	if err != nil {
 		return err
 	}

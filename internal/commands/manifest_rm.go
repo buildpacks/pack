@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"strings"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -14,7 +12,7 @@ func ManifestRemove(logger logging.Logger, pack PackClient) *cobra.Command {
 	// var flags ManifestRemoveFlags
 
 	cmd := &cobra.Command{
-		Use:   "pack manifest rm [manifest-list] [manifest] [manifest...] [flags]",
+		Use:   "rm [manifest-list] [manifest] [manifest...] [flags]",
 		Args:  cobra.MatchAll(cobra.MinimumNArgs(2), cobra.OnlyValidArgs),
 		Short: "manifest rm will remove the specified image manifest if it is already referenced in the index",
 		Example: `pack manifest rm cnbs/sample-package:hello-multiarch-universe \
@@ -22,13 +20,20 @@ func ManifestRemove(logger logging.Logger, pack PackClient) *cobra.Command {
 		Long: `manifest rm will remove the specified image manifest if it is already referenced in the index.
 		Sometimes users can just experiment with the feature locally and they want to discard all the local information created by pack. 'rm' command just delete the local manifest list`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			var errMsg strings.Builder
-			errs := pack.RemoveManifest(cmd.Context(), args[0], args[1:])
+			var errMsg = ""
+			name := args[0]
+			images := args[1:]
+			errs := pack.RemoveManifest(cmd.Context(), name, images)
 			for _, err := range errs {
-				errMsg.WriteString(err.Error() + "\n")
+				if err != nil {
+					errMsg += err.Error() + "\n"
+				}
 			}
 
-			return errors.New(errMsg.String())
+			if errMsg != "" {
+				return errors.New(errMsg)
+			}
+			return nil
 		}),
 	}
 

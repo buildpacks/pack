@@ -314,7 +314,7 @@ func (f *indexFactory) LoadIndex(repoName string, opts ...index.Option) (img img
 	if err == nil {
 		return
 	}
-	return nil, errors.Errorf("Image: '%s' not found", repoName)
+	return nil, errors.Wrap(err, errors.Errorf("Image: '%s' not found", repoName).Error())
 }
 
 type indexFactory struct {

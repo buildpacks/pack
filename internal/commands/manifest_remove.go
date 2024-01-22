@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"strings"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -21,14 +19,19 @@ func ManifestDelete(logger logging.Logger, pack PackClient) *cobra.Command {
 		Long: `Delete one or more manifest lists from local storage.
 		When a manifest list exits locally, users can remove existing images from a manifest list`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			var errMsg strings.Builder
+			var errMsg = ""
 			errs := pack.DeleteManifest(cmd.Context(), args)
 
 			for _, err := range errs {
-				errMsg.WriteString(err.Error() + "\n")
+				if err != nil {
+					errMsg += err.Error() + "\n"
+				}
 			}
 
-			return errors.New(errMsg.String())
+			if errMsg != "" {
+				return errors.New(errMsg)
+			}
+			return nil
 		}),
 	}
 

@@ -28,6 +28,6 @@ func ManifestExists(logger logging.Logger, pack PackClient) *cobra.Command {
 		}),
 	}
 
-	AddHelpFlag(cmd, "remove")
+	AddHelpFlag(cmd, "exists")
 	return cmd
 }

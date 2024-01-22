@@ -45,7 +45,13 @@ func (c *Client) CreateManifest(ctx context.Context, name string, images []strin
 		default:
 			format = types.DockerManifestList
 		}
-		index.Push(imgutil.WithInsecure(opts.Insecure), imgutil.WithFormat(format))
+
+		err = index.Push(imgutil.WithInsecure(opts.Insecure), imgutil.WithFormat(format))
+		if err != nil {
+			return err
+		}
+		
+		fmt.Printf("successfully pushed '%s' to registry \n", name)
 	}
 
 	return err
