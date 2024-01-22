@@ -20,7 +20,7 @@ func ManifestPush(logger logging.Logger, pack PackClient) *cobra.Command {
 	var flags ManifestPushFlags
 
 	cmd := &cobra.Command{
-		Use:     "pack manifest push [OPTIONS] <manifest-list> [flags]",
+		Use:     "push [OPTIONS] <manifest-list> [flags]",
 		Args:    cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		Short:   "manifest push pushes a manifest list (Image index) to a registry.",
 		Example: `pack manifest push cnbs/sample-package:hello-multiarch-universe`,
@@ -40,8 +40,8 @@ func ManifestPush(logger logging.Logger, pack PackClient) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Sprintf("manifest '%s' is successfully pushed to the registry")
-			
+
+			fmt.Printf("manifest '%s' is successfully pushed to the registry", args[0])
 			return nil
 		}),
 	}

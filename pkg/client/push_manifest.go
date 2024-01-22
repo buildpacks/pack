@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
 type PushManifestOptions struct {
@@ -15,10 +16,10 @@ type PushManifestOptions struct {
 func (c *Client) PushManifest(ctx context.Context, index string, opts PushManifestOptions) (err error) {
 	idx, err := c.indexFactory.LoadIndex(index)
 	if err != nil {
-		return 
+		return
 	}
 
-	err = idx.Push()
+	err = idx.Push(parseFalgsForImgUtil(opts)...)
 	if err != nil {
 		return
 	}
@@ -32,9 +33,17 @@ func (c *Client) PushManifest(ctx context.Context, index string, opts PushManife
 	return
 }
 
-func parseFalgsForImgUtil(opts PushManifestOptions) (idxOptions []imgutil.IndexOption) {
-	return []imgutil.IndexOption{
-		imgutil.WithFormat(opts.Format),
+func parseFalgsForImgUtil(opts PushManifestOptions) (idxOptions []imgutil.IndexPushOption) {
+	var format types.MediaType
+	switch opts.Format {
+	case "oci":
+		format = types.OCIImageIndex
+	default:
+		format = types.DockerManifestList
+	}
+
+	return []imgutil.IndexPushOption{
+		imgutil.WithFormat(format),
 		imgutil.WithInsecure(opts.Insecure),
 	}
 }

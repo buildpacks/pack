@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/index"
 	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
@@ -76,12 +77,14 @@ type ImageFactory interface {
 
 // IndexFactory is an interface representing the ability to create a ImageIndex/ManifestList.
 type IndexFactory interface {
+	// create ManifestList locally
+	CreateIndex(repoName string, opts ...index.Option) (imgutil.ImageIndex, error)
 	// load ManifestList from local storage with the given name
-	LoadIndex(reponame string, opts ...imgutil.IndexOption) (imgutil.Index, error)
+	LoadIndex(reponame string, opts ...index.Option) (imgutil.ImageIndex, error)
 	// Fetch ManifestList from Registry with the given name
-	FetchIndex(name string, opts ...imgutil.IndexOption) (imgutil.Index, error)
+	FetchIndex(name string, opts ...index.Option) (imgutil.ImageIndex, error)
 	// FindIndex will find Index remotly first then on local
-	FindIndex(name string, opts ...imgutil.IndexOption) (imgutil.Index, error)
+	FindIndex(name string, opts ...index.Option) (imgutil.ImageIndex, error)
 }
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_buildpack_downloader.go github.com/buildpacks/pack/pkg/client BuildpackDownloader
@@ -240,13 +243,14 @@ func NewClient(opts ...Option) (*Client, error) {
 
 	if client.imageFactory == nil {
 		client.imageFactory = &imageFactory{
-			keychain:     client.keychain,
+			keychain: client.keychain,
 		}
 	}
 
 	if client.indexFactory == nil {
 		client.indexFactory = &indexFactory{
-			keychain: client.keychain,
+			keychain:       client.keychain,
+			xdgRuntimePath: os.Getenv("XDG_RUNTIME_DIR"),
 		}
 	}
 
@@ -299,13 +303,14 @@ func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (i
 	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform))
 }
 
-func (f *indexFactory) LoadIndex(repoName string, opts ...imgutil.IndexOption) (img imgutil.Index, err error) {
-	img, err = local.NewIndex(repoName, true, opts...)
+func (f *indexFactory) LoadIndex(repoName string, opts ...index.Option) (img imgutil.ImageIndex, err error) {
+	opts = append(opts, index.WithKeychain(f.keychain))
+	img, err = local.NewIndex(repoName, opts...)
 	if err == nil {
 		return
 	}
 
-	img, err = layout.NewIndex(repoName, true, opts...)
+	img, err = layout.NewIndex(repoName, opts...)
 	if err == nil {
 		return
 	}
@@ -313,23 +318,31 @@ func (f *indexFactory) LoadIndex(repoName string, opts ...imgutil.IndexOption) (
 }
 
 type indexFactory struct {
-	keychain authn.Keychain
+	keychain       authn.Keychain
+	xdgRuntimePath string
 }
 
-func (f *indexFactory) FetchIndex(name string, opts ...imgutil.IndexOption) (index imgutil.Index, err error) {
-	index, err = remote.NewIndex(name, true, imgutil.WithKeyChain(f.keychain), opts...)
+func (f *indexFactory) FetchIndex(name string, opts ...index.Option) (idx imgutil.ImageIndex, err error) {
+	opts = append(opts, index.WithKeychain(f.keychain))
+	idx, err = remote.NewIndex(name, opts...)
 	if err != nil {
-		return index, fmt.Errorf("ImageIndex in not available at registry")
+		return idx, fmt.Errorf("ImageIndex in not available at registry")
 	}
 
-	return index, err
+	return idx, err
 }
 
-func (f *indexFactory) FindIndex(repoName string, opts ...imgutil.IndexOption) (index imgutil.Index, err error) {
-	index, err = (*f).FetchIndex(repoName, true, imgutil.WithKeyChain(f.keychain), opts...)
+func (f *indexFactory) FindIndex(repoName string, opts ...index.Option) (idx imgutil.ImageIndex, err error) {
+	opts = append(opts, index.WithKeychain(f.keychain))
+	idx, err = f.FetchIndex(repoName, opts...)
 	if err != nil {
-		return index, err
+		return idx, err
 	}
 
-	return (*f).FindIndex(repoName, true, imgutil.WithKeyChain(f.keychain), opts...)
+	return f.FindIndex(repoName, opts...)
+}
+
+func (f *indexFactory) CreateIndex(repoName string, opts ...index.Option) (imgutil.ImageIndex, error) {
+	opts = append(opts, index.WithKeychain(f.keychain))
+	return index.NewIndex(repoName, opts...)
 }

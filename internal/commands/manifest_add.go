@@ -15,7 +15,7 @@ import (
 type ManifestAddFlags struct {
 	os, osVersion, osArch, osVariant  string
 	osFeatures, annotations, features string
-	all bool
+	all                               bool
 }
 
 // ManifestAdd modifies a manifest list (Image index) and add a new image to the list of manifests.
@@ -23,7 +23,7 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 	var flags ManifestAddFlags
 
 	cmd := &cobra.Command{
-		Use:   "pack manifest add [OPTIONS] <manifest-list> <manifest> [flags]",
+		Use:   "add [OPTIONS] <manifest-list> <manifest> [flags]",
 		Args:  cobra.MatchAll(cobra.ExactArgs(2), cobra.OnlyValidArgs),
 		Short: "manifest add modifies a manifest list (Image index) and add a new image to the list of manifests.",
 		Example: `pack manifest add cnbs/sample-package:hello-multiarch-universe \
@@ -38,22 +38,22 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 				return err
 			}
 
-			osFeatures:= strings.Split(flags.osFeatures, ";")
-			features:= strings.Split(flags.features, ";")
+			osFeatures := strings.Split(flags.osFeatures, ";")
+			features := strings.Split(flags.features, ";")
 			annotations, err := StringToKeyValueMap(flags.annotations)
 			if err != nil {
 				return err
 			}
 
 			err = pack.AddManifest(cmd.Context(), imageIndex, manifests, client.ManifestAddOptions{
-				OS: flags.os,
-				OSVersion: flags.osVersion,
-				OSArch: flags.osArch,
-				OSVariant: flags.osVariant,
-				OSFeatures: osFeatures,
-				Features: features,
+				OS:          flags.os,
+				OSVersion:   flags.osVersion,
+				OSArch:      flags.osArch,
+				OSVariant:   flags.osVariant,
+				OSFeatures:  osFeatures,
+				Features:    features,
 				Annotations: annotations,
-				All: flags.all,
+				All:         flags.all,
 			})
 
 			if err != nil {
@@ -82,20 +82,20 @@ func validateManifestAddFlags(flags ManifestAddFlags) error {
 
 func StringToKeyValueMap(s string) (map[string]string, error) {
 	keyValues := strings.Split(s, ";")
-  
+
 	m := map[string]string{}
-  
+
 	for _, keyValue := range keyValues {
-	  parts := strings.Split(keyValue, "=")
-	  if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid key-value pair: %s", keyValue)
-	  }
-  
-	  key := parts[0]
-	  value := parts[1]
-  
-	  m[key] = value
+		parts := strings.Split(keyValue, "=")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid key-value pair: %s", keyValue)
+		}
+
+		key := parts[0]
+		value := parts[1]
+
+		m[key] = value
 	}
-  
+
 	return m, nil
 }

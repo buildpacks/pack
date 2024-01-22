@@ -8,8 +8,9 @@ import (
 	io "io"
 	reflect "reflect"
 
-	builder "github.com/buildpacks/pack/internal/builder"
 	gomock "github.com/golang/mock/gomock"
+
+	builder "github.com/buildpacks/pack/internal/builder"
 )
 
 // MockLifecycle is a mock of Lifecycle interface.

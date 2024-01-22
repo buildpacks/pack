@@ -5,17 +5,19 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/index"
 	ggcrName "github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
 type CreateManifestOptions struct {
-	Format, Registry              string
+	Format, Registry       string
 	Insecure, Publish, all bool
 }
 
 // CreateManifest implements commands.PackClient.
 func (c *Client) CreateManifest(ctx context.Context, name string, images []string, opts CreateManifestOptions) (err error) {
-	index, err := c.indexFactory.FindIndex(name, parseOptsToIndexOptions(opts)...)
+	index, err := c.indexFactory.CreateIndex(name, parseOptsToIndexOptions(opts)...)
 	if err != nil {
 		return
 	}
@@ -32,20 +34,33 @@ func (c *Client) CreateManifest(ctx context.Context, name string, images []strin
 
 	err = index.Save()
 	if err == nil {
-		fmt.Println("%s successfully created", name)
+		fmt.Printf("%s successfully created", name)
 	}
 
 	if opts.Publish {
-		index.Push()
+		var format types.MediaType
+		switch opts.Format {
+		case "oci":
+			format = types.OCIImageIndex
+		default:
+			format = types.DockerManifestList
+		}
+		index.Push(imgutil.WithInsecure(opts.Insecure), imgutil.WithFormat(format))
 	}
 
 	return err
 }
 
-func parseOptsToIndexOptions(opts CreateManifestOptions) (idxOpts []imgutil.IndexOption) {
-	return []imgutil.IndexOption{
-		imgutil.WithFormat(opts.Format),
-		imgutil.AddRegistry(opts.Registry),
-		imgutil.WithInsecure(opts.Insecure),
+func parseOptsToIndexOptions(opts CreateManifestOptions) (idxOpts []index.Option) {
+	var format types.MediaType
+	switch opts.Format {
+	case "oci":
+		format = types.OCIImageIndex
+	default:
+		format = types.DockerManifestList
+	}
+	return []index.Option{
+		index.WithFormat(format),
+		index.WithInsecure(opts.Insecure),
 	}
 }

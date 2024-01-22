@@ -17,7 +17,7 @@ func (c *Client) RemoveManifest(ctx context.Context, name string, images []strin
 	for _, image := range images {
 		ref, err := gccrName.ParseReference(image)
 		if err != nil {
-			errs = append(errs, fmt.Errorf(`Invalid instance "%s": %v`, image, err))
+			errs = append(errs, fmt.Errorf(`invalid instance "%s": %v`, image, err))
 		}
 		if err := imgIndex.Remove(ref.Context().Digest(ref.Identifier())); err != nil {
 			errs = append(errs, err)

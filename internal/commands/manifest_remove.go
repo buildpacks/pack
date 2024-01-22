@@ -14,7 +14,7 @@ func ManifestDelete(logger logging.Logger, pack PackClient) *cobra.Command {
 	// var flags ManifestDeleteFlags
 
 	cmd := &cobra.Command{
-		Use:     "pack manifest remove [manifest-list] [manifest-list...] [flags]",
+		Use:     "remove [manifest-list] [manifest-list...] [flags]",
 		Args:    cobra.MatchAll(cobra.MinimumNArgs(1), cobra.OnlyValidArgs),
 		Short:   "Delete one or more manifest lists from local storage",
 		Example: `pack manifest remove cnbs/sample-package:hello-multiarch-universe`,

@@ -15,7 +15,7 @@ func ManifestExists(logger logging.Logger, pack PackClient) *cobra.Command {
 	// var flags ManifestDeleteFlags
 
 	cmd := &cobra.Command{
-		Use:     "pack manifest exists [manifest-list]",
+		Use:     "exists [manifest-list]",
 		Args:    cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		Short:   "checks if a manifest list exists in local storage",
 		Example: `pack manifest exists cnbs/sample-package:hello-multiarch-universe`,

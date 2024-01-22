@@ -30,4 +30,5 @@ type DockerClient interface {
 	ContainerWait(ctx context.Context, container string, condition containertypes.WaitCondition) (<-chan containertypes.WaitResponse, <-chan error)
 	ContainerAttach(ctx context.Context, container string, options types.ContainerAttachOptions) (types.HijackedResponse, error)
 	ContainerStart(ctx context.Context, container string, options types.ContainerStartOptions) error
+	ServerVersion(ctx context.Context) (types.Version, error)
 }

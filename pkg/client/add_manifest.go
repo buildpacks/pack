@@ -10,10 +10,10 @@ import (
 )
 
 type ManifestAddOptions struct {
-	OS, OSVersion, OSArch, OSVariant  string
-	OSFeatures, Features []string
-	Annotations map[string]string
-	All bool
+	OS, OSVersion, OSArch, OSVariant string
+	OSFeatures, Features             []string
+	Annotations                      map[string]string
+	All                              bool
 }
 
 // AddManifest implements commands.PackClient.
@@ -84,7 +84,7 @@ func (c *Client) AddManifest(ctx context.Context, index string, image string, op
 
 	err = imgIndex.Save()
 	if err == nil {
-		fmt.Println("'%s' successfully added to index: '%s'", image, index)
+		fmt.Printf("'%s' successfully added to index: '%s'", image, index)
 	}
 
 	return err

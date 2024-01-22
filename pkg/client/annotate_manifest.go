@@ -9,9 +9,9 @@ import (
 )
 
 type ManifestAnnotateOptions struct {
-	OS, OSVersion, OSArch, OSVariant  string
-	OSFeatures, Features []string
-	Annotations map[string]string
+	OS, OSVersion, OSArch, OSVariant string
+	OSFeatures, Features             []string
+	Annotations                      map[string]string
 }
 
 // AnnotateManifest implements commands.PackClient.

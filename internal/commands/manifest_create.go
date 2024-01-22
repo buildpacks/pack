@@ -20,7 +20,7 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 	var flags ManifestCreateFlags
 
 	cmd := &cobra.Command{
-		Use:   "pack manifest create <manifest-list> <manifest> [<manifest> ... ] [flags]",
+		Use:   "create <manifest-list> <manifest> [<manifest> ... ] [flags]",
 		Args:  cobra.MatchAll(cobra.MinimumNArgs(2), cobra.OnlyValidArgs),
 		Short: "manifest create generates a manifest list for a multi-arch image",
 		Example: `pack manifest create cnbs/sample-package:hello-multiarch-universe \
