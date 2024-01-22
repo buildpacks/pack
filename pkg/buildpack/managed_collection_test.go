@@ -192,7 +192,7 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("#FlattenedModules", func() {
-					it("returns two flatten module (2 layers)", func() {
+					it("returns two flattened modules (2 layers)", func() {
 						modules := moduleManager.FlattenedModules()
 						h.AssertEq(t, len(modules), 2)
 						h.AssertTrue(t, len(modules[0]) == 2 || len(modules[0]) == 3)
@@ -205,21 +205,21 @@ func testModuleManager(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("#ExplodedModules", func() {
-					it("returns two explodes modules: compositeBP1 and bp1", func() {
+					it("returns two exploded modules: compositeBP1 and bp1", func() {
 						modules := moduleManager.ExplodedModules()
 						h.AssertEq(t, len(modules), 2)
 					})
 				})
 
 				when("#AllModules", func() {
-					it("returns all explodedModules", func() {
+					it("returns all modules", func() {
 						modules := moduleManager.AllModules()
 						h.AssertEq(t, len(modules), 7)
 					})
 				})
 
 				when("#ShouldFlatten", func() {
-					it("returns true for flatten explodedModules", func() {
+					it("returns true for flattened modules", func() {
 						// exploded modules
 						h.AssertFalse(t, moduleManager.ShouldFlatten(compositeBP1))
 						h.AssertFalse(t, moduleManager.ShouldFlatten(bp1))
