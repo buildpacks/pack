@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1705694425395,
+  "lastUpdate": 1705957982197,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -4228,6 +4228,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 54492527089,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "85e3e4811c77394166a9de6276a4401f9cd0d6f1",
+          "message": "Merge pull request #1985 from buildpacks/enhancement/jjbustamante/flatten-1880/part-2\n\nNew flatten buildpacks/builder implementation - Part 2 - Implementing RFC-0123",
+          "timestamp": "2024-01-22T16:10:23-05:00",
+          "tree_id": "abca35a48e9739869d4dc48513e57da2548cd7e9",
+          "url": "https://github.com/buildpacks/pack/commit/85e3e4811c77394166a9de6276a4401f9cd0d6f1"
+        },
+        "date": 1705957981580,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5190697982,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 858598098,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 56105328296,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
