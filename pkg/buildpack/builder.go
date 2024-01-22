@@ -99,10 +99,10 @@ func NewBuilder(imageFactory ImageFactory, ops ...PackageBuilderOption) *Package
 			return nil
 		}
 	}
-	moduleManager := NewModuleManager(opts.flatten)
+	moduleManager := NewManagedCollectionV1(opts.flatten)
 	return &PackageBuilder{
 		imageFactory:             imageFactory,
-		dependencies:             *moduleManager,
+		dependencies:             moduleManager,
 		flattenAllBuildpacks:     opts.flatten,
 		flattenExcludeBuildpacks: opts.exclude,
 		logger:                   opts.logger,
