@@ -86,7 +86,7 @@ func (f *managedCollectionV1) AddModules(main BuildModule, deps ...BuildModule) 
 }
 
 // NewManagedCollectionV2 will create a manager instance responsible for flattening buildpacks inside a Builder.
-// The flattened build modules provided are the groups on buildpacks that must be put in a particular layer, the manager
+// The flattened build modules provided are the groups of buildpacks that must be put together in a single layer; the manager
 // will take care of keeping them in the correct group (flattened or exploded) once they are added.
 func NewManagedCollectionV2(modules FlattenModuleInfos) ManagedCollection {
 	flattenGroups := 0
