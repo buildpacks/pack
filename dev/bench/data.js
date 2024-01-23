@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1706020111445,
+  "lastUpdate": 1706023905960,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -4396,6 +4396,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 55439873192,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "038d3e7781e0a8c54f6f75b187bbe2e6f3247329",
+          "message": "Merge pull request #2031 from buildpacks/deps/jjbustamante/update-to-go-1-21\n\nUpdating to go 1.21",
+          "timestamp": "2024-01-23T09:26:13-05:00",
+          "tree_id": "508c7cd72dc02eff3e0e7658ed454ae92960808f",
+          "url": "https://github.com/buildpacks/pack/commit/038d3e7781e0a8c54f6f75b187bbe2e6f3247329"
+        },
+        "date": 1706023904724,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7705209376,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2388117395,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 64766675650,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
