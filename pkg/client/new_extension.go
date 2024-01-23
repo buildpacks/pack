@@ -13,6 +13,32 @@ import (
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
+var (
+	bashBinGenerate = `#!/usr/bin/env bash
+	
+	set -eo pipefail
+	
+	# 1. GET ARGS
+	output_dir=$CNB_OUTPUT_DIR
+	
+	# 2. GENERATE build.Dockerfile
+	cat >> "${output_dir}/build.Dockerfile" <<EOL
+	ARG base_image
+	FROM \${base_image}
+	
+	RUN echo "Hello from build extension"
+	EOL
+	
+	# 3. GENERATE run.Dockerfile
+	cat >> "${output_dir}/run.Dockerfile" <<EOL
+	ARG base_image
+	FROM \${base_image}
+	
+	RUN echo "Hello from run extension"
+	EOL
+`
+)
+
 type NewExtensionOptions struct {
 	// api compat version of the output extension artifact.
 	API string
@@ -25,9 +51,6 @@ type NewExtensionOptions struct {
 
 	// version of the output extension artifact.
 	Version string
-
-	// Deprecated: The stacks this extension will work with
-	Stacks []dist.Stack
 }
 
 func (c *Client) NewExtension(ctx context.Context, opts NewExtensionOptions) error {
@@ -39,7 +62,7 @@ func (c *Client) NewExtension(ctx context.Context, opts NewExtensionOptions) err
 }
 
 func createBashExtension(path string, c *Client) error {
-	if err := createBinScript(path, "build", bashBinBuild, c); err != nil {
+	if err := createBinScript(path, "generate", bashBinGenerate, c); err != nil {
 		return err
 	}
 
