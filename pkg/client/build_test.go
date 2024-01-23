@@ -1903,7 +1903,7 @@ api = "0.2"
 
 			it("builder order-extensions is overwritten", func() {
 				additionalEx := ifakes.CreateExtensionTar(t, tmpDir, dist.ExtensionDescriptor{
-					WithAPI: api.MustParse("0.3"),
+					WithAPI: api.MustParse("0.7"),
 					WithInfo: dist.ModuleInfo{
 						ID:      "extension.add.1.id",
 						Version: "extension.add.1.version",
@@ -2119,7 +2119,7 @@ api = "0.2"
 							h.AssertTrue(t, true)
 						})
 						it("parses the versions correctly", func() {
-							fakeLifecycleImage.SetLabel("io.buildpacks.lifecycle.apis", "{\"platform\":{\"deprecated\":[\"0.1\"],\"supported\":[\"0.2\",\"0.3\",\"0.4\",\"0.5\"]}}")
+							fakeLifecycleImage.SetLabel("io.buildpacks.lifecycle.apis", "{\"platform\":{\"deprecated\":[\"0.1\",\"0.2\",\"0.3\",\"0.4\",\"0.5\",\"0.6\"],\"supported\":[\"0.7\",\"0.8\",\"0.9\",\"0.10\",\"0.11\",\"0.12\"]}}")
 
 							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 								Image:        "some/app",
@@ -2127,7 +2127,7 @@ api = "0.2"
 								Publish:      true,
 								TrustBuilder: func(string) bool { return false },
 							}))
-							h.AssertSliceContainsInOrder(t, fakeLifecycle.Opts.LifecycleApis, "0.1", "0.2", "0.3", "0.4", "0.5")
+							h.AssertSliceContainsInOrder(t, fakeLifecycle.Opts.LifecycleApis, "0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12")
 						})
 					})
 
