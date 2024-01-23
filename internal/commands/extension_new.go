@@ -11,7 +11,6 @@ import (
 
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/client"
-	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -57,19 +56,10 @@ func ExtensionNew(logger logging.Logger, creator ExtensionCreator) *cobra.Comman
 				return fmt.Errorf("directory %s exists", style.Symbol(path))
 			}
 
-			var stacks []dist.Stack
-			for _, s := range flags.Stacks {
-				stacks = append(stacks, dist.Stack{
-					ID:     s,
-					Mixins: []string{},
-				})
-			}
-
 			if err := creator.NewExtension(cmd.Context(), client.NewExtensionOptions{
 				API:     flags.API,
 				ID:      id,
 				Path:    path,
-				Stacks:  stacks,
 				Version: flags.Version,
 			}); err != nil {
 				return err
@@ -79,11 +69,9 @@ func ExtensionNew(logger logging.Logger, creator ExtensionCreator) *cobra.Comman
 			return nil
 		}),
 	}
-	cmd.Flags().StringVarP(&flags.API, "api", "a", "0.8", "Extension API compatibility of the generated buildpack")
+	cmd.Flags().StringVarP(&flags.API, "api", "a", "0.9", "Buildpack API compatibility of the generated extension")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to generate the extension")
 	cmd.Flags().StringVarP(&flags.Version, "version", "V", "1.0.0", "Version of the generated extension")
-	cmd.Flags().StringSliceVarP(&flags.Stacks, "stacks", "s", nil, "Stack(s) this buildpack will be compatible with"+stringSliceHelp("stack"))
-	cmd.Flags().MarkDeprecated("stacks", "prefer `--targets` instead: https://github.com/buildpacks/rfcs/blob/main/text/0096-remove-stacks-mixins.md")
 
 	AddHelpFlag(cmd, "new")
 	return cmd
