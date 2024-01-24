@@ -1939,6 +1939,34 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("labels", func() {
+		var (
+			customLabels, imageLabels map[string]string
+			err                       error
+		)
+		it.Before(func() {
+			h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
+			h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
+			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
+			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.mixins", `["mixinX", "mixinY", "build:mixinA"]`))
+		})
+
+		it.After(func() {
+			h.AssertNilE(t, baseImage.Cleanup())
+		})
+
+		it("should set labels to the image", func() {
+			customLabels = map[string]string{"test.label.one": "1", "test.label.two": "2"}
+			subject, err = builder.New(baseImage, "some/builder", builder.WithLabels(customLabels))
+			h.AssertNil(t, err)
+
+			imageLabels, err = baseImage.Labels()
+			h.AssertNil(t, err)
+			h.AssertEq(t, imageLabels["test.label.one"], "1")
+			h.AssertEq(t, imageLabels["test.label.two"], "2")
+		})
+	})
 }
 
 func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp buildpack.BuildModule) {

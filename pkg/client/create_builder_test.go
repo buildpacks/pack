@@ -791,6 +791,20 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNotContains(t, out.String(), "is using deprecated Buildpacks API version")
 			})
 
+			it("should set labels", func() {
+				opts.Labels = map[string]string{"test.label.one": "1", "test.label.two": "2"}
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+
+				imageLabels, err := fakeBuildImage.Labels()
+				h.AssertNil(t, err)
+				h.AssertEq(t, imageLabels["test.label.one"], "1")
+				h.AssertEq(t, imageLabels["test.label.two"], "2")
+			})
+
 			when("Buildpack dependencies are provided", func() {
 				var (
 					bp1v1          buildpack.BuildModule
