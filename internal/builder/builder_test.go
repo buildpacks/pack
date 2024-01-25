@@ -1852,6 +1852,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		var (
 			bldr         *builder.Builder
 			builderImage imgutil.Image
+			deps         []buildpack.BuildModule
 		)
 
 		it.Before(func() {
@@ -1869,16 +1870,50 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			))
 
 			builderImage = baseImage
+			deps = []buildpack.BuildModule{bp2v1, bp1v2}
 		})
 
-		when("all", func() {
+		when("buildpacks to be flattened are NOT defined", func() {
 			it.Before(func() {
 				var err error
-				bldr, err = builder.New(builderImage, "some-builder", builder.FlattenAll())
+				bldr, err = builder.New(builderImage, "some-builder")
 				h.AssertNil(t, err)
 
-				// Let's add some buildpacks
-				deps := []buildpack.BuildModule{bp2v1, bp1v2}
+				// Let's add the buildpacks
+				bldr.AddBuildpacks(bp1v1, deps)
+			})
+
+			when("#FlattenedModules", func() {
+				it("it return an empty array", func() {
+					h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)), 0)
+				})
+			})
+
+			when("#AllModules", func() {
+				it("it returns each buildpack individually", func() {
+					h.AssertEq(t, len(bldr.AllModules(buildpack.KindBuildpack)), 3)
+				})
+			})
+
+			when("#ShouldFlatten", func() {
+				it("it returns false for each buildpack", func() {
+					h.AssertFalse(t, bldr.ShouldFlatten(bp1v1))
+					h.AssertFalse(t, bldr.ShouldFlatten(bp2v1))
+					h.AssertFalse(t, bldr.ShouldFlatten(bp1v2))
+				})
+			})
+		})
+
+		when("buildpacks to be flattened are defined", func() {
+			it.Before(func() {
+				var err error
+				flattenModules, err := buildpack.ParseFlattenBuildModules([]string{"buildpack-1-id@buildpack-1-version-1,buildpack-1-id@buildpack-1-version-2,buildpack-2-id@buildpack-2-version-1"})
+				h.AssertNil(t, err)
+
+				bldr, err = builder.New(builderImage, "some-builder", builder.WithFlattened(flattenModules))
+				h.AssertNil(t, err)
+
+				// Let's add the buildpacks
 				bldr.AddBuildpacks(bp1v1, deps)
 			})
 
