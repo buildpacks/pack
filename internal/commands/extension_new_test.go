@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 
 	"github.com/golang/mock/gomock"
@@ -35,6 +37,10 @@ func testExtensionNewCommand(t *testing.T, when spec.G, it spec.S) {
 		mockClient     *testmocks.MockPackClient
 		tmpDir         string
 	)
+	targets := []dist.Target{{
+		OS:   runtime.GOOS,
+		Arch: runtime.GOARCH,
+	}}
 
 	it.Before(func() {
 		var err error
@@ -54,11 +60,12 @@ func testExtensionNewCommand(t *testing.T, when spec.G, it spec.S) {
 
 	when("ExtensionNew#Execute", func() {
 		it("uses the args to generate artifacts", func() {
-			mockClient.EXPECT().NewBuildpack(gomock.Any(), client.NewExtensionOptions{
+			mockClient.EXPECT().NewExtension(gomock.Any(), client.NewExtensionOptions{
 				API:     "0.8",
 				ID:      "example/some-cnb",
 				Path:    filepath.Join(tmpDir, "some-cnb"),
 				Version: "1.0.0",
+				Targets: targets,
 			}).Return(nil).MaxTimes(1)
 
 			path := filepath.Join(tmpDir, "some-cnb")
@@ -85,6 +92,15 @@ func testExtensionNewCommand(t *testing.T, when spec.G, it spec.S) {
 					ID:      "example/targets",
 					Path:    filepath.Join(tmpDir, "targets"),
 					Version: "1.0.0",
+					Targets: []dist.Target{{
+						OS:          "linux",
+						Arch:        "arm",
+						ArchVariant: "v6",
+						Distributions: []dist.Distribution{{
+							Name:     "ubuntu",
+							Versions: []string{"14.04", "16.04"},
+						}},
+					}},
 				}).Return(nil).MaxTimes(1)
 
 				path := filepath.Join(tmpDir, "targets")
@@ -99,6 +115,15 @@ func testExtensionNewCommand(t *testing.T, when spec.G, it spec.S) {
 					ID:      "example/targets",
 					Path:    filepath.Join(tmpDir, "targets"),
 					Version: "1.0.0",
+					Targets: []dist.Target{{
+						OS:          "os",
+						Arch:        "arm",
+						ArchVariant: "v6",
+						Distributions: []dist.Distribution{{
+							Name:     "ubuntu",
+							Versions: []string{"14.04", "16.04"},
+						}},
+					}},
 				}).Return(nil).MaxTimes(1)
 
 				path := filepath.Join(tmpDir, "targets")
@@ -114,6 +139,33 @@ func testExtensionNewCommand(t *testing.T, when spec.G, it spec.S) {
 						ID:      "example/targets",
 						Path:    filepath.Join(tmpDir, "targets"),
 						Version: "1.0.0",
+						Targets: []dist.Target{
+							{
+								OS:          "linux",
+								Arch:        "arm",
+								ArchVariant: "v6",
+								Distributions: []dist.Distribution{
+									{
+										Name:     "ubuntu",
+										Versions: []string{"14.04", "16.04"},
+									},
+									{
+										Name:     "debian",
+										Versions: []string{"8.10", "10.9"},
+									},
+								},
+							},
+							{
+								OS:   "windows",
+								Arch: "amd64",
+								Distributions: []dist.Distribution{
+									{
+										Name:     "windows-nano",
+										Versions: []string{"10.0.19041.1415"},
+									},
+								},
+							},
+						},
 					}).Return(nil).MaxTimes(1)
 
 					path := filepath.Join(tmpDir, "targets")
@@ -121,26 +173,6 @@ func testExtensionNewCommand(t *testing.T, when spec.G, it spec.S) {
 
 					err := command.Execute()
 					h.AssertNil(t, err)
-				})
-			})
-			when("stacks ", func() {
-				it("flag should show deprecated message when used", func() {
-					mockClient.EXPECT().NewBuildpack(gomock.Any(), client.NewExtensionOptions{
-						API:     "0.8",
-						ID:      "example/stacks",
-						Path:    filepath.Join(tmpDir, "stacks"),
-						Version: "1.0.0",
-					}).Return(nil).MaxTimes(1)
-
-					path := filepath.Join(tmpDir, "stacks")
-					output := new(bytes.Buffer)
-					command.SetOut(output)
-					command.SetErr(output)
-					command.SetArgs([]string{"--path", path, "example/stacks", "--stacks", "io.buildpacks.stacks.jammy"})
-
-					err := command.Execute()
-					h.AssertNil(t, err)
-					h.AssertContains(t, output.String(), "Flag --stacks has been deprecated,")
 				})
 			})
 		})

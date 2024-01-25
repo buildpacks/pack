@@ -51,10 +51,13 @@ type NewExtensionOptions struct {
 
 	// version of the output extension artifact.
 	Version string
+
+	// the targets this buildpack will work with
+	Targets []dist.Target
 }
 
 func (c *Client) NewExtension(ctx context.Context, opts NewExtensionOptions) error {
-	err := createExtensionTOML(opts.Path, opts.ID, opts.Version, opts.API, c)
+	err := createExtensionTOML(opts.Path, opts.ID, opts.Version, opts.API, opts.Targets, c)
 	if err != nil {
 		return err
 	}
@@ -73,14 +76,15 @@ func createBashExtension(path string, c *Client) error {
 	return nil
 }
 
-func createExtensionTOML(path, id, version, apiStr string, c *Client) error {
+func createExtensionTOML(path, id, version, apiStr string, targets []dist.Target, c *Client) error {
 	api, err := api.NewVersion(apiStr)
 	if err != nil {
 		return err
 	}
 
 	extensionTOML := dist.ExtensionDescriptor{
-		WithAPI: api,
+		WithAPI:     api,
+		WithTargets: targets,
 		WithInfo: dist.ModuleInfo{
 			ID:      id,
 			Version: version,
