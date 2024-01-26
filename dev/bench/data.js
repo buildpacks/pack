@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1706109030205,
+  "lastUpdate": 1706234538046,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -4522,6 +4522,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 49484978910,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1d3718be897e3f5d0f15204f42f19b6d1c7a8dda",
+          "message": "Merge pull request #2034 from buildpacks/enhancement/jjbustamante/issue-2033\n\nAdding `--label` flag to `pack builder create` command",
+          "timestamp": "2024-01-25T21:00:31-05:00",
+          "tree_id": "54a4dfb27aa1481b5fe54abe234a3128c2aeb6d5",
+          "url": "https://github.com/buildpacks/pack/commit/1d3718be897e3f5d0f15204f42f19b6d1c7a8dda"
+        },
+        "date": 1706234537200,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5333512986,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1259251791,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 54301011705,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
