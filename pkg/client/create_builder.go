@@ -32,6 +32,9 @@ type CreateBuilderOptions struct {
 	// BuildConfigEnv for Builder
 	BuildConfigEnv map[string]string
 
+	// Map of labels to add to the Buildpack
+	Labels map[string]string
+
 	// Configuration that defines the functionality a builder provides.
 	Config pubbldr.Config
 
@@ -154,6 +157,10 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	if opts.Flatten != nil && len(opts.Flatten.FlattenModules()) > 0 {
 		builderOpts = append(builderOpts, builder.WithFlattened(opts.Flatten))
 	}
+	if opts.Labels != nil && len(opts.Labels) > 0 {
+		builderOpts = append(builderOpts, builder.WithLabels(opts.Labels))
+	}
+
 	bldr, err := builder.New(baseImage, opts.BuilderName, builderOpts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid build-image")
