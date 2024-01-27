@@ -21,7 +21,6 @@ import (
 type ExtensionNewFlags struct {
 	API     string
 	Path    string
-	Stacks  []string
 	Targets []string
 	Version string
 }
@@ -61,7 +60,7 @@ func ExtensionNew(logger logging.Logger, creator ExtensionCreator) *cobra.Comman
 			}
 
 			var targets []dist.Target
-			if len(flags.Targets) == 0 && len(flags.Stacks) == 0 {
+			if len(flags.Targets) == 0 {
 				targets = []dist.Target{{
 					OS:   runtime.GOOS,
 					Arch: runtime.GOARCH,
@@ -89,7 +88,6 @@ func ExtensionNew(logger logging.Logger, creator ExtensionCreator) *cobra.Comman
 	cmd.Flags().StringVarP(&flags.API, "api", "a", "0.9", "Buildpack API compatibility of the generated extension")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to generate the extension")
 	cmd.Flags().StringVarP(&flags.Version, "version", "V", "1.0.0", "Version of the generated extension")
-	cmd.Flags().MarkDeprecated("stacks", "prefer `--targets` instead: https://github.com/buildpacks/rfcs/blob/main/text/0096-remove-stacks-mixins.md")
 	cmd.Flags().StringSliceVarP(&flags.Targets, "targets", "t", nil,
 		`Targets are the list platforms that one targeting, these are generated as part of scaffolding inside buildpack.toml file. one can provide target platforms in format [os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]
 	- Base case for two different architectures :  '--targets "linux/amd64" --targets "linux/arm64"'

@@ -23,8 +23,8 @@ func (e *ExtensionDescriptor) EnsureStackSupport(_ string, _ []string, _ bool) e
 
 func (e *ExtensionDescriptor) EnsureTargetSupport(os, arch, distroName, distroVersion string) error {
 	if len(e.Targets()) == 0 {
-		if (!e.WithLinuxBuild && !e.WithWindowsBuild) || len(e.Stacks()) > 0 { // nolint
-			return nil // Order extension or stack extension, no validation required
+		if !e.WithLinuxBuild && !e.WithWindowsBuild { // nolint
+			return nil // Order extension, no validation required
 		} else if e.WithLinuxBuild && os == DefaultTargetOSLinux && arch == DefaultTargetArch {
 			return nil
 		} else if e.WithWindowsBuild && os == DefaultTargetOSWindows && arch == DefaultTargetArch {
