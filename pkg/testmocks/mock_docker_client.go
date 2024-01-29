@@ -224,10 +224,10 @@ func (mr *MockCommonAPIClientMockRecorder) ContainerCreate(arg0, arg1, arg2, arg
 }
 
 // ContainerDiff mocks base method.
-func (m *MockCommonAPIClient) ContainerDiff(arg0 context.Context, arg1 string) ([]container.ContainerChangeResponseItem, error) {
+func (m *MockCommonAPIClient) ContainerDiff(arg0 context.Context, arg1 string) ([]container.FilesystemChange, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerDiff", arg0, arg1)
-	ret0, _ := ret[0].([]container.ContainerChangeResponseItem)
+	ret0, _ := ret[0].([]container.FilesystemChange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1338,7 +1338,7 @@ func (mr *MockCommonAPIClientMockRecorder) PluginUpgrade(arg0, arg1, arg2 interf
 }
 
 // RegistryLogin mocks base method.
-func (m *MockCommonAPIClient) RegistryLogin(arg0 context.Context, arg1 types.AuthConfig) (registry.AuthenticateOKBody, error) {
+func (m *MockCommonAPIClient) RegistryLogin(arg0 context.Context, arg1 registry.AuthConfig) (registry.AuthenticateOKBody, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegistryLogin", arg0, arg1)
 	ret0, _ := ret[0].(registry.AuthenticateOKBody)
@@ -1725,7 +1725,7 @@ func (mr *MockCommonAPIClientMockRecorder) VolumeInspectWithRaw(arg0, arg1 inter
 }
 
 // VolumeList mocks base method.
-func (m *MockCommonAPIClient) VolumeList(arg0 context.Context, arg1 filters.Args) (volume.ListResponse, error) {
+func (m *MockCommonAPIClient) VolumeList(arg0 context.Context, arg1 volume.ListOptions) (volume.ListResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VolumeList", arg0, arg1)
 	ret0, _ := ret[0].(volume.ListResponse)
