@@ -158,7 +158,9 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 			})
-			when("image name and tags are provided", func() {
+			when("image name and previous image are provided", func() {
+				var expectedOpts client.RebaseOptions
+
 				it.Before(func() {
 					runImage := "test/image"
 					testMirror1 := "example.com/some/run1"
@@ -171,8 +173,8 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 					command = commands.Rebase(logger, cfg, mockClient)
 
 					repoName = "test/repo-image"
-					tags := []string{"tag1"}
-					opts = client.RebaseOptions{
+					previousImage := "example.com/previous-image:tag" // Example of previous image with tag
+					opts := client.RebaseOptions{
 						RepoName:   repoName,
 						Publish:    false,
 						PullPolicy: image.PullAlways,
@@ -180,16 +182,17 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 						AdditionalMirrors: map[string][]string{
 							runImage: {testMirror1, testMirror2},
 						},
-						Tags: tags,
+						PreviousImage: previousImage,
 					}
+					expectedOpts = opts
 				})
 
 				it("works", func() {
 					mockClient.EXPECT().
-						Rebase(gomock.Any(), gomock.Eq(opts)).
+						Rebase(gomock.Any(), gomock.Eq(expectedOpts)).
 						Return(nil)
 
-					command.SetArgs([]string{repoName, "--tag", "tag1"})
+					command.SetArgs([]string{repoName, "--previous-image", "example.com/previous-image:tag"})
 					h.AssertNil(t, command.Execute())
 				})
 			})
