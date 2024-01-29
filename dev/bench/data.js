@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1706234538046,
+  "lastUpdate": 1706549937554,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -4564,6 +4564,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 54301011705,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e3f8bc24f90ec4890bbe2850d0fa9b1ee5aa3f9f",
+          "message": "Merge pull request #2018 from buildpacks/dependabot/go_modules/github.com/cloudflare/circl-1.3.7\n\nbuild(deps): bump github.com/cloudflare/circl from 1.3.3 to 1.3.7",
+          "timestamp": "2024-01-29T12:36:53-05:00",
+          "tree_id": "3f55435e2e56dcf0d0180fa53e1408f72e32fca4",
+          "url": "https://github.com/buildpacks/pack/commit/e3f8bc24f90ec4890bbe2850d0fa9b1ee5aa3f9f"
+        },
+        "date": 1706549937048,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3938151015,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 908656430,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 51765603633,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
