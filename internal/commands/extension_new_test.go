@@ -51,7 +51,7 @@ func testExtensionNewCommand(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 
-		command = commands.BuildpackNew(logger, mockClient)
+		command = commands.ExtensionNew(logger, mockClient)
 	})
 
 	it.After(func() {
@@ -61,7 +61,7 @@ func testExtensionNewCommand(t *testing.T, when spec.G, it spec.S) {
 	when("ExtensionNew#Execute", func() {
 		it("uses the args to generate artifacts", func() {
 			mockClient.EXPECT().NewExtension(gomock.Any(), client.NewExtensionOptions{
-				API:     "0.8",
+				API:     "0.9",
 				ID:      "example/some-cnb",
 				Path:    filepath.Join(tmpDir, "some-cnb"),
 				Version: "1.0.0",
@@ -87,8 +87,8 @@ func testExtensionNewCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("target flag is specified, ", func() {
 			it("it uses target to generate artifacts", func() {
-				mockClient.EXPECT().NewBuildpack(gomock.Any(), client.NewExtensionOptions{
-					API:     "0.8",
+				mockClient.EXPECT().NewExtension(gomock.Any(), client.NewExtensionOptions{
+					API:     "0.9",
 					ID:      "example/targets",
 					Path:    filepath.Join(tmpDir, "targets"),
 					Version: "1.0.0",
@@ -110,8 +110,8 @@ func testExtensionNewCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 			})
 			it("it should show error when invalid [os]/[arch] passed", func() {
-				mockClient.EXPECT().NewBuildpack(gomock.Any(), client.NewExtensionOptions{
-					API:     "0.8",
+				mockClient.EXPECT().NewExtension(gomock.Any(), client.NewExtensionOptions{
+					API:     "0.9",
 					ID:      "example/targets",
 					Path:    filepath.Join(tmpDir, "targets"),
 					Version: "1.0.0",
@@ -134,8 +134,8 @@ func testExtensionNewCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 			when("it should", func() {
 				it("support format [os][/arch][/variant]:[name@version@version2];[some-name@version@version2]", func() {
-					mockClient.EXPECT().NewBuildpack(gomock.Any(), client.NewExtensionOptions{
-						API:     "0.8",
+					mockClient.EXPECT().NewExtension(gomock.Any(), client.NewExtensionOptions{
+						API:     "0.9",
 						ID:      "example/targets",
 						Path:    filepath.Join(tmpDir, "targets"),
 						Version: "1.0.0",
