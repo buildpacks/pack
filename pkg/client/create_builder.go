@@ -155,7 +155,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 
 	var builderOpts []builder.BuilderOption
 	if opts.Flatten != nil && len(opts.Flatten.FlattenModules()) > 0 {
-		builderOpts = append(builderOpts, builder.Flatten(opts.Flatten))
+		builderOpts = append(builderOpts, builder.WithFlattened(opts.Flatten))
 	}
 	if opts.Labels != nil && len(opts.Labels) > 0 {
 		builderOpts = append(builderOpts, builder.WithLabels(opts.Labels))

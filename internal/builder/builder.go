@@ -103,6 +103,7 @@ type BuilderOption func(*options) error
 
 type options struct {
 	toFlatten buildpack.FlattenModuleInfos
+	labels    map[string]string
 }
 
 func WithRunImage(name string) BuilderOption {
@@ -184,9 +185,16 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 	return bldr, nil
 }
 
-func Flatten(modules buildpack.FlattenModuleInfos) BuilderOption {
+func WithFlattened(modules buildpack.FlattenModuleInfos) BuilderOption {
 	return func(o *options) error {
 		o.toFlatten = modules
+		return nil
+	}
+}
+
+func WithLabels(labels map[string]string) BuilderOption {
+	return func(o *options) error {
+		o.labels = labels
 		return nil
 	}
 }

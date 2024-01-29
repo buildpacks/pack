@@ -47,7 +47,7 @@ type RebaseOptions struct {
 	// validated (will not have any effect if API < 0.12).
 	Force bool
 
-	// Tags to be applied to the rebased image.
+	// Image reference to use as the previous image for rebase.
 	PreviousImage string
 }
 
