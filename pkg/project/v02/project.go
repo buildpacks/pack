@@ -43,11 +43,11 @@ type Descriptor struct {
 	IO      IO      `toml:"io"`
 }
 
-func NewDescriptor(projectTomlContents string) (types.Descriptor, error) {
+func NewDescriptor(projectTomlContents string) (types.Descriptor, toml.MetaData, error) {
 	versionedDescriptor := &Descriptor{}
-	_, err := toml.Decode(projectTomlContents, &versionedDescriptor)
+	tomlMetaData, err := toml.Decode(projectTomlContents, &versionedDescriptor)
 	if err != nil {
-		return types.Descriptor{}, err
+		return types.Descriptor{}, tomlMetaData, err
 	}
 
 	// backward compatibility for incorrect key
@@ -72,5 +72,5 @@ func NewDescriptor(projectTomlContents string) (types.Descriptor, error) {
 		},
 		Metadata:      versionedDescriptor.Project.Metadata,
 		SchemaVersion: api.MustParse("0.2"),
-	}, nil
+	}, tomlMetaData, nil
 }

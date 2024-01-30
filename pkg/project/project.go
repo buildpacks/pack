@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
@@ -21,7 +22,7 @@ type VersionDescriptor struct {
 	Project Project `toml:"_"`
 }
 
-var parsers = map[string]func(string) (types.Descriptor, error){
+var parsers = map[string]func(string) (types.Descriptor, toml.MetaData, error){
 	"0.1": v01.NewDescriptor,
 	"0.2": v02.NewDescriptor,
 }
@@ -45,6 +46,7 @@ func ReadProjectDescriptor(pathToFile string) (types.Descriptor, error) {
 
 	version := versionDescriptor.Project.Version
 	if version == "" {
+		fmt.Println("No schema version declared in project.toml, defaulting to schema version 0.1")
 		version = "0.1"
 	}
 
@@ -52,12 +54,34 @@ func ReadProjectDescriptor(pathToFile string) (types.Descriptor, error) {
 		return types.Descriptor{}, fmt.Errorf("unknown project descriptor schema version %s", version)
 	}
 
-	descriptor, err := parsers[version](string(projectTomlContents))
+	descriptor, tomlMetaData, err := parsers[version](string(projectTomlContents))
 	if err != nil {
 		return types.Descriptor{}, err
 	}
 
+	warnIfTomlContainsKeysNotSupportedBySchema(version, tomlMetaData)
+
 	return descriptor, validate(descriptor)
+}
+
+func warnIfTomlContainsKeysNotSupportedBySchema(schemaVersion string, tomlMetaData toml.MetaData) {
+	unsupportedKeys := []string{}
+
+	// filter out any keys from [_]
+	for _, undecodedKey := range tomlMetaData.Undecoded() {
+		keyName := undecodedKey.String()
+		if keyName != "_" && !strings.HasPrefix(keyName, "_.schema-version") {
+			unsupportedKeys = append(unsupportedKeys, keyName)
+		}
+	}
+
+	if len(unsupportedKeys) != 0 {
+		fmt.Printf("Warning: The following keys declared in project.toml are not supported in schema version %s:\n", schemaVersion)
+		for _, unsupportedKey := range unsupportedKeys {
+			fmt.Printf("- %s\n", unsupportedKey)
+		}
+		fmt.Printf("The above keys will be ignored. If this is not intentional, maybe try updating your schema version.\n")
+	}
 }
 
 func validate(p types.Descriptor) error {
