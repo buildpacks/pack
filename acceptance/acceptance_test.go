@@ -2365,6 +2365,8 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 
 						it("reports unsupported keys with default schema", func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.UnsupportedSchemaKeysWarning), "")
+
 							projectToml := `
 [project]
   version = "1.0.2"
@@ -2392,6 +2394,8 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 
 						it("reports unsupported keys with schema version 0.1", func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.UnsupportedSchemaKeysWarning), "")
+
 							projectToml := `
 [_]
   schema-version = "0.1"
@@ -2422,6 +2426,8 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 
 						it("reports unsupported keys with schema version 0.2", func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.UnsupportedSchemaKeysWarning), "")
+
 							projectToml := `
 [_]
   schema-version = "0.2"

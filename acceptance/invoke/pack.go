@@ -236,7 +236,7 @@ const (
 	BuildpackFlatten
 	MetaBuildpackFolder
 	PlatformRetries
-	FlattenBuilderCreationV2
+	UnsupportedSchemaKeysWarning
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -267,8 +267,8 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	PlatformRetries: func(i *PackInvoker) bool {
 		return i.atLeast("v0.32.1")
 	},
-	FlattenBuilderCreationV2: func(i *PackInvoker) bool {
-		return i.atLeast("v0.33.1")
+	UnsupportedSchemaKeysWarning: func(i *PackInvoker) bool {
+		return i.atLeast("v0.33.0")
 	},
 }
 
