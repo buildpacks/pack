@@ -102,8 +102,10 @@ func listTrustedBuilders(args []string, logger logging.Logger, cfg config.Config
 	logger.Info("Trusted Builders:")
 
 	var trustedBuilders []string
-	for _, builder := range bldr.SuggestedBuilders {
-		trustedBuilders = append(trustedBuilders, builder.Image)
+	for _, knownBuilder := range bldr.KnownBuilders {
+		if knownBuilder.Trusted {
+			trustedBuilders = append(trustedBuilders, knownBuilder.Image)
+		}
 	}
 
 	for _, builder := range cfg.TrustedBuilders {
