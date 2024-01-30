@@ -66,4 +66,12 @@ func testExtensionDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, extDesc.Order(), empty)
 		})
 	})
+
+	when("#Stacks", func() {
+		it("returns empty", func() {
+			var empty []dist.Stack
+			extDesc := dist.ExtensionDescriptor{}
+			h.AssertEq(t, extDesc.Stacks(), empty)
+		})
+	})
 }
