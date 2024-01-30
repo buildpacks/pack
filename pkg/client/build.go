@@ -274,9 +274,9 @@ type layoutPathConfig struct {
 	targetRunImagePath      string
 }
 
-var IsSuggestedBuilderFunc = func(b string) bool {
-	for _, suggestedBuilder := range builder.SuggestedBuilders {
-		if b == suggestedBuilder.Image {
+var IsTrustedBuilderFunc = func(b string) bool {
+	for _, knownBuilder := range builder.KnownBuilders {
+		if b == knownBuilder.Image && knownBuilder.Trusted {
 			return true
 		}
 	}
@@ -384,7 +384,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	// Default mode: if the TrustBuilder option is not set, trust the suggested builders.
 	if opts.TrustBuilder == nil {
-		opts.TrustBuilder = IsSuggestedBuilderFunc
+		opts.TrustBuilder = IsTrustedBuilderFunc
 	}
 
 	// Ensure the builder's platform APIs are supported
