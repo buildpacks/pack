@@ -374,6 +374,44 @@ name = "licenses should have either a type or uri defined"
 				t.Fatal("Expected error for having neither type or uri defined for licenses")
 			}
 		})
+
+		it("should allow for unsupported keys to be declared with schema v0.1", func() {
+			projectToml := `
+[_]
+schema-version = "0.1"
+
+[unsupported-table]
+unsupported-key = "some value"
+`
+			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			_, err = ReadProjectDescriptor(tmpProjectToml.Name())
+			if err != nil {
+				t.Fatal("Expected unsupported keys in schema v0.1 to not throw an error")
+			}
+		})
+
+		it("should allow for unsupported keys to be declared with schema v0.2", func() {
+			projectToml := `
+[_]
+schema-version = "0.2"
+
+[unsupported-table]
+unsupported-key = "some value"
+`
+			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			_, err = ReadProjectDescriptor(tmpProjectToml.Name())
+			if err != nil {
+				t.Fatal("Expected unsupported keys in schema v0.2 to not throw an error")
+			}
+		})
 	})
 }
 
