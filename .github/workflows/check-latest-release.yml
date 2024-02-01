@@ -25,7 +25,7 @@ jobs:
           
           LATEST_GO_VERSION=$(go version | cut -d ' ' -f 3)
           
-          LATEST_RELEASE_VERSION=$(gh release list -L 1 | cut -d $'\t' -f 1 | cut -d ' ' -f 2)
+          LATEST_RELEASE_VERSION=$(gh release list --exclude-drafts --exclude-pre-releases -L 1 | cut -d $'\t' -f 1 | cut -d ' ' -f 2)
           
           wget https://github.com/$GITHUB_REPOSITORY/releases/download/$LATEST_RELEASE_VERSION/pack-$LATEST_RELEASE_VERSION-linux.tgz -O out.tgz
           tar xzf out.tgz
