@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1706907230447,
+  "lastUpdate": 1706908247512,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -4774,6 +4774,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 53496849916,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c4164104bcb69d6314c92026ce38b6dc13ae08d4",
+          "message": "Merge pull request #2036 from buildpacks/dependabot/github_actions/peter-evans/repository-dispatch-3\n\nbuild(deps): bump peter-evans/repository-dispatch from 2 to 3",
+          "timestamp": "2024-02-02T16:09:22-05:00",
+          "tree_id": "6bcfda94d2eb552f8a0011f87b2dd1d9d0d237da",
+          "url": "https://github.com/buildpacks/pack/commit/c4164104bcb69d6314c92026ce38b6dc13ae08d4"
+        },
+        "date": 1706908247066,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3586543360,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1289573290,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 51718173910,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
