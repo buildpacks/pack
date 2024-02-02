@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1706895782389,
+  "lastUpdate": 1706906658221,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -4648,6 +4648,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 54919071604,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4e7a381384b8887e5b2dce0770cbeb8d2225aa25",
+          "message": "Merge pull request #2012 from buildpacks/dependabot/github_actions/github/codeql-action-3\n\nbuild(deps): bump github/codeql-action from 2 to 3",
+          "timestamp": "2024-02-02T15:42:20-05:00",
+          "tree_id": "fc8e311f50902e16e893d30961ba4cee29e7b861",
+          "url": "https://github.com/buildpacks/pack/commit/4e7a381384b8887e5b2dce0770cbeb8d2225aa25"
+        },
+        "date": 1706906657136,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 8213473718,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2593672105,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 59116087851,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
