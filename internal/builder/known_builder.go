@@ -27,7 +27,7 @@ var KnownBuilders = []KnownBuilder{
 		Vendor:             "Heroku",
 		Image:              "heroku/builder:20",
 		DefaultDescription: "Heroku-20 (Ubuntu 20.04) base image with buildpacks for Go, Java, Node.js, PHP, Python, Ruby & Scala",
-		Suggested:          true,
+		Suggested:          false,
 		Trusted:            true,
 	},
 	{
