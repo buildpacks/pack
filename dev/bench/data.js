@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1706549937554,
+  "lastUpdate": 1706895782389,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -4606,6 +4606,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 51765603633,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4bce40487554c2b0951255d95d532f4923ac47ae",
+          "message": "Merge pull request #2045 from buildpacks/chore/issue-2044\n\nExcluding pre-release from `check latest pack release` workflow",
+          "timestamp": "2024-02-02T12:41:32-05:00",
+          "tree_id": "a988710a84eebb9f0067b717a7835d831ab38b42",
+          "url": "https://github.com/buildpacks/pack/commit/4bce40487554c2b0951255d95d532f4923ac47ae"
+        },
+        "date": 1706895781835,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4126630634,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 935295102,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 54919071604,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
