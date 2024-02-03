@@ -89,13 +89,11 @@ func ExtensionNew(logger logging.Logger, creator ExtensionCreator) *cobra.Comman
 	cmd.Flags().StringVarP(&flags.API, "api", "a", "0.9", "Buildpack API compatibility of the generated extension")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to generate the extension")
 	cmd.Flags().StringVarP(&flags.Version, "version", "V", "1.0.0", "Version of the generated extension")
-	cmd.Flags().MarkDeprecated("stacks", "prefer `--targets` instead: https://github.com/buildpacks/rfcs/blob/main/text/0096-remove-stacks-mixins.md")
 	cmd.Flags().StringSliceVarP(&flags.Targets, "targets", "t", nil,
-		`Targets are the list platforms that one targeting, these are generated as part of scaffolding inside buildpack.toml file. one can provide target platforms in format [os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]
-	- Base case for two different architectures :  '--targets "linux/amd64" --targets "linux/arm64"'
-	- case for distribution version: '--targets "windows/amd64:windows-nano@10.0.19041.1415"'
-	- case for different architecture with distributed versions : '--targets "linux/arm/v6:ubuntu@14.04"  --targets "linux/arm/v6:ubuntu@16.04"'
-	`)
+		`A list of platforms to target; these recorded in extension.toml. One can provide targets in the format [os][/arch][/arch-variant]:[distroname@osversion];[distroname@osversion]	
+	- Example:  '--targets "linux/amd64" --targets "linux/arm64"'
+	- Example (distribution version): '--targets "windows/amd64:windows-nano@10.0.19041.1415"'
+	- Example (architecture with distributed versions): '--targets "linux/arm/v6:ubuntu@14.04"  --targets "linux/arm/v6:ubuntu@16.04"'	`)
 
 	AddHelpFlag(cmd, "new")
 	return cmd
