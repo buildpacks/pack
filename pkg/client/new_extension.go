@@ -16,26 +16,26 @@ import (
 var (
 	bashBinGenerate = `#!/usr/bin/env bash
 	
-	set -eo pipefail
+set -eo pipefail
 	
-	# 1. GET ARGS
-	output_dir=$CNB_OUTPUT_DIR
+# 1. GET ARGS
+output_dir=$CNB_OUTPUT_DIR
 	
-	# 2. GENERATE build.Dockerfile
-	cat >> "${output_dir}/build.Dockerfile" <<EOL
-	ARG base_image
-	FROM \${base_image}
+# 2. GENERATE build.Dockerfile
+cat >> "${output_dir}/build.Dockerfile" <<EOL
+ARG base_image
+FROM \${base_image}
 	
-	RUN echo "Hello from build extension"
-	EOL
+RUN echo "Hello from build extension"
+EOL
 	
-	# 3. GENERATE run.Dockerfile
-	cat >> "${output_dir}/run.Dockerfile" <<EOL
-	ARG base_image
-	FROM \${base_image}
+# 3. GENERATE run.Dockerfile
+cat >> "${output_dir}/run.Dockerfile" <<EOL
+ARG base_image
+FROM \${base_image}
 	
-	RUN echo "Hello from run extension"
-	EOL
+RUN echo "Hello from run extension"
+EOL
 `
 )
 
