@@ -9,8 +9,12 @@ type InspectManifestOptions struct {
 
 // InspectManifest implements commands.PackClient.
 func (c *Client) InspectManifest(ctx context.Context, name string) error {
-	idx, err := c.indexFactory.LoadIndex(name)
+	idx, err := c.indexFactory.FindIndex(name)
 	if err != nil {
+		return err
+	}
+
+	if err = idx.Save(); err != nil {
 		return err
 	}
 

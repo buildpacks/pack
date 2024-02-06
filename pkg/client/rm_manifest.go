@@ -26,10 +26,10 @@ func (c *Client) RemoveManifest(ctx context.Context, name string, images []strin
 		if err = imgIndex.Save(); err != nil {
 			errs = append(errs, err)
 		}
+	}
 
-		if len(errs) == 0 {
-			fmt.Printf("Successfully removed %s from %s \n", image, name)
-		}
+	if len(errs) == 0 {
+		fmt.Printf("Successfully removed images from index: '%s' \n", name)
 	}
 
 	return errs

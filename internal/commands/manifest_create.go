@@ -33,33 +33,18 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			imageIndex := args[0]
 			manifests := args[1:]
-			cmdFlags := cmd.Flags()
-
-			if err := validateManifestCreateFlags(flags); err != nil {
-				return err
-			}
-
-			if cmdFlags.Changed("insecure") {
-				flags.insecure = !flags.insecure
-			}
-
-			if cmdFlags.Changed("publish") {
-				flags.publish = !flags.publish
-			}
-
-			err := pack.CreateManifest(cmd.Context(), imageIndex, manifests, client.CreateManifestOptions{
-				Format:   flags.format,
-				Registry: flags.registry,
-				Insecure: flags.insecure,
-				Publish:  flags.publish,
-			})
-
-			if err != nil {
-				return err
-			}
-			logger.Infof("Successfully created ImageIndex/ManifestList with imageID: '%s'", imageIndex)
-
-			return nil
+			return pack.CreateManifest(
+				cmd.Context(),
+				imageIndex,
+				manifests,
+				client.CreateManifestOptions{
+					Format:   flags.format,
+					Registry: flags.registry,
+					Insecure: flags.insecure,
+					Publish:  flags.publish,
+					All:      flags.all,
+				},
+			)
 		}),
 	}
 
@@ -85,8 +70,4 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 
 	AddHelpFlag(cmd, "create")
 	return cmd
-}
-
-func validateManifestCreateFlags(flags ManifestCreateFlags) error {
-	return nil
 }

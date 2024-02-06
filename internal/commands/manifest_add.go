@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/pkg/client"
@@ -32,15 +31,25 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 		
 		When a manifest list exits locally, user can add a new image to the manifest list using this command`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) (err error) {
-			var annotations = map[string]string(nil)
+			var (
+				annotations = make(map[string]string, 0)
+				features    = make([]string, 0)
+				osFeatures  = make([]string, 0)
+			)
 			imageIndex := args[0]
 			manifests := args[1]
 			if err := validateManifestAddFlags(flags); err != nil {
 				return err
 			}
 
-			osFeatures := strings.Split(flags.osFeatures, ";")
-			features := strings.Split(flags.features, ";")
+			if flags.features != "" {
+				features = strings.Split(flags.features, ";")
+			}
+
+			if flags.osFeatures != "" {
+				features = strings.Split(flags.osFeatures, ";")
+			}
+
 			if flags.annotations != "" {
 				annotations, err = StringToKeyValueMap(flags.annotations)
 				if err != nil {
@@ -48,7 +57,7 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 				}
 			}
 
-			err = pack.AddManifest(cmd.Context(), imageIndex, manifests, client.ManifestAddOptions{
+			return pack.AddManifest(cmd.Context(), imageIndex, manifests, client.ManifestAddOptions{
 				OS:          flags.os,
 				OSVersion:   flags.osVersion,
 				OSArch:      flags.osArch,
@@ -58,12 +67,6 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 				Annotations: annotations,
 				All:         flags.all,
 			})
-
-			if err != nil {
-				return errors.Wrap(err, "unable to add manifest to the index: ")
-			}
-
-			return nil
 		}),
 	}
 

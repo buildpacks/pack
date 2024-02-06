@@ -126,4 +126,4 @@ require (
 
 go 1.20
 
-replace github.com/buildpacks/imgutil => github.com/WYGIN/buildpacks-imgutil v0.0.0-20240122094119-324a62a0cf35
+replace github.com/buildpacks/imgutil => github.com/WYGIN/buildpacks-imgutil v0.0.0-20240206124516-e158f8d2cc9e

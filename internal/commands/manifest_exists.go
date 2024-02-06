@@ -21,10 +21,7 @@ func ManifestExists(logger logging.Logger, pack PackClient) *cobra.Command {
 		Example: `pack manifest exists cnbs/sample-package:hello-multiarch-universe`,
 		Long:    `Checks if a manifest list exists in local storage`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := pack.ExistsManifest(cmd.Context(), args[0]); err != nil {
-				return err
-			}
-			return nil
+			return pack.ExistsManifest(cmd.Context(), args[0])
 		}),
 	}
 

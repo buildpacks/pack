@@ -12,14 +12,25 @@ import (
 
 type CreateManifestOptions struct {
 	Format, Registry       string
-	Insecure, Publish, all bool
+	Insecure, Publish, All bool
 }
 
 // CreateManifest implements commands.PackClient.
 func (c *Client) CreateManifest(ctx context.Context, name string, images []string, opts CreateManifestOptions) (err error) {
-	index, err := c.indexFactory.CreateIndex(name, parseOptsToIndexOptions(opts)...)
+	ops := parseOptsToIndexOptions(opts)
+	_, err = c.indexFactory.LoadIndex(name, ops...)
+	if err == nil {
+		return fmt.Errorf("image index with name: '%s' exists", name)
+	}
+
+	_, err = c.indexFactory.CreateIndex(name, ops...)
 	if err != nil {
 		return
+	}
+
+	index, err := c.indexFactory.LoadIndex(name, ops...)
+	if err != nil {
+		return err
 	}
 
 	for _, img := range images {
@@ -27,16 +38,17 @@ func (c *Client) CreateManifest(ctx context.Context, name string, images []strin
 		if err != nil {
 			return err
 		}
-		if err = index.Add(ref, imgutil.WithAll(opts.all)); err != nil {
+		if err = index.Add(ref, imgutil.WithAll(opts.All)); err != nil {
 			return err
 		}
 	}
 
 	err = index.Save()
-	if err == nil {
-		fmt.Printf("%s successfully created", name)
+	if err != nil {
+		return err
 	}
 
+	fmt.Printf("successfully created index: '%s'\n", name)
 	if opts.Publish {
 		var format types.MediaType
 		switch opts.Format {
@@ -50,7 +62,7 @@ func (c *Client) CreateManifest(ctx context.Context, name string, images []strin
 		if err != nil {
 			return err
 		}
-		
+
 		fmt.Printf("successfully pushed '%s' to registry \n", name)
 	}
 

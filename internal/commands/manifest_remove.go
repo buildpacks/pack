@@ -21,7 +21,6 @@ func ManifestDelete(logger logging.Logger, pack PackClient) *cobra.Command {
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			var errMsg = ""
 			errs := pack.DeleteManifest(cmd.Context(), args)
-
 			for _, err := range errs {
 				if err != nil {
 					errMsg += err.Error() + "\n"

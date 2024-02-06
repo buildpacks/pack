@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/pkg/client"
@@ -11,8 +9,8 @@ import (
 
 // ManifestPushFlags define flags provided to the ManifestPush
 type ManifestPushFlags struct {
-	format                      string
-	insecure, purge, all, quite bool
+	format               string
+	insecure, purge, all bool
 }
 
 // ManifestPush pushes a manifest list (Image index) to a registry.
@@ -27,22 +25,11 @@ func ManifestPush(logger logging.Logger, pack PackClient) *cobra.Command {
 		Long: `manifest push pushes a manifest list (Image index) to a registry.
 		Once a manifest list is ready to be published into the registry, the push command can be used`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := parseFalgs(flags); err != nil {
-				return err
-			}
-
-			err := pack.PushManifest(cmd.Context(), args[0], client.PushManifestOptions{
+			return pack.PushManifest(cmd.Context(), args[0], client.PushManifestOptions{
 				Format:   flags.format,
 				Insecure: flags.insecure,
 				Purge:    flags.purge,
 			})
-
-			if err != nil {
-				return err
-			}
-
-			fmt.Printf("manifest '%s' is successfully pushed to the registry", args[0])
-			return nil
 		}),
 	}
 
@@ -50,12 +37,7 @@ func ManifestPush(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.insecure, "insecure", false, "Allow publishing to insecure registry")
 	cmd.Flags().BoolVar(&flags.purge, "purge", false, "Delete the manifest list or image index from local storage if pushing succeeds")
 	cmd.Flags().BoolVar(&flags.all, "all", false, "Also push the images in the list")
-	cmd.Flags().BoolVarP(&flags.quite, "quite", "q", false, "Also push the images in the list")
 
 	AddHelpFlag(cmd, "push")
 	return cmd
-}
-
-func parseFalgs(flags ManifestPushFlags) error {
-	return nil
 }

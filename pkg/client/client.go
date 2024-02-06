@@ -75,6 +75,8 @@ type ImageFactory interface {
 	NewImage(repoName string, local bool, imageOS string) (imgutil.Image, error)
 }
 
+//go:generate mockgen -package testmocks -destination ../testmocks/mock_index_factory.go github.com/buildpacks/pack/pkg/client IndexFactory
+
 // IndexFactory is an interface representing the ability to create a ImageIndex/ManifestList.
 type IndexFactory interface {
 	// create ManifestList locally
@@ -83,7 +85,7 @@ type IndexFactory interface {
 	LoadIndex(reponame string, opts ...index.Option) (imgutil.ImageIndex, error)
 	// Fetch ManifestList from Registry with the given name
 	FetchIndex(name string, opts ...index.Option) (imgutil.ImageIndex, error)
-	// FindIndex will find Index remotly first then on local
+	// FindIndex will find Index locally then on remote
 	FindIndex(name string, opts ...index.Option) (imgutil.ImageIndex, error)
 }
 
@@ -334,12 +336,12 @@ func (f *indexFactory) FetchIndex(name string, opts ...index.Option) (idx imguti
 
 func (f *indexFactory) FindIndex(repoName string, opts ...index.Option) (idx imgutil.ImageIndex, err error) {
 	opts = append(opts, index.WithKeychain(f.keychain))
-	idx, err = f.FetchIndex(repoName, opts...)
-	if err != nil {
+	idx, err = f.LoadIndex(repoName, opts...)
+	if err == nil {
 		return idx, err
 	}
 
-	return f.FindIndex(repoName, opts...)
+	return f.FetchIndex(repoName, opts...)
 }
 
 func (f *indexFactory) CreateIndex(repoName string, opts ...index.Option) (imgutil.ImageIndex, error) {

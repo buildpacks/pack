@@ -17,10 +17,10 @@ func (c *Client) DeleteManifest(ctx context.Context, names []string) []error {
 		if err = imgIndex.Delete(); err != nil {
 			errs = append(errs, err)
 		}
-		
-		if len(errs) == 0 {
-			fmt.Printf("successfully deleted '%s' \n", name)
-		}
+	}
+
+	if len(errs) == 0 {
+		fmt.Printf("successfully deleted indexes \n")
 	}
 
 	return errs

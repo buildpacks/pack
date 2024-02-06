@@ -28,9 +28,19 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 		Long: `manifest annotate modifies a manifest list (Image index) and update the platform information for an image included in the manifest list.
 		Sometimes a manifest list could reference an image that doesn't specify the architecture, The "annotate" command allows users to update those values before pushing the manifest list a registry`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) (err error) {
-			var annotations = map[string]string(nil)
-			osFeatures := strings.Split(flags.osFeatures, ";")
-			features := strings.Split(flags.features, ";")
+			var (
+				annotations = make(map[string]string, 0)
+				features    = make([]string, 0)
+				osFeatures  = make([]string, 0)
+			)
+
+			if flags.features != "" {
+				features = strings.Split(flags.features, ";")
+			}
+
+			if flags.osFeatures != "" {
+				features = strings.Split(flags.osFeatures, ";")
+			}
 
 			if flags.annotations != "" {
 				annotations, err = StringToKeyValueMap(flags.annotations)
@@ -39,7 +49,7 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 				}
 			}
 
-			pack.AnnotateManifest(cmd.Context(), args[0], args[1], client.ManifestAnnotateOptions{
+			return pack.AnnotateManifest(cmd.Context(), args[0], args[1], client.ManifestAnnotateOptions{
 				OS:          flags.os,
 				OSVersion:   flags.osVersion,
 				OSArch:      flags.arch,
@@ -48,7 +58,6 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 				Features:    features,
 				Annotations: annotations,
 			})
-			return nil
 		}),
 	}
 
