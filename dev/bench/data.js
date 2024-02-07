@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1707318677552,
+  "lastUpdate": 1707319690385,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -4900,6 +4900,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 58465326847,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c45c3cf74ae038cbc5c1f68e133dd0ce0ac4cef9",
+          "message": "Merge pull request #2053 from buildpacks/bugfix/jjbustamante/issue-2050\n\nFixing an parsing error with the buildpacks to be flattened",
+          "timestamp": "2024-02-07T10:09:22-05:00",
+          "tree_id": "16e93e581566963e18fb58c0dfade88bf17c0026",
+          "url": "https://github.com/buildpacks/pack/commit/c45c3cf74ae038cbc5c1f68e133dd0ce0ac4cef9"
+        },
+        "date": 1707319689220,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6749576846,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2262541188,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 66595026556,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
