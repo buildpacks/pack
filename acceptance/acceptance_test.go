@@ -3037,6 +3037,56 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 				})
 			})
 		})
+
+		when("builder create", func() {
+			when("--flatten=<buildpacks>", func() {
+				it("should flatten together all specified buildpacks", func() {
+					h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.FlattenBuilderCreationV2), "pack version <= 0.33.0 fails with this test")
+					h.SkipIf(t, imageManager.HostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+
+					// create a task, handled by a 'task manager' which executes our pack commands during tests.
+					// looks like this is used to de-dup tasks
+					key := taskKey(
+						"create-complex-flattened-builder",
+						append(
+							[]string{runImageMirror, createBuilderPackConfig.Path(), lifecycle.Identifier()},
+							createBuilderPackConfig.FixturePaths()...,
+						)...,
+					)
+
+					builderName, err := suiteManager.RunTaskOnceString(key, func() (string, error) {
+						return createFlattenBuilder(t,
+							assert,
+							buildpackManager,
+							lifecycle,
+							createBuilderPack,
+							runImageMirror)
+					})
+					assert.Nil(err)
+
+					// register task to be run to 'clean up' a task
+					suiteManager.RegisterCleanUp("clean-"+key, func() error {
+						imageManager.CleanupImages(builderName)
+						return nil
+					})
+
+					assertImage.ExistsLocally(builderName)
+
+					// 3 layers for runtime OS
+					// 1 layer setting cnb, platform, layers folders
+					// 1 layer for lifecycle binaries
+					// 1 layer for order.toml
+					// 1 layer for run.toml
+					// 1 layer for stack.toml
+					// 1 layer status file changed
+					// Base Layers = 9
+
+					// 1 layer for 3 flattened builpacks
+					// 3 layers for single buildpacks not flattened
+					assertImage.HasLengthLayers(builderName, 13)
+				})
+			})
+		})
 	})
 }
 
@@ -3421,6 +3471,157 @@ func createStackImage(dockerCli client.CommonAPIClient, repoName string, dir str
 		Remove:      true,
 		ForceRemove: true,
 	}))
+}
+
+func createFlattenBuilder(
+	t *testing.T,
+	assert h.AssertionManager,
+	buildpackManager buildpacks.BuildModuleManager,
+	lifecycle config.LifecycleAsset,
+	pack *invoke.PackInvoker,
+	runImageMirror string,
+) (string, error) {
+	t.Helper()
+	t.Log("creating flattened builder image...")
+
+	// CREATE TEMP WORKING DIR
+	tmpDir, err := os.MkdirTemp("", "create-complex-test-flattened-builder")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// ARCHIVE BUILDPACKS
+	builderBuildpacks := []buildpacks.TestBuildModule{
+		buildpacks.BpNoop,
+		buildpacks.BpNoop2,
+		buildpacks.BpOtherStack,
+		buildpacks.BpReadEnv,
+	}
+
+	templateMapping := map[string]interface{}{
+		"run_image_mirror": runImageMirror,
+	}
+
+	packageImageName := registryConfig.RepoName("nested-level-1-buildpack-" + h.RandString(8))
+	nestedLevelTwoBuildpackName := registryConfig.RepoName("nested-level-2-buildpack-" + h.RandString(8))
+	simpleLayersBuildpackName := registryConfig.RepoName("simple-layers-buildpack-" + h.RandString(8))
+	simpleLayersBuildpackDifferentShaName := registryConfig.RepoName("simple-layers-buildpack-different-name-" + h.RandString(8))
+
+	templateMapping["package_id"] = "simple/nested-level-1"
+	templateMapping["package_image_name"] = packageImageName
+	templateMapping["nested_level_1_buildpack"] = packageImageName
+	templateMapping["nested_level_2_buildpack"] = nestedLevelTwoBuildpackName
+	templateMapping["simple_layers_buildpack"] = simpleLayersBuildpackName
+	templateMapping["simple_layers_buildpack_different_sha"] = simpleLayersBuildpackDifferentShaName
+
+	fixtureManager := pack.FixtureManager()
+
+	nestedLevelOneConfigFile, err := os.CreateTemp(tmpDir, "nested-level-1-package.toml")
+	assert.Nil(err)
+	fixtureManager.TemplateFixtureToFile(
+		"nested-level-1-buildpack_package.toml",
+		nestedLevelOneConfigFile,
+		templateMapping,
+	)
+	err = nestedLevelOneConfigFile.Close()
+	assert.Nil(err)
+
+	nestedLevelTwoConfigFile, err := os.CreateTemp(tmpDir, "nested-level-2-package.toml")
+	assert.Nil(err)
+	fixtureManager.TemplateFixtureToFile(
+		"nested-level-2-buildpack_package.toml",
+		nestedLevelTwoConfigFile,
+		templateMapping,
+	)
+
+	err = nestedLevelTwoConfigFile.Close()
+	assert.Nil(err)
+
+	packageImageBuildpack := buildpacks.NewPackageImage(
+		t,
+		pack,
+		packageImageName,
+		nestedLevelOneConfigFile.Name(),
+		buildpacks.WithRequiredBuildpacks(
+			buildpacks.BpNestedLevelOne,
+			buildpacks.NewPackageImage(
+				t,
+				pack,
+				nestedLevelTwoBuildpackName,
+				nestedLevelTwoConfigFile.Name(),
+				buildpacks.WithRequiredBuildpacks(
+					buildpacks.BpNestedLevelTwo,
+					buildpacks.NewPackageImage(
+						t,
+						pack,
+						simpleLayersBuildpackName,
+						fixtureManager.FixtureLocation("simple-layers-buildpack_package.toml"),
+						buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayers),
+					),
+				),
+			),
+		),
+	)
+
+	simpleLayersDifferentShaBuildpack := buildpacks.NewPackageImage(
+		t,
+		pack,
+		simpleLayersBuildpackDifferentShaName,
+		fixtureManager.FixtureLocation("simple-layers-buildpack-different-sha_package.toml"),
+		buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayersDifferentSha),
+	)
+
+	defer imageManager.CleanupImages(packageImageName, nestedLevelTwoBuildpackName, simpleLayersBuildpackName, simpleLayersBuildpackDifferentShaName)
+
+	builderBuildpacks = append(
+		builderBuildpacks,
+		packageImageBuildpack,
+		simpleLayersDifferentShaBuildpack,
+	)
+
+	buildpackManager.PrepareBuildModules(tmpDir, builderBuildpacks...)
+
+	// ADD lifecycle
+	if lifecycle.HasLocation() {
+		lifecycleURI := lifecycle.EscapedPath()
+		t.Logf("adding lifecycle path '%s' to builder config", lifecycleURI)
+		templateMapping["lifecycle_uri"] = lifecycleURI
+	} else {
+		lifecycleVersion := lifecycle.Version()
+		t.Logf("adding lifecycle version '%s' to builder config", lifecycleVersion)
+		templateMapping["lifecycle_version"] = lifecycleVersion
+	}
+
+	// RENDER builder.toml
+	builderConfigFile, err := os.CreateTemp(tmpDir, "nested_builder.toml")
+	if err != nil {
+		return "", err
+	}
+
+	pack.FixtureManager().TemplateFixtureToFile("nested_builder.toml", builderConfigFile, templateMapping)
+
+	err = builderConfigFile.Close()
+	if err != nil {
+		return "", err
+	}
+
+	// NAME BUILDER
+	bldr := registryConfig.RepoName("test/flatten-builder-" + h.RandString(10))
+
+	// CREATE BUILDER
+	output := pack.RunSuccessfully(
+		"builder", "create", bldr,
+		"-c", builderConfigFile.Name(),
+		"--no-color",
+		"--verbose",
+		"--flatten", "read/env@read-env-version,noop.buildpack@noop.buildpack.version,noop.buildpack@noop.buildpack.later-version",
+	)
+
+	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
+	assert.Succeeds(h.PushImage(dockerCli, bldr, registryConfig))
+
+	return bldr, nil
 }
 
 // taskKey creates a key from the prefix and all arguments to be unique
