@@ -236,7 +236,7 @@ const (
 	BuildpackFlatten
 	MetaBuildpackFolder
 	PlatformRetries
-	SkipFlattenBuilderCreation
+	FlattenBuilderCreationV2
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -267,8 +267,8 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	PlatformRetries: func(i *PackInvoker) bool {
 		return i.atLeast("v0.32.1")
 	},
-	SkipFlattenBuilderCreation: func(i *PackInvoker) bool {
-		return i.equal("v0.33.0")
+	FlattenBuilderCreationV2: func(i *PackInvoker) bool {
+		return i.atLeast("v0.33.1")
 	},
 }
 
@@ -296,13 +296,6 @@ func (i *PackInvoker) atLeast(version string) bool {
 	minimalVersion := semver.MustParse(version)
 	ver := i.semanticVersion()
 	return ver.Equal(minimalVersion) || ver.GreaterThan(minimalVersion) || ver.Equal(semver.MustParse("0.0.0"))
-}
-
-// equal returns true if pack version is the equal to the provided version
-func (i *PackInvoker) equal(version string) bool {
-	minimalVersion := semver.MustParse(version)
-	ver := i.semanticVersion()
-	return ver.Equal(minimalVersion)
 }
 
 func (i *PackInvoker) ConfigFileContents() string {

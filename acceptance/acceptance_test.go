@@ -2933,7 +2933,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 		when("builder create", func() {
 			when("--flatten=<buildpacks>", func() {
 				it("should flatten together all specified buildpacks", func() {
-					h.SkipIf(t, createBuilderPack.SupportsFeature(invoke.SkipFlattenBuilderCreation), "pack version <= 0.33.0 fails with this test")
+					h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.FlattenBuilderCreationV2), "pack version <= 0.33.0 fails with this test")
 					h.SkipIf(t, imageManager.HostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
 
 					// create a task, handled by a 'task manager' which executes our pack commands during tests.
