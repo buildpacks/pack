@@ -269,7 +269,7 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 		return i.atLeast("v0.32.1")
 	},
 	UnsupportedSchemaKeysWarning: func(i *PackInvoker) bool {
-		return i.atLeast("v0.33.0")
+		return i.atLeast("v0.34.0")
 	},
 	FlattenBuilderCreationV2: func(i *PackInvoker) bool {
 		return i.atLeast("v0.33.1")
