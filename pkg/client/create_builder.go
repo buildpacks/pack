@@ -32,6 +32,9 @@ type CreateBuilderOptions struct {
 	// BuildConfigEnv for Builder
 	BuildConfigEnv map[string]string
 
+	// Map of labels to add to the Buildpack
+	Labels map[string]string
+
 	// Configuration that defines the functionality a builder provides.
 	Config pubbldr.Config
 
@@ -45,11 +48,8 @@ type CreateBuilderOptions struct {
 	// Strategy for updating images before a build.
 	PullPolicy image.PullPolicy
 
-	// Flatten layers
-	Flatten bool
-
-	// List of buildpack images to exclude from the package been flatten.
-	FlattenExclude []string
+	// List of modules to be flattened
+	Flatten buildpack.FlattenModuleInfos
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.
@@ -154,9 +154,13 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
 
 	var builderOpts []builder.BuilderOption
-	if opts.Flatten {
-		builderOpts = append(builderOpts, builder.DoNotFlatten(opts.FlattenExclude))
+	if opts.Flatten != nil && len(opts.Flatten.FlattenModules()) > 0 {
+		builderOpts = append(builderOpts, builder.WithFlattened(opts.Flatten))
 	}
+	if opts.Labels != nil && len(opts.Labels) > 0 {
+		builderOpts = append(builderOpts, builder.WithLabels(opts.Labels))
+	}
+
 	bldr, err := builder.New(baseImage, opts.BuilderName, builderOpts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid build-image")

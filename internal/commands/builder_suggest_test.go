@@ -47,7 +47,7 @@ func testSuggestCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("displays descriptions from metadata", func() {
-				commands.WriteSuggestedBuilder(logger, mockClient, []bldr.SuggestedBuilder{{
+				commands.WriteSuggestedBuilder(logger, mockClient, []bldr.KnownBuilder{{
 					Vendor:             "Builder",
 					Image:              "gcr.io/some/builder:latest",
 					DefaultDescription: "Default description",
@@ -65,7 +65,7 @@ func testSuggestCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("displays default descriptions", func() {
-				commands.WriteSuggestedBuilder(logger, mockClient, []bldr.SuggestedBuilder{{
+				commands.WriteSuggestedBuilder(logger, mockClient, []bldr.KnownBuilder{{
 					Vendor:             "Builder",
 					Image:              "gcr.io/some/builder:latest",
 					DefaultDescription: "Default description",
@@ -81,7 +81,7 @@ func testSuggestCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("displays default descriptions", func() {
-				commands.WriteSuggestedBuilder(logger, mockClient, []bldr.SuggestedBuilder{{
+				commands.WriteSuggestedBuilder(logger, mockClient, []bldr.KnownBuilder{{
 					Vendor:             "Builder",
 					Image:              "gcr.io/some/builder:latest",
 					DefaultDescription: "Default description",
