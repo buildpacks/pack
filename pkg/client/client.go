@@ -39,6 +39,10 @@ import (
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
+const (
+	xdgRuntimePath = "XDG_RUNTIME_DIR"
+)
+
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_docker_client.go github.com/docker/docker/client CommonAPIClient
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_image_fetcher.go github.com/buildpacks/pack/pkg/client ImageFetcher
@@ -306,7 +310,11 @@ func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (i
 }
 
 func (f *indexFactory) LoadIndex(repoName string, opts ...index.Option) (img imgutil.ImageIndex, err error) {
-	opts = append(opts, index.WithKeychain(f.keychain))
+	opts, err = withXDGPath(opts, f.keychain)
+	if err != nil {
+		return nil, err
+	}
+
 	img, err = local.NewIndex(repoName, opts...)
 	if err == nil {
 		return
@@ -325,7 +333,11 @@ type indexFactory struct {
 }
 
 func (f *indexFactory) FetchIndex(name string, opts ...index.Option) (idx imgutil.ImageIndex, err error) {
-	opts = append(opts, index.WithKeychain(f.keychain))
+	opts, err = withXDGPath(opts, f.keychain)
+	if err != nil {
+		return nil, err
+	}
+
 	idx, err = remote.NewIndex(name, opts...)
 	if err != nil {
 		return idx, fmt.Errorf("ImageIndex in not available at registry")
@@ -335,7 +347,11 @@ func (f *indexFactory) FetchIndex(name string, opts ...index.Option) (idx imguti
 }
 
 func (f *indexFactory) FindIndex(repoName string, opts ...index.Option) (idx imgutil.ImageIndex, err error) {
-	opts = append(opts, index.WithKeychain(f.keychain))
+	opts, err = withXDGPath(opts, f.keychain)
+	if err != nil {
+		return nil, err
+	}
+
 	idx, err = f.LoadIndex(repoName, opts...)
 	if err == nil {
 		return idx, err
@@ -345,6 +361,25 @@ func (f *indexFactory) FindIndex(repoName string, opts ...index.Option) (idx img
 }
 
 func (f *indexFactory) CreateIndex(repoName string, opts ...index.Option) (imgutil.ImageIndex, error) {
-	opts = append(opts, index.WithKeychain(f.keychain))
+	opts, err := withXDGPath(opts, f.keychain)
+	if err != nil {
+		return nil, err
+	}
+
 	return index.NewIndex(repoName, opts...)
+}
+
+func withXDGPath(ops []index.Option, keychain authn.Keychain) ([]index.Option, error) {
+	xdgPath, ok := os.LookupEnv(xdgRuntimePath)
+	if ok {
+		ops = append(ops, index.WithKeychain(keychain), index.WithXDGRuntimePath(xdgPath))
+		return ops, nil
+	}
+	home, err := iconfig.PackHome()
+	if err != nil {
+		return ops, err
+	}
+
+	ops = append(ops, index.WithKeychain(keychain), index.WithXDGRuntimePath(home))
+	return ops, nil
 }

@@ -11,8 +11,8 @@ import (
 
 // ManifestAnnotateFlags define flags provided to the ManifestAnnotate
 type ManifestAnnotateFlags struct {
-	os, arch, variant, osVersion      string
-	features, osFeatures, annotations string
+	os, arch, variant, osVersion            string
+	features, osFeatures, urls, annotations string
 }
 
 // ManifestAnnotate modifies a manifest list (Image index) and update the platform information for an image included in the manifest list.
@@ -32,6 +32,7 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 				annotations = make(map[string]string, 0)
 				features    = make([]string, 0)
 				osFeatures  = make([]string, 0)
+				urls        = make([]string, 0)
 			)
 
 			if flags.features != "" {
@@ -39,7 +40,11 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 			}
 
 			if flags.osFeatures != "" {
-				features = strings.Split(flags.osFeatures, ";")
+				osFeatures = strings.Split(flags.osFeatures, ";")
+			}
+
+			if flags.urls != "" {
+				urls = strings.Split(flags.urls, ";")
 			}
 
 			if flags.annotations != "" {
@@ -56,6 +61,7 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 				OSVariant:   flags.variant,
 				OSFeatures:  osFeatures,
 				Features:    features,
+				URLs:        urls,
 				Annotations: annotations,
 			})
 		}),
@@ -66,6 +72,7 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd.Flags().StringVar(&flags.variant, "variant", "", "Set the architecture")
 	cmd.Flags().StringVar(&flags.osVersion, "os-version", "", "override the os `version` of the specified image")
 	cmd.Flags().StringVar(&flags.features, "features", "", "override the `features` of the specified image")
+	cmd.Flags().StringVar(&flags.urls, "urls", "", "override the `urls` of the specified image")
 	cmd.Flags().StringVar(&flags.osFeatures, "os-features", "", "override the os `features` of the specified image")
 	cmd.Flags().StringVar(&flags.annotations, "annotations", "", "set an `annotation` for the specified image")
 

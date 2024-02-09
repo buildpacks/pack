@@ -9,7 +9,7 @@ import (
 
 type ManifestAnnotateOptions struct {
 	OS, OSVersion, OSArch, OSVariant string
-	OSFeatures, Features             []string
+	OSFeatures, Features, URLs       []string
 	Annotations                      map[string]string
 }
 
@@ -52,6 +52,16 @@ func (c *Client) AnnotateManifest(ctx context.Context, name string, image string
 	}
 	if len(opts.Features) != 0 {
 		if err := idx.SetFeatures(digest, opts.Features); err != nil {
+			return err
+		}
+	}
+	if len(opts.OSFeatures) != 0 {
+		if err := idx.SetOSFeatures(digest, opts.OSFeatures); err != nil {
+			return err
+		}
+	}
+	if len(opts.URLs) != 0 {
+		if err := idx.SetURLs(digest, opts.URLs); err != nil {
 			return err
 		}
 	}
