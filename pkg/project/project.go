@@ -9,6 +9,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/buildpacks/pack/pkg/project/types"
 	v01 "github.com/buildpacks/pack/pkg/project/v01"
 	v02 "github.com/buildpacks/pack/pkg/project/v02"
@@ -27,7 +28,7 @@ var parsers = map[string]func(string) (types.Descriptor, toml.MetaData, error){
 	"0.2": v02.NewDescriptor,
 }
 
-func ReadProjectDescriptor(pathToFile string) (types.Descriptor, error) {
+func ReadProjectDescriptor(pathToFile string, logger logging.Logger) (types.Descriptor, error) {
 	projectTomlContents, err := os.ReadFile(filepath.Clean(pathToFile))
 	if err != nil {
 		return types.Descriptor{}, err
@@ -46,7 +47,7 @@ func ReadProjectDescriptor(pathToFile string) (types.Descriptor, error) {
 
 	version := versionDescriptor.Project.Version
 	if version == "" {
-		fmt.Println("No schema version declared in project.toml, defaulting to schema version 0.1")
+		logger.Warn("No schema version declared in project.toml, defaulting to schema version 0.1")
 		version = "0.1"
 	}
 
@@ -59,12 +60,12 @@ func ReadProjectDescriptor(pathToFile string) (types.Descriptor, error) {
 		return types.Descriptor{}, err
 	}
 
-	warnIfTomlContainsKeysNotSupportedBySchema(version, tomlMetaData)
+	warnIfTomlContainsKeysNotSupportedBySchema(version, tomlMetaData, logger)
 
 	return descriptor, validate(descriptor)
 }
 
-func warnIfTomlContainsKeysNotSupportedBySchema(schemaVersion string, tomlMetaData toml.MetaData) {
+func warnIfTomlContainsKeysNotSupportedBySchema(schemaVersion string, tomlMetaData toml.MetaData, logger logging.Logger) {
 	unsupportedKeys := []string{}
 
 	// filter out any keys from [_]
@@ -76,11 +77,11 @@ func warnIfTomlContainsKeysNotSupportedBySchema(schemaVersion string, tomlMetaDa
 	}
 
 	if len(unsupportedKeys) != 0 {
-		fmt.Printf("Warning: The following keys declared in project.toml are not supported in schema version %s:\n", schemaVersion)
+		logger.Warnf("The following keys declared in project.toml are not supported in schema version %s:\n", schemaVersion)
 		for _, unsupportedKey := range unsupportedKeys {
-			fmt.Printf("- %s\n", unsupportedKey)
+			logger.Warnf("- %s\n", unsupportedKey)
 		}
-		fmt.Printf("The above keys will be ignored. If this is not intentional, maybe try updating your schema version.\n")
+		logger.Warn("The above keys will be ignored. If this is not intentional, maybe try updating your schema version.\n")
 	}
 }
 
