@@ -243,9 +243,3 @@ func (o OutputAssertionManager) ReportsInvalidBuilderToml() {
 
 	o.assert.Contains(o.output, "invalid builder toml")
 }
-
-func (o OutputAssertionManager) ReportsUnsupportedKeys(schemaVersion string) {
-	o.testObject.Helper()
-
-	o.assert.ContainsF(o.output, "Warning: The following keys declared in project.toml are not supported in schema version %s:\n- unsupported-table\n- unsupported-table.unsupported-key\nThe above keys will be ignored. If this is not intentional, maybe try updating your schema version.\n", schemaVersion)
-}

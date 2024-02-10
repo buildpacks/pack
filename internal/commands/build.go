@@ -79,7 +79,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 
 			inputPreviousImage := client.ParseInputImageReference(flags.PreviousImage)
 
-			descriptor, actualDescriptorPath, err := parseProjectToml(flags.AppPath, flags.DescriptorPath)
+			descriptor, actualDescriptorPath, err := parseProjectToml(flags.AppPath, flags.DescriptorPath, logger)
 			if err != nil {
 				return err
 			}
@@ -362,7 +362,7 @@ func addEnvVar(env map[string]string, item string) map[string]string {
 	return env
 }
 
-func parseProjectToml(appPath, descriptorPath string) (projectTypes.Descriptor, string, error) {
+func parseProjectToml(appPath, descriptorPath string, logger logging.Logger) (projectTypes.Descriptor, string, error) {
 	actualPath := descriptorPath
 	computePath := descriptorPath == ""
 
@@ -377,6 +377,6 @@ func parseProjectToml(appPath, descriptorPath string) (projectTypes.Descriptor, 
 		return projectTypes.Descriptor{}, "", errors.Wrap(err, "stat project descriptor")
 	}
 
-	descriptor, err := project.ReadProjectDescriptor(actualPath)
+	descriptor, err := project.ReadProjectDescriptor(actualPath, logger)
 	return descriptor, actualPath, err
 }

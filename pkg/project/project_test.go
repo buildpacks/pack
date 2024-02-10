@@ -11,6 +11,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -23,6 +24,18 @@ func TestProject(t *testing.T) {
 }
 
 func testProject(t *testing.T, when spec.G, it spec.S) {
+	var (
+		logger     *logging.LogWithWriters
+		readStdout func() string
+	)
+
+	it.Before(func() {
+		var stdout *color.Console
+		stdout, readStdout = h.MockWriterAndOutput()
+		stderr, _ := h.MockWriterAndOutput()
+		logger = logging.NewLogWithWriters(stdout, stderr)
+	})
+
 	when("#ReadProjectDescriptor", func() {
 		it("should parse a valid v0.2 project.toml file", func() {
 			projectToml := `
@@ -56,7 +69,7 @@ value = "this-should-get-overridden-because-its-deprecated"
 				t.Fatal(err)
 			}
 
-			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name())
+			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name(), logger)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -143,7 +156,7 @@ value = "-Xmx300m"
 				t.Fatal(err)
 			}
 
-			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name())
+			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name(), logger)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -188,7 +201,7 @@ pipeline = "Lucerne"
 				t.Fatal(err)
 			}
 
-			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name())
+			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name(), logger)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -272,7 +285,7 @@ name = "gallant"
 				t.Fatal(err)
 			}
 
-			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name())
+			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name(), logger)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -290,7 +303,7 @@ name = "gallant"
 		})
 
 		it("should fail for an invalid project.toml path", func() {
-			_, err := ReadProjectDescriptor("/path/that/does/not/exist/project.toml")
+			_, err := ReadProjectDescriptor("/path/that/does/not/exist/project.toml", logger)
 
 			if !os.IsNotExist(err) {
 				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
@@ -311,7 +324,7 @@ include = [ "*.jpg" ]
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = ReadProjectDescriptor(tmpProjectToml.Name())
+			_, err = ReadProjectDescriptor(tmpProjectToml.Name(), logger)
 			if err == nil {
 				t.Fatalf(
 					"Expected error for having both exclude and include defined")
@@ -331,7 +344,7 @@ version = "1.2.3"
 				t.Fatal(err)
 			}
 
-			_, err = ReadProjectDescriptor(tmpProjectToml.Name())
+			_, err = ReadProjectDescriptor(tmpProjectToml.Name(), logger)
 			if err == nil {
 				t.Fatalf("Expected error for NOT having id or uri defined for buildpacks")
 			}
@@ -351,7 +364,7 @@ version = "1.2.3"
 				t.Fatal(err)
 			}
 
-			_, err = ReadProjectDescriptor(tmpProjectToml.Name())
+			_, err = ReadProjectDescriptor(tmpProjectToml.Name(), logger)
 			if err == nil {
 				t.Fatal("Expected error for having both uri and version defined for a buildpack(s)")
 			}
@@ -369,13 +382,26 @@ name = "licenses should have either a type or uri defined"
 				t.Fatal(err)
 			}
 
-			_, err = ReadProjectDescriptor(tmpProjectToml.Name())
+			_, err = ReadProjectDescriptor(tmpProjectToml.Name(), logger)
 			if err == nil {
 				t.Fatal("Expected error for having neither type or uri defined for licenses")
 			}
 		})
 
-		it("should allow for unsupported keys to be declared with schema v0.1", func() {
+		it("should warn when no schema version is declared", func() {
+			projectToml := ``
+			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			_, err = ReadProjectDescriptor(tmpProjectToml.Name(), logger)
+			h.AssertNil(t, err)
+
+			h.AssertContains(t, readStdout(), "Warning: No schema version declared in project.toml, defaulting to schema version 0.1\n")
+		})
+
+		it("should warn when unsupported keys are declared with schema v0.1", func() {
 			projectToml := `
 [_]
 schema-version = "0.1"
@@ -388,13 +414,13 @@ unsupported-key = "some value"
 				t.Fatal(err)
 			}
 
-			_, err = ReadProjectDescriptor(tmpProjectToml.Name())
-			if err != nil {
-				t.Fatal("Expected unsupported keys in schema v0.1 to not throw an error")
-			}
+			_, err = ReadProjectDescriptor(tmpProjectToml.Name(), logger)
+			h.AssertNil(t, err)
+
+			h.AssertContains(t, readStdout(), "Warning: The following keys declared in project.toml are not supported in schema version 0.1:\nWarning: - unsupported-table\nWarning: - unsupported-table.unsupported-key\nWarning: The above keys will be ignored. If this is not intentional, maybe try updating your schema version.\n")
 		})
 
-		it("should allow for unsupported keys to be declared with schema v0.2", func() {
+		it("should warn when unsupported keys are declared with schema v0.2", func() {
 			projectToml := `
 [_]
 schema-version = "0.2"
@@ -407,10 +433,10 @@ unsupported-key = "some value"
 				t.Fatal(err)
 			}
 
-			_, err = ReadProjectDescriptor(tmpProjectToml.Name())
-			if err != nil {
-				t.Fatal("Expected unsupported keys in schema v0.2 to not throw an error")
-			}
+			_, err = ReadProjectDescriptor(tmpProjectToml.Name(), logger)
+			h.AssertNil(t, err)
+
+			h.AssertContains(t, readStdout(), "Warning: The following keys declared in project.toml are not supported in schema version 0.2:\nWarning: - unsupported-table\nWarning: - unsupported-table.unsupported-key\nWarning: The above keys will be ignored. If this is not intentional, maybe try updating your schema version.\n")
 		})
 	})
 }
