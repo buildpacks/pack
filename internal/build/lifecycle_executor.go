@@ -98,6 +98,7 @@ type LifecycleOptions struct {
 	Workspace                       string
 	GID                             int
 	UID                             int
+	MacAddress                      string
 	PreviousImage                   string
 	ReportDestinationDir            string
 	SBOMDestinationDir              string

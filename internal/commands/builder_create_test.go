@@ -408,20 +408,36 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("flatten is set to true", func() {
+		when("--flatten", func() {
 			it.Before(func() {
 				h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(validConfig), 0666))
 			})
 
-			when("flatten exclude doesn't have format <buildpack>@<version>", func() {
+			when("requested buildpack doesn't have format <buildpack>@<version>", func() {
 				it("errors with a descriptive message", func() {
 					command.SetArgs([]string{
 						"some/builder",
 						"--config", builderConfigPath,
-						"--flatten",
-						"--flatten-exclude", "some-buildpack",
+						"--flatten", "some-buildpack",
 					})
-					h.AssertError(t, command.Execute(), fmt.Sprintf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", "some-buildpack"))
+					h.AssertError(t, command.Execute(), fmt.Sprintf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to add buildpacks to be flattened", "some-buildpack"))
+				})
+			})
+		})
+
+		when("--label", func() {
+			when("can not be parsed", func() {
+				it("errors with a descriptive message", func() {
+					cmd := packageCommand()
+					cmd.SetArgs([]string{
+						"some/builder",
+						"--config", builderConfigPath,
+						"--label", "name+value",
+					})
+
+					err := cmd.Execute()
+					h.AssertNotNil(t, err)
+					h.AssertError(t, err, "invalid argument \"name+value\" for \"-l, --label\" flag: name+value must be formatted as key=value")
 				})
 			})
 		})
