@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1707430199359,
+  "lastUpdate": 1707749234023,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -5110,6 +5110,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 58697374027,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ded78f30bd5a0f0658f68f65b9532d2594ab3797",
+          "message": "Merge pull request #2042 from colincasey/fix_1922_silently_ignoring_keys_in_project_toml\n\nWarn if project.toml contains keys not supported by schema",
+          "timestamp": "2024-02-12T09:45:37-05:00",
+          "tree_id": "731a5c75fd0f833405098960177648ff317d14b2",
+          "url": "https://github.com/buildpacks/pack/commit/ded78f30bd5a0f0658f68f65b9532d2594ab3797"
+        },
+        "date": 1707749233318,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4804260966,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1242319192,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 52248350612,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
