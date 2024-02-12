@@ -14,7 +14,7 @@ func ManifestDelete(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "remove [manifest-list] [manifest-list...] [flags]",
 		Args:    cobra.MatchAll(cobra.MinimumNArgs(1), cobra.OnlyValidArgs),
-		Short:   "Delete one or more manifest lists from local storage",
+		Short:   "Remove an image from a manifest list or image index.",
 		Example: `pack manifest remove cnbs/sample-package:hello-multiarch-universe`,
 		Long: `Delete one or more manifest lists from local storage.
 		When a manifest list exits locally, users can remove existing images from a manifest list`,

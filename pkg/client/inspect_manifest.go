@@ -2,10 +2,8 @@ package client
 
 import (
 	"context"
+	"fmt"
 )
-
-type InspectManifestOptions struct {
-}
 
 // InspectManifest implements commands.PackClient.
 func (c *Client) InspectManifest(ctx context.Context, name string) error {
@@ -14,9 +12,11 @@ func (c *Client) InspectManifest(ctx context.Context, name string) error {
 		return err
 	}
 
-	if err = idx.Save(); err != nil {
+	mfest, err := idx.Inspect()
+	if err != nil {
 		return err
 	}
 
-	return idx.Inspect()
+	fmt.Println(mfest)
+	return nil
 }

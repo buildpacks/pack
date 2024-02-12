@@ -24,12 +24,10 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [OPTIONS] <manifest-list> <manifest> [flags]",
 		Args:  cobra.MatchAll(cobra.ExactArgs(2), cobra.OnlyValidArgs),
-		Short: "manifest add modifies a manifest list (Image index) and add a new image to the list of manifests.",
+		Short: "Add an image to a manifest list or image index.",
 		Example: `pack manifest add cnbs/sample-package:hello-multiarch-universe \
 		cnbs/sample-package:hello-universe-riscv-linux`,
-		Long: `manifest add modifies a manifest list (Image index) and add a new image to the list of manifests.
-		
-		When a manifest list exits locally, user can add a new image to the manifest list using this command`,
+		Long: `manifest add modifies a manifest list (Image index) and add a new image to the list of manifests.`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) (err error) {
 			var (
 				annotations = make(map[string]string, 0)

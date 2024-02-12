@@ -15,11 +15,11 @@ func (c *Client) RemoveManifest(ctx context.Context, name string, images []strin
 	}
 
 	for _, image := range images {
-		digest, err := gccrName.NewDigest(image, gccrName.WeakValidation, gccrName.Insecure)
+		ref, err := gccrName.ParseReference(image, gccrName.WeakValidation, gccrName.Insecure)
 		if err != nil {
 			errs = append(errs, fmt.Errorf(`invalid instance "%s": %v`, image, err))
 		}
-		if err = imgIndex.Remove(digest); err != nil {
+		if err = imgIndex.Remove(ref); err != nil {
 			errs = append(errs, err)
 		}
 

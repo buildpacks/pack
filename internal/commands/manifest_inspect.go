@@ -17,7 +17,7 @@ func ManifestInspect(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "inspect <manifest-list> [flags]",
 		Args:    cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
-		Short:   "manifest inspect shows the manifest information stored in local storage",
+		Short:   "Display a manifest list or image index.",
 		Example: `pack manifest inspect cnbs/sample-builder:multiarch`,
 		Long: `manifest inspect shows the manifest information stored in local storage.
 		The inspect command will help users to view how their local manifest list looks like`,

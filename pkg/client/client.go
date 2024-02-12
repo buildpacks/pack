@@ -310,7 +310,7 @@ func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (i
 }
 
 func (f *indexFactory) LoadIndex(repoName string, opts ...index.Option) (img imgutil.ImageIndex, err error) {
-	opts, err = withXDGPath(opts, f.keychain)
+	opts, err = withOptions(opts, f.keychain)
 	if err != nil {
 		return nil, err
 	}
@@ -333,7 +333,7 @@ type indexFactory struct {
 }
 
 func (f *indexFactory) FetchIndex(name string, opts ...index.Option) (idx imgutil.ImageIndex, err error) {
-	opts, err = withXDGPath(opts, f.keychain)
+	opts, err = withOptions(opts, f.keychain)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +347,7 @@ func (f *indexFactory) FetchIndex(name string, opts ...index.Option) (idx imguti
 }
 
 func (f *indexFactory) FindIndex(repoName string, opts ...index.Option) (idx imgutil.ImageIndex, err error) {
-	opts, err = withXDGPath(opts, f.keychain)
+	opts, err = withOptions(opts, f.keychain)
 	if err != nil {
 		return nil, err
 	}
@@ -361,7 +361,7 @@ func (f *indexFactory) FindIndex(repoName string, opts ...index.Option) (idx img
 }
 
 func (f *indexFactory) CreateIndex(repoName string, opts ...index.Option) (imgutil.ImageIndex, error) {
-	opts, err := withXDGPath(opts, f.keychain)
+	opts, err := withOptions(opts, f.keychain)
 	if err != nil {
 		return nil, err
 	}
@@ -369,17 +369,23 @@ func (f *indexFactory) CreateIndex(repoName string, opts ...index.Option) (imgut
 	return index.NewIndex(repoName, opts...)
 }
 
-func withXDGPath(ops []index.Option, keychain authn.Keychain) ([]index.Option, error) {
-	xdgPath, ok := os.LookupEnv(xdgRuntimePath)
-	if ok {
-		ops = append(ops, index.WithKeychain(keychain), index.WithXDGRuntimePath(xdgPath))
-		return ops, nil
-	}
+func withOptions(ops []index.Option, keychain authn.Keychain) ([]index.Option, error) {
 	home, err := iconfig.PackHome()
 	if err != nil {
 		return ops, err
 	}
 
-	ops = append(ops, index.WithKeychain(keychain), index.WithXDGRuntimePath(home))
+	config, err := getConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	xdgPath, ok := os.LookupEnv(xdgRuntimePath)
+	if ok {
+		ops = append(ops, index.WithKeychain(keychain), index.WithXDGRuntimePath(xdgPath), index.WithManifestOnly(!config.ImageIndexFullMode))
+		return ops, nil
+	}
+
+	ops = append(ops, index.WithKeychain(keychain), index.WithXDGRuntimePath(filepath.Join(home, "manifests")), index.WithManifestOnly(!config.ImageIndexFullMode))
 	return ops, nil
 }

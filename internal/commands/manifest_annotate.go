@@ -22,11 +22,10 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "annotate [OPTIONS] <manifest-list> <manifest> [<manifest>...] [flags]",
 		Args:  cobra.MatchAll(cobra.ExactArgs(2), cobra.OnlyValidArgs),
-		Short: "manifest annotate modifies a manifest list (Image index) and update the platform information for an image included in the manifest list.",
+		Short: "Add or update information about an entry in a manifest list or image index.",
 		Example: `pack manifest annotate cnbs/sample-package:hello-universe-multiarch \ 
-		cnbs/sample-package:hello-universe --arch amd64`,
-		Long: `manifest annotate modifies a manifest list (Image index) and update the platform information for an image included in the manifest list.
-		Sometimes a manifest list could reference an image that doesn't specify the architecture, The "annotate" command allows users to update those values before pushing the manifest list a registry`,
+								cnbs/sample-package:hello-universe --arch amd64`,
+		Long: `manifest annotate modifies a manifest list (Image index) and update the platform information for an image included in the manifest list.`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) (err error) {
 			var (
 				annotations = make(map[string]string, 0)

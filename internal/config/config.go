@@ -23,6 +23,7 @@ type Config struct {
 	LifecycleImage      string            `toml:"lifecycle-image,omitempty"`
 	RegistryMirrors     map[string]string `toml:"registry-mirrors,omitempty"`
 	LayoutRepositoryDir string            `toml:"layout-repo-dir,omitempty"`
+	ImageIndexFullMode  bool              `toml:"index-full-mode,omitempty"`
 }
 
 type Registry struct {
