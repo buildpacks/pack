@@ -27,7 +27,6 @@ type BuildpackPackageFlags struct {
 	Label             map[string]string
 	Publish           bool
 	Flatten           bool
-	Depth             int
 }
 
 // BuildpackPackager packages buildpacks
@@ -111,21 +110,20 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				Registry:        flags.BuildpackRegistry,
 				Flatten:         flags.Flatten,
 				FlattenExclude:  flags.FlattenExclude,
-				Depth:           flags.Depth,
 				Labels:          flags.Label,
 			}); err != nil {
 				return err
 			}
 
 			action := "created"
+			location := "docker daemon"
 			if flags.Publish {
 				action = "published"
+				location = "registry"
 			}
-			location := "docker daemon"
 			if flags.Format == client.FormatFile {
 				location = "file"
 			}
-
 			logger.Infof("Successfully %s package %s and saved to %s", action, style.Symbol(name), location)
 			return nil
 		}),
@@ -133,17 +131,15 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 
 	cmd.Flags().StringVarP(&flags.PackageTomlPath, "config", "c", "", "Path to package TOML config")
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save package as ("image" or "file")`)
-	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry (applies to "--format=image" only)`)
+	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish the buildpack directly to the container registry specified in <name>, instead of the daemon (applies to "--format=image" only).`)
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to the Buildpack that needs to be packaged")
 	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")
 	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten the buildpack into a single layer")
 	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpacks to exclude from flattening, in the form of '<buildpack-id>@<buildpack-version>'")
-	cmd.Flags().IntVar(&flags.Depth, "depth", -1, "Max depth to flatten.\nOmission of this flag or values < 0 will flatten the entire tree.")
 	cmd.Flags().StringToStringVarP(&flags.Label, "label", "l", nil, "Labels to add to packaged Buildpack, in the form of '<name>=<value>'")
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("flatten")
-		cmd.Flags().MarkHidden("depth")
 		cmd.Flags().MarkHidden("flatten-exclude")
 	}
 	AddHelpFlag(cmd, "package")

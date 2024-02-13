@@ -46,6 +46,11 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 	provider.ctrConf.Image = lifecycleExec.opts.Builder.Name()
 	provider.ctrConf.Labels = map[string]string{"author": "pack"}
 
+	if lifecycleExec.opts.MacAddress != "" {
+		provider.ctrConf.MacAddress = lifecycleExec.opts.MacAddress
+		lifecycleExec.logger.Debugf("MAC Address: %s", style.Symbol(lifecycleExec.opts.MacAddress))
+	}
+
 	if lifecycleExec.os == "windows" {
 		provider.hostConf.Isolation = container.IsolationProcess
 	}
@@ -66,7 +71,7 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 	provider.ctrConf.Entrypoint = []string{""} // override entrypoint in case it is set
 	provider.ctrConf.Cmd = append([]string{"/cnb/lifecycle/" + name}, provider.ctrConf.Cmd...)
 
-	lifecycleExec.logger.Debugf("Running the %s on OS %s with:", style.Symbol(provider.Name()), style.Symbol(provider.os))
+	lifecycleExec.logger.Debugf("Running the %s on OS %s from image %s with:", style.Symbol(provider.Name()), style.Symbol(provider.os), style.Symbol(provider.ctrConf.Image))
 	lifecycleExec.logger.Debug("Container Settings:")
 	lifecycleExec.logger.Debugf("  Args: %s", style.Symbol(strings.Join(provider.ctrConf.Cmd, " ")))
 	lifecycleExec.logger.Debugf("  System Envs: %s", style.Symbol(strings.Join(sanitized(provider.ctrConf.Env), " ")))

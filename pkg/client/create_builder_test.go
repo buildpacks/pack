@@ -791,6 +791,20 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNotContains(t, out.String(), "is using deprecated Buildpacks API version")
 			})
 
+			it("should set labels", func() {
+				opts.Labels = map[string]string{"test.label.one": "1", "test.label.two": "2"}
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+
+				imageLabels, err := fakeBuildImage.Labels()
+				h.AssertNil(t, err)
+				h.AssertEq(t, imageLabels["test.label.one"], "1")
+				h.AssertEq(t, imageLabels["test.label.two"], "2")
+			})
+
 			when("Buildpack dependencies are provided", func() {
 				var (
 					bp1v1          buildpack.BuildModule
@@ -843,12 +857,22 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					buildpackBlob := blob.NewBlob(filepath.Join("testdata", "buildpack-api-0.4"))
 					bp, err := buildpack.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
 					h.AssertNil(t, err)
-					mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz", gomock.Any()).Return(bp, bpDependencies, nil)
+					mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz", gomock.Any()).DoAndReturn(
+						func(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error) {
+							// test options
+							h.AssertEq(t, opts.Platform, "linux/amd64")
+							return bp, bpDependencies, nil
+						})
 
 					extensionBlob := blob.NewBlob(filepath.Join("testdata", "extension-api-0.9"))
 					extension, err := buildpack.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory())
 					h.AssertNil(t, err)
-					mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/ext-one-with-api-9.tgz", gomock.Any()).Return(extension, nil, nil)
+					mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/ext-one-with-api-9.tgz", gomock.Any()).DoAndReturn(
+						func(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error) {
+							// test options
+							h.AssertEq(t, opts.Platform, "linux/amd64")
+							return extension, nil, nil
+						})
 
 					successfullyCreateDeterministicBuilder()
 
@@ -987,6 +1011,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			 */
 			var (
 				fakeLayerImage *h.FakeAddedLayerImage
+				err            error
 			)
 
 			var successfullyCreateFlattenBuilder = func() {
@@ -1060,7 +1085,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("flatten all", func() {
 				it("creates 1 layer for all buildpacks", func() {
 					prepareFetcherWithRunImages()
-					opts.Flatten = true
+					opts.Flatten, err = buildpack.ParseFlattenBuildModules([]string{"flatten/bp-1@1,flatten/bp-2@2,flatten/bp-4@4,flatten/bp-6@6,flatten/bp-7@7,flatten/bp-3@3,flatten/bp-5@5"})
+					h.AssertNil(t, err)
 
 					successfullyCreateFlattenBuilder()
 
@@ -1068,48 +1094,29 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					h.AssertEq(t, len(layers), 1)
 				})
-
-				when("with exclude", func() {
-					it("creates 1 layer for buildpacks and 1 layer for buildpack excluded", func() {
-						prepareFetcherWithRunImages()
-						opts.Flatten = true
-						opts.FlattenExclude = []string{"flatten/bp-7@7"}
-
-						successfullyCreateFlattenBuilder()
-
-						layers := fakeLayerImage.AddedLayersOrder()
-						h.AssertEq(t, len(layers), 2)
-					})
-				})
 			})
 
-			when("with depth", func() {
-				when("depth = 1", func() {
-					it("creates 3 layers [1,2,[3,4,5,6,7]]", func() {
-						prepareFetcherWithRunImages()
-						opts.Flatten = true
-						opts.Depth = 1
+			when("only some modules are flattened", func() {
+				it("creates 1 layer for buildpacks [1,2,3,4,5,6] and 1 layer for buildpack [7]", func() {
+					prepareFetcherWithRunImages()
+					opts.Flatten, err = buildpack.ParseFlattenBuildModules([]string{"flatten/bp-1@1,flatten/bp-2@2,flatten/bp-4@4,flatten/bp-6@6,flatten/bp-3@3,flatten/bp-5@5"})
+					h.AssertNil(t, err)
 
-						successfullyCreateFlattenBuilder()
+					successfullyCreateFlattenBuilder()
 
-						layers := fakeLayerImage.AddedLayersOrder()
-
-						h.AssertEq(t, len(layers), 3)
-					})
+					layers := fakeLayerImage.AddedLayersOrder()
+					h.AssertEq(t, len(layers), 2)
 				})
 
-				when("depth = 2", func() {
-					it("creates 5 layers [1,2,3,4,[5,6,7]]", func() {
-						prepareFetcherWithRunImages()
-						opts.Flatten = true
-						opts.Depth = 2
+				it("creates 1 layer for buildpacks [1,2,3] and 1 layer for [4,5,6] and 1 layer for [7]", func() {
+					prepareFetcherWithRunImages()
+					opts.Flatten, err = buildpack.ParseFlattenBuildModules([]string{"flatten/bp-1@1,flatten/bp-2@2,flatten/bp-3@3", "flatten/bp-4@4,flatten/bp-6@6,flatten/bp-5@5"})
+					h.AssertNil(t, err)
 
-						successfullyCreateFlattenBuilder()
+					successfullyCreateFlattenBuilder()
 
-						layers := fakeLayerImage.AddedLayersOrder()
-
-						h.AssertEq(t, len(layers), 5)
-					})
+					layers := fakeLayerImage.AddedLayersOrder()
+					h.AssertEq(t, len(layers), 3)
 				})
 			})
 		})

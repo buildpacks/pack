@@ -2,11 +2,12 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/pkg/errors"
@@ -60,6 +61,16 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return err
 	}
 
+	appOS, err := appImage.OS()
+	if err != nil {
+		return errors.Wrapf(err, "getting app OS")
+	}
+
+	appArch, err := appImage.Architecture()
+	if err != nil {
+		return errors.Wrapf(err, "getting app architecture")
+	}
+
 	var md files.LayersMetadataCompat
 	if ok, err := dist.GetLabel(appImage, platform.LifecycleMetadataLabel, &md); err != nil {
 		return err
@@ -84,19 +95,25 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		"",
 		runImageMD,
 		opts.AdditionalMirrors,
-		opts.Publish)
+		opts.Publish,
+		c.accessChecker,
+	)
 
 	if runImageName == "" {
 		return errors.New("run image must be specified")
 	}
 
-	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
+	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, image.FetchOptions{
+		Daemon:     !opts.Publish,
+		PullPolicy: opts.PullPolicy,
+		Platform:   fmt.Sprintf("%s/%s", appOS, appArch),
+	})
 	if err != nil {
 		return err
 	}
 
 	c.logger.Infof("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
-	rebaser := &lifecycle.Rebaser{Logger: c.logger, PlatformAPI: build.SupportedPlatformAPIVersions.Latest(), Force: opts.Force}
+	rebaser := &phase.Rebaser{Logger: c.logger, PlatformAPI: build.SupportedPlatformAPIVersions.Latest(), Force: opts.Force}
 	report, err := rebaser.Rebase(appImage, baseImage, appImage.Name(), nil)
 	if err != nil {
 		return err

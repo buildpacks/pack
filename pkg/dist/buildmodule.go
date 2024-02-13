@@ -55,6 +55,7 @@ type Stack struct {
 type Target struct {
 	OS            string         `json:"os" toml:"os"`
 	Arch          string         `json:"arch" toml:"arch"`
+	ArchVariant   string         `json:"variant,omitempty" toml:"variant,omitempty"`
 	Distributions []Distribution `json:"distributions,omitempty" toml:"distributions,omitempty"`
 }
 

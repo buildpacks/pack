@@ -32,6 +32,8 @@ import (
 	lifecycleplatform "github.com/buildpacks/lifecycle/platform"
 )
 
+var buildConfigDir = cnbBuildConfigDir()
+
 const (
 	packName = "Pack CLI"
 
@@ -66,23 +68,23 @@ const (
 
 // Builder represents a pack builder, used to build images
 type Builder struct {
-	baseImageName            string
-	image                    imgutil.Image
-	layerWriterFactory       archive.TarWriterFactory
-	lifecycle                Lifecycle
-	lifecycleDescriptor      LifecycleDescriptor
-	additionalBuildpacks     buildpack.ManagedCollection
-	additionalExtensions     buildpack.ManagedCollection
-	flattenExcludeBuildpacks []string
-	metadata                 Metadata
-	mixins                   []string
-	env                      map[string]string
-	uid, gid                 int
-	StackID                  string
-	replaceOrder             bool
-	order                    dist.Order
-	orderExtensions          dist.Order
-	validateMixins           bool
+	baseImageName        string
+	buildConfigEnv       map[string]string
+	image                imgutil.Image
+	layerWriterFactory   archive.TarWriterFactory
+	lifecycle            Lifecycle
+	lifecycleDescriptor  LifecycleDescriptor
+	additionalBuildpacks buildpack.ManagedCollection
+	additionalExtensions buildpack.ManagedCollection
+	metadata             Metadata
+	mixins               []string
+	env                  map[string]string
+	uid, gid             int
+	StackID              string
+	replaceOrder         bool
+	order                dist.Order
+	orderExtensions      dist.Order
+	validateMixins       bool
 }
 
 type orderTOML struct {
@@ -100,9 +102,8 @@ type moduleWithDiffID struct {
 type BuilderOption func(*options) error
 
 type options struct {
-	flatten bool
-	depth   int
-	exclude []string
+	toFlatten buildpack.FlattenModuleInfos
+	labels    map[string]string
 }
 
 // FromImage constructs a builder from a builder image
@@ -139,17 +140,24 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 		return nil, err
 	}
 
+	for labelKey, labelValue := range opts.labels {
+		err = img.SetLabel(labelKey, labelValue)
+		if err != nil {
+			return nil, errors.Wrapf(err, "adding label %s=%s", labelKey, labelValue)
+		}
+	}
+
 	bldr := &Builder{
-		baseImageName:            img.Name(),
-		image:                    img,
-		layerWriterFactory:       layerWriterFactory,
-		metadata:                 metadata,
-		lifecycleDescriptor:      constructLifecycleDescriptor(metadata),
-		env:                      map[string]string{},
-		validateMixins:           true,
-		additionalBuildpacks:     *buildpack.NewModuleManager(opts.flatten, opts.depth),
-		additionalExtensions:     *buildpack.NewModuleManager(opts.flatten, opts.depth),
-		flattenExcludeBuildpacks: opts.exclude,
+		baseImageName:        img.Name(),
+		image:                img,
+		layerWriterFactory:   layerWriterFactory,
+		metadata:             metadata,
+		lifecycleDescriptor:  constructLifecycleDescriptor(metadata),
+		env:                  map[string]string{},
+		buildConfigEnv:       map[string]string{},
+		validateMixins:       true,
+		additionalBuildpacks: buildpack.NewManagedCollectionV2(opts.toFlatten),
+		additionalExtensions: buildpack.NewManagedCollectionV2(opts.toFlatten),
 	}
 
 	if err := addImgLabelsToBuildr(bldr); err != nil {
@@ -163,11 +171,16 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 	return bldr, nil
 }
 
-func WithFlatten(depth int, exclude []string) BuilderOption {
+func WithFlattened(modules buildpack.FlattenModuleInfos) BuilderOption {
 	return func(o *options) error {
-		o.flatten = true
-		o.depth = depth
-		o.exclude = exclude
+		o.toFlatten = modules
+		return nil
+	}
+}
+
+func WithLabels(labels map[string]string) BuilderOption {
+	return func(o *options) error {
+		o.labels = labels
 		return nil
 	}
 }
@@ -297,14 +310,14 @@ func (b *Builder) AllModules(kind string) []buildpack.BuildModule {
 	return b.moduleManager(kind).AllModules()
 }
 
-func (b *Builder) moduleManager(kind string) *buildpack.ManagedCollection {
+func (b *Builder) moduleManager(kind string) buildpack.ManagedCollection {
 	switch kind {
 	case buildpack.KindBuildpack:
-		return &b.additionalBuildpacks
+		return b.additionalBuildpacks
 	case buildpack.KindExtension:
-		return &b.additionalExtensions
+		return b.additionalExtensions
 	}
-	return &buildpack.ManagedCollection{}
+	return nil
 }
 
 func (b *Builder) FlattenedModules(kind string) [][]buildpack.BuildModule {
@@ -347,6 +360,11 @@ func (b *Builder) SetLifecycle(lifecycle Lifecycle) {
 // SetEnv sets an environment variable to a value
 func (b *Builder) SetEnv(env map[string]string) {
 	b.env = env
+}
+
+// SetBuildConfigEnv sets an environment variable to a value that will take action on platform environment variables basedon filename suffix
+func (b *Builder) SetBuildConfigEnv(env map[string]string) {
+	b.buildConfigEnv = env
 }
 
 // SetOrder sets the order of the builder
@@ -525,6 +543,18 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		return errors.Wrap(err, "adding run.tar layer")
 	}
 
+	if len(b.buildConfigEnv) > 0 {
+		logger.Debugf("Provided Build Config Environment Variables\n  %s", style.Map(b.env, "  ", "\n"))
+		buildConfigEnvTar, err := b.buildConfigEnvLayer(tmpDir, b.buildConfigEnv)
+		if err != nil {
+			return errors.Wrap(err, "retrieving build-config-env layer")
+		}
+
+		if err := b.image.AddLayer(buildConfigEnvTar); err != nil {
+			return errors.Wrap(err, "adding build-config-env layer")
+		}
+	}
+
 	if len(b.env) > 0 {
 		logger.Debugf("Provided Environment Variables\n  %s", style.Map(b.env, "  ", "\n"))
 	}
@@ -636,7 +666,6 @@ func (b *Builder) addFlattenedModules(kind string, logger logging.Logger, tmpDir
 	)
 
 	buildModuleWriter := buildpack.NewBuildModuleWriter(logger, b.layerWriterFactory)
-	excludedModules := buildpack.Set(b.flattenExcludeBuildpacks)
 
 	for i, additionalModules := range flattenModules {
 		modFlattenTmpDir := filepath.Join(tmpDir, fmt.Sprintf("%s-%s-flatten", kind, strconv.Itoa(i)))
@@ -644,7 +673,7 @@ func (b *Builder) addFlattenedModules(kind string, logger logging.Logger, tmpDir
 			return nil, errors.Wrap(err, "creating flatten temp dir")
 		}
 
-		finalTarPath, buildModuleExcluded, err = buildModuleWriter.NToLayerTar(modFlattenTmpDir, fmt.Sprintf("%s-flatten-%s", kind, strconv.Itoa(i)), additionalModules, excludedModules)
+		finalTarPath, buildModuleExcluded, err = buildModuleWriter.NToLayerTar(modFlattenTmpDir, fmt.Sprintf("%s-flatten-%s", kind, strconv.Itoa(i)), additionalModules, nil)
 		if err != nil {
 			return nil, errors.Wrapf(err, "writing layer %s", finalTarPath)
 		}
@@ -903,7 +932,7 @@ func (b *Builder) defaultDirsLayer(dest string) (string, error) {
 	}
 
 	// can't use filepath.Join(), to ensure Windows doesn't transform it to Windows join
-	for _, path := range []string{cnbDir, dist.BuildpacksDir, dist.ExtensionsDir, platformDir, platformDir + "/env"} {
+	for _, path := range []string{cnbDir, dist.BuildpacksDir, dist.ExtensionsDir, platformDir, platformDir + "/env", buildConfigDir, buildConfigDir + "/env"} {
 		if err := lw.WriteHeader(b.rootOwnedDir(path, ts)); err != nil {
 			return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(path))
 		}
@@ -1102,6 +1131,31 @@ func (b *Builder) envLayer(dest string, env map[string]string) (string, error) {
 	return fh.Name(), nil
 }
 
+func (b *Builder) buildConfigEnvLayer(dest string, env map[string]string) (string, error) {
+	fh, err := os.Create(filepath.Join(dest, "build-config-env.tar"))
+	if err != nil {
+		return "", err
+	}
+	defer fh.Close()
+	lw := b.layerWriterFactory.NewWriter(fh)
+	defer lw.Close()
+	for k, v := range env {
+		if err := lw.WriteHeader(&tar.Header{
+			Name:    path.Join(cnbBuildConfigDir(), "env", k),
+			Size:    int64(len(v)),
+			Mode:    0644,
+			ModTime: archive.NormalizedDateTime,
+		}); err != nil {
+			return "", err
+		}
+		if _, err := lw.Write([]byte(v)); err != nil {
+			return "", err
+		}
+	}
+
+	return fh.Name(), nil
+}
+
 func (b *Builder) whiteoutLayer(tmpDir string, i int, bpInfo dist.ModuleInfo) (string, error) {
 	bpWhiteoutsTmpDir := filepath.Join(tmpDir, strconv.Itoa(i)+"_whiteouts")
 	if err := os.MkdirAll(bpWhiteoutsTmpDir, os.ModePerm); err != nil {
@@ -1256,4 +1310,12 @@ func (e errModuleTar) Info() dist.ModuleInfo {
 
 func (e errModuleTar) Path() string {
 	return ""
+}
+
+func cnbBuildConfigDir() string {
+	if env, ok := os.LookupEnv("CNB_BUILD_CONFIG_DIR"); ok {
+		return env
+	}
+
+	return "/cnb/build-config"
 }

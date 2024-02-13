@@ -75,7 +75,6 @@ type PackageBuilderOption func(*options) error
 
 type options struct {
 	flatten bool
-	depth   int
 	exclude []string
 	logger  logging.Logger
 	factory archive.TarWriterFactory
@@ -100,21 +99,27 @@ func NewBuilder(imageFactory ImageFactory, ops ...PackageBuilderOption) *Package
 			return nil
 		}
 	}
-	moduleManager := NewModuleManager(opts.flatten, opts.depth)
+	moduleManager := NewManagedCollectionV1(opts.flatten)
 	return &PackageBuilder{
 		imageFactory:             imageFactory,
-		dependencies:             *moduleManager,
-		flattenAllBuildpacks:     opts.flatten && opts.depth < 0,
+		dependencies:             moduleManager,
+		flattenAllBuildpacks:     opts.flatten,
 		flattenExcludeBuildpacks: opts.exclude,
 		logger:                   opts.logger,
 		layerWriterFactory:       opts.factory,
 	}
 }
 
-func WithFlatten(depth int, exclude []string) PackageBuilderOption {
+func FlattenAll() PackageBuilderOption {
 	return func(o *options) error {
 		o.flatten = true
-		o.depth = depth
+		return nil
+	}
+}
+
+func DoNotFlatten(exclude []string) PackageBuilderOption {
+	return func(o *options) error {
+		o.flatten = true
 		o.exclude = exclude
 		return nil
 	}

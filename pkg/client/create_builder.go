@@ -29,6 +29,12 @@ type CreateBuilderOptions struct {
 	// Name of the builder.
 	BuilderName string
 
+	// BuildConfigEnv for Builder
+	BuildConfigEnv map[string]string
+
+	// Map of labels to add to the Buildpack
+	Labels map[string]string
+
 	// Configuration that defines the functionality a builder provides.
 	Config pubbldr.Config
 
@@ -42,14 +48,8 @@ type CreateBuilderOptions struct {
 	// Strategy for updating images before a build.
 	PullPolicy image.PullPolicy
 
-	// Flatten layers
-	Flatten bool
-
-	// Max depth for flattening compose buildpacks.
-	Depth int
-
-	// List of buildpack images to exclude from the package been flatten.
-	FlattenExclude []string
+	// List of modules to be flattened
+	Flatten buildpack.FlattenModuleInfos
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.
@@ -79,6 +79,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		bldr.SetStack(opts.Config.Stack)
 	}
 	bldr.SetRunImage(opts.Config.Run)
+	bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
 
 	return bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version})
 }
@@ -153,9 +154,13 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
 
 	var builderOpts []builder.BuilderOption
-	if opts.Flatten {
-		builderOpts = append(builderOpts, builder.WithFlatten(opts.Depth, opts.FlattenExclude))
+	if opts.Flatten != nil && len(opts.Flatten.FlattenModules()) > 0 {
+		builderOpts = append(builderOpts, builder.WithFlattened(opts.Flatten))
 	}
+	if opts.Labels != nil && len(opts.Labels) > 0 {
+		builderOpts = append(builderOpts, builder.WithLabels(opts.Labels))
+	}
+
 	bldr, err := builder.New(baseImage, opts.BuilderName, builderOpts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid build-image")
@@ -191,6 +196,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	}
 
 	bldr.SetLifecycle(lifecycle)
+	bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
 
 	return bldr, nil
 }
@@ -256,14 +262,20 @@ func (c *Client) addExtensionsToBuilder(ctx context.Context, opts CreateBuilderO
 func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.ModuleConfig, opts CreateBuilderOptions, bldr *builder.Builder) error {
 	c.logger.Debugf("Looking up %s %s", kind, style.Symbol(config.DisplayString()))
 
-	imageOS, err := bldr.Image().OS()
+	builderOS, err := bldr.Image().OS()
 	if err != nil {
-		return errors.Wrapf(err, "getting OS from %s", style.Symbol(bldr.Image().Name()))
+		return errors.Wrapf(err, "getting builder OS")
 	}
+	builderArch, err := bldr.Image().Architecture()
+	if err != nil {
+		return errors.Wrapf(err, "getting builder architecture")
+	}
+
 	mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, config.URI, buildpack.DownloadOptions{
 		Daemon:          !opts.Publish,
 		ImageName:       config.ImageName,
-		ImageOS:         imageOS,
+		ImageOS:         builderOS,
+		Platform:        fmt.Sprintf("%s/%s", builderOS, builderArch),
 		ModuleKind:      kind,
 		PullPolicy:      opts.PullPolicy,
 		RegistryName:    opts.Registry,
