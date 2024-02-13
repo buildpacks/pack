@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 )
@@ -14,7 +15,7 @@ type ImageCache struct {
 }
 
 type DockerClient interface {
-	ImageRemove(ctx context.Context, image string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
+	ImageRemove(ctx context.Context, image string, options types.ImageRemoveOptions) ([]image.DeleteResponse, error)
 	VolumeRemove(ctx context.Context, volumeID string, force bool) error
 }
 

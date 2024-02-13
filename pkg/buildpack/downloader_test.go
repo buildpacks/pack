@@ -10,7 +10,7 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/system"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
@@ -100,7 +100,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 
 		buildpackDownloader = buildpack.NewDownloader(logger, mockImageFetcher, mockDownloader, mockRegistryResolver)
 
-		mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
+		mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
 
 		mockRegistryResolver.EXPECT().
 			Resolve("some-registry", "urn:cnb:registry:example/foo@1.1.0").

@@ -664,7 +664,7 @@ func SkipUnless(t *testing.T, expression bool, reason string) {
 func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id string, stdout io.Writer, stderr io.Writer) error {
 	bodyChan, errChan := container.ContainerWaitWrapper(ctx, dockerCli, id, dcontainer.WaitConditionNextExit)
 
-	logs, err := dockerCli.ContainerAttach(ctx, id, dockertypes.ContainerAttachOptions{
+	logs, err := dockerCli.ContainerAttach(ctx, id, dcontainer.AttachOptions{
 		Stream: true,
 		Stdout: true,
 		Stderr: true,
@@ -673,7 +673,7 @@ func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id stri
 		return err
 	}
 
-	if err := dockerCli.ContainerStart(ctx, id, dockertypes.ContainerStartOptions{}); err != nil {
+	if err := dockerCli.ContainerStart(ctx, id, dcontainer.StartOptions{}); err != nil {
 		return errors.Wrap(err, "container start")
 	}
 
