@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1707749234023,
+  "lastUpdate": 1707944761746,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -5152,6 +5152,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 52248350612,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f3b49cb5b3c625c507092c16384e98a3ec70d22f",
+          "message": "Merge pull request #2062 from matejvasek/update-docker-v25\n\nUpdate docker to v25",
+          "timestamp": "2024-02-14T16:03:58-05:00",
+          "tree_id": "f58ed233d64b8a0005fd21c23aacee827090695d",
+          "url": "https://github.com/buildpacks/pack/commit/f3b49cb5b3c625c507092c16384e98a3ec70d22f"
+        },
+        "date": 1707944761211,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4590086297,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2100245527,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 53080030361,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
