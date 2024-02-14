@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1707944761746,
+  "lastUpdate": 1707947010391,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -5194,6 +5194,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 53080030361,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1ede7ea0c2baf49b5721b8c7a6b8583c88ce97fd",
+          "message": "Merge pull request #2067 from buildpacks/deps/jjbustamante/update-to-lifecycle-0_18_5\n\nBump default lifecycle version & lifecycle library version 0.18.5",
+          "timestamp": "2024-02-14T16:41:21-05:00",
+          "tree_id": "2e82b68c016d4fbf6110641a32985fd4f050774d",
+          "url": "https://github.com/buildpacks/pack/commit/1ede7ea0c2baf49b5721b8c7a6b8583c88ce97fd"
+        },
+        "date": 1707947009854,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4955268685,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 968396672,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 54858582897,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
