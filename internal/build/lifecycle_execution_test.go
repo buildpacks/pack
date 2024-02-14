@@ -77,6 +77,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		extensionsForBuild, extensionsForRun bool
 		extensionsRunImage                   string
+		useCreatorWithExtensions             bool
 	)
 
 	var configureDefaultTestLifecycle = func(opts *build.LifecycleOptions) {
@@ -91,6 +92,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		opts.Volumes = providedVolumes
 		opts.Layout = providedLayout
 		opts.Keychain = authn.DefaultKeychain
+		opts.UseCreatorWithExtensions = useCreatorWithExtensions
 
 		targetImageRef, err := name.ParseReference(providedTargetImage)
 		h.AssertNil(t, err)
@@ -124,7 +126,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			calledWithArgAtCall: make(map[int]string),
 		}
 		withFakeFetchRunImageFunc := func(opts *build.LifecycleOptions) {
-			opts.FetchRunImage = newFakeFetchRunImageFunc(&fakeFetcher)
+			opts.FetchRunImageWithLifecycleLayer = newFakeFetchRunImageFunc(&fakeFetcher)
 		}
 		lifecycleOps = append(lifecycleOps, fakes.WithBuilder(fakeBuilder), withFakeFetchRunImageFunc)
 
@@ -379,6 +381,25 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							return fakePhaseFactory
 						})
 						h.AssertNotNil(t, err)
+					})
+
+					when("use creator with extensions supported by the lifecycle", func() {
+						useCreatorWithExtensions = true
+
+						it("allows the build to proceed (but the creator will error if extensions are detected)", func() {
+							err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+								return fakePhaseFactory
+							})
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 1)
+
+							for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+								if entry.Name() == "creator" {
+									h.AssertSliceContains(t, entry.ContainerConfig().Cmd, providedTargetImage)
+								}
+							}
+						})
 					})
 				})
 			})
@@ -1055,6 +1076,31 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("override UID", func() {
+			when("override UID is provided", func() {
+				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+					options.UID = 1001
+				})
+
+				it("configures the phase with the expected arguments", func() {
+					h.AssertIncludeAllExpectedPatterns(t,
+						configProvider.ContainerConfig().Cmd,
+						[]string{"-uid", "1001"},
+					)
+				})
+			})
+
+			when("override UID is not provided", func() {
+				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+					options.UID = -1
+				})
+
+				it("uid is not added to the expected arguments", func() {
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-uid")
+				})
+			})
+		})
+
 		when("-previous-image is used and builder is trusted", func() {
 			when("image is invalid", func() {
 				it("errors", func() {
@@ -1569,6 +1615,31 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 				})
+
+				when("override UID", func() {
+					when("override UID is provided", func() {
+						lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+							options.UID = 1001
+						})
+
+						it("configures the phase with the expected arguments", func() {
+							h.AssertIncludeAllExpectedPatterns(t,
+								configProvider.ContainerConfig().Cmd,
+								[]string{"-uid", "1001"},
+							)
+						})
+					})
+
+					when("override UID is not provided", func() {
+						lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+							options.UID = -1
+						})
+
+						it("uid is not added to the expected arguments", func() {
+							h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-uid")
+						})
+					})
+				})
 			})
 		})
 
@@ -1778,6 +1849,31 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("override UID", func() {
+			when("override UID is provided", func() {
+				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+					options.UID = 1001
+				})
+
+				it("configures the phase with the expected arguments", func() {
+					h.AssertIncludeAllExpectedPatterns(t,
+						configProvider.ContainerConfig().Cmd,
+						[]string{"-uid", "1001"},
+					)
+				})
+			})
+
+			when("override UID is not provided", func() {
+				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+					options.UID = -1
+				})
+
+				it("uid is not added to the expected arguments", func() {
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-uid")
+				})
+			})
+		})
+
 		when("--clear-cache", func() {
 			providedClearCache = true
 
@@ -1971,7 +2067,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 	when("#ExtendRun", func() {
 		it.Before(func() {
-			err := lifecycle.ExtendRun(context.Background(), fakeKanikoCache, fakePhaseFactory)
+			err := lifecycle.ExtendRun(context.Background(), fakeKanikoCache, fakePhaseFactory, "some-run-image")
 			h.AssertNil(t, err)
 
 			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1990,15 +2086,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, configProvider.ContainerConfig().Image, "some-run-image")
 		})
 
-		when("extensions change the run image", func() {
-			extensionsRunImage = "some-new-run-image"
-			providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
-
-			it("runs the phase with the new run image", func() {
-				h.AssertEq(t, configProvider.ContainerConfig().Image, "some-new-run-image")
-			})
-		})
-
 		it("configures the phase with the expected arguments", func() {
 			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Entrypoint, "") // the run image may have an entrypoint configured, override it
 			h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-log-level", "debug")
@@ -2008,7 +2095,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		it("configures the phase with binds", func() {
 			expectedBinds := providedVolumes
-			expectedBinds = append(expectedBinds, "some-kaniko-cache:/kaniko", fmt.Sprintf("%s:/cnb", filepath.Join(tmpDir, "cnb")))
+			expectedBinds = append(expectedBinds, "some-kaniko-cache:/kaniko")
 
 			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 		})
@@ -2358,6 +2445,31 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("override UID", func() {
+			when("override UID is provided", func() {
+				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+					options.UID = 1001
+				})
+
+				it("configures the phase with the expected arguments", func() {
+					h.AssertIncludeAllExpectedPatterns(t,
+						configProvider.ContainerConfig().Cmd,
+						[]string{"-uid", "1001"},
+					)
+				})
+			})
+
+			when("override UID is not provided", func() {
+				lifecycleOps = append(lifecycleOps, func(options *build.LifecycleOptions) {
+					options.UID = -1
+				})
+
+				it("uid is not added to the expected arguments", func() {
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-uid")
+				})
+			})
+		})
+
 		when("interactive mode", func() {
 			lifecycleOps = append(lifecycleOps, func(opts *build.LifecycleOptions) {
 				opts.Interactive = true
@@ -2453,9 +2565,9 @@ func newFakeImageCache() *fakes.FakeCache {
 	return c
 }
 
-func newFakeFetchRunImageFunc(f *fakeImageFetcher) func(name string) error {
-	return func(name string) error {
-		return f.fetchRunImage(name)
+func newFakeFetchRunImageFunc(f *fakeImageFetcher) func(name string) (string, error) {
+	return func(name string) (string, error) {
+		return fmt.Sprintf("ephemeral-%s", name), f.fetchRunImage(name)
 	}
 }
 

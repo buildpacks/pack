@@ -229,4 +229,111 @@ uri = "noop-buildpack.tgz"
 			h.AssertError(t, builder.ValidateConfig(config), "build.image is required")
 		})
 	})
+	when("#ParseBuildConfigEnv()", func() {
+		it("should return an error when name is not defined", func() {
+			_, _, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{
+				{
+					Name:  "",
+					Value: "vaiue",
+				},
+			}, "")
+			h.AssertNotNil(t, err)
+		})
+		it("should warn when the value is nil or empty string", func() {
+			env, warn, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{
+				{
+					Name:   "key",
+					Value:  "",
+					Suffix: "override",
+				},
+			}, "")
+
+			h.AssertNotNil(t, warn)
+			h.AssertNil(t, err)
+			h.AssertMapContains[string, string](t, env, h.NewKeyValue[string, string]("key.override", ""))
+		})
+		it("should return an error when unknown suffix is specified", func() {
+			_, _, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{
+				{
+					Name:   "key",
+					Value:  "",
+					Suffix: "invalid",
+				},
+			}, "")
+
+			h.AssertNotNil(t, err)
+		})
+		it("should override and show a warning when suffix or delim is defined multiple times", func() {
+			env, warn, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{
+				{
+					Name:   "key1",
+					Value:  "value1",
+					Suffix: "append",
+					Delim:  "%",
+				},
+				{
+					Name:   "key1",
+					Value:  "value2",
+					Suffix: "append",
+					Delim:  ",",
+				},
+				{
+					Name:   "key1",
+					Value:  "value3",
+					Suffix: "default",
+					Delim:  ";",
+				},
+				{
+					Name:   "key1",
+					Value:  "value4",
+					Suffix: "prepend",
+					Delim:  ":",
+				},
+			}, "")
+
+			h.AssertNotNil(t, warn)
+			h.AssertNil(t, err)
+			h.AssertMapContains[string, string](
+				t,
+				env,
+				h.NewKeyValue[string, string]("key1.append", "value2"),
+				h.NewKeyValue[string, string]("key1.default", "value3"),
+				h.NewKeyValue[string, string]("key1.prepend", "value4"),
+				h.NewKeyValue[string, string]("key1.delim", ":"),
+			)
+			h.AssertMapNotContains[string, string](
+				t,
+				env,
+				h.NewKeyValue[string, string]("key1.append", "value1"),
+				h.NewKeyValue[string, string]("key1.delim", "%"),
+				h.NewKeyValue[string, string]("key1.delim", ","),
+				h.NewKeyValue[string, string]("key1.delim", ";"),
+			)
+		})
+		it("should return an error when `suffix` is defined as `append` or `prepend` without a `delim`", func() {
+			_, warn, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{
+				{
+					Name:   "key",
+					Value:  "value",
+					Suffix: "append",
+				},
+			}, "")
+
+			h.AssertNotNil(t, warn)
+			h.AssertNotNil(t, err)
+		})
+		it("when suffix is NONE or omitted should default to `override`", func() {
+			env, warn, err := builder.ParseBuildConfigEnv([]builder.BuildConfigEnv{
+				{
+					Name:   "key",
+					Value:  "value",
+					Suffix: "",
+				},
+			}, "")
+
+			h.AssertNotNil(t, warn)
+			h.AssertNil(t, err)
+			h.AssertMapContains[string, string](t, env, h.NewKeyValue[string, string]("key", "value"))
+		})
+	})
 }

@@ -384,6 +384,19 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				)
 			})
 
+			it("creates the build-config dir", func() {
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+				h.AssertEq(t, baseImage.IsSaved(), true)
+
+				layerTar, err := baseImage.FindLayerWithPath("/cnb/build-config")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, "/cnb/build-config",
+					h.IsDirectory(),
+					h.HasOwnerAndGroup(0, 0),
+					h.HasFileMode(0755),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
+			})
 			it("creates the buildpacks dir", func() {
 				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
@@ -1607,6 +1620,71 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("when CNB_BUILD_CONFIG_DIR is defined", func() {
+			var buildConfigEnvName = "CNB_BUILD_CONFIG_DIR"
+			var buildConfigEnvValue = "/cnb/dup-build-config-dir"
+			it.Before(func() {
+				os.Setenv(buildConfigEnvName, buildConfigEnvValue)
+				subject.SetBuildConfigEnv(map[string]string{
+					"SOME_KEY":         "some-val",
+					"OTHER_KEY.append": "other-val",
+					"OTHER_KEY.delim":  ":",
+				})
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+				h.AssertEq(t, baseImage.IsSaved(), true)
+			})
+			it.After(func() {
+				os.Unsetenv(buildConfigEnvName)
+			})
+
+			it("adds the env vars as files to the image", func() {
+				layerTar, err := baseImage.FindLayerWithPath(buildConfigEnvValue + "/env/SOME_KEY")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, buildConfigEnvValue+"/env/SOME_KEY",
+					h.ContentEquals(`some-val`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
+				h.AssertOnTarEntry(t, layerTar, buildConfigEnvValue+"/env/OTHER_KEY.append",
+					h.ContentEquals(`other-val`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
+				h.AssertOnTarEntry(t, layerTar, buildConfigEnvValue+"/env/OTHER_KEY.delim",
+					h.ContentEquals(`:`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
+			})
+		})
+
+		when("#SetBuildConfigEnv", func() {
+			it.Before(func() {
+				os.Unsetenv("CNB_BUILD_CONFIG_DIR")
+				subject.SetBuildConfigEnv(map[string]string{
+					"SOME_KEY":         "some-val",
+					"OTHER_KEY.append": "other-val",
+					"OTHER_KEY.delim":  ":",
+				})
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+				h.AssertEq(t, baseImage.IsSaved(), true)
+			})
+
+			it("adds the env vars as files to the image", func() {
+				layerTar, err := baseImage.FindLayerWithPath("/cnb/build-config/env/SOME_KEY")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, "/cnb/build-config/env/SOME_KEY",
+					h.ContentEquals(`some-val`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
+				h.AssertOnTarEntry(t, layerTar, "/cnb/build-config/env/OTHER_KEY.append",
+					h.ContentEquals(`other-val`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
+				h.AssertOnTarEntry(t, layerTar, "/cnb/build-config/env/OTHER_KEY.delim",
+					h.ContentEquals(`:`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
+			})
+		})
+
 		when("#SetEnv", func() {
 			it.Before(func() {
 				subject.SetEnv(map[string]string{
@@ -1774,6 +1852,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		var (
 			bldr         *builder.Builder
 			builderImage imgutil.Image
+			deps         []buildpack.BuildModule
 		)
 
 		it.Before(func() {
@@ -1791,16 +1870,50 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			))
 
 			builderImage = baseImage
+			deps = []buildpack.BuildModule{bp2v1, bp1v2}
 		})
 
-		when("all", func() {
+		when("buildpacks to be flattened are NOT defined", func() {
 			it.Before(func() {
 				var err error
-				bldr, err = builder.New(builderImage, "some-builder", builder.WithFlatten(-1, nil))
+				bldr, err = builder.New(builderImage, "some-builder")
 				h.AssertNil(t, err)
 
-				// Let's add some buildpacks
-				deps := []buildpack.BuildModule{bp2v1, bp1v2}
+				// Let's add the buildpacks
+				bldr.AddBuildpacks(bp1v1, deps)
+			})
+
+			when("#FlattenedModules", func() {
+				it("it return an empty array", func() {
+					h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)), 0)
+				})
+			})
+
+			when("#AllModules", func() {
+				it("it returns each buildpack individually", func() {
+					h.AssertEq(t, len(bldr.AllModules(buildpack.KindBuildpack)), 3)
+				})
+			})
+
+			when("#ShouldFlatten", func() {
+				it("it returns false for each buildpack", func() {
+					h.AssertFalse(t, bldr.ShouldFlatten(bp1v1))
+					h.AssertFalse(t, bldr.ShouldFlatten(bp2v1))
+					h.AssertFalse(t, bldr.ShouldFlatten(bp1v2))
+				})
+			})
+		})
+
+		when("buildpacks to be flattened are defined", func() {
+			it.Before(func() {
+				var err error
+				flattenModules, err := buildpack.ParseFlattenBuildModules([]string{"buildpack-1-id@buildpack-1-version-1,buildpack-1-id@buildpack-1-version-2,buildpack-2-id@buildpack-2-version-1"})
+				h.AssertNil(t, err)
+
+				bldr, err = builder.New(builderImage, "some-builder", builder.WithFlattened(flattenModules))
+				h.AssertNil(t, err)
+
+				// Let's add the buildpacks
 				bldr.AddBuildpacks(bp1v1, deps)
 			})
 
@@ -1825,7 +1938,34 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
-		// TODO add tests for flatten with depth
+	})
+
+	when("labels", func() {
+		var (
+			customLabels, imageLabels map[string]string
+			err                       error
+		)
+		it.Before(func() {
+			h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
+			h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
+			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
+			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.mixins", `["mixinX", "mixinY", "build:mixinA"]`))
+		})
+
+		it.After(func() {
+			h.AssertNilE(t, baseImage.Cleanup())
+		})
+
+		it("should set labels to the image", func() {
+			customLabels = map[string]string{"test.label.one": "1", "test.label.two": "2"}
+			subject, err = builder.New(baseImage, "some/builder", builder.WithLabels(customLabels))
+			h.AssertNil(t, err)
+
+			imageLabels, err = baseImage.Labels()
+			h.AssertNil(t, err)
+			h.AssertEq(t, imageLabels["test.label.one"], "1")
+			h.AssertEq(t, imageLabels["test.label.two"], "2")
+		})
 	})
 }
 

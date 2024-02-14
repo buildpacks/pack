@@ -227,6 +227,10 @@ func toDistTar(tw archive.TarWriter, descriptor Descriptor, blob Blob) error {
 
 		header.Mode = calcFileMode(header)
 		header.Name = path.Join(baseTarDir, header.Name)
+
+		if header.Typeflag == tar.TypeLink {
+			header.Linkname = path.Join(baseTarDir, path.Clean(header.Linkname))
+		}
 		err = tw.WriteHeader(header)
 		if err != nil {
 			return errors.Wrapf(err, "failed to write header for '%s'", header.Name)

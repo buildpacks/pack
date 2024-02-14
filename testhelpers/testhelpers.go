@@ -179,6 +179,33 @@ func AssertNotContains(t *testing.T, actual, expected string) {
 	}
 }
 
+type KeyValue[k comparable, v any] struct {
+	key   k
+	value v
+}
+
+func NewKeyValue[k comparable, v any](key k, value v) KeyValue[k, v] {
+	return KeyValue[k, v]{key: key, value: value}
+}
+
+func AssertMapContains[key comparable, value any](t *testing.T, actual map[key]value, expected ...KeyValue[key, value]) {
+	t.Helper()
+	for _, i := range expected {
+		if v, ok := actual[i.key]; !ok || !reflect.DeepEqual(v, i.value) {
+			t.Fatalf("Expected %s to contain elements %s", reflect.ValueOf(actual), reflect.ValueOf(expected))
+		}
+	}
+}
+
+func AssertMapNotContains[key comparable, value any](t *testing.T, actual map[key]value, expected ...KeyValue[key, value]) {
+	t.Helper()
+	for _, i := range expected {
+		if v, ok := actual[i.key]; ok && reflect.DeepEqual(v, i.value) {
+			t.Fatalf("Expected %s to not contain elements %s", reflect.ValueOf(actual), reflect.ValueOf(expected))
+		}
+	}
+}
+
 func AssertSliceContains(t *testing.T, slice []string, expected ...string) {
 	t.Helper()
 	_, missing, _ := stringset.Compare(slice, expected)

@@ -26,6 +26,7 @@ import (
 const (
 	defaultProcessType = "web"
 	overrideGID        = 0
+	overrideUID        = 0
 	sourceDateEpochEnv = "SOURCE_DATE_EPOCH"
 )
 
@@ -239,9 +240,16 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			}
 		}
 
+		var (
+			ephemeralRunImage string
+			err               error
+		)
 		currentRunImage := l.runImageAfterExtensions()
-		if currentRunImage != "" && currentRunImage != l.opts.RunImage {
-			if err := l.opts.FetchRunImage(currentRunImage); err != nil {
+		if l.runImageChanged() || l.hasExtensionsForRun() {
+			if currentRunImage == "" { // sanity check
+				return nil
+			}
+			if ephemeralRunImage, err = l.opts.FetchRunImageWithLifecycleLayer(currentRunImage); err != nil {
 				return err
 			}
 		}
@@ -269,7 +277,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {
 			group.Go(func() error {
 				l.logger.Info(style.Step("EXTENDING (RUN)"))
-				return l.ExtendRun(ctx, kanikoCache, phaseFactory)
+				return l.ExtendRun(ctx, kanikoCache, phaseFactory, ephemeralRunImage)
 			})
 		}
 
@@ -281,8 +289,8 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		return l.Export(ctx, buildCache, launchCache, kanikoCache, phaseFactory)
 	}
 
-	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
-		return errors.New("builder has an order for extensions which is not supported when using the creator")
+	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() && !l.opts.UseCreatorWithExtensions {
+		return errors.New("builder has an order for extensions which is not supported when using the creator; re-run without '--trust-builder' or re-tag builder to avoid trusting it")
 	}
 	return l.Create(ctx, buildCache, launchCache, phaseFactory)
 }
@@ -314,6 +322,10 @@ func (l *LifecycleExecution) Create(ctx context.Context, buildCache, launchCache
 
 	if l.opts.GID >= overrideGID {
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
+	}
+
+	if l.opts.UID >= overrideUID {
+		flags = append(flags, "-uid", strconv.Itoa(l.opts.UID))
 	}
 
 	if l.opts.PreviousImage != "" {
@@ -465,6 +477,10 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
 
+	if l.opts.UID >= overrideUID {
+		flags = append(flags, "-uid", strconv.Itoa(l.opts.UID))
+	}
+
 	// for kaniko
 	kanikoCacheBindOp := NullOp()
 	if (l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild()) ||
@@ -518,8 +534,6 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 			l.withLogLevel()...,
 		),
 		WithNetwork(l.opts.Network),
-		If(l.hasExtensionsForRun(), WithPostContainerRunOperations(
-			CopyOutToMaybe(l.mountPaths.cnbDir(), l.tmpDir))), // FIXME: this is hacky; we should get the lifecycle binaries from the lifecycle image
 		cacheBindOp,
 		dockerOp,
 		flagsOp,
@@ -566,6 +580,10 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 
 	if l.opts.GID >= overrideGID {
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
+	}
+
+	if l.opts.UID >= overrideUID {
+		flags = append(flags, "-uid", strconv.Itoa(l.opts.UID))
 	}
 
 	if l.opts.PreviousImage != "" {
@@ -712,7 +730,7 @@ func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache,
 	return extend.Run(ctx)
 }
 
-func (l *LifecycleExecution) ExtendRun(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) ExtendRun(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory, runImageName string) error {
 	flags := []string{"-app", l.mountPaths.appDir(), "-kind", "run"}
 
 	configProvider := NewPhaseConfigProvider(
@@ -725,8 +743,7 @@ func (l *LifecycleExecution) ExtendRun(ctx context.Context, kanikoCache Cache, p
 		WithFlags(flags...),
 		WithNetwork(l.opts.Network),
 		WithRoot(),
-		WithImage(l.runImageAfterExtensions()),
-		WithBinds(fmt.Sprintf("%s:%s", filepath.Join(l.tmpDir, "cnb"), l.mountPaths.cnbDir())),
+		WithImage(runImageName),
 		WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir())),
 	)
 
@@ -772,6 +789,10 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 	}
 	if l.opts.GID >= overrideGID {
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
+	}
+
+	if l.opts.UID >= overrideUID {
+		flags = append(flags, "-uid", strconv.Itoa(l.opts.UID))
 	}
 
 	cacheBindOp := NullOp()

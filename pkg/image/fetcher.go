@@ -109,7 +109,13 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 	}
 
 	f.logger.Debugf("Pulling image %s", style.Symbol(name))
-	err = f.pullImage(ctx, name, options.Platform)
+	if err = f.pullImage(ctx, name, options.Platform); err != nil {
+		// sample error from docker engine:
+		// image with reference <image> was found but does not match the specified platform: wanted linux/amd64, actual: linux
+		if strings.Contains(err.Error(), "does not match the specified platform") {
+			err = f.pullImage(ctx, name, "")
+		}
+	}
 	if err != nil && !errors.Is(err, ErrNotFound) {
 		return nil, err
 	}

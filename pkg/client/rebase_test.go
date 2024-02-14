@@ -28,6 +28,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 	when("#Rebase", func() {
 		var (
 			fakeImageFetcher   *ifakes.FakeImageFetcher
+			fakeAccessChecker  *ifakes.FakeAccessChecker
 			subject            *Client
 			fakeAppImage       *fakes.Image
 			fakeRunImage       *fakes.Image
@@ -37,6 +38,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			fakeImageFetcher = ifakes.NewFakeImageFetcher()
+			fakeAccessChecker = ifakes.NewFakeAccessChecker()
 
 			fakeAppImage = fakes.NewImage("some/app", "", &fakeIdentifier{name: "app-image"})
 			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata",
@@ -54,8 +56,9 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 
 			fakeLogger := logging.NewLogWithWriters(&out, &out)
 			subject = &Client{
-				logger:       fakeLogger,
-				imageFetcher: fakeImageFetcher,
+				logger:        fakeLogger,
+				imageFetcher:  fakeImageFetcher,
+				accessChecker: fakeAccessChecker,
 			}
 		})
 
@@ -258,6 +261,8 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, fakeAppImage.Base(), "some/run")
 							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 							h.AssertContains(t, lbl, `"runImage":{"topLayer":"remote-top-layer-sha","reference":"remote-digest"`)
+							args := fakeImageFetcher.FetchCalls["some/run"]
+							h.AssertEq(t, args.Platform, "linux/amd64")
 						})
 					})
 				})

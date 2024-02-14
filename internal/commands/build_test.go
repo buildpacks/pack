@@ -121,9 +121,9 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 						Return(nil)
 
 					logger.WantVerbose(true)
-					command.SetArgs([]string{"image", "--builder", "heroku/buildpacks:20"})
+					command.SetArgs([]string{"image", "--builder", "heroku/builder:22"})
 					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, outBuf.String(), "Builder 'heroku/buildpacks:20' is trusted")
+					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:22' is trusted")
 				})
 			})
 		})
@@ -763,6 +763,37 @@ builder = "my-builder"
 			})
 		})
 
+		when("mac-address flag is provided", func() {
+			when("mac-address is a valid value", func() {
+				it("should set MacAddress in BuildOptions", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithMacAddress("01:23:45:67:89:ab")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--mac-address", "01:23:45:67:89:ab"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+			when("mac-address is an invalid value", func() {
+				it("should throw an error", func() {
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--mac-address", "invalid-mac"})
+					err := command.Execute()
+					h.AssertError(t, err, "invalid MAC address")
+				})
+			})
+		})
+
+		when("mac-address flag is not provided", func() {
+			it("should not set MacAddress in BuildOptions", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithMacAddress("")).
+					Return(nil)
+
+				command.SetArgs([]string{"--builder", "my-builder", "image"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
 		when("previous-image flag is provided", func() {
 			when("image is invalid", func() {
 				it("error must be thrown", func() {
@@ -1072,6 +1103,15 @@ func EqBuildOptionsWithOverrideGroupID(gid int) gomock.Matcher {
 		description: fmt.Sprintf("GID=%d", gid),
 		equals: func(o client.BuildOptions) bool {
 			return o.GroupID == gid
+		},
+	}
+}
+
+func EqBuildOptionsWithMacAddress(macAddress string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("MacAddress=%s", macAddress),
+		equals: func(o client.BuildOptions) bool {
+			return o.MacAddress == macAddress
 		},
 	}
 }

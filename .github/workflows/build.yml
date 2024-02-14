@@ -72,9 +72,9 @@ jobs:
           }
         shell: powershell
       - name: Set up go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.20"
+          go-version: "1.21"
           check-latest: true
       - name: Set up go env for Unix
         if: runner.os != 'Windows'
@@ -156,7 +156,7 @@ jobs:
         env:
           PACK_BUILD: ${{ github.run_number }}
         shell: powershell
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: matrix.config != 'windows-lcow'
         with:
           name: pack-${{ matrix.os }}
@@ -173,14 +173,17 @@ jobs:
           - name: macos-arm64
             goarch: arm64
             goos: darwin
+          - name: linux-s390x
+            goarch: s390x
+            goos: linux
     needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.20"
+          go-version: "1.21"
           check-latest: true
       - name: Build
         run: |
@@ -188,7 +191,7 @@ jobs:
           env PACK_VERSION=${version} GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} make build
         env:
           PACK_BUILD: ${{ github.run_number }}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: pack-${{ matrix.name }}
           path: out/${{ env.PACK_BIN }}
@@ -217,7 +220,7 @@ jobs:
 
           echo "PACK_MILESTONE=${milestone}" >> $GITHUB_ENV
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
       - name: Package artifacts - macos
         run: |
           chmod +x pack-macos/pack
@@ -229,6 +232,12 @@ jobs:
           chmod +x pack-linux-arm64/pack
           filename=pack-v${{ env.PACK_VERSION }}-linux-arm64.tgz
           tar -C pack-linux-arm64 -vzcf $filename pack
+          shasum -a 256 $filename > $filename.sha256
+      - name: Package artifacts - linux-s390x
+        run: |
+          chmod +x pack-linux-s390x/pack
+          filename=pack-v${{ env.PACK_VERSION }}-linux-s390x.tgz
+          tar -C pack-linux-s390x -vzcf $filename pack
           shasum -a 256 $filename > $filename.sha256
       - name: Package artifacts - macos-arm64
         run: |
@@ -298,6 +307,12 @@ jobs:
 
             ```bash
             (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux-arm64.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
+
+            ##### S390X
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux-s390x.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
             ```
 
             #### MacOS

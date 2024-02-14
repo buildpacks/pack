@@ -15,7 +15,7 @@ import (
 type BuildpackDescriptor struct {
 	WithAPI          *api.Version `toml:"api"`
 	WithInfo         ModuleInfo   `toml:"buildpack"`
-	WithStacks       []Stack      `toml:"stacks"`
+	WithStacks       []Stack      `toml:"stacks,omitempty"`
 	WithTargets      []Target     `toml:"targets,omitempty"`
 	WithOrder        Order        `toml:"order"`
 	WithWindowsBuild bool
