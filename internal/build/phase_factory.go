@@ -25,6 +25,7 @@ func (m *DefaultPhaseFactory) New(provider *PhaseConfigProvider) RunnerCleaner {
 	return &Phase{
 		ctrConf:             provider.ContainerConfig(),
 		hostConf:            provider.HostConfig(),
+		netConf:             provider.NetworkConfig(),
 		name:                provider.Name(),
 		docker:              m.lifecycleExec.docker,
 		infoWriter:          provider.InfoWriter(),
