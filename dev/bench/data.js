@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1707950542728,
+  "lastUpdate": 1707952298129,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -5278,6 +5278,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 53390669159,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "action@github.com",
+            "name": "github-bot",
+            "username": "actions-user"
+          },
+          "committer": {
+            "email": "action@github.com",
+            "name": "github-bot",
+            "username": "actions-user"
+          },
+          "distinct": true,
+          "id": "06e3112b101221f9605203fd8e1b20a4bfa8e138",
+          "message": "Merge remote-tracking branch 'origin/release/0.33.2'",
+          "timestamp": "2024-02-14T23:10:08Z",
+          "tree_id": "8731aed2180d96323b38326431f81421dc95f733",
+          "url": "https://github.com/buildpacks/pack/commit/06e3112b101221f9605203fd8e1b20a4bfa8e138"
+        },
+        "date": 1707952297453,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5350600724,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1392250379,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 52466676456,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
