@@ -169,7 +169,7 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) (st
 	err = dockerCli(t).CopyToContainer(ctx, ctr.ID, "/", htpasswdTar, dockertypes.CopyToContainerOptions{})
 	AssertNil(t, err)
 
-	err = dockerCli(t).ContainerStart(ctx, ctr.ID, dockertypes.ContainerStartOptions{})
+	err = dockerCli(t).ContainerStart(ctx, ctr.ID, dockercontainer.StartOptions{})
 	AssertNil(t, err)
 
 	runRegistryPort, err := waitForPortBinding(t, ctr.ID, "5000/tcp", 30*time.Second)
