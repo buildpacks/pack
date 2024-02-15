@@ -467,7 +467,7 @@ drwxrwxrwx    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			writeOp := build.WriteRunToml(containerPath, []builder.RunImageMetadata{builder.RunImageMetadata{
+			writeOp := build.WriteRunToml(containerPath, []builder.RunImageMetadata{{
 				Image: "image-1",
 				Mirrors: []string{
 					"mirror-1",

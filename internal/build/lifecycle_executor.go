@@ -122,7 +122,9 @@ func (l *LifecycleExecutor) Execute(ctx context.Context, opts LifecycleOptions) 
 
 	if !opts.Interactive {
 		defer lifecycleExec.Cleanup()
-		return lifecycleExec.Run(ctx, NewDefaultPhaseFactory)
+		// return lifecycleExec.Run(ctx, NewDefaultPhaseFactory)
+		return lifecycleExec.RunDetect(ctx, NewDefaultPhaseFactory)
+
 	}
 
 	return opts.Termui.Run(func() {

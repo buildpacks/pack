@@ -295,6 +295,18 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 	return l.Create(ctx, buildCache, launchCache, phaseFactory)
 }
 
+func (l *LifecycleExecution) RunDetect(ctx context.Context, phaseFactoryCreator PhaseFactoryCreator) error {
+	phaseFactory := phaseFactoryCreator(l)
+
+	l.logger.Info(style.Step("DETECTING"))
+	if err := l.Detect(ctx, phaseFactory); err != nil {
+		return err
+	}
+
+	return nil
+	// return l.Create(ctx, buildCache, launchCache, phaseFactory)
+}
+
 func (l *LifecycleExecution) Cleanup() error {
 	var reterr error
 	if err := l.docker.VolumeRemove(context.Background(), l.layersVolume, true); err != nil {
