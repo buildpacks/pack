@@ -122,13 +122,26 @@ func (l *LifecycleExecutor) Execute(ctx context.Context, opts LifecycleOptions) 
 
 	if !opts.Interactive {
 		defer lifecycleExec.Cleanup()
-		// return lifecycleExec.Run(ctx, NewDefaultPhaseFactory)
-		return lifecycleExec.RunDetect(ctx, NewDefaultPhaseFactory)
-
+		return lifecycleExec.Run(ctx, NewDefaultPhaseFactory)
 	}
 
 	return opts.Termui.Run(func() {
 		defer lifecycleExec.Cleanup()
 		lifecycleExec.Run(ctx, NewDefaultPhaseFactory)
 	})
+}
+
+func (l *LifecycleExecutor) Detect(ctx context.Context, opts LifecycleOptions) error {
+	tmpDir, err := os.MkdirTemp("", "pack.tmp")
+	if err != nil {
+		return err
+	}
+
+	lifecycleExec, err := NewLifecycleExecution(l.logger, l.docker, tmpDir, opts)
+	if err != nil {
+		return err
+	}
+
+	defer lifecycleExec.Cleanup()
+	return lifecycleExec.RunDetect(ctx, NewDefaultPhaseFactory)
 }
