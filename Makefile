@@ -33,6 +33,10 @@ TEST_TIMEOUT?=1200s
 UNIT_TIMEOUT?=$(TEST_TIMEOUT)
 NO_DOCKER?=
 
+# Define the directory for the image.json file
+IMAGE_JSON_DIR := $(HOME)/.pack
+IMAGE_JSON_FILE := $(IMAGE_JSON_DIR)/image.json
+
 # Clean build flags
 clean_build := $(strip ${PACK_BUILD})
 clean_sha := $(strip ${PACK_GITSHA1})
@@ -146,6 +150,12 @@ package: out
 install:
 	mkdir -p ${DESTDIR}${BINDIR}
 	cp ./out/$(PACK_BIN) ${DESTDIR}${BINDIR}/
+	@if [ ! -d "$(IMAGE_JSON_DIR)" ]; then \
+		mkdir -p $(IMAGE_JSON_DIR); \
+	fi
+	@if [ ! -f "$(IMAGE_JSON_FILE)" ]; then \
+		echo '{ "interval": { "duration": "" }, "image": {} }' > $(IMAGE_JSON_FILE); \
+	fi
 
 ## install-mockgen: Used only by apt-get install when installing ubuntu ppa
 install-mockgen:
