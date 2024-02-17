@@ -5,7 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/layout/sparse"
@@ -33,6 +35,15 @@ type FetcherOption func(c *Fetcher)
 type LayoutOption struct {
 	Path   string
 	Sparse bool
+}
+
+type ImageJSON struct {
+	Interval struct {
+		Duration string `json:"duration"`
+	} `json:"interval"`
+	Image struct {
+		ImageIDtoTIME map[string]string
+	} `json:"image"`
 }
 
 // WithRegistryMirrors supply your own mirrors for registry.
@@ -89,6 +100,14 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		return nil, err
 	}
 
+	var imageID string // Variable to store the image ID
+	parts := strings.Split(name, "@")
+	if len(parts) > 1 {
+		imageID = parts[1]
+	} else {
+		imageID = parts[0]
+	}
+
 	if (options.LayoutOption != LayoutOption{}) {
 		return f.fetchLayoutImage(name, options.LayoutOption)
 	}
@@ -106,6 +125,15 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		if err == nil || !errors.Is(err, ErrNotFound) {
 			return img, err
 		}
+	case PullWithInterval:
+		pull, err := CheckImagePullInterval(imageID)
+		if !pull {
+			if err != nil {
+				return nil, err
+			}
+			img, err := f.fetchDaemonImage(name)
+			return img, err
+		}
 	}
 
 	f.logger.Debugf("Pulling image %s", style.Symbol(name))
@@ -120,7 +148,17 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		return nil, err
 	}
 
-	return f.fetchDaemonImage(name)
+	image, err := f.fetchDaemonImage(name)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update image pull record in the JSON file
+	if err := f.updateImagePullRecord(imageID, time.Now().Format(time.RFC3339)); err != nil {
+		return nil, err
+	}
+
+	return image, nil
 }
 
 func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
@@ -245,4 +283,23 @@ func (w *colorizedWriter) Write(p []byte) (n int, err error) {
 		msg = strings.ReplaceAll(msg, pattern, colorize(pattern))
 	}
 	return w.writer.Write([]byte(msg))
+}
+
+func (f *Fetcher) updateImagePullRecord(imageID, timestamp string) error {
+	imageJSON, err := readImageJSON()
+	if err != nil {
+		return err
+	}
+
+	if imageJSON.Image.ImageIDtoTIME == nil {
+		imageJSON.Image.ImageIDtoTIME = make(map[string]string)
+	}
+	imageJSON.Image.ImageIDtoTIME[imageID] = timestamp
+
+	updatedJSON, err := json.MarshalIndent(imageJSON, "", "    ")
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal updated records")
+	}
+
+	return os.WriteFile(imagePath, updatedJSON, 0644)
 }
