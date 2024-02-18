@@ -209,6 +209,8 @@ type BuildOptions struct {
 
 	// Configuration to export to OCI layout format
 	LayoutConfig *LayoutConfig
+
+	InsecureRegistries []string
 }
 
 func (b *BuildOptions) Layout() bool {
@@ -551,6 +553,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		CreationTime:             opts.CreationTime,
 		Layout:                   opts.Layout(),
 		Keychain:                 c.keychain,
+		InsecureRegistries:       opts.InsecureRegistries,
 	}
 
 	switch {

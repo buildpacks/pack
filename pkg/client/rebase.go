@@ -46,11 +46,14 @@ type RebaseOptions struct {
 	// Pass-through force flag to lifecycle rebase command to skip target data
 	// validated (will not have any effect if API < 0.12).
 	Force bool
+
+	InsecureRegistries []string
 }
 
 // Rebase updates the run image layers in an app image.
 // This operation mutates the image specified in opts.
 func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
+	var flags = []string{"rebase"}
 	imageRef, err := c.parseTagReference(opts.RepoName)
 	if err != nil {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.RepoName)
@@ -110,6 +113,10 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	for _, reg := range opts.InsecureRegistries {
+		flags = append(flags, "-insecure-registry", reg)
 	}
 
 	c.logger.Infof("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
