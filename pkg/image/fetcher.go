@@ -37,15 +37,6 @@ type LayoutOption struct {
 	Sparse bool
 }
 
-type ImageJSON struct {
-	Interval struct {
-		Duration string `json:"duration"`
-	} `json:"interval"`
-	Image struct {
-		ImageIDtoTIME map[string]string
-	} `json:"image"`
-}
-
 // WithRegistryMirrors supply your own mirrors for registry.
 func WithRegistryMirrors(registryMirrors map[string]string) FetcherOption {
 	return func(c *Fetcher) {
@@ -126,13 +117,17 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 			return img, err
 		}
 	case PullWithInterval:
-		pull, err := CheckImagePullInterval(imageID)
-		if !pull {
-			if err != nil {
-				return nil, err
-			}
-			img, err := f.fetchDaemonImage(name)
+		pull, err := f.CheckImagePullInterval(imageID)
+		if err != nil {
+			return nil, err
+		}
+		img, err := f.fetchDaemonImage(name)
+		if !pull && err != nil && !errors.Is(err, ErrNotFound) {
 			return img, err
+		}
+		err = f.PruneOldImages()
+		if err != nil {
+			f.logger.Warnf("Failed to prune images that are older than 7 days, %s", err)
 		}
 	}
 
@@ -286,7 +281,7 @@ func (w *colorizedWriter) Write(p []byte) (n int, err error) {
 }
 
 func (f *Fetcher) updateImagePullRecord(imageID, timestamp string) error {
-	imageJSON, err := readImageJSON()
+	imageJSON, err := readImageJSON(f.logger)
 	if err != nil {
 		return err
 	}

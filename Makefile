@@ -154,7 +154,7 @@ install:
 		mkdir -p $(IMAGE_JSON_DIR); \
 	fi
 	@if [ ! -f "$(IMAGE_JSON_FILE)" ]; then \
-		echo '{ "interval": { "duration": "" }, "image": {} }' > $(IMAGE_JSON_FILE); \
+		echo '{ "interval": { "pulling_interval": "", pruning_interval: "7d", "last_prune": "" }, "image": {} }' > $(IMAGE_JSON_FILE); \
 	fi
 
 ## install-mockgen: Used only by apt-get install when installing ubuntu ppa
