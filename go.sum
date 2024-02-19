@@ -40,8 +40,8 @@ github.com/Microsoft/hcsshim v0.11.4 h1:68vKo2VN8DE9AdN4tnkWnmdhqdbpUFM8OF3Airm7
 github.com/Microsoft/hcsshim v0.11.4/go.mod h1:smjE4dvqPX9Zldna+t5FG3rnoHhaB7QYxPRqGcpAD9w=
 github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 h1:kkhsdkhsCvIsutKu5zLMgWtgh9YxGCNAw8Ad8hjwfYg=
 github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371/go.mod h1:EjAoLdwvbIOoOQr3ihjnSoLZRtE8azugULFRteWMNc0=
-github.com/WYGIN/buildpacks-imgutil v0.0.0-20240212141424-fad6445eb228 h1:oGe44vZnGMPfWWq8UgL4gyhmt27kGNzPoHc4dZvPmWA=
-github.com/WYGIN/buildpacks-imgutil v0.0.0-20240212141424-fad6445eb228/go.mod h1:PsazEB9yz+NG/cgm0Z1oQ0Xq6rD/U7eNMt5Su41afYY=
+github.com/WYGIN/buildpacks-imgutil v0.0.0-20240214072401-d071ec2816c6 h1:ezBkLrGhz9n8AEaBcVmpeVE3/aLX/FOoCbC6pSAU/3U=
+github.com/WYGIN/buildpacks-imgutil v0.0.0-20240214072401-d071ec2816c6/go.mod h1:7zUmt4wkVJNuXCZhQndEd3kvVGmWLVyzRFIQXTaeXlU=
 github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7lmo=
 github.com/agext/levenshtein v1.2.3/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
@@ -91,8 +91,6 @@ github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
-github.com/buildpacks/imgutil v0.0.0-20240118145509-e94a1b7de8a9 h1:kxe31xfMWJAIAzDfGQ3lL0j8QSSRfEHyLg7dRWIHA8I=
-github.com/buildpacks/imgutil v0.0.0-20240118145509-e94a1b7de8a9/go.mod h1:PsazEB9yz+NG/cgm0Z1oQ0Xq6rD/U7eNMt5Su41afYY=
 github.com/buildpacks/lifecycle v0.18.4 h1:LGl/4guzU+57hn08W8RwjLLizYtuNfCZHtxn8TP2+bE=
 github.com/buildpacks/lifecycle v0.18.4/go.mod h1:DxxfyFaCi9ovbbP2fhcKBlImfbTPiPEtM5UqSlD1TJ8=
 github.com/bwesterb/go-ristretto v1.2.3/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7NFEuV9ekS419A0=

@@ -38,76 +38,8 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 		subject          *Client
 		err              error
 		tmpDir           string
-		// fakeIndex        *fakes.Index
 	)
 	when("#CreateManifest", func() {
-		var (
-			// xdgPath = "xdgPath"
-			// ops = []index.Option{
-			// 	index.WithKeychain(authn.DefaultKeychain),
-			// 	index.WithXDGRuntimePath(xdgPath),
-			// }
-			prepareMockImageFactoryForValidCreateIndex = func() {
-				idx, err := fakes.NewIndex(types.OCIImageIndex, 1024, 1, 1, v1.Descriptor{})
-				h.AssertNil(t, err)
-
-				mockIndexFactory.EXPECT().
-					CreateIndex(gomock.Any(), gomock.Any()).
-					AnyTimes().
-					Return(idx, err)
-				mockIndexFactory.EXPECT().
-					LoadIndex(gomock.Any(), gomock.Any()).
-					AnyTimes().
-					After(
-						mockIndexFactory.EXPECT().
-							LoadIndex(gomock.Any(), gomock.Any()).
-							Times(1).
-							Return(
-								imgutil.ImageIndex(nil),
-								errors.New("no image exists"),
-							),
-					).
-					Return(idx, err)
-			}
-
-			prepareMockImageFactoryForValidCreateIndexWithAll = func() {
-				idx, err := fakes.NewIndex(types.OCIImageIndex, 1024, 1, 1, v1.Descriptor{}, fakes.WithIndex(true))
-				h.AssertNil(t, err)
-
-				mockIndexFactory.EXPECT().
-					CreateIndex(gomock.Any(), gomock.Any()).
-					AnyTimes().
-					Return(idx, err)
-				mockIndexFactory.EXPECT().
-					LoadIndex(gomock.Any(), gomock.Any()).
-					AnyTimes().
-					After(
-						mockIndexFactory.EXPECT().
-							LoadIndex(gomock.Any(), gomock.Any()).
-							Times(1).
-							Return(
-								imgutil.ImageIndex(nil),
-								errors.New("no image exists"),
-							),
-					).
-					Return(idx, err)
-			}
-
-			prepareMockImageFactoryForInvalidCreateIndexExistsLoadIndex = func() {
-				idx, err := fakes.NewIndex(types.OCIImageIndex, 1024, 1, 1, v1.Descriptor{})
-				h.AssertNil(t, err)
-
-				mockIndexFactory.EXPECT().
-					CreateIndex(gomock.Any(), gomock.Any()).
-					AnyTimes().
-					Return(idx, err)
-
-				mockIndexFactory.EXPECT().
-					LoadIndex(gomock.Any(), gomock.Any()).
-					AnyTimes().
-					Return(idx, err)
-			}
-		)
 		it.Before(func() {
 			logger = logging.NewLogWithWriters(&out, &out, logging.WithVerbose())
 			mockController = gomock.NewController(t)
@@ -126,57 +58,116 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 			mockController.Finish()
 			h.AssertNil(t, os.RemoveAll(tmpDir))
 		})
-		when("should", func() {
-			it("create manifest", func() {
-				prepareMockImageFactoryForValidCreateIndex()
-				err := subject.CreateManifest(
-					context.TODO(),
-					"pack/imgutil",
-					[]string{"busybox:1.36-musl"},
-					CreateManifestOptions{
-						Insecure: true,
-					},
-				)
-				h.AssertNil(t, err)
-			})
-			it("create manifests ignoring all option", func() {
-				prepareMockImageFactoryForValidCreateIndex()
-				err := subject.CreateManifest(
-					context.TODO(),
-					"pack/imgutil",
-					[]string{"busybox:1.36-musl"},
-					CreateManifestOptions{
-						Insecure: true,
-						All:      true,
-					},
-				)
-				h.AssertNil(t, err)
-			})
-			it("create manifests with all nested images", func() {
-				prepareMockImageFactoryForValidCreateIndexWithAll()
-				err := subject.CreateManifest(
-					context.TODO(),
-					"pack/imgutil",
-					[]string{"busybox:1.36-musl"},
-					CreateManifestOptions{
-						Insecure: true,
-						All:      true,
-					},
-				)
-				h.AssertNil(t, err)
-			})
-			it("return an error when index exists already", func() {
-				prepareMockImageFactoryForInvalidCreateIndexExistsLoadIndex()
-				err := subject.CreateManifest(
-					context.TODO(),
-					"pack/imgutil",
-					[]string{"busybox:1.36-musl"},
-					CreateManifestOptions{
-						Insecure: true,
-					},
-				)
-				h.AssertNil(t, err)
-			})
+		it("create manifest", func() {
+			prepareMockImageFactoryForValidCreateIndex(t, mockIndexFactory)
+			err := subject.CreateManifest(
+				context.TODO(),
+				"pack/imgutil",
+				[]string{"busybox:1.36-musl"},
+				CreateManifestOptions{
+					Insecure: true,
+				},
+			)
+			h.AssertNil(t, err)
+		})
+		it("create manifests ignoring all option", func() {
+			prepareMockImageFactoryForValidCreateIndex(t, mockIndexFactory)
+			err := subject.CreateManifest(
+				context.TODO(),
+				"pack/imgutil",
+				[]string{"busybox:1.36-musl"},
+				CreateManifestOptions{
+					Insecure: true,
+					All:      true,
+				},
+			)
+			h.AssertNil(t, err)
+		})
+		it("create manifests with all nested images", func() {
+			prepareMockImageFactoryForValidCreateIndexWithAll(t, mockIndexFactory)
+			err := subject.CreateManifest(
+				context.TODO(),
+				"pack/imgutil",
+				[]string{"busybox:1.36-musl"},
+				CreateManifestOptions{
+					Insecure: true,
+					All:      true,
+				},
+			)
+			h.AssertNil(t, err)
+		})
+		it("return an error when index exists already", func() {
+			prepareMockImageFactoryForInvalidCreateIndexExistsLoadIndex(t, mockIndexFactory)
+			err := subject.CreateManifest(
+				context.TODO(),
+				"pack/imgutil",
+				[]string{"busybox:1.36-musl"},
+				CreateManifestOptions{
+					Insecure: true,
+				},
+			)
+			h.AssertEq(t, err.Error(), "exits in your local storage, use 'pack manifest remove' if you want to delete it")
 		})
 	})
+}
+
+func prepareMockImageFactoryForValidCreateIndex(t *testing.T, mockIndexFactory *testmocks.MockIndexFactory) {
+	idx, err := fakes.NewIndex(types.OCIImageIndex, 1024, 1, 1, v1.Descriptor{})
+	h.AssertNil(t, err)
+
+	mockIndexFactory.EXPECT().
+		CreateIndex(gomock.Any(), gomock.Any()).
+		AnyTimes().
+		Return(idx, err)
+	mockIndexFactory.EXPECT().
+		LoadIndex(gomock.Any(), gomock.Any()).
+		AnyTimes().
+		After(
+			mockIndexFactory.EXPECT().
+				LoadIndex(gomock.Any(), gomock.Any()).
+				Times(1).
+				Return(
+					imgutil.ImageIndex(nil),
+					errors.New("no image exists"),
+				),
+		).
+		Return(idx, err)
+}
+
+func prepareMockImageFactoryForValidCreateIndexWithAll(t *testing.T, mockIndexFactory *testmocks.MockIndexFactory) {
+	idx, err := fakes.NewIndex(types.OCIImageIndex, 1024, 1, 1, v1.Descriptor{})
+	h.AssertNil(t, err)
+
+	mockIndexFactory.EXPECT().
+		CreateIndex(gomock.Any(), gomock.Any()).
+		AnyTimes().
+		Return(idx, err)
+	mockIndexFactory.EXPECT().
+		LoadIndex(gomock.Any(), gomock.Any()).
+		AnyTimes().
+		After(
+			mockIndexFactory.EXPECT().
+				LoadIndex(gomock.Any(), gomock.Any()).
+				Times(1).
+				Return(
+					imgutil.ImageIndex(nil),
+					errors.New("no image exists"),
+				),
+		).
+		Return(idx, err)
+}
+
+func prepareMockImageFactoryForInvalidCreateIndexExistsLoadIndex(t *testing.T, mockIndexFactory *testmocks.MockIndexFactory) {
+	idx, err := fakes.NewIndex(types.OCIImageIndex, 1024, 1, 1, v1.Descriptor{})
+	h.AssertNil(t, err)
+
+	mockIndexFactory.EXPECT().
+		CreateIndex(gomock.Any(), gomock.Any()).
+		AnyTimes().
+		Return(idx, err)
+
+	mockIndexFactory.EXPECT().
+		LoadIndex(gomock.Any(), gomock.Any()).
+		AnyTimes().
+		Return(idx, err)
 }
