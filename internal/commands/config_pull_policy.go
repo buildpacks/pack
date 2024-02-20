@@ -16,12 +16,12 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 	var unset bool
 
 	cmd := &cobra.Command{
-		Use:   "pull-policy <always | if-not-present | never>",
+		Use:   "pull-policy <always | hourly | daily | weekly | if-not-present | interval=<_d_h_m> | never>",
 		Args:  cobra.MaximumNArgs(1),
 		Short: "List, set and unset the global pull policy used by other commands",
 		Long: "You can use this command to list, set, and unset the default pull policy that will be used when working with containers:\n" +
 			"* To list your pull policy, run `pack config pull-policy`.\n" +
-			"* To set your pull policy, run `pack config pull-policy <always | if-not-present | never>`.\n" +
+			"* To set your pull policy, run `pack config pull-policy <always | hourly | daily | weekly | if-not-present | interval=<_d_h_m> | never>`.\n" +
 			"* To unset your pull policy, run `pack config pull-policy --unset`.\n" +
 			fmt.Sprintf("Unsetting the pull policy will reset the policy to the default, which is %s", style.Symbol("always")),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {

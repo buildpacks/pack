@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -91,14 +90,6 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		return nil, err
 	}
 
-	var imageID string // Variable to store the image ID
-	parts := strings.Split(name, "@")
-	if len(parts) > 1 {
-		imageID = parts[1]
-	} else {
-		imageID = parts[0]
-	}
-
 	if (options.LayoutOption != LayoutOption{}) {
 		return f.fetchLayoutImage(name, options.LayoutOption)
 	}
@@ -116,15 +107,18 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		if err == nil || !errors.Is(err, ErrNotFound) {
 			return img, err
 		}
-	case PullWithInterval:
-		pull, err := f.CheckImagePullInterval(imageID)
-		if err != nil {
-			return nil, err
-		}
+	case PullWithInterval, PullDaily, PullHourly, PullWeekly:
 		img, err := f.fetchDaemonImage(name)
-		if !pull && err != nil && !errors.Is(err, ErrNotFound) {
+		if err != nil && !errors.Is(err, ErrNotFound) {
 			return img, err
 		}
+		if err == nil {
+			pull, err := f.CheckImagePullInterval(name)
+			if !pull {
+				return img, err
+			}
+		}
+
 		err = f.PruneOldImages()
 		if err != nil {
 			f.logger.Warnf("Failed to prune images that are older than 7 days, %s", err)
@@ -149,7 +143,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 	}
 
 	// Update image pull record in the JSON file
-	if err := f.updateImagePullRecord(imageID, time.Now().Format(time.RFC3339)); err != nil {
+	if err := f.updateImagePullRecord(name, time.Now().Format(time.RFC3339)); err != nil {
 		return nil, err
 	}
 
@@ -281,7 +275,7 @@ func (w *colorizedWriter) Write(p []byte) (n int, err error) {
 }
 
 func (f *Fetcher) updateImagePullRecord(imageID, timestamp string) error {
-	imageJSON, err := readImageJSON(f.logger)
+	imageJSON, err := ReadImageJSON(f.logger)
 	if err != nil {
 		return err
 	}
@@ -293,8 +287,13 @@ func (f *Fetcher) updateImagePullRecord(imageID, timestamp string) error {
 
 	updatedJSON, err := json.MarshalIndent(imageJSON, "", "    ")
 	if err != nil {
-		return errors.Wrap(err, "failed to marshal updated records")
+		return errors.New("failed to marshal updated records: " + err.Error())
 	}
 
-	return os.WriteFile(imagePath, updatedJSON, 0644)
+	err = WriteFile(updatedJSON)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
