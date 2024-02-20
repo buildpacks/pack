@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -20,14 +21,23 @@ type PullPolicy int
 var interval string
 
 var (
+	hourly        = "1h"
+	daily         = "1d"
+	weekly        = "7d"
 	intervalRegex = regexp.MustCompile(`^(\d+d)?(\d+h)?(\d+m)?$`)
 	imagePath     string
 )
 
 const (
-	// PullAlways images, even if they are present
+	// Always pull images, even if they are present
 	PullAlways PullPolicy = iota
-	// PullNever images, even if they are not present
+	// Pull images hourly
+	PullHourly
+	// Pull images daily
+	PullDaily
+	// Pull images weekly
+	PullWeekly
+	// Never pull images, even if they are not present
 	PullNever
 	// PullIfNotPresent pulls images if they aren't present
 	PullIfNotPresent
@@ -46,11 +56,29 @@ type ImageJSON struct {
 	} `json:"image"`
 }
 
-var nameMap = map[string]PullPolicy{"always": PullAlways, "never": PullNever, "if-not-present": PullIfNotPresent, "": PullAlways}
+var nameMap = map[string]PullPolicy{"always": PullAlways, "hourly": PullHourly, "daily": PullDaily, "weekly": PullWeekly, "never": PullNever, "if-not-present": PullIfNotPresent, "": PullAlways}
 
 // ParsePullPolicy from string with support for interval formats
 func ParsePullPolicy(policy string) (PullPolicy, error) {
 	if val, ok := nameMap[policy]; ok {
+		if val == PullHourly {
+			err := updateImageJSONDuration(hourly)
+			if err != nil {
+				return PullAlways, err
+			}
+		}
+		if val == PullDaily {
+			err := updateImageJSONDuration(daily)
+			if err != nil {
+				return PullAlways, err
+			}
+		}
+		if val == PullWeekly {
+			err := updateImageJSONDuration(weekly)
+			if err != nil {
+				return PullAlways, err
+			}
+		}
 		return val, nil
 	}
 
@@ -62,7 +90,10 @@ func ParsePullPolicy(policy string) (PullPolicy, error) {
 			return PullAlways, errors.Errorf("invalid interval format: %s", intervalStr)
 		}
 
-		updateImageJSONDuration(intervalStr)
+		err := updateImageJSONDuration(intervalStr)
+		if err != nil {
+			return PullAlways, err
+		}
 
 		return PullWithInterval, nil
 	}
@@ -74,19 +105,25 @@ func (p PullPolicy) String() string {
 	switch p {
 	case PullAlways:
 		return "always"
+	case PullHourly:
+		return "hourly"
+	case PullDaily:
+		return "daily"
+	case PullWeekly:
+		return "weekly"
 	case PullNever:
 		return "never"
 	case PullIfNotPresent:
 		return "if-not-present"
 	case PullWithInterval:
-		return fmt.Sprintf("interval=%v", interval)
+		return fmt.Sprintf("%v", interval)
 	}
 
 	return ""
 }
 
 func updateImageJSONDuration(intervalStr string) error {
-	imageJSON, err := readImageJSON(logging.NewSimpleLogger(os.Stderr))
+	imageJSON, err := ReadImageJSON(logging.NewSimpleLogger(os.Stderr))
 	if err != nil {
 		return err
 	}
@@ -98,10 +135,10 @@ func updateImageJSONDuration(intervalStr string) error {
 		return errors.Wrap(err, "failed to marshal updated records")
 	}
 
-	return os.WriteFile(imagePath, updatedJSON, 0644)
+	return WriteFile(updatedJSON)
 }
 
-func readImageJSON(l logging.Logger) (ImageJSON, error) {
+func ReadImageJSON(l logging.Logger) (ImageJSON, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return ImageJSON{}, errors.Wrap(err, "failed to get home directory")
@@ -123,7 +160,7 @@ func readImageJSON(l logging.Logger) (ImageJSON, error) {
 		l.Warnf("missing `image.json` file under %s directory %s", dirPath, err)
 		l.Debugf("creating `image.json` file under %s directory", dirPath)
 		minimumJSON := []byte(`{"interval":{"pulling_interval":"","pruning_interval":"7d","last_prune":""},"image":{}}`)
-		if err := os.WriteFile(imagePath, minimumJSON, 0644); err != nil {
+		if err := WriteFile(minimumJSON); err != nil {
 			return ImageJSON{}, errors.Wrap(err, "failed to create image.json file")
 		}
 	}
@@ -142,7 +179,7 @@ func readImageJSON(l logging.Logger) (ImageJSON, error) {
 }
 
 func (f *Fetcher) CheckImagePullInterval(imageID string) (bool, error) {
-	imageJSON, err := readImageJSON(f.logger)
+	imageJSON, err := ReadImageJSON(f.logger)
 	if err != nil {
 		return false, err
 	}
@@ -202,7 +239,7 @@ func parseDurationString(durationStr string) (time.Duration, error) {
 }
 
 func (f *Fetcher) PruneOldImages() error {
-	imageJSON, err := readImageJSON(f.logger)
+	imageJSON, err := ReadImageJSON(f.logger)
 	if err != nil {
 		return err
 	}
@@ -238,6 +275,11 @@ func (f *Fetcher) PruneOldImages() error {
 			return errors.Wrap(err, "failed to parse image timestamp fron JSON")
 		}
 
+		_, err = f.fetchDaemonImage(imageID)
+		if !errors.Is(err, ErrNotFound) {
+			delete(imageJSON.Image.ImageIDtoTIME, imageID)
+		}
+
 		if imageTimestamp.Before(pruningThreshold) {
 			delete(imageJSON.Image.ImageIDtoTIME, imageID)
 		}
@@ -250,8 +292,20 @@ func (f *Fetcher) PruneOldImages() error {
 		return errors.Wrap(err, "failed to marshal updated records")
 	}
 
-	if err := os.WriteFile(imagePath, updatedJSON, 0644); err != nil {
+	if err := WriteFile(updatedJSON); err != nil {
 		return errors.Wrap(err, "failed to write updated image.json")
+	}
+
+	return nil
+}
+
+func WriteFile(data []byte) error {
+	cmd := exec.Command("sudo", "sh", "-c", "echo '"+string(data)+"' > "+imagePath)
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	if err := cmd.Run(); err != nil {
+		return errors.New("failed to write file with sudo: " + err.Error())
 	}
 
 	return nil
