@@ -27,7 +27,7 @@ import (
 )
 
 type ImageFactory interface {
-	NewImage(repoName string, local bool, imageOS string) (imgutil.Image, error)
+	NewImage(repoName string, local bool, platform dist.Platform) (imgutil.Image, error)
 }
 
 type WorkableImage interface {
@@ -343,12 +343,12 @@ func (b *PackageBuilder) resolvedStacks() []dist.Stack {
 	return stacks
 }
 
-func (b *PackageBuilder) SaveAsFile(path, imageOS string, labels map[string]string) error {
+func (b *PackageBuilder) SaveAsFile(path string, platform dist.Platform, labels map[string]string) error {
 	if err := b.validate(); err != nil {
 		return err
 	}
 
-	layoutImage, err := newLayoutImage(imageOS)
+	layoutImage, err := newLayoutImage(platform)
 	if err != nil {
 		return errors.Wrap(err, "creating layout image")
 	}
@@ -408,7 +408,7 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string, labels map[string]stri
 	return archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, false, nil)
 }
 
-func newLayoutImage(imageOS string) (*layoutImage, error) {
+func newLayoutImage(platform dist.Platform) (*layoutImage, error) {
 	i := empty.Image
 
 	configFile, err := i.ConfigFile()
@@ -416,13 +416,14 @@ func newLayoutImage(imageOS string) (*layoutImage, error) {
 		return nil, err
 	}
 
-	configFile.OS = imageOS
+	configFile.OS = platform.OS
+	configFile.Architecture = platform.Architecture
 	i, err = mutate.ConfigFile(i, configFile)
 	if err != nil {
 		return nil, err
 	}
 
-	if imageOS == "windows" {
+	if platform.OS == "windows" {
 		opener := func() (io.ReadCloser, error) {
 			reader, err := layer.WindowsBaseLayer()
 			return io.NopCloser(reader), err
@@ -442,12 +443,12 @@ func newLayoutImage(imageOS string) (*layoutImage, error) {
 	return &layoutImage{Image: i}, nil
 }
 
-func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS string, labels map[string]string) (imgutil.Image, error) {
+func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, platform dist.Platform, labels map[string]string) (imgutil.Image, error) {
 	if err := b.validate(); err != nil {
 		return nil, err
 	}
 
-	image, err := b.imageFactory.NewImage(repoName, !publish, imageOS)
+	image, err := b.imageFactory.NewImage(repoName, !publish, platform)
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating image")
 	}

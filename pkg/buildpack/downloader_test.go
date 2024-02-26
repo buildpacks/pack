@@ -58,9 +58,11 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 		return url
 	}
 
+	var linuxAmd64Platform = dist.Platform{OS: "linux", Architecture: "amd64", Platform: "linux/amd64"}
+
 	var createPackage = func(imageName string) *fakes.Image {
 		packageImage := fakes.NewImage(imageName, "", nil)
-		mockImageFactory.EXPECT().NewImage(packageImage.Name(), false, "linux").Return(packageImage, nil)
+		mockImageFactory.EXPECT().NewImage(packageImage.Name(), false, linuxAmd64Platform).Return(packageImage, nil)
 
 		pack, err := client.NewClient(
 			client.WithLogger(logger),
@@ -74,7 +76,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, pack.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
 			Name: packageImage.Name(),
 			Config: pubbldpkg.Config{
-				Platform: dist.Platform{OS: "linux"},
+				Platform: dist.Platform{OS: "linux", Architecture: "amd64"},
 				Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 					WithAPI:    api.MustParse("0.3"),
 					WithInfo:   dist.ModuleInfo{ID: "example/foo", Version: "1.1.0"},
@@ -127,9 +129,9 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			downloadOptions = buildpack.DownloadOptions{ImageOS: "linux"}
 		)
 
-		shouldFetchPackageImageWith := func(demon bool, pull image.PullPolicy, platform string) {
+		shouldFetchPackageImageWith := func(daemon bool, pull image.PullPolicy, platform string) {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{
-				Daemon:     demon,
+				Daemon:     daemon,
 				PullPolicy: pull,
 				Platform:   platform,
 			}).Return(packageImage, nil)

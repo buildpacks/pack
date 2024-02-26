@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/system"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -41,13 +44,14 @@ func TestPackageBuildpack(t *testing.T) {
 
 func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 	var (
-		subject          *client.Client
-		mockController   *gomock.Controller
-		mockDownloader   *testmocks.MockBlobDownloader
-		mockImageFactory *testmocks.MockImageFactory
-		mockImageFetcher *testmocks.MockImageFetcher
-		mockDockerClient *testmocks.MockCommonAPIClient
-		out              bytes.Buffer
+		subject            *client.Client
+		mockController     *gomock.Controller
+		mockDownloader     *testmocks.MockBlobDownloader
+		mockImageFactory   *testmocks.MockImageFactory
+		mockImageFetcher   *testmocks.MockImageFetcher
+		mockDockerClient   *testmocks.MockCommonAPIClient
+		out                bytes.Buffer
+		linuxAmd64Platform dist.Platform
 	)
 
 	it.Before(func() {
@@ -66,6 +70,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			client.WithDockerClient(mockDockerClient),
 		)
 		h.AssertNil(t, err)
+
+		linuxAmd64Platform = dist.Platform{OS: "linux", Architecture: "amd64", Platform: "linux/amd64"}
 	})
 
 	it.After(func() {
@@ -138,6 +144,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				mockDownloader.EXPECT().Download(gomock.Any(), dependencyPath).Return(blob.NewBlob("no-file.txt"), nil).AnyTimes()
 
 				mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+				mockDockerClient.EXPECT().ServerVersion(context.TODO()).Return(types.Version{Arch: "amd64"}, nil).AnyTimes()
 
 				packageDescriptor := dist.BuildpackDescriptor{
 					WithAPI:  api.MustParse("0.2"),
@@ -170,6 +177,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		when("simple package for both OS formats (experimental only)", func() {
 			it("creates package image based on daemon OS", func() {
 				for _, daemonOS := range []string{"linux", "windows"} {
+					daemonArch := "amd64"
+
 					localMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
 					localMockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: daemonOS}, nil).AnyTimes()
 
@@ -181,8 +190,10 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					)
 					h.AssertNil(t, err)
 
+					daemonPlatform := dist.Platform{OS: daemonOS, Architecture: daemonArch, Platform: fmt.Sprintf("%s/%s", daemonOS, daemonArch)}
+
 					fakeImage := fakes.NewImage("basic/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true, daemonOS).Return(fakeImage, nil)
+					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true, daemonPlatform).Return(fakeImage, nil)
 
 					fakeBlob := blob.NewBlob(filepath.Join("testdata", "empty-file"))
 					bpURL := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
@@ -192,7 +203,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						Format: client.FormatImage,
 						Name:   fakeImage.Name(),
 						Config: pubbldpkg.Config{
-							Platform: dist.Platform{OS: daemonOS},
+							Platform: dist.Platform{OS: daemonOS, Architecture: daemonArch},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 								WithAPI:    api.MustParse("0.2"),
 								WithInfo:   dist.ModuleInfo{ID: "bp.basic", Version: "2.3.4"},
@@ -202,6 +213,40 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						PullPolicy: image.PullNever,
 					}))
 				}
+			})
+
+			when("when platform architecture is specified", func() {
+				it("it skips docker ServerVersion call", func() {
+					localMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
+					localMockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+
+					linuxAmd64Platform := dist.Platform{OS: "linux", Architecture: "amd64", Platform: "linux/amd64"}
+
+					fakeImage := fakes.NewImage("basic/package-"+h.RandString(12), "", nil)
+					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true, linuxAmd64Platform).Return(fakeImage, nil)
+
+					packClientWithoutExperimental, err := client.NewClient(
+						client.WithDockerClient(localMockDockerClient),
+						client.WithDownloader(mockDownloader),
+						client.WithImageFactory(mockImageFactory),
+						client.WithExperimental(false),
+					)
+					h.AssertNil(t, err)
+
+					h.AssertNil(t, packClientWithoutExperimental.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+						Format: client.FormatImage,
+						Name:   fakeImage.Name(),
+						Config: pubbldpkg.Config{
+							Platform: linuxAmd64Platform,
+							Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+								WithAPI:    api.MustParse("0.2"),
+								WithInfo:   dist.ModuleInfo{ID: "bp.basic", Version: "2.3.4"},
+								WithStacks: []dist.Stack{{ID: "some.stack.id"}},
+							})},
+						},
+						PullPolicy: image.PullNever,
+					}))
+				})
 			})
 
 			it("fails without experimental on Windows daemons", func() {
@@ -243,6 +288,61 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertError(t, err, "invalid 'platform.os' specified: DOCKER_OS is 'windows'")
 			})
+
+			it("fails from docker Info error", func() {
+				badMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
+				badMockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{}, errors.New("no info for you")).AnyTimes()
+
+				packClientWithoutExperimental, err := client.NewClient(
+					client.WithDockerClient(badMockDockerClient),
+					client.WithExperimental(false),
+				)
+				h.AssertNil(t, err)
+
+				err = packClientWithoutExperimental.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+					Format: client.FormatImage,
+					Name:   "some-image",
+					Config: pubbldpkg.Config{
+						Platform: dist.Platform{
+							OS: "linux",
+						},
+						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+							WithAPI:    api.MustParse("0.2"),
+							WithInfo:   dist.ModuleInfo{ID: "bp.basic", Version: "2.3.4"},
+							WithStacks: []dist.Stack{{ID: "some.stack.id"}},
+						})},
+					},
+				})
+				h.AssertError(t, err, "no info for you")
+			})
+
+			it("fails from docker ServerVersion error", func() {
+				badMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
+				badMockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+				badMockDockerClient.EXPECT().ServerVersion(context.TODO()).Return(types.Version{}, errors.New("no arch for you")).AnyTimes()
+
+				packClientWithoutExperimental, err := client.NewClient(
+					client.WithDockerClient(badMockDockerClient),
+					client.WithExperimental(false),
+				)
+				h.AssertNil(t, err)
+
+				err = packClientWithoutExperimental.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+					Format: client.FormatImage,
+					Name:   "some-image",
+					Config: pubbldpkg.Config{
+						Platform: dist.Platform{
+							OS: "linux",
+						},
+						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+							WithAPI:    api.MustParse("0.2"),
+							WithInfo:   dist.ModuleInfo{ID: "bp.basic", Version: "2.3.4"},
+							WithStacks: []dist.Stack{{ID: "some.stack.id"}},
+						})},
+					},
+				})
+				h.AssertError(t, err, "no arch for you")
+			})
 		})
 
 		when("nested package lives in registry", func() {
@@ -250,7 +350,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
-				mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, "linux").Return(nestedPackage, nil)
+				mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, linuxAmd64Platform).Return(nestedPackage, nil)
 
 				mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
 
@@ -269,23 +369,29 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				}))
 			})
 
-			shouldFetchNestedPackage := func(demon bool, pull image.PullPolicy) {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), image.FetchOptions{Daemon: demon, PullPolicy: pull}).Return(nestedPackage, nil)
+			shouldFetchNestedPackage := func(daemon bool, pull image.PullPolicy) {
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), image.FetchOptions{Daemon: daemon, PullPolicy: pull, Platform: linuxAmd64Platform.Platform}).Return(nestedPackage, nil)
+				if daemon {
+					mockDockerClient.EXPECT().ServerVersion(context.TODO()).Return(types.Version{Arch: "amd64"}, nil).AnyTimes()
+				}
 			}
 
-			shouldNotFindNestedPackageWhenCallingImageFetcherWith := func(demon bool, pull image.PullPolicy) {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), image.FetchOptions{Daemon: demon, PullPolicy: pull}).Return(nil, image.ErrNotFound)
+			shouldNotFindNestedPackageWhenCallingImageFetcherWith := func(daemon bool, pull image.PullPolicy) {
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), image.FetchOptions{Daemon: daemon, PullPolicy: pull, Platform: linuxAmd64Platform.Platform}).Return(nil, image.ErrNotFound)
+				if daemon {
+					mockDockerClient.EXPECT().ServerVersion(context.TODO()).Return(types.Version{Arch: "amd64"}, nil).AnyTimes()
+				}
 			}
 
 			shouldCreateLocalPackage := func() imgutil.Image {
 				img := fakes.NewImage("some/package-"+h.RandString(12), "", nil)
-				mockImageFactory.EXPECT().NewImage(img.Name(), true, "linux").Return(img, nil)
+				mockImageFactory.EXPECT().NewImage(img.Name(), true, linuxAmd64Platform).Return(img, nil)
 				return img
 			}
 
 			shouldCreateRemotePackage := func() *fakes.Image {
 				img := fakes.NewImage("some/package-"+h.RandString(12), "", nil)
-				mockImageFactory.EXPECT().NewImage(img.Name(), false, "linux").Return(img, nil)
+				mockImageFactory.EXPECT().NewImage(img.Name(), false, linuxAmd64Platform).Return(img, nil)
 				return img
 			}
 
@@ -395,9 +501,10 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		when("nested package is not a valid package", func() {
 			it("should error", func() {
 				notPackageImage := fakes.NewImage("not/package", "", nil)
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(notPackageImage, nil)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: "linux/amd64"}).Return(notPackageImage, nil)
 
 				mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+				mockDockerClient.EXPECT().ServerVersion(context.TODO()).Return(types.Version{Arch: "amd64"}, nil).AnyTimes()
 
 				h.AssertError(t, subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
 					Name: "some/package",
@@ -453,11 +560,12 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 
 				mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+				mockDockerClient.EXPECT().ServerVersion(context.TODO()).Return(types.Version{Arch: "amd64"}, nil).AnyTimes()
 
 				name := "basic/package-" + h.RandString(12)
 				fakeImage := fakes.NewImage(name, "", nil)
 				fakeLayerImage = &h.FakeAddedLayerImage{Image: fakeImage}
-				mockImageFactory.EXPECT().NewImage(fakeLayerImage.Name(), true, "linux").Return(fakeLayerImage, nil)
+				mockImageFactory.EXPECT().NewImage(fakeLayerImage.Name(), true, linuxAmd64Platform).Return(fakeLayerImage, nil)
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), name, gomock.Any()).Return(fakeLayerImage, nil).AnyTimes()
 
 				blob1 := blob.NewBlob(filepath.Join("testdata", "buildpack-flatten", "buildpack-1"))
@@ -554,6 +662,62 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					}))
 				}
 			})
+
+			when("when platform architecture is specified", func() {
+				it("it should not use runtime GOARCH", func() {
+					tmpDir, err := os.MkdirTemp("", "package-buildpack")
+					h.AssertNil(t, err)
+					defer os.Remove(tmpDir)
+					packagePath := filepath.Join(tmpDir, "test.cnb")
+					expectedPlatform := dist.Platform{OS: "linux", Architecture: "some-arch"}
+
+					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+						Name: packagePath,
+						Config: pubbldpkg.Config{
+							Platform: expectedPlatform,
+							Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+								WithAPI:     api.MustParse("0.2"),
+								WithInfo:    dist.ModuleInfo{ID: "bp.basic", Version: "2.3.4"},
+								WithStacks:  []dist.Stack{{ID: "some.stack.id"}},
+								WithTargets: []dist.Target{{OS: expectedPlatform.OS, Arch: expectedPlatform.Architecture}},
+							})},
+						},
+						Publish:    false,
+						PullPolicy: image.PullAlways,
+						Format:     client.FormatFile,
+					}))
+
+					assertPackageBPFileHasTargetPlatform(t, packagePath, expectedPlatform)
+				})
+			})
+
+			when("when platform architecture is not specified", func() {
+				it("it should use runtime GOARCH", func() {
+					tmpDir, err := os.MkdirTemp("", "package-buildpack")
+					h.AssertNil(t, err)
+					defer os.Remove(tmpDir)
+					packagePath := filepath.Join(tmpDir, "test.cnb")
+					expectedPlatform := dist.Platform{OS: "linux", Architecture: runtime.GOARCH}
+
+					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+						Name: packagePath,
+						Config: pubbldpkg.Config{
+							Platform: dist.Platform{OS: "linux"},
+							Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+								WithAPI:     api.MustParse("0.2"),
+								WithInfo:    dist.ModuleInfo{ID: "bp.basic", Version: "2.3.4"},
+								WithStacks:  []dist.Stack{{ID: "some.stack.id"}},
+								WithTargets: []dist.Target{{OS: expectedPlatform.OS, Arch: expectedPlatform.Architecture}},
+							})},
+						},
+						Publish:    false,
+						PullPolicy: image.PullAlways,
+						Format:     client.FormatFile,
+					}))
+
+					assertPackageBPFileHasTargetPlatform(t, packagePath, expectedPlatform)
+				})
+			})
 		})
 
 		when("nested package", func() {
@@ -594,7 +758,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			when("dependencies are packaged buildpack image", func() {
 				it.Before(func() {
 					nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, "linux").Return(nestedPackage, nil)
+					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, linuxAmd64Platform).Return(nestedPackage, nil)
 
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
 						Name: nestedPackage.Name(),
@@ -606,7 +770,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						PullPolicy: image.PullAlways,
 					}))
 
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(nestedPackage, nil)
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: linuxAmd64Platform.Platform}).Return(nestedPackage, nil)
 				})
 
 				it("should pull and use local nested package image", func() {
@@ -709,7 +873,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					}}})
 
 					nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, "linux").Return(nestedPackage, nil)
+					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, linuxAmd64Platform).Return(nestedPackage, nil)
 
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
 						Name: nestedPackage.Name(),
@@ -721,7 +885,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						PullPolicy: image.PullAlways,
 					}))
 
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(nestedPackage, nil)
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: linuxAmd64Platform.Platform}).Return(nestedPackage, nil)
 				})
 
 				it("should include both of them", func() {
@@ -829,7 +993,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					err = packageImage.SetLabel("io.buildpacks.buildpack.layers", `{"example/foo":{"1.1.0":{"api": "0.2", "layerDiffID":"sha256:xxx", "stacks":[{"id":"some.stack.id"}]}}}`)
 					h.AssertNil(t, err)
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(packageImage, nil)
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: linuxAmd64Platform.Platform}).Return(packageImage, nil)
 
 					packHome := filepath.Join(tmpDir, "packHome")
 					h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
@@ -876,6 +1040,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 	when("unknown format is provided", func() {
 		it("should error", func() {
 			mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+			mockDockerClient.EXPECT().ServerVersion(context.TODO()).Return(types.Version{Arch: "amd64"}, nil).AnyTimes()
 
 			err := subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
 				Name:   "some-buildpack",
@@ -901,4 +1066,19 @@ func assertPackageBPFileHasBuildpacks(t *testing.T, path string, descriptors []d
 	mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(packageBlob)
 	h.AssertNil(t, err)
 	h.AssertBuildpacksHaveDescriptors(t, append([]buildpack.BuildModule{mainBP}, depBPs...), descriptors)
+}
+
+func assertPackageBPFileHasTargetPlatform(t *testing.T, path string, platform dist.Platform) {
+	packageBlob := blob.NewBlob(path)
+	mainBP, _, err := buildpack.BuildpacksFromOCILayoutBlob(packageBlob)
+	h.AssertNil(t, err)
+
+	found := false
+	for _, target := range mainBP.Descriptor().Targets() {
+		if target.OS == platform.OS && target.Arch == platform.Architecture {
+			found = true
+		}
+	}
+
+	h.AssertTrue(t, found)
 }

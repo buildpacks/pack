@@ -43,19 +43,19 @@ func TestPackageBuilder(t *testing.T) {
 func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
 		mockController   *gomock.Controller
-		mockImageFactory func(expectedImageOS string) *testmocks.MockImageFactory
+		mockImageFactory func(expectedPlatform dist.Platform) *testmocks.MockImageFactory
 		tmpDir           string
 	)
 
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 
-		mockImageFactory = func(expectedImageOS string) *testmocks.MockImageFactory {
+		mockImageFactory = func(expectedPlatform dist.Platform) *testmocks.MockImageFactory {
 			imageFactory := testmocks.NewMockImageFactory(mockController)
 
-			if expectedImageOS != "" {
+			if expectedPlatform.OS != "" {
 				fakePackageImage := fakes.NewImage("some/package", "", nil)
-				imageFactory.EXPECT().NewImage("some/package", true, expectedImageOS).Return(fakePackageImage, nil).MaxTimes(1)
+				imageFactory.EXPECT().NewImage("some/package", true, expectedPlatform).Return(fakePackageImage, nil).MaxTimes(1)
 			}
 
 			return imageFactory
@@ -73,37 +73,37 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	when("validation", func() {
 		for _, _test := range []*struct {
-			name            string
-			expectedImageOS string
-			fn              func(*buildpack.PackageBuilder) error
+			name             string
+			expectedPlatform dist.Platform
+			fn               func(*buildpack.PackageBuilder) error
 		}{
-			{name: "SaveAsImage", expectedImageOS: "linux", fn: func(builder *buildpack.PackageBuilder) error {
-				_, err := builder.SaveAsImage("some/package", false, "linux", map[string]string{})
+			{name: "SaveAsImage", expectedPlatform: dist.Platform{OS: "linux", Architecture: "amd64"}, fn: func(builder *buildpack.PackageBuilder) error {
+				_, err := builder.SaveAsImage("some/package", false, dist.Platform{OS: "linux", Architecture: "amd64"}, map[string]string{})
 				return err
 			}},
-			{name: "SaveAsImage", expectedImageOS: "windows", fn: func(builder *buildpack.PackageBuilder) error {
-				_, err := builder.SaveAsImage("some/package", false, "windows", map[string]string{})
+			{name: "SaveAsImage", expectedPlatform: dist.Platform{OS: "windows"}, fn: func(builder *buildpack.PackageBuilder) error {
+				_, err := builder.SaveAsImage("some/package", false, dist.Platform{OS: "windows"}, map[string]string{})
 				return err
 			}},
-			{name: "SaveAsFile", expectedImageOS: "linux", fn: func(builder *buildpack.PackageBuilder) error {
-				return builder.SaveAsFile(path.Join(tmpDir, "package.cnb"), "linux", map[string]string{})
+			{name: "SaveAsFile", expectedPlatform: dist.Platform{OS: "linux", Architecture: "amd64"}, fn: func(builder *buildpack.PackageBuilder) error {
+				return builder.SaveAsFile(path.Join(tmpDir, "package.cnb"), dist.Platform{OS: "linux", Architecture: "amd64"}, map[string]string{})
 			}},
-			{name: "SaveAsFile", expectedImageOS: "windows", fn: func(builder *buildpack.PackageBuilder) error {
-				return builder.SaveAsFile(path.Join(tmpDir, "package.cnb"), "windows", map[string]string{})
+			{name: "SaveAsFile", expectedPlatform: dist.Platform{OS: "windows"}, fn: func(builder *buildpack.PackageBuilder) error {
+				return builder.SaveAsFile(path.Join(tmpDir, "package.cnb"), dist.Platform{OS: "windows"}, map[string]string{})
 			}},
 		} {
 			// always use copies to avoid stale refs
 			testFn := _test.fn
-			expectedImageOS := _test.expectedImageOS
+			expectedPlatform := _test.expectedPlatform
 			testName := _test.name
 			_test = nil
 
 			when(testName, func() {
-				when(expectedImageOS, func() {
+				when(expectedPlatform.OS, func() {
 					when("validate buildpack", func() {
 						when("buildpack not set", func() {
 							it("returns error", func() {
-								builder := buildpack.NewBuilder(mockImageFactory(expectedImageOS))
+								builder := buildpack.NewBuilder(mockImageFactory(expectedPlatform))
 								err := testFn(builder)
 								h.AssertError(t, err, "buildpack or extension must be set")
 							})
@@ -121,7 +121,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								}, 0644)
 								h.AssertNil(t, err)
 
-								builder := buildpack.NewBuilder(mockImageFactory(expectedImageOS))
+								builder := buildpack.NewBuilder(mockImageFactory(expectedPlatform))
 								builder.SetBuildpack(bp1)
 
 								bp2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -155,7 +155,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								}, 0644)
 								h.AssertNil(t, err)
 
-								builder := buildpack.NewBuilder(mockImageFactory(expectedImageOS))
+								builder := buildpack.NewBuilder(mockImageFactory(expectedPlatform))
 								builder.SetBuildpack(mainBP)
 
 								presentBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -187,7 +187,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 									}},
 								}, 0644)
 								h.AssertNil(t, err)
-								builder := buildpack.NewBuilder(mockImageFactory(expectedImageOS))
+								builder := buildpack.NewBuilder(mockImageFactory(expectedPlatform))
 								builder.SetBuildpack(mainBP)
 
 								presentBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -222,7 +222,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 									}},
 								}, 0644)
 								h.AssertNil(t, err)
-								builder := buildpack.NewBuilder(mockImageFactory(expectedImageOS))
+								builder := buildpack.NewBuilder(mockImageFactory(expectedPlatform))
 								builder.SetBuildpack(mainBP)
 
 								presentBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -261,7 +261,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								}, 0644)
 								h.AssertNil(t, err)
 
-								builder := buildpack.NewBuilder(mockImageFactory(expectedImageOS))
+								builder := buildpack.NewBuilder(mockImageFactory(expectedPlatform))
 								builder.SetBuildpack(bp)
 
 								dependency, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -304,7 +304,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								}, 0644)
 								h.AssertNil(t, err)
 
-								builder := buildpack.NewBuilder(mockImageFactory(expectedImageOS))
+								builder := buildpack.NewBuilder(mockImageFactory(expectedPlatform))
 								builder.SetBuildpack(bp)
 
 								dependency1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -361,7 +361,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								}, 0644)
 								h.AssertNil(t, err)
 
-								builder := buildpack.NewBuilder(mockImageFactory(expectedImageOS))
+								builder := buildpack.NewBuilder(mockImageFactory(expectedPlatform))
 								builder.SetBuildpack(bp)
 
 								dependency1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -393,7 +393,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								h.AssertNil(t, err)
 								builder.AddDependency(dependency2)
 
-								img, err := builder.SaveAsImage("some/package", false, expectedImageOS, map[string]string{})
+								img, err := builder.SaveAsImage("some/package", false, expectedPlatform, map[string]string{})
 								h.AssertNil(t, err)
 
 								metadata := buildpack.Metadata{}
@@ -424,7 +424,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								}, 0644)
 								h.AssertNil(t, err)
 
-								builder := buildpack.NewBuilder(mockImageFactory(expectedImageOS))
+								builder := buildpack.NewBuilder(mockImageFactory(expectedPlatform))
 								builder.SetBuildpack(bp)
 
 								dependency1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -455,7 +455,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								h.AssertNil(t, err)
 								builder.AddDependency(dependency2)
 
-								img, err := builder.SaveAsImage("some/package", false, expectedImageOS, map[string]string{})
+								img, err := builder.SaveAsImage("some/package", false, expectedPlatform, map[string]string{})
 								h.AssertNil(t, err)
 
 								metadata := buildpack.Metadata{}
@@ -483,7 +483,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								}, 0644)
 								h.AssertNil(t, err)
 
-								builder := buildpack.NewBuilder(mockImageFactory(expectedImageOS))
+								builder := buildpack.NewBuilder(mockImageFactory(expectedPlatform))
 								builder.SetBuildpack(bp)
 
 								dependencyOrder, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -520,7 +520,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 								builder.AddDependency(dependencyNestedNested)
 
-								img, err := builder.SaveAsImage("some/package", false, expectedImageOS, map[string]string{})
+								img, err := builder.SaveAsImage("some/package", false, expectedPlatform, map[string]string{})
 								h.AssertNil(t, err)
 
 								metadata := buildpack.Metadata{}
@@ -562,12 +562,12 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			}, 0644)
 			h.AssertNil(t, err)
 
-			builder := buildpack.NewBuilder(mockImageFactory("linux"))
+			builder := buildpack.NewBuilder(mockImageFactory(dist.Platform{OS: "linux", Architecture: "amd64"}))
 			builder.SetBuildpack(buildpack1)
 
 			var customLabels = map[string]string{"test.label.one": "1", "test.label.two": "2"}
 
-			packageImage, err := builder.SaveAsImage("some/package", false, "linux", customLabels)
+			packageImage, err := builder.SaveAsImage("some/package", false, dist.Platform{OS: "linux", Architecture: "amd64"}, customLabels)
 			h.AssertNil(t, err)
 
 			labelData, err := packageImage.Label("io.buildpacks.buildpackage.metadata")
@@ -590,6 +590,10 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			osVal, err := packageImage.OS()
 			h.AssertNil(t, err)
 			h.AssertEq(t, osVal, "linux")
+
+			architectureVal, err := packageImage.Architecture()
+			h.AssertNil(t, err)
+			h.AssertEq(t, architectureVal, "amd64")
 
 			imageLabels, err := packageImage.Labels()
 			h.AssertNil(t, err)
@@ -616,9 +620,9 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				},
 			}, 0644)
 			h.AssertNil(t, err)
-			builder := buildpack.NewBuilder(mockImageFactory("linux"))
+			builder := buildpack.NewBuilder(mockImageFactory(dist.Platform{OS: "linux", Architecture: "amd64"}))
 			builder.SetExtension(extension1)
-			packageImage, err := builder.SaveAsImage("some/package", false, "linux", map[string]string{})
+			packageImage, err := builder.SaveAsImage("some/package", false, dist.Platform{OS: "linux", Architecture: "amd64"}, map[string]string{})
 			h.AssertNil(t, err)
 			labelData, err := packageImage.Label("io.buildpacks.buildpackage.metadata")
 			h.AssertNil(t, err)
@@ -637,6 +641,10 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			osVal, err := packageImage.OS()
 			h.AssertNil(t, err)
 			h.AssertEq(t, osVal, "linux")
+
+			architectureVal, err := packageImage.Architecture()
+			h.AssertNil(t, err)
+			h.AssertEq(t, architectureVal, "amd64")
 		})
 
 		it("sets buildpack layers label", func() {
@@ -648,10 +656,10 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			}, 0644)
 			h.AssertNil(t, err)
 
-			builder := buildpack.NewBuilder(mockImageFactory("linux"))
+			builder := buildpack.NewBuilder(mockImageFactory(dist.Platform{OS: "linux"}))
 			builder.SetBuildpack(buildpack1)
 
-			packageImage, err := builder.SaveAsImage("some/package", false, "linux", map[string]string{})
+			packageImage, err := builder.SaveAsImage("some/package", false, dist.Platform{OS: "linux"}, map[string]string{})
 			h.AssertNil(t, err)
 
 			var bpLayers dist.ModuleLayers
@@ -672,10 +680,10 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			}, 0644)
 			h.AssertNil(t, err)
 
-			builder := buildpack.NewBuilder(mockImageFactory("linux"))
+			builder := buildpack.NewBuilder(mockImageFactory(dist.Platform{OS: "linux", Architecture: "amd64"}))
 			builder.SetBuildpack(buildpack1)
 
-			packageImage, err := builder.SaveAsImage("some/package", false, "linux", map[string]string{})
+			packageImage, err := builder.SaveAsImage("some/package", false, dist.Platform{OS: "linux", Architecture: "amd64"}, map[string]string{})
 			h.AssertNil(t, err)
 
 			buildpackExists := func(name, version string) {
@@ -708,6 +716,10 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			osVal, err := fakePackageImage.OS()
 			h.AssertNil(t, err)
 			h.AssertEq(t, osVal, "linux")
+
+			architectureVal, err := packageImage.Architecture()
+			h.AssertNil(t, err)
+			h.AssertEq(t, architectureVal, "amd64")
 		})
 
 		it("adds baselayer + buildpack layers for windows", func() {
@@ -719,18 +731,18 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			}, 0644)
 			h.AssertNil(t, err)
 
-			builder := buildpack.NewBuilder(mockImageFactory("windows"))
+			builder := buildpack.NewBuilder(mockImageFactory(dist.Platform{OS: "windows"}))
 			builder.SetBuildpack(buildpack1)
 
-			_, err = builder.SaveAsImage("some/package", false, "windows", map[string]string{})
+			_, err = builder.SaveAsImage("some/package", false, dist.Platform{OS: "windows"}, map[string]string{})
 			h.AssertNil(t, err)
 		})
 
 		it("should report an error when custom label cannot be set", func() {
-			mockImageFactory = func(expectedImageOS string) *testmocks.MockImageFactory {
+			mockImageFactory = func(expectedPlatform dist.Platform) *testmocks.MockImageFactory {
 				var imageWithLabelError = &imageWithLabelError{Image: fakes.NewImage("some/package", "", nil)}
 				imageFactory := testmocks.NewMockImageFactory(mockController)
-				imageFactory.EXPECT().NewImage("some/package", true, expectedImageOS).Return(imageWithLabelError, nil).MaxTimes(1)
+				imageFactory.EXPECT().NewImage("some/package", true, expectedPlatform).Return(imageWithLabelError, nil).MaxTimes(1)
 				return imageFactory
 			}
 
@@ -758,12 +770,12 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			}, 0644)
 			h.AssertNil(t, err)
 
-			builder := buildpack.NewBuilder(mockImageFactory("linux"))
+			builder := buildpack.NewBuilder(mockImageFactory(dist.Platform{OS: "linux"}))
 			builder.SetBuildpack(buildpack1)
 
 			var customLabels = map[string]string{"test.label.fail": "true"}
 
-			_, err = builder.SaveAsImage("some/package", false, "linux", customLabels)
+			_, err = builder.SaveAsImage("some/package", false, dist.Platform{OS: "linux"}, customLabels)
 			h.AssertError(t, err, "adding label test.label.fail=true")
 		})
 
@@ -880,7 +892,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("no exclusions", func() {
 					it.Before(func() {
-						builder = buildpack.NewBuilder(mockImageFactory("linux"),
+						builder = buildpack.NewBuilder(mockImageFactory(dist.Platform{OS: "linux"}),
 							buildpack.FlattenAll(),
 							buildpack.WithLogger(logger),
 							buildpack.WithLayerWriterFactory(archive.DefaultTarWriterFactory()))
@@ -891,7 +903,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 						builder.AddDependencies(bp1, nil)
 						builder.AddDependencies(compositeBP2, []buildpack.BuildModule{bp21, bp22, compositeBP3, bp31})
 
-						packageImage, err := builder.SaveAsImage("some/package", false, "linux", map[string]string{})
+						packageImage, err := builder.SaveAsImage("some/package", false, dist.Platform{OS: "linux"}, map[string]string{})
 						h.AssertNil(t, err)
 
 						fakePackageImage := packageImage.(*fakes.Image)
@@ -903,7 +915,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 					it.Before(func() {
 						excluded := []string{bp31.Descriptor().Info().FullName()}
 
-						builder = buildpack.NewBuilder(mockImageFactory("linux"),
+						builder = buildpack.NewBuilder(mockImageFactory(dist.Platform{OS: "linux"}),
 							buildpack.DoNotFlatten(excluded),
 							buildpack.WithLogger(logger),
 							buildpack.WithLayerWriterFactory(archive.DefaultTarWriterFactory()))
@@ -914,7 +926,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 						builder.AddDependencies(bp1, nil)
 						builder.AddDependencies(compositeBP2, []buildpack.BuildModule{bp21, bp22, compositeBP3, bp31})
 
-						packageImage, err := builder.SaveAsImage("some/package", false, "linux", map[string]string{})
+						packageImage, err := builder.SaveAsImage("some/package", false, dist.Platform{OS: "linux"}, map[string]string{})
 						h.AssertNil(t, err)
 
 						fakePackageImage := packageImage.(*fakes.Image)
@@ -935,13 +947,13 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			}, 0644)
 			h.AssertNil(t, err)
 
-			builder := buildpack.NewBuilder(mockImageFactory(""))
+			builder := buildpack.NewBuilder(mockImageFactory(dist.Platform{OS: ""}))
 			builder.SetBuildpack(buildpack1)
 
 			var customLabels = map[string]string{"test.label.one": "1", "test.label.two": "2"}
 
 			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
-			h.AssertNil(t, builder.SaveAsFile(outputFile, "linux", customLabels))
+			h.AssertNil(t, builder.SaveAsFile(outputFile, dist.Platform{OS: "linux"}, customLabels))
 
 			withContents := func(fn func(data []byte)) h.TarEntryAssertion {
 				return func(t *testing.T, header *tar.Header, data []byte) {
@@ -997,11 +1009,11 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			}, 0644)
 			h.AssertNil(t, err)
 
-			builder := buildpack.NewBuilder(mockImageFactory(""))
+			builder := buildpack.NewBuilder(mockImageFactory(dist.Platform{OS: ""}))
 			builder.SetBuildpack(buildpack1)
 
 			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
-			h.AssertNil(t, builder.SaveAsFile(outputFile, "linux", map[string]string{}))
+			h.AssertNil(t, builder.SaveAsFile(outputFile, dist.Platform{OS: "linux"}, map[string]string{}))
 
 			h.AssertOnTarEntry(t, outputFile, "/blobs",
 				h.IsDirectory(),
@@ -1047,11 +1059,11 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			}, 0644)
 			h.AssertNil(t, err)
 
-			builder := buildpack.NewBuilder(mockImageFactory(""))
+			builder := buildpack.NewBuilder(mockImageFactory(dist.Platform{OS: ""}))
 			builder.SetBuildpack(buildpack1)
 
 			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
-			h.AssertNil(t, builder.SaveAsFile(outputFile, "windows", map[string]string{}))
+			h.AssertNil(t, builder.SaveAsFile(outputFile, dist.Platform{OS: "windows"}, map[string]string{}))
 
 			// Windows baselayer content is constant
 			expectedBaseLayerReader, err := layer.WindowsBaseLayer()

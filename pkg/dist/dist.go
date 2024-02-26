@@ -35,7 +35,9 @@ func (c *ImageOrURI) DisplayString() string {
 }
 
 type Platform struct {
-	OS string `toml:"os"`
+	OS           string `toml:"os"`
+	Architecture string `toml:"architecture"`
+	Platform     string `toml:"platform,omitempty" json:"platform,omitempty" yaml:"platform,omitempty"`
 }
 
 type Order []OrderEntry

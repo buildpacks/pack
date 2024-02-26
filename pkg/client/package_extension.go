@@ -20,7 +20,7 @@ func (c *Client) PackageExtension(ctx context.Context, opts PackageBuildpackOpti
 		return NewExperimentError("Windows extensionpackage support is currently experimental.")
 	}
 
-	err := c.validateOSPlatform(ctx, opts.Config.Platform.OS, opts.Publish, opts.Format)
+	err := c.validateAndUpdatePlatform(ctx, &opts.Config.Platform, opts.Publish, opts.Format)
 	if err != nil {
 		return err
 	}
@@ -51,9 +51,9 @@ func (c *Client) PackageExtension(ctx context.Context, opts PackageBuildpackOpti
 
 	switch opts.Format {
 	case FormatFile:
-		return packageBuilder.SaveAsFile(opts.Name, opts.Config.Platform.OS, map[string]string{})
+		return packageBuilder.SaveAsFile(opts.Name, opts.Config.Platform, map[string]string{})
 	case FormatImage:
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, opts.Config.Platform.OS, map[string]string{})
+		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, opts.Config.Platform, map[string]string{})
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))

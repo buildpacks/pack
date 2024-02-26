@@ -2,6 +2,8 @@ package client
 
 import (
 	"context"
+	"fmt"
+	"runtime"
 
 	"github.com/pkg/errors"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -71,7 +74,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return NewExperimentError("Windows buildpackage support is currently experimental.")
 	}
 
-	err := c.validateOSPlatform(ctx, opts.Config.Platform.OS, opts.Publish, opts.Format)
+	err := c.validateAndUpdatePlatform(ctx, &opts.Config.Platform, opts.Publish, opts.Format)
 	if err != nil {
 		return err
 	}
@@ -110,6 +113,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 			RegistryName:    opts.Registry,
 			RelativeBaseDir: opts.RelativeBaseDir,
 			ImageOS:         opts.Config.Platform.OS,
+			Platform:        opts.Config.Platform.Platform,
 			ImageName:       dep.ImageName,
 			Daemon:          !opts.Publish,
 			PullPolicy:      opts.PullPolicy,
@@ -124,9 +128,9 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 	switch opts.Format {
 	case FormatFile:
-		return packageBuilder.SaveAsFile(opts.Name, opts.Config.Platform.OS, opts.Labels)
+		return packageBuilder.SaveAsFile(opts.Name, opts.Config.Platform, opts.Labels)
 	case FormatImage:
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, opts.Config.Platform.OS, opts.Labels)
+		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, opts.Config.Platform, opts.Labels)
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))
@@ -149,19 +153,32 @@ func (c *Client) downloadBuildpackFromURI(ctx context.Context, uri, relativeBase
 	return blob, nil
 }
 
-func (c *Client) validateOSPlatform(ctx context.Context, os string, publish bool, format string) error {
+func (c *Client) validateAndUpdatePlatform(ctx context.Context, platform *dist.Platform, publish bool, format string) error {
 	if publish || format == FormatFile {
-		return nil
+		if platform.Architecture == "" {
+			platform.Architecture = runtime.GOARCH
+		}
+	} else {
+		info, err := c.docker.Info(ctx)
+		if err != nil {
+			return err
+		}
+
+		if info.OSType != platform.OS {
+			return errors.Errorf("invalid %s specified: DOCKER_OS is %s", style.Symbol("platform.os"), style.Symbol(info.OSType))
+		}
+
+		if platform.Architecture == "" {
+			versionInfo, err := c.docker.ServerVersion(ctx)
+			if err != nil {
+				return err
+			}
+
+			platform.Architecture = versionInfo.Arch
+		}
 	}
 
-	info, err := c.docker.Info(ctx)
-	if err != nil {
-		return err
-	}
-
-	if info.OSType != os {
-		return errors.Errorf("invalid %s specified: DOCKER_OS is %s", style.Symbol("platform.os"), style.Symbol(info.OSType))
-	}
+	platform.Platform = fmt.Sprintf("%s/%s", platform.OS, platform.Architecture)
 
 	return nil
 }
