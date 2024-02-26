@@ -339,7 +339,7 @@ func (b *PackageBuilder) resolvedStacks() []dist.Stack {
 		bpdStacks := bp.Descriptor().Stacks()
 		if len(bpdStacks) == 0 && len(bpd.Order()) == 0 {
 			// For non-meta-buildpacks using targets, not stacks: assume any stack
-			bpdStacks = append(stacks, dist.Stack{ID: "*"})
+			bpdStacks = append(bpdStacks, dist.Stack{ID: "*"})
 		}
 
 		if len(stacks) == 0 {
