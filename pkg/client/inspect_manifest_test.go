@@ -10,9 +10,6 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
-	"github.com/buildpacks/pack/pkg/logging"
-	"github.com/buildpacks/pack/pkg/testmocks"
-	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -20,6 +17,10 @@ import (
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/pack/pkg/logging"
+	"github.com/buildpacks/pack/pkg/testmocks"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestInspectManifest(t *testing.T) {
@@ -89,7 +90,7 @@ func testInspectManifest(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func prepareFindIndexWithError(t *testing.T, mockIndexFactory testmocks.MockIndexFactory) {	
+func prepareFindIndexWithError(t *testing.T, mockIndexFactory testmocks.MockIndexFactory) {
 	mockIndexFactory.
 		EXPECT().
 		FindIndex(gomock.Any(), gomock.Any()).
@@ -97,10 +98,10 @@ func prepareFindIndexWithError(t *testing.T, mockIndexFactory testmocks.MockInde
 		Return(nil, errors.New("index not found"))
 }
 
-func prepareFindIndex(t *testing.T, mockIndexFactory testmocks.MockIndexFactory) (imgutil.ImageIndex) {
+func prepareFindIndex(t *testing.T, mockIndexFactory testmocks.MockIndexFactory) imgutil.ImageIndex {
 	idx, err := fakes.NewIndex(types.OCIImageIndex, 1024, 1, 1, v1.Descriptor{})
 	h.AssertNil(t, err)
-	
+
 	mockIndexFactory.
 		EXPECT().
 		FindIndex(gomock.Any(), gomock.Any()).

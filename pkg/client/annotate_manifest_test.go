@@ -8,15 +8,16 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
-	"github.com/buildpacks/pack/pkg/logging"
-	"github.com/buildpacks/pack/pkg/testmocks"
-	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/pack/pkg/logging"
+	"github.com/buildpacks/pack/pkg/testmocks"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestAnnotateManifest(t *testing.T) {
@@ -64,20 +65,20 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 					"pack/image",
 					ManifestAnnotateOptions{},
 				)
-	
+
 				h.AssertEq(t, err.Error(), "index not found locally")
 			})
 			it("should set OS for given image", func() {
 				idx := prepareLoadIndex(t, *mockIndexFactory)
 				imgIdx, ok := idx.(*fakes.Index)
 				h.AssertEq(t, ok, true)
-	
+
 				mfest, err := imgIdx.IndexManifest()
 				h.AssertNil(t, err)
-	
+
 				digest, err := name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
 				h.AssertNil(t, err)
-	
+
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
@@ -87,7 +88,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 					},
 				)
 				h.AssertNil(t, err)
-	
+
 				os, err := idx.OS(digest)
 				h.AssertNil(t, err)
 				h.AssertEq(t, os, "some-os")
@@ -96,13 +97,13 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 				idx := prepareLoadIndex(t, *mockIndexFactory)
 				imgIdx, ok := idx.(*fakes.Index)
 				h.AssertEq(t, ok, true)
-	
+
 				mfest, err := imgIdx.IndexManifest()
 				h.AssertNil(t, err)
-	
+
 				digest, err := name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
 				h.AssertNil(t, err)
-	
+
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
@@ -112,7 +113,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 					},
 				)
 				h.AssertNil(t, err)
-	
+
 				arch, err := idx.Architecture(digest)
 				h.AssertNil(t, err)
 				h.AssertEq(t, arch, "some-arch")
@@ -121,13 +122,13 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 				idx := prepareLoadIndex(t, *mockIndexFactory)
 				imgIdx, ok := idx.(*fakes.Index)
 				h.AssertEq(t, ok, true)
-	
+
 				mfest, err := imgIdx.IndexManifest()
 				h.AssertNil(t, err)
-	
+
 				digest, err := name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
 				h.AssertNil(t, err)
-	
+
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
@@ -137,7 +138,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 					},
 				)
 				h.AssertNil(t, err)
-	
+
 				variant, err := idx.Variant(digest)
 				h.AssertNil(t, err)
 				h.AssertEq(t, variant, "some-variant")
@@ -146,13 +147,13 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 				idx := prepareLoadIndex(t, *mockIndexFactory)
 				imgIdx, ok := idx.(*fakes.Index)
 				h.AssertEq(t, ok, true)
-	
+
 				mfest, err := imgIdx.IndexManifest()
 				h.AssertNil(t, err)
-	
+
 				digest, err := name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
 				h.AssertNil(t, err)
-	
+
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
@@ -162,7 +163,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 					},
 				)
 				h.AssertNil(t, err)
-	
+
 				osVersion, err := idx.OSVersion(digest)
 				h.AssertNil(t, err)
 				h.AssertEq(t, osVersion, "some-osVersion")
@@ -171,13 +172,13 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 				idx := prepareLoadIndex(t, *mockIndexFactory)
 				imgIdx, ok := idx.(*fakes.Index)
 				h.AssertEq(t, ok, true)
-	
+
 				mfest, err := imgIdx.IndexManifest()
 				h.AssertNil(t, err)
-	
+
 				digest, err := name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
 				h.AssertNil(t, err)
-	
+
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
@@ -187,7 +188,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 					},
 				)
 				h.AssertNil(t, err)
-	
+
 				features, err := idx.Features(digest)
 				h.AssertNil(t, err)
 				h.AssertEq(t, features, []string{"some-features"})
@@ -196,13 +197,13 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 				idx := prepareLoadIndex(t, *mockIndexFactory)
 				imgIdx, ok := idx.(*fakes.Index)
 				h.AssertEq(t, ok, true)
-	
+
 				mfest, err := imgIdx.IndexManifest()
 				h.AssertNil(t, err)
-	
+
 				digest, err := name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
 				h.AssertNil(t, err)
-	
+
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
@@ -212,7 +213,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 					},
 				)
 				h.AssertNil(t, err)
-	
+
 				osFeatures, err := idx.OSFeatures(digest)
 				h.AssertNil(t, err)
 				h.AssertEq(t, osFeatures, []string{"some-osFeatures"})
@@ -221,13 +222,13 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 				idx := prepareLoadIndex(t, *mockIndexFactory)
 				imgIdx, ok := idx.(*fakes.Index)
 				h.AssertEq(t, ok, true)
-	
+
 				mfest, err := imgIdx.IndexManifest()
 				h.AssertNil(t, err)
-	
+
 				digest, err := name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
 				h.AssertNil(t, err)
-	
+
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
@@ -237,7 +238,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 					},
 				)
 				h.AssertNil(t, err)
-	
+
 				urls, err := idx.URLs(digest)
 				h.AssertNil(t, err)
 				h.AssertEq(t, urls, []string{"some-urls"})
@@ -246,26 +247,26 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 				idx := prepareLoadIndex(t, *mockIndexFactory)
 				imgIdx, ok := idx.(*fakes.Index)
 				h.AssertEq(t, ok, true)
-	
+
 				mfest, err := imgIdx.IndexManifest()
 				h.AssertNil(t, err)
-	
+
 				digest, err := name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
 				h.AssertNil(t, err)
-	
+
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
 					digest.Name(),
 					ManifestAnnotateOptions{
-						Annotations: map[string]string{"some-key":"some-value"},
+						Annotations: map[string]string{"some-key": "some-value"},
 					},
 				)
 				h.AssertNil(t, err)
-	
+
 				annos, err := idx.Annotations(digest)
 				h.AssertNil(t, err)
-				h.AssertEq(t, annos, map[string]string{"some-key":"some-value"})
+				h.AssertEq(t, annos, map[string]string{"some-key": "some-value"})
 			})
 		})
 		when("return an error when", func() {
@@ -370,7 +371,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 					"some/repo",
 					"busybox@sha256:d4707523ce6e12afdbe9a3be5ad69027150a834870ca0933baf7516dd1fe0f56",
 					ManifestAnnotateOptions{
-						Annotations: map[string]string{"some-key":"some-value"},
+						Annotations: map[string]string{"some-key": "some-value"},
 					},
 				)
 				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest.Error())

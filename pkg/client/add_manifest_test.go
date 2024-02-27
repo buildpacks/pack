@@ -9,9 +9,6 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
-	"github.com/buildpacks/pack/pkg/logging"
-	"github.com/buildpacks/pack/pkg/testmocks"
-	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -20,6 +17,10 @@ import (
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/pack/pkg/logging"
+	"github.com/buildpacks/pack/pkg/testmocks"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestAddManifest(t *testing.T) {
@@ -90,7 +91,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			idx := prepareLoadIndex(
-				t, 
+				t,
 				*mockIndexFactory,
 			)
 
@@ -99,7 +100,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 				"pack/index",
 				digest.Name(),
 				ManifestAddOptions{
-					OS: "some-os",
+					OS:     "some-os",
 					OSArch: "some-arch",
 				},
 			)
@@ -118,8 +119,8 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			idx := prepareLoadIndex(
-				t, 
-				*mockIndexFactory, 
+				t,
+				*mockIndexFactory,
 			)
 
 			err = subject.AddManifest(
@@ -141,8 +142,8 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			idx := prepareLoadIndex(
-				t, 
-				*mockIndexFactory, 
+				t,
+				*mockIndexFactory,
 			)
 
 			err = subject.AddManifest(
@@ -164,8 +165,8 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			idx := prepareLoadIndex(
-				t, 
-				*mockIndexFactory, 
+				t,
+				*mockIndexFactory,
 			)
 
 			err = subject.AddManifest(
@@ -187,8 +188,8 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			idx := prepareLoadIndex(
-				t, 
-				*mockIndexFactory, 
+				t,
+				*mockIndexFactory,
 			)
 
 			err = subject.AddManifest(
@@ -210,8 +211,8 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			idx := prepareLoadIndex(
-				t, 
-				*mockIndexFactory, 
+				t,
+				*mockIndexFactory,
 			)
 
 			err = subject.AddManifest(
@@ -219,33 +220,34 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 				"pack/index",
 				digest.Name(),
 				ManifestAddOptions{
-					Annotations: map[string]string{"some-key":"some-value"},
+					Annotations: map[string]string{"some-key": "some-value"},
 				},
 			)
 			h.AssertNil(t, err)
 
 			annos, err := idx.Annotations(digest)
 			h.AssertNil(t, err)
-			h.AssertEq(t, annos, map[string]string{"some-key":"some-value"})
+			h.AssertEq(t, annos, map[string]string{"some-key": "some-value"})
 		})
 	})
 }
 
-func prepareIndexWithoutLocallyExists(t *testing.T, mockIndexFactory testmocks.MockIndexFactory) {	
+func prepareIndexWithoutLocallyExists(t *testing.T, mockIndexFactory testmocks.MockIndexFactory) {
 	mockIndexFactory.
 		EXPECT().
 		LoadIndex(gomock.Any(), gomock.Any()).
 		Return(nil, errors.New("index not found locally"))
 }
 
-func prepareLoadIndex(t *testing.T, mockIndexFactory testmocks.MockIndexFactory) (imgutil.ImageIndex) {	
+func prepareLoadIndex(t *testing.T, mockIndexFactory testmocks.MockIndexFactory) imgutil.ImageIndex {
 	idx, err := fakes.NewIndex(types.OCIImageIndex, 1024, 1, 1, v1.Descriptor{})
 	h.AssertNil(t, err)
-	
+
 	mockIndexFactory.
 		EXPECT().
 		LoadIndex(gomock.Any(), gomock.Any()).
-		Return(idx, nil)
+		Return(idx, nil).
+		AnyTimes()
 
 	return idx
 }
