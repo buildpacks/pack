@@ -42,6 +42,7 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 		Example: "pack buildpack new sample/my-buildpack",
 		Long:    "buildpack new generates the basic scaffolding of a buildpack repository. It creates a new directory `name` in the current directory (or at `path`, if passed as a flag), and initializes a buildpack.toml, and two executable bash scripts, `bin/detect` and `bin/build`. ",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+			logger.Warn("pack buildpack new is deprecated, prefer pack buildpack create instead")
 			id := args[0]
 			idParts := strings.Split(id, "/")
 			dirName := idParts[len(idParts)-1]
