@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1709151904162,
+  "lastUpdate": 1709158513884,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -5404,6 +5404,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 59692574422,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ea5a48ac727fd0df688571f6892eaf67dd7748e7",
+          "message": "Merge pull request #2081 from joshwlewis/support-empty-stacks\n\nAdd validation support for empty/nil `[[stacks]]`",
+          "timestamp": "2024-02-28T17:13:31-05:00",
+          "tree_id": "2084189adb8dd0068bf10cd97ff00974890c7449",
+          "url": "https://github.com/buildpacks/pack/commit/ea5a48ac727fd0df688571f6892eaf67dd7748e7"
+        },
+        "date": 1709158513177,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4878790906,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1814618682,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 55241180613,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
