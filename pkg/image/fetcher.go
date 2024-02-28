@@ -108,20 +108,22 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 			return img, err
 		}
 	case PullWithInterval, PullDaily, PullHourly, PullWeekly:
-		img, err := f.fetchDaemonImage(name)
-		if err != nil && !errors.Is(err, ErrNotFound) {
-			return img, err
+		pull, err := f.CheckImagePullInterval(name)
+		if err != nil {
+			f.logger.Warnf("failed to check pulling interval for image %s, %s", name, err)
 		}
-		if err == nil {
-			pull, err := f.CheckImagePullInterval(name)
-			if !pull {
-				return img, err
+		if !pull {
+			img, err := f.fetchDaemonImage(name)
+			if errors.Is(err, ErrNotFound) {
+				imageJSON, _ := ReadImageJSON(f.logger)
+				delete(imageJSON.Image.ImageIDtoTIME, name)
 			}
+			return img, err
 		}
 
 		err = f.PruneOldImages()
 		if err != nil {
-			f.logger.Warnf("Failed to prune images that are older than 7 days, %s", err)
+			f.logger.Warnf("Failed to prune images, %s", err)
 		}
 	}
 
