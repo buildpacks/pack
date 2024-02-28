@@ -6,10 +6,6 @@ import (
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
-// ManifestDeleteFlags define flags provided to the ManifestDelete
-// type ManifestDeleteFlags struct {
-// }
-
 // ManifestExists checks if a manifest list exists in local storage
 func ManifestExists(logger logging.Logger, pack PackClient) *cobra.Command {
 	// var flags ManifestDeleteFlags

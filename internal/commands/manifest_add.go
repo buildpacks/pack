@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -72,6 +73,7 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd.Flags().StringVar(&flags.os, "os", "", "Set the operating system")
 	cmd.Flags().StringVar(&flags.osArch, "arch", "", "Set the architecture")
 	cmd.Flags().StringVar(&flags.osVariant, "variant", "", "Set the architecture variant")
+	cmd.Flags().StringVar(&flags.osVersion, "os-version", "", "Set the os-version")
 	cmd.Flags().StringVar(&flags.osFeatures, "os-features", "", "Set the OSFeatures")
 	cmd.Flags().StringVar(&flags.features, "features", "", "Set the Features")
 	cmd.Flags().StringVar(&flags.annotations, "annotations", "", "Set the annotations")
@@ -81,16 +83,18 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 }
 
 func validateManifestAddFlags(flags ManifestAddFlags) error {
+	if (flags.os != "" && flags.osArch == "") || (flags.os == "" && flags.osArch != "") {
+		return errors.New("'os' or 'arch' is undefined")
+	}
 	return nil
 }
 
 func StringToKeyValueMap(s string) (map[string]string, error) {
 	keyValues := strings.Split(s, ";")
 
-	m := map[string]string{}
-
+	var annosMap = make(map[string]string)
 	for _, keyValue := range keyValues {
-		parts := strings.Split(keyValue, "=")
+		parts := strings.SplitN(keyValue, "=", 2)
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("invalid key-value pair: %s", keyValue)
 		}
@@ -98,8 +102,12 @@ func StringToKeyValueMap(s string) (map[string]string, error) {
 		key := parts[0]
 		value := parts[1]
 
-		m[key] = value
+		if key == "" || value == "" {
+			return nil, fmt.Errorf("key(%s) or value(%s) is undefined", key, value)
+		}
+
+		annosMap[key] = value
 	}
 
-	return m, nil
+	return annosMap, nil
 }

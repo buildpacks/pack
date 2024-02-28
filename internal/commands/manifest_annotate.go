@@ -3,6 +3,7 @@ package commands
 import (
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/pkg/client"
@@ -20,7 +21,7 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 	var flags ManifestAnnotateFlags
 
 	cmd := &cobra.Command{
-		Use:   "annotate [OPTIONS] <manifest-list> <manifest> [<manifest>...] [flags]",
+		Use:   "annotate [OPTIONS] <manifest-list> <manifest> [flags]",
 		Args:  cobra.MatchAll(cobra.ExactArgs(2), cobra.OnlyValidArgs),
 		Short: "Add or update information about an entry in a manifest list or image index.",
 		Example: `pack manifest annotate cnbs/sample-package:hello-universe-multiarch \ 
@@ -33,6 +34,10 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 				osFeatures  = make([]string, 0)
 				urls        = make([]string, 0)
 			)
+
+			if err := validateManifestAnnotateFlags(flags); err != nil {
+				return err
+			}
 
 			if flags.features != "" {
 				features = strings.Split(flags.features, ";")
@@ -77,4 +82,11 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 
 	AddHelpFlag(cmd, "annotate")
 	return cmd
+}
+
+func validateManifestAnnotateFlags(flags ManifestAnnotateFlags) error {
+	if (flags.os != "" && flags.arch == "") || (flags.os == "" && flags.arch != "") {
+		return errors.New("'os' or 'arch' is undefined")
+	}
+	return nil
 }

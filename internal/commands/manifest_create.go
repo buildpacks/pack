@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/pkg/client"
@@ -11,8 +12,8 @@ import (
 
 // ManifestCreateFlags define flags provided to the ManifestCreate
 type ManifestCreateFlags struct {
-	format, registry, os, arch    string
-	insecure, publish, all, amend bool
+	format, os, arch       string
+	insecure, publish, all bool
 }
 
 // ManifestCreate creates an image-index/image-list for a multi-arch image
@@ -30,13 +31,17 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			imageIndex := args[0]
 			manifests := args[1:]
+
+			if err := validateManifestCreateFlags(flags); err != nil {
+				return err
+			}
+
 			return pack.CreateManifest(
 				cmd.Context(),
 				imageIndex,
 				manifests,
 				client.CreateManifestOptions{
 					Format:   flags.format,
-					Registry: flags.registry,
 					Insecure: flags.insecure,
 					Publish:  flags.publish,
 					All:      flags.all,
@@ -48,7 +53,6 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmdFlags := cmd.Flags()
 
 	cmdFlags.StringVarP(&flags.format, "format", "f", "v2s2", "Format to save image index as ('OCI' or 'V2S2')")
-	cmdFlags.StringVarP(&flags.registry, "registry", "r", "", "Publish to registry")
 	cmdFlags.StringVar(&flags.os, "os", "", "If any of the specified images is a list/index, choose the one for `os`")
 	if err := cmdFlags.MarkHidden("os"); err != nil {
 		panic(fmt.Sprintf("error marking --os as hidden: %v", err))
@@ -63,8 +67,14 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 	}
 	cmdFlags.BoolVar(&flags.publish, "publish", false, "Publish to registry")
 	cmdFlags.BoolVar(&flags.all, "all", false, "Add all of the list's images if the images to add are lists/index")
-	cmdFlags.BoolVar(&flags.amend, "amend", false, "Modify an existing list/index if one with the desired name already exists")
 
 	AddHelpFlag(cmd, "create")
 	return cmd
+}
+
+func validateManifestCreateFlags(flags ManifestCreateFlags) error {
+	if (flags.os != "" && flags.arch == "") || (flags.os == "" && flags.arch != "") {
+		return errors.New("'os' or 'arch' is undefined")
+	}
+	return nil
 }

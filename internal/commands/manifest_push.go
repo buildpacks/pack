@@ -9,8 +9,8 @@ import (
 
 // ManifestPushFlags define flags provided to the ManifestPush
 type ManifestPushFlags struct {
-	format               string
-	insecure, purge, all bool
+	format          string
+	insecure, purge bool
 }
 
 // ManifestPush pushes a manifest list (Image index) to a registry.
@@ -36,7 +36,6 @@ func ManifestPush(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd.Flags().StringVarP(&flags.format, "format", "f", "", "Format to save image index as ('OCI' or 'V2S2')")
 	cmd.Flags().BoolVar(&flags.insecure, "insecure", false, "Allow publishing to insecure registry")
 	cmd.Flags().BoolVar(&flags.purge, "purge", false, "Delete the manifest list or image index from local storage if pushing succeeds")
-	cmd.Flags().BoolVar(&flags.all, "all", false, "Also push the images in the list")
 
 	AddHelpFlag(cmd, "push")
 	return cmd

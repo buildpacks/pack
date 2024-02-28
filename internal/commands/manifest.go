@@ -9,7 +9,7 @@ import (
 func NewManifestCommand(logger logging.Logger, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "manifest",
-		Short: "Interact with image index or manifest list",
+		Short: "Interact with image index",
 		RunE:  nil,
 	}
 

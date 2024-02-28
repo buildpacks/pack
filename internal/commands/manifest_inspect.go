@@ -6,16 +6,10 @@ import (
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
-// ManifestInspectFlags define flags provided to the ManifestInspect
-// type ManifestInspectFlags struct {
-// }
-
 // ManifestInspect shows the manifest information stored in local storage
 func ManifestInspect(logger logging.Logger, pack PackClient) *cobra.Command {
-	// var flags ManifestInspectFlags
-
 	cmd := &cobra.Command{
-		Use:     "inspect <manifest-list> [flags]",
+		Use:     "inspect <manifest-list>",
 		Args:    cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		Short:   "Display a manifest list or image index.",
 		Example: `pack manifest inspect cnbs/sample-builder:multiarch`,
