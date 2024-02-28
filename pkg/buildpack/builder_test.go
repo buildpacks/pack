@@ -244,6 +244,25 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					when("validate stacks", func() {
+						when("buildpack does not define stacks", func() {
+							it("should succeed", func() {
+								bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									WithAPI: api.MustParse("0.10"),
+									WithInfo: dist.ModuleInfo{
+										ID:      "bp.1.id",
+										Version: "bp.1.version",
+									},
+									WithStacks: nil,
+									WithOrder:  nil,
+								}, 0644)
+								h.AssertNil(t, err)
+								builder := buildpack.NewBuilder(mockImageFactory(expectedImageOS))
+								builder.SetBuildpack(bp)
+								err = testFn(builder)
+								h.AssertNil(t, err)
+							})
+						})
+
 						when("buildpack is meta-buildpack", func() {
 							it("should succeed", func() {
 								bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
