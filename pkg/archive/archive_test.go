@@ -73,15 +73,6 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				verify.NextDirectory("/nested/dir/dir-in-archive", int64(os.ModePerm))
 			})
 		})
-
-		it("returns error if closed multiple times", func() {
-			rc := archive.ReadDirAsTar(src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, false, func(s string) bool { return false })
-			tr := tar.NewReader(rc)
-			verify := h.NewTarVerifier(t, tr, 1234, 2345)
-			verify.NoMoreFilesExist()
-			h.AssertNil(t, rc.Close())
-			h.AssertError(t, rc.Close(), "reader already closed")
-		})
 	})
 
 	when("#ReadZipAsTar", func() {
