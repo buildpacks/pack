@@ -65,11 +65,8 @@ type DownloadOptions struct {
 	// The base directory to use to resolve relative assets
 	RelativeBaseDir string
 
-	// The OS of the builder image
+	// Deprecated: the older alternative to set builder OS, use Target instead
 	ImageOS string
-
-	// The OS/Architecture to download
-	Platform string
 
 	// Deprecated: the older alternative to buildpack URI
 	ImageName string
@@ -80,6 +77,9 @@ type DownloadOptions struct {
 	Daemon bool
 
 	PullPolicy image.PullPolicy
+
+	// The OS/Architecture to download
+	Target *dist.Target
 }
 
 func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, opts DownloadOptions) (BuildModule, []BuildModule, error) {
@@ -109,7 +109,7 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 		mainBP, depBPs, err = extractPackaged(ctx, kind, imageName, c.imageFetcher, image.FetchOptions{
 			Daemon:     opts.Daemon,
 			PullPolicy: opts.PullPolicy,
-			Platform:   opts.Platform,
+			Target:     opts.Target,
 		})
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from registry %s", style.Symbol(moduleURI))
@@ -124,7 +124,7 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 		mainBP, depBPs, err = extractPackaged(ctx, kind, address, c.imageFetcher, image.FetchOptions{
 			Daemon:     opts.Daemon,
 			PullPolicy: opts.PullPolicy,
-			Platform:   opts.Platform,
+			Target:     opts.Target,
 		})
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from registry %s", style.Symbol(moduleURI))
@@ -142,7 +142,11 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 			return nil, nil, errors.Wrapf(err, "downloading %s from %s", kind, style.Symbol(moduleURI))
 		}
 
-		mainBP, depBPs, err = decomposeBlob(blob, kind, opts.ImageOS, c.logger)
+		imageOS := opts.ImageOS
+		if opts.Target != nil {
+			imageOS = opts.Target.OS
+		}
+		mainBP, depBPs, err = decomposeBlob(blob, kind, imageOS, c.logger)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from %s", style.Symbol(moduleURI))
 		}

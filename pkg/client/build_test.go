@@ -1239,7 +1239,7 @@ api = "0.2"
 						},
 					})
 					args := fakeImageFetcher.FetchCalls[fakePackage.Name()]
-					h.AssertEq(t, args.Platform, "linux/amd64")
+					h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/amd64")
 				})
 
 				it("fails when no metadata label on package", func() {
@@ -2090,7 +2090,7 @@ api = "0.2"
 
 					args = fakeImageFetcher.FetchCalls["default/run"]
 					h.AssertEq(t, args.Daemon, false)
-					h.AssertEq(t, args.Platform, "linux/amd64")
+					h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/amd64")
 				})
 
 				when("builder is untrusted", func() {
@@ -2110,7 +2110,7 @@ api = "0.2"
 							h.AssertNotNil(t, args)
 							h.AssertEq(t, args.Daemon, true)
 							h.AssertEq(t, args.PullPolicy, image.PullAlways)
-							h.AssertEq(t, args.Platform, "linux/amd64")
+							h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/amd64")
 						})
 						it("uses the api versions of the lifecycle image", func() {
 							h.AssertTrue(t, true)
@@ -2209,7 +2209,7 @@ api = "0.2"
 							h.AssertNotNil(t, args)
 							h.AssertEq(t, args.Daemon, true)
 							h.AssertEq(t, args.PullPolicy, image.PullAlways)
-							h.AssertEq(t, args.Platform, "linux/amd64")
+							h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/amd64")
 						})
 					})
 
@@ -2281,7 +2281,7 @@ api = "0.2"
 					args = fakeImageFetcher.FetchCalls[fmt.Sprintf("%s:%s", cfg.DefaultLifecycleImageRepo, builder.DefaultLifecycleVersion)]
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.PullPolicy, image.PullNever)
-					h.AssertEq(t, args.Platform, "linux/amd64")
+					h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/amd64")
 				})
 			})
 

@@ -209,6 +209,25 @@ func testWithoutSpecificBuilderRequirement(
 				return packageTomlFile.Name()
 			}
 
+			generateMultiPlatformCompositeBuildpackPackageToml := func(buildpackURI, dependencyURI string) string {
+				t.Helper()
+				packageTomlFile, err := os.CreateTemp(tmpDir, "package_multi_platform-*.toml")
+				assert.Nil(err)
+
+				pack.FixtureManager().TemplateFixtureToFile(
+					"package_multi_platform.toml",
+					packageTomlFile,
+					map[string]interface{}{
+						"BuildpackURI": buildpackURI,
+						"PackageName":  dependencyURI,
+					},
+				)
+
+				assert.Nil(packageTomlFile.Close())
+
+				return packageTomlFile.Name()
+			}
+
 			when("no --format is provided", func() {
 				it("creates the package as image", func() {
 					packageName := "test/package-" + h.RandString(10)
@@ -255,34 +274,204 @@ func testWithoutSpecificBuilderRequirement(
 				})
 
 				when("--publish", func() {
-					it("publishes image to registry", func() {
-						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
-						nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+					it.Before(func() {
+						// used to avoid authentication issues with the local registry
+						os.Setenv("DOCKER_CONFIG", registryConfig.DockerConfigDir)
+					})
 
-						nestedPackage := buildpacks.NewPackageImage(
-							t,
-							pack,
-							nestedPackageName,
-							packageTomlPath,
-							buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayers),
-							buildpacks.WithPublish(),
-						)
-						buildpackManager.PrepareBuildModules(tmpDir, nestedPackage)
+					when("no --targets", func() {
+						it("publishes image to registry", func() {
+							packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+							nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
-						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
-						packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+							nestedPackage := buildpacks.NewPackageImage(
+								t,
+								pack,
+								nestedPackageName,
+								packageTomlPath,
+								buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayers),
+								buildpacks.WithPublish(),
+							)
+							buildpackManager.PrepareBuildModules(tmpDir, nestedPackage)
 
-						output := pack.RunSuccessfully(
-							"buildpack", "package", packageName,
-							"-c", aggregatePackageToml,
-							"--publish",
-						)
+							aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
+							packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
-						defer imageManager.CleanupImages(packageName)
-						assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
+							output := pack.RunSuccessfully(
+								"buildpack", "package", packageName,
+								"-c", aggregatePackageToml,
+								"--publish",
+							)
 
-						assertImage.NotExistsLocally(packageName)
-						assertImage.CanBePulledFromRegistry(packageName)
+							defer imageManager.CleanupImages(packageName)
+							assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
+
+							assertImage.NotExistsLocally(packageName)
+							assertImage.CanBePulledFromRegistry(packageName)
+						})
+					})
+
+					when("--targets", func() {
+						var packageName string
+
+						it.Before(func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.MultiPlatformBuildersAndBuildPackages), "multi-platform builders and buildpack packages are available since 0.34.0")
+							packageName = registryConfig.RepoName("simple-multi-platform-buildpack" + h.RandString(8))
+						})
+
+						when("simple buildpacks on disk", func() {
+							var path string
+
+							it.Before(func() {
+								// creates a simple buildpack on disk
+								sourceDir := filepath.Join("testdata", "mock_buildpacks")
+								path = filepath.Join(tmpDir, "simple-layers-buildpack")
+								err := buildpacks.BpFolderSimpleLayers.Prepare(sourceDir, tmpDir)
+								h.AssertNil(t, err)
+							})
+
+							it("publishes images to registry and creates an image index", func() {
+								output := pack.RunSuccessfully(
+									"buildpack", "package", packageName,
+									"--path", path,
+									"--publish",
+									"--target", "linux/amd64",
+									"--target", "windows/amd64",
+								)
+
+								defer imageManager.CleanupImages(packageName)
+								assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
+
+								assertImage.NotExistsLocally(packageName)
+								assertImage.CanBePulledFromRegistry(packageName)
+
+								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(packageName)
+								h.AssertRemoteImageIndex(t, packageName, types.OCIImageIndex, 2)
+							})
+						})
+
+						when("composite buildpacks on disk", func() {
+							var packageTomlPath string
+
+							when("dependencies are not available in a registry", func() {
+								it.Before(func() {
+									// creates a composite buildpack on disk
+									sourceDir := filepath.Join("testdata", "mock_buildpacks")
+									err := buildpacks.MetaBpFolder.Prepare(sourceDir, tmpDir)
+									h.AssertNil(t, err)
+
+									packageTomlPath = filepath.Join(tmpDir, "meta-buildpack", "package.toml")
+								})
+
+								it("errors a descriptive message", func() {
+									output, err := pack.Run(
+										"buildpack", "package", packageName,
+										"--config", packageTomlPath,
+										"--publish",
+										"--target", "linux/amd64",
+										"--target", "windows/amd64",
+										"--verbose",
+									)
+									assert.NotNil(err)
+									h.AssertContains(t, output, "'../meta-buildpack-dependency' is not allowed when creating a composite multi-platform buildpack, push your dependencies to a registry and use 'docker://' instead")
+								})
+							})
+
+							when("dependencies are available in a registry", func() {
+								var depPackageName string
+
+								it.Before(func() {
+									// multi-platform composite buildpacks requires the dependencies to be available on a registry
+									// let's push it
+
+									// creates the simple buildpack dependency on disk
+									depSourceDir := filepath.Join("testdata", "mock_buildpacks")
+									depPath := filepath.Join(tmpDir, "meta-buildpack-dependency")
+									err := buildpacks.MetaBpDependency.Prepare(depSourceDir, tmpDir)
+									h.AssertNil(t, err)
+
+									// push the dependency to a registry
+									depPackageName = registryConfig.RepoName("simple-multi-platform-buildpack" + h.RandString(8))
+									output := pack.RunSuccessfully(
+										"buildpack", "package", depPackageName,
+										"--path", depPath,
+										"--publish",
+										"--target", "linux/amd64",
+										"--target", "windows/amd64",
+									)
+									assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(depPackageName)
+									assertImage.CanBePulledFromRegistry(depPackageName)
+									assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(depPackageName)
+
+									// let's prepare de composite buildpack to use the previous simple buildpack dependency
+									packageTomlPath = generateMultiPlatformCompositeBuildpackPackageToml(".", depPackageName)
+
+									// We need to copy the buildpack toml to the folder where the packageTomlPath was created
+									packageTomlDir := filepath.Dir(packageTomlPath)
+									sourceDir := filepath.Join("testdata", "mock_buildpacks", "meta-buildpack", "buildpack.toml")
+									h.CopyFile(t, sourceDir, filepath.Join(packageTomlDir, "buildpack.toml"))
+								})
+
+								it.Focus("publishes images to registry and creates an image index", func() {
+									output := pack.RunSuccessfully(
+										"buildpack", "package", packageName,
+										"--config", packageTomlPath,
+										"--publish",
+										"--target", "linux/amd64",
+										"--target", "windows/amd64",
+									)
+
+									defer imageManager.CleanupImages(packageName)
+									assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
+
+									assertImage.NotExistsLocally(packageName)
+									assertImage.CanBePulledFromRegistry(packageName)
+
+									assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(packageName)
+									h.AssertRemoteImageIndex(t, packageName, types.OCIImageIndex, 2)
+								})
+							})
+						})
+					})
+
+					when("new multi-platform folder structure is used", func() {
+						var packageName string
+
+						it.Before(func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.MultiPlatformBuildersAndBuildPackages), "multi-platform builders and buildpack packages are available since 0.34.0")
+							packageName = registryConfig.RepoName("simple-multi-platform-buildpack" + h.RandString(8))
+						})
+
+						when("simple buildpacks on disk", func() {
+							var path string
+
+							it.Before(func() {
+								// creates a simple buildpack on disk
+								sourceDir := filepath.Join("testdata", "mock_buildpacks")
+								path = filepath.Join(tmpDir, "multi-platform-buildpack")
+								err := buildpacks.MultiPlatformFolderBP.Prepare(sourceDir, tmpDir)
+								h.AssertNil(t, err)
+							})
+
+							it("publishes images to registry and creates an image index", func() {
+								output := pack.RunSuccessfully(
+									"buildpack", "package", packageName,
+									"--path", path,
+									"--publish", "--verbose",
+								)
+
+								defer imageManager.CleanupImages(packageName)
+								assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
+
+								assertImage.NotExistsLocally(packageName)
+								assertImage.CanBePulledFromRegistry(packageName)
+
+								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(packageName)
+								h.AssertRemoteImageIndex(t, packageName, types.OCIImageIndex, 2)
+
+								fmt.Println(output)
+							})
+						})
 					})
 				})
 

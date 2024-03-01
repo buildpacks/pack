@@ -25,6 +25,7 @@ type Config struct {
 	Lifecycle       LifecycleConfig  `toml:"lifecycle"`
 	Run             RunConfig        `toml:"run"`
 	Build           BuildConfig      `toml:"build"`
+	Targets         []dist.Target    `toml:"targets"`
 }
 
 // ModuleCollection is a list of ModuleConfigs

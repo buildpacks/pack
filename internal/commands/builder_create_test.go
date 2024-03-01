@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -17,6 +18,8 @@ import (
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -29,6 +32,23 @@ const validConfig = `
 	[[order.group]]
 		id = "some.buildpack"
 
+`
+
+const validConfigWithTargets = `
+[[buildpacks]]
+  id = "some.buildpack"
+
+[[order]]
+	[[order.group]]
+		id = "some.buildpack"
+
+[[targets]]
+os = "linux"
+arch = "amd64"
+
+[[targets]]
+os = "linux"
+arch = "arm64"
 `
 
 const validConfigWithExtensions = `
@@ -441,5 +461,112 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("multi-platform builder is expected to be created", func() {
+			when("--target", func() {
+				when("builder config hasn't targets defined", func() {
+					it.Before(func() {
+						h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(validConfig), 0666))
+					})
+					when("daemon", func() {
+						it("errors when exporting to daemon", func() {
+							command.SetArgs([]string{
+								"some/builder",
+								"--config", builderConfigPath,
+								"--target", "linux/amd64",
+								"--target", "windows/amd64",
+							})
+							err := command.Execute()
+							h.AssertNotNil(t, err)
+							h.AssertError(t, err, "when exporting to daemon only one target is allowed")
+						})
+					})
+
+					when("--publish", func() {
+						it.Before(func() {
+							mockClient.EXPECT().CreateBuilder(gomock.Any(), EqCreateBuilderOptionsTargets([]dist.Target{
+								{OS: "linux", Arch: "amd64"},
+								{OS: "windows", Arch: "amd64"},
+							})).Return(nil)
+						})
+
+						it("creates a builder with the given targets", func() {
+							command.SetArgs([]string{
+								"some/builder",
+								"--config", builderConfigPath,
+								"--target", "linux/amd64",
+								"--target", "windows/amd64",
+								"--publish",
+							})
+							h.AssertNil(t, command.Execute())
+						})
+					})
+				})
+
+				when("builder config has targets defined", func() {
+					it.Before(func() {
+						h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(validConfigWithTargets), 0666))
+					})
+
+					when("--publish", func() {
+						it.Before(func() {
+							mockClient.EXPECT().CreateBuilder(gomock.Any(), EqCreateBuilderOptionsTargets([]dist.Target{
+								{OS: "linux", Arch: "amd64"},
+								{OS: "linux", Arch: "arm64"},
+							})).Return(nil)
+						})
+
+						it("creates a builder with the given targets", func() {
+							command.SetArgs([]string{
+								"some/builder",
+								"--config", builderConfigPath,
+								"--publish",
+							})
+							h.AssertNil(t, command.Execute())
+						})
+					})
+
+					when("invalid target flag is used", func() {
+						it("errors a message when invalid target flag is used", func() {
+							command.SetArgs([]string{
+								"some/builder",
+								"--config", builderConfigPath,
+								"--target", "something/wrong",
+								"--publish",
+							})
+							h.AssertNotNil(t, command.Execute())
+						})
+					})
+				})
+			})
+		})
 	})
+}
+
+func EqCreateBuilderOptionsTargets(targets []dist.Target) gomock.Matcher {
+	return createbuilderOptionsMatcher{
+		description: fmt.Sprintf("Target=%v", targets),
+		equals: func(o client.CreateBuilderOptions) bool {
+			if len(o.Targets) != len(targets) {
+				return false
+			}
+			return reflect.DeepEqual(o.Targets, targets)
+		},
+	}
+}
+
+type createbuilderOptionsMatcher struct {
+	equals      func(options client.CreateBuilderOptions) bool
+	description string
+}
+
+func (m createbuilderOptionsMatcher) Matches(x interface{}) bool {
+	if b, ok := x.(client.CreateBuilderOptions); ok {
+		return m.equals(b)
+	}
+	return false
+}
+
+func (m createbuilderOptionsMatcher) String() string {
+	return "is a CreateBuilderOption with " + m.description
 }
