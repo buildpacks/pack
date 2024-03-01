@@ -110,7 +110,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			var order dist.Order
 			// We need to read buildpack.toml to inspect the given targets
 			pathToBuildpackToml := filepath.Join(relativeBaseDir, "buildpack.toml")
-			if _, err = os.Stat(pathToBuildpackToml); err != nil {
+			if _, err = os.Stat(pathToBuildpackToml); err == nil {
 				buildpackCfg, err := packageConfigReader.ReadBuildpackDescriptor(pathToBuildpackToml)
 				if err != nil {
 					return err
