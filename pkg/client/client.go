@@ -329,6 +329,11 @@ func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (i
 	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform))
 }
 
+type indexFactory struct {
+	keychain       authn.Keychain
+	xdgRuntimePath string
+}
+
 func (f *indexFactory) LoadIndex(repoName string, opts ...index.Option) (img imgutil.ImageIndex, err error) {
 	opts, err = withOptions(opts, f.keychain)
 	if err != nil {
@@ -344,12 +349,8 @@ func (f *indexFactory) LoadIndex(repoName string, opts ...index.Option) (img img
 	if err == nil {
 		return
 	}
-	return nil, errors.Wrap(err, errors.Errorf("Image: '%s' not found", repoName).Error())
-}
 
-type indexFactory struct {
-	keychain       authn.Keychain
-	xdgRuntimePath string
+	return nil, errors.Wrap(err, errors.Errorf("Image: '%s' not found", repoName).Error())
 }
 
 func (f *indexFactory) FetchIndex(name string, opts ...index.Option) (idx imgutil.ImageIndex, err error) {
@@ -402,10 +403,20 @@ func withOptions(ops []index.Option, keychain authn.Keychain) ([]index.Option, e
 
 	xdgPath, ok := os.LookupEnv(xdgRuntimePath)
 	if ok {
-		ops = append(ops, index.WithKeychain(keychain), index.WithXDGRuntimePath(xdgPath), index.WithManifestOnly(!config.ImageIndexFullMode))
+		ops = append(
+			ops,
+			index.WithKeychain(keychain),
+			index.WithXDGRuntimePath(xdgPath),
+			index.WithManifestOnly(!config.ImageIndexFullMode),
+		)
 		return ops, nil
 	}
 
-	ops = append(ops, index.WithKeychain(keychain), index.WithXDGRuntimePath(filepath.Join(home, "manifests")), index.WithManifestOnly(!config.ImageIndexFullMode))
+	ops = append(
+		ops,
+		index.WithKeychain(keychain),
+		index.WithXDGRuntimePath(filepath.Join(home, "manifests")),
+		index.WithManifestOnly(!config.ImageIndexFullMode),
+	)
 	return ops, nil
 }

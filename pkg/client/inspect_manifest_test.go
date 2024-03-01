@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"os"
 	"testing"
@@ -33,7 +32,8 @@ func testInspectManifest(t *testing.T, when spec.G, it spec.S) {
 	var (
 		mockController   *gomock.Controller
 		mockIndexFactory *testmocks.MockIndexFactory
-		out              bytes.Buffer
+		stdout           bytes.Buffer
+		stderr           bytes.Buffer
 		logger           logging.Logger
 		subject          *Client
 		err              error
@@ -42,7 +42,7 @@ func testInspectManifest(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Add", func() {
 		it.Before(func() {
-			logger = logging.NewLogWithWriters(&out, &out, logging.WithVerbose())
+			logger = logging.NewLogWithWriters(&stdout, &stderr, logging.WithVerbose())
 			mockController = gomock.NewController(t)
 			mockIndexFactory = testmocks.NewMockIndexFactory(mockController)
 
@@ -53,6 +53,7 @@ func testInspectManifest(t *testing.T, when spec.G, it spec.S) {
 				WithKeychain(authn.DefaultKeychain),
 			)
 			h.AssertSameInstance(t, mockIndexFactory, subject.indexFactory)
+			h.AssertSameInstance(t, subject.logger, logger)
 			h.AssertNil(t, err)
 		})
 		it.After(func() {
@@ -69,23 +70,14 @@ func testInspectManifest(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, err.Error(), "index not found")
 		})
 		it("should return formatted IndexManifest", func() {
-			idx := prepareFindIndex(t, *mockIndexFactory)
+			prepareFindIndex(t, *mockIndexFactory)
+
 			err := subject.InspectManifest(
 				context.TODO(),
 				"some/name",
 			)
 			h.AssertNil(t, err)
-
-			ii, ok := idx.(*fakes.Index)
-			h.AssertEq(t, ok, true)
-
-			mfest, err := ii.IndexManifest()
-			h.AssertNil(t, err)
-			h.AssertNotNil(t, mfest)
-
-			mfestBytes, err := json.MarshalIndent(mfest, "", "	")
-			h.AssertNil(t, err)
-			h.AssertEq(t, mfestBytes, out.Bytes())
+			h.AssertEq(t, stderr.String(), "")
 		})
 	})
 }

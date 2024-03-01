@@ -40,8 +40,8 @@ github.com/Microsoft/hcsshim v0.11.4 h1:68vKo2VN8DE9AdN4tnkWnmdhqdbpUFM8OF3Airm7
 github.com/Microsoft/hcsshim v0.11.4/go.mod h1:smjE4dvqPX9Zldna+t5FG3rnoHhaB7QYxPRqGcpAD9w=
 github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 h1:kkhsdkhsCvIsutKu5zLMgWtgh9YxGCNAw8Ad8hjwfYg=
 github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371/go.mod h1:EjAoLdwvbIOoOQr3ihjnSoLZRtE8azugULFRteWMNc0=
-github.com/WYGIN/buildpacks-imgutil v0.0.0-20240219150011-2f201867f6c1 h1:bjszsCM4clSyyZpOSlBwg++kUj+C28bSF+eKVKoCxvA=
-github.com/WYGIN/buildpacks-imgutil v0.0.0-20240219150011-2f201867f6c1/go.mod h1:7zUmt4wkVJNuXCZhQndEd3kvVGmWLVyzRFIQXTaeXlU=
+github.com/WYGIN/buildpacks-imgutil v0.0.0-20240301111028-2b39c6a637c2 h1:lwUITvRcyjNCpqeGRKWCnJ2teNr7t7LsqHyswt7MYTk=
+github.com/WYGIN/buildpacks-imgutil v0.0.0-20240301111028-2b39c6a637c2/go.mod h1:7zUmt4wkVJNuXCZhQndEd3kvVGmWLVyzRFIQXTaeXlU=
 github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7lmo=
 github.com/agext/levenshtein v1.2.3/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=

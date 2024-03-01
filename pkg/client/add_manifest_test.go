@@ -78,7 +78,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 			err = subject.AddManifest(
 				context.TODO(),
 				"pack/index",
-				digest.Identifier(),
+				digest.Name(),
 				ManifestAddOptions{},
 			)
 			h.AssertNil(t, err)
@@ -207,7 +207,8 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, osFeatures, []string{"some-os-features"})
 		})
 		it("should add with annotations", func() {
-			digest, err := name.NewDigest("pack/image@sha256:15c46ced65c6abed6a27472a7904b04273e9a8091a5627badd6ff016ab073171")
+			digestStr := "pack/image@sha256:15c46ced65c6abed6a27472a7904b04273e9a8091a5627badd6ff016ab073171"
+			digest, err := name.NewDigest(digestStr)
 			h.AssertNil(t, err)
 
 			idx := prepareLoadIndex(
@@ -218,7 +219,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 			err = subject.AddManifest(
 				context.TODO(),
 				"pack/index",
-				digest.Name(),
+				digestStr,
 				ManifestAddOptions{
 					Annotations: map[string]string{"some-key": "some-value"},
 				},

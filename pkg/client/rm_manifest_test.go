@@ -67,7 +67,7 @@ func testRemoveManifest(t *testing.T, when spec.G, it spec.S) {
 			digest, err := name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
 			h.AssertNil(t, err)
 
-			errs := subject.RemoveManifest(context.TODO(), "some-index", []string{digest.Identifier()})
+			errs := subject.RemoveManifest(context.TODO(), "some-index", []string{digest.Name()})
 			h.AssertEq(t, len(errs), 0)
 		})
 		it("should remove image", func() {
@@ -81,7 +81,7 @@ func testRemoveManifest(t *testing.T, when spec.G, it spec.S) {
 			digest, err := name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
 			h.AssertNil(t, err)
 
-			errs := subject.RemoveManifest(context.TODO(), "some-index", []string{digest.Identifier()})
+			errs := subject.RemoveManifest(context.TODO(), "some-index", []string{digest.Name()})
 			h.AssertEq(t, len(errs), 0)
 		})
 	})

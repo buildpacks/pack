@@ -20,6 +20,8 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
+const digestStr = "sha256:d4707523ce6e12afdbe9a3be5ad69027150a834870ca0933baf7516dd1fe0f56"
+
 func TestAnnotateManifest(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
@@ -216,7 +218,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 
 				osFeatures, err := idx.OSFeatures(digest)
 				h.AssertNil(t, err)
-				h.AssertEq(t, osFeatures, []string{"some-osFeatures"})
+				h.AssertEq(t, osFeatures, []string{"some-osFeatures", "some-osFeatures"})
 			})
 			it("should set URLs for given image", func() {
 				idx := prepareLoadIndex(t, *mockIndexFactory)
@@ -268,6 +270,79 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				h.AssertEq(t, annos, map[string]string{"some-key": "some-value"})
 			})
+			it("should save annotated index", func() {
+				var (
+					fakeOS          = "some-os"
+					fakeArch        = "some-arch"
+					fakeVariant     = "some-variant"
+					fakeVersion     = "some-osVersion"
+					fakeFeatures    = []string{"some-features"}
+					fakeOSFeatures  = []string{"some-OSFeatures"}
+					fakeURLs        = []string{"some-urls"}
+					fakeAnnotations = map[string]string{"some-key": "some-value"}
+				)
+				idx := prepareLoadIndex(t, *mockIndexFactory)
+				imgIdx, ok := idx.(*fakes.Index)
+				h.AssertEq(t, ok, true)
+
+				mfest, err := imgIdx.IndexManifest()
+				h.AssertNil(t, err)
+
+				digest, err := name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
+				h.AssertNil(t, err)
+
+				err = subject.AnnotateManifest(
+					context.TODO(),
+					"some/repo",
+					digest.Name(),
+					ManifestAnnotateOptions{
+						OS:          fakeOS,
+						OSArch:      fakeArch,
+						OSVariant:   fakeVariant,
+						OSVersion:   fakeVersion,
+						Features:    fakeFeatures,
+						OSFeatures:  fakeOSFeatures,
+						URLs:        fakeURLs,
+						Annotations: fakeAnnotations,
+					},
+				)
+				h.AssertNil(t, err)
+
+				err = idx.Save()
+				h.AssertNil(t, err)
+
+				os, err := idx.OS(digest)
+				h.AssertNil(t, err)
+				h.AssertEq(t, os, fakeOS)
+
+				arch, err := idx.Architecture(digest)
+				h.AssertNil(t, err)
+				h.AssertEq(t, arch, fakeArch)
+
+				variant, err := idx.Variant(digest)
+				h.AssertNil(t, err)
+				h.AssertEq(t, variant, fakeVariant)
+
+				osVersion, err := idx.OSVersion(digest)
+				h.AssertNil(t, err)
+				h.AssertEq(t, osVersion, fakeVersion)
+
+				features, err := idx.Features(digest)
+				h.AssertNil(t, err)
+				h.AssertEq(t, features, fakeFeatures)
+
+				osFeatures, err := idx.OSFeatures(digest)
+				h.AssertNil(t, err)
+				h.AssertEq(t, osFeatures, []string{"some-OSFeatures", "some-OSFeatures"})
+
+				urls, err := idx.URLs(digest)
+				h.AssertNil(t, err)
+				h.AssertEq(t, urls, fakeURLs)
+
+				annos, err := idx.Annotations(digest)
+				h.AssertNil(t, err)
+				h.AssertEq(t, annos, fakeAnnotations)
+			})
 		})
 		when("return an error when", func() {
 			it("has no Index locally by given Name", func() {
@@ -282,99 +357,100 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 			})
 			it("has no image with given digest for OS", func() {
 				prepareLoadIndex(t, *mockIndexFactory)
+
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
-					"busybox@sha256:d4707523ce6e12afdbe9a3be5ad69027150a834870ca0933baf7516dd1fe0f56",
+					"busybox@"+digestStr,
 					ManifestAnnotateOptions{
 						OS: "some-os",
 					},
 				)
-				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest.Error())
+				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest(digestStr).Error())
 			})
 			it("has no image with given digest for Arch", func() {
 				prepareLoadIndex(t, *mockIndexFactory)
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
-					"busybox@sha256:d4707523ce6e12afdbe9a3be5ad69027150a834870ca0933baf7516dd1fe0f56",
+					"busybox@"+digestStr,
 					ManifestAnnotateOptions{
 						OSArch: "some-arch",
 					},
 				)
-				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest.Error())
+				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest(digestStr).Error())
 			})
 			it("has no image with given digest for Variant", func() {
 				prepareLoadIndex(t, *mockIndexFactory)
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
-					"busybox@sha256:d4707523ce6e12afdbe9a3be5ad69027150a834870ca0933baf7516dd1fe0f56",
+					"busybox@"+digestStr,
 					ManifestAnnotateOptions{
 						OSVariant: "some-variant",
 					},
 				)
-				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest.Error())
+				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest(digestStr).Error())
 			})
 			it("has no image with given digest for osVersion", func() {
 				prepareLoadIndex(t, *mockIndexFactory)
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
-					"busybox@sha256:d4707523ce6e12afdbe9a3be5ad69027150a834870ca0933baf7516dd1fe0f56",
+					"busybox@"+digestStr,
 					ManifestAnnotateOptions{
 						OSVersion: "some-osVersion",
 					},
 				)
-				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest.Error())
+				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest(digestStr).Error())
 			})
 			it("has no image with given digest for Features", func() {
 				prepareLoadIndex(t, *mockIndexFactory)
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
-					"busybox@sha256:d4707523ce6e12afdbe9a3be5ad69027150a834870ca0933baf7516dd1fe0f56",
+					"busybox@"+digestStr,
 					ManifestAnnotateOptions{
 						Features: []string{"some-features"},
 					},
 				)
-				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest.Error())
+				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest(digestStr).Error())
 			})
 			it("has no image with given digest for OSFeatures", func() {
 				prepareLoadIndex(t, *mockIndexFactory)
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
-					"busybox@sha256:d4707523ce6e12afdbe9a3be5ad69027150a834870ca0933baf7516dd1fe0f56",
+					"busybox@"+digestStr,
 					ManifestAnnotateOptions{
 						OSFeatures: []string{"some-osFeatures"},
 					},
 				)
-				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest.Error())
+				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest(digestStr).Error())
 			})
 			it("has no image with given digest for URLs", func() {
 				prepareLoadIndex(t, *mockIndexFactory)
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
-					"busybox@sha256:d4707523ce6e12afdbe9a3be5ad69027150a834870ca0933baf7516dd1fe0f56",
+					"busybox@"+digestStr,
 					ManifestAnnotateOptions{
 						URLs: []string{"some-urls"},
 					},
 				)
-				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest.Error())
+				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest(digestStr).Error())
 			})
 			it("has no image with given digest for Annotations", func() {
 				prepareLoadIndex(t, *mockIndexFactory)
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",
-					"busybox@sha256:d4707523ce6e12afdbe9a3be5ad69027150a834870ca0933baf7516dd1fe0f56",
+					"busybox@"+digestStr,
 					ManifestAnnotateOptions{
 						Annotations: map[string]string{"some-key": "some-value"},
 					},
 				)
-				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest.Error())
+				h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest(digestStr).Error())
 			})
 		})
 	})

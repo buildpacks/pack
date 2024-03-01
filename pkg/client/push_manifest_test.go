@@ -58,7 +58,7 @@ func testPushManifest(t *testing.T, when spec.G, it spec.S) {
 			prepareLoadIndexWithError(t, *mockIndexFactory)
 
 			err := subject.PushManifest(context.TODO(), "some-index", PushManifestOptions{})
-			h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest.Error())
+			h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest("").Error())
 		})
 		it("should push index to registry", func() {
 			prepareLoadIndex(t, *mockIndexFactory)
@@ -73,5 +73,5 @@ func prepareLoadIndexWithError(t *testing.T, mockIndexFactory testmocks.MockInde
 	mockIndexFactory.
 		EXPECT().
 		LoadIndex(gomock.Any(), gomock.Any()).
-		Return(nil, imgutil.ErrNoImageOrIndexFoundWithGivenDigest)
+		Return(nil, imgutil.ErrNoImageOrIndexFoundWithGivenDigest(""))
 }

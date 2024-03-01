@@ -135,7 +135,7 @@ require (
 go 1.21
 
 replace (
-	github.com/buildpacks/imgutil => github.com/WYGIN/buildpacks-imgutil v0.0.0-20240219150011-2f201867f6c1
+	github.com/buildpacks/imgutil => github.com/WYGIN/buildpacks-imgutil v0.0.0-20240301111028-2b39c6a637c2
 
 	// Pin moby/buildkit until docker/docker is upgraded
 	github.com/moby/buildkit => github.com/moby/buildkit v0.11.6
