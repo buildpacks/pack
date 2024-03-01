@@ -106,19 +106,25 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				logger.Warn("Flattening a buildpack package could break the distribution specification. Please use it with caution.")
 			}
 
+			var targets []dist.Target
+			var order dist.Order
 			// We need to read buildpack.toml to inspect the given targets
 			pathToBuildpackToml := filepath.Join(relativeBaseDir, "buildpack.toml")
-			buildpackCfg, err := packageConfigReader.ReadBuildpackDescriptor(pathToBuildpackToml)
+			if _, err = os.Stat(pathToBuildpackToml); err != nil {
+				buildpackCfg, err := packageConfigReader.ReadBuildpackDescriptor(pathToBuildpackToml)
+				if err != nil {
+					return err
+				}
+				targets = buildpackCfg.Targets()
+				order = buildpackCfg.Order()
+			}
+
+			multiArchCfg, err := processTargets(flags, logger, targets, order, bpPackageCfg)
 			if err != nil {
 				return err
 			}
 
-			multiArchCfg, err := processTargets(flags, logger, buildpackCfg, bpPackageCfg)
-			if err != nil {
-				return err
-			}
-
-			if len(multiArchCfg.Targets()) > 0 && len(buildpackCfg.Order()) == 0 {
+			if len(multiArchCfg.Targets()) > 0 && len(order) == 0 {
 				filesToClean, err := multiArchCfg.CopyConfigFiles(relativeBaseDir)
 				if err != nil {
 					return err
@@ -137,7 +143,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				Flatten:         flags.Flatten,
 				FlattenExclude:  flags.FlattenExclude,
 				Labels:          flags.Label,
-				Targets:         multiArchCfg.Targets(),
+				Targets:         targets,
 			}); err != nil {
 				return err
 			}
@@ -203,7 +209,7 @@ func validateBuildpackPackageFlags(cfg config.Config, p *BuildpackPackageFlags) 
 	return nil
 }
 
-func processTargets(flags BuildpackPackageFlags, logger logging.Logger, buildpackCfg dist.BuildpackDescriptor, bpPackageCfg pubbldpkg.Config) (buildpack.MultiArchConfig, error) {
+func processTargets(flags BuildpackPackageFlags, logger logging.Logger, targets []dist.Target, order dist.Order, bpPackageCfg pubbldpkg.Config) (buildpack.MultiArchConfig, error) {
 	var (
 		expectedTargets []dist.Target
 		err             error
@@ -218,12 +224,12 @@ func processTargets(flags BuildpackPackageFlags, logger logging.Logger, buildpac
 		}
 	}
 
-	if len(buildpackCfg.Targets()) == 0 && len(expectedTargets) == 0 {
+	if len(targets) == 0 && len(expectedTargets) == 0 {
 		logger.Warnf("A new '--target' flag is available to set the platform for the buildpack package, using '%s' as default", bpPackageCfg.Platform.OS)
 	}
 
-	currentTargets := buildpackCfg.Targets()
-	if len(buildpackCfg.Order()) > 0 {
+	currentTargets := targets
+	if len(order) > 0 {
 		// it's a composite buildpack, targets must be defined in package.toml
 		currentTargets = bpPackageCfg.Targets
 	}
