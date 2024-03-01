@@ -60,7 +60,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 
 	var createPackage = func(imageName string) *fakes.Image {
 		packageImage := fakes.NewImage(imageName, "", nil)
-		mockImageFactory.EXPECT().NewImage(packageImage.Name(), false, "linux").Return(packageImage, nil)
+		mockImageFactory.EXPECT().NewImage(packageImage.Name(), false, dist.Target{OS: "linux"}, false).Return(packageImage, nil)
 
 		pack, err := client.NewClient(
 			client.WithLogger(logger),

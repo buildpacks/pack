@@ -32,6 +32,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -69,7 +70,7 @@ type BlobDownloader interface {
 type ImageFactory interface {
 	// NewImage initializes an image object with required settings so that it
 	// can be written either locally or to a registry.
-	NewImage(repoName string, local bool, imageOS string) (imgutil.Image, error)
+	NewImage(repoName string, local bool, target dist.Target, multiarch bool) (imgutil.Image, error)
 }
 
 type IndexFactory interface {
@@ -250,6 +251,7 @@ func NewClient(opts ...Option) (*Client, error) {
 		client.indexFactory = &indexFactory{
 			dockerClient: client.docker,
 			keychain:     client.keychain,
+		}
 	}
 
 	if client.accessChecker == nil {
@@ -295,11 +297,16 @@ type imageFactory struct {
 	keychain     authn.Keychain
 }
 
-func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (imgutil.Image, error) {
-	platform := imgutil.Platform{OS: imageOS}
+func (f *imageFactory) NewImage(repoName string, daemon bool, target dist.Target, multiarch bool) (imgutil.Image, error) {
+	// TODO Check the equivalent with the Target OS Version
+	platform := imgutil.Platform{OS: target.OS, Architecture: target.Arch}
 
 	if daemon {
 		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(platform))
+	}
+
+	if multiarch {
+		return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform), remote.SaveWithDigest())
 	}
 
 	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform))

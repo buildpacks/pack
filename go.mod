@@ -5,7 +5,7 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Microsoft/go-winio v0.6.1
 	github.com/apex/log v1.9.0
-	github.com/buildpacks/imgutil v0.0.0-20240118145509-e94a1b7de8a9
+	github.com/buildpacks/imgutil v0.0.0-20240206215312-f8d38e1de03d
 	github.com/buildpacks/lifecycle v0.18.5
 	github.com/docker/cli v25.0.3+incompatible
 	github.com/docker/docker v25.0.3+incompatible
@@ -73,7 +73,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
-	github.com/containerd/containerd v1.7.12 // indirect
+	github.com/containerd/containerd v1.7.13 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3 // indirect
 	github.com/containerd/typeurl/v2 v2.1.1 // indirect
@@ -96,7 +96,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/google/uuid v1.5.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
@@ -141,4 +141,4 @@ require (
 
 go 1.21
 
-replace github.com/buildpacks/imgutil => github.com/drac98/imgutil v1.4.0
+replace github.com/buildpacks/imgutil => github.com/jjbustamante/imgutil v0.0.0-20240301215513-64e6affde1f4

@@ -1,6 +1,8 @@
 package dist
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/style"
@@ -57,6 +59,30 @@ type Target struct {
 	Arch          string         `json:"arch" toml:"arch"`
 	ArchVariant   string         `json:"variant,omitempty" toml:"variant,omitempty"`
 	Distributions []Distribution `json:"distributions,omitempty" toml:"distributions,omitempty"`
+}
+
+// ValuesAsSlide converts the internal representation of a target, os, arch, variant, etc. into a string slide
+// each value included into the final array must be not empty.
+func (t *Target) ValuesAsSlide(version string) []string {
+	var targets []string
+	if t.OS != "" {
+		targets = append(targets, t.OS)
+	}
+	if t.Arch != "" {
+		targets = append(targets, t.Arch)
+	}
+	if t.ArchVariant != "" {
+		targets = append(targets, t.ArchVariant)
+	}
+
+	for _, d := range t.Distributions {
+		for _, v := range d.Versions {
+			if v == version {
+				targets = append(targets, fmt.Sprintf("%s@%s", d.Name, version))
+			}
+		}
+	}
+	return targets
 }
 
 type Distribution struct {

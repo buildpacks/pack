@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -11,7 +12,10 @@ import (
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/internal/target"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -24,6 +28,7 @@ type BuildpackPackageFlags struct {
 	BuildpackRegistry string
 	Path              string
 	FlattenExclude    []string
+	Targets           []string
 	Label             map[string]string
 	Publish           bool
 	Flatten           bool
@@ -37,6 +42,7 @@ type BuildpackPackager interface {
 // PackageConfigReader reads BuildpackPackage configs
 type PackageConfigReader interface {
 	Read(path string) (pubbldpkg.Config, error)
+	ReadBuildpackDescriptor(path string) (dist.BuildpackDescriptor, error)
 }
 
 // BuildpackPackage packages (a) buildpack(s) into OCI format, based on a package config
@@ -100,6 +106,26 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				logger.Warn("Flattening a buildpack package could break the distribution specification. Please use it with caution.")
 			}
 
+			// We need to read buildpack.toml to inspect the given targets
+			pathToBuildpackToml := filepath.Join(relativeBaseDir, "buildpack.toml")
+			buildpackCfg, err := packageConfigReader.ReadBuildpackDescriptor(pathToBuildpackToml)
+			if err != nil {
+				return err
+			}
+
+			multiArchCfg, err := processTargets(flags, logger, buildpackCfg, bpPackageCfg)
+			if err != nil {
+				return err
+			}
+
+			if len(multiArchCfg.Targets()) > 0 && len(buildpackCfg.Order()) == 0 {
+				filesToClean, err := multiArchCfg.CopyConfigFiles(relativeBaseDir)
+				if err != nil {
+					return err
+				}
+				defer clean(filesToClean)
+			}
+
 			if err := packager.PackageBuildpack(cmd.Context(), client.PackageBuildpackOptions{
 				RelativeBaseDir: relativeBaseDir,
 				Name:            name,
@@ -111,6 +137,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				Flatten:         flags.Flatten,
 				FlattenExclude:  flags.FlattenExclude,
 				Labels:          flags.Label,
+				Targets:         multiArchCfg.Targets(),
 			}); err != nil {
 				return err
 			}
@@ -138,6 +165,12 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten the buildpack into a single layer")
 	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpacks to exclude from flattening, in the form of '<buildpack-id>@<buildpack-version>'")
 	cmd.Flags().StringToStringVarP(&flags.Label, "label", "l", nil, "Labels to add to packaged Buildpack, in the form of '<name>=<value>'")
+	cmd.Flags().StringSliceVarP(&flags.Targets, "target", "t", nil,
+		`Targets are the platforms list to build. one can provide target platforms in format [os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]
+	- Base case for two different architectures :  '--target "linux/amd64" --target "linux/arm64"'
+	- case for distribution version: '--target "windows/amd64:windows-nano@10.0.19041.1415"'
+	- case for different architecture with distributed versions : '--target "linux/arm/v6:ubuntu@14.04"  --target "linux/arm/v6:ubuntu@16.04"'
+	`)
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("flatten")
 		cmd.Flags().MarkHidden("flatten-exclude")
@@ -165,6 +198,48 @@ func validateBuildpackPackageFlags(cfg config.Config, p *BuildpackPackageFlags) 
 					return errors.Errorf("invalid format %s; please use '<buildpack-id>@<buildpack-version>' to exclude buildpack from flattening", exclude)
 				}
 			}
+		}
+	}
+	return nil
+}
+
+func processTargets(flags BuildpackPackageFlags, logger logging.Logger, buildpackCfg dist.BuildpackDescriptor, bpPackageCfg pubbldpkg.Config) (buildpack.MultiArchConfig, error) {
+	var (
+		expectedTargets []dist.Target
+		err             error
+	)
+	if len(flags.Targets) > 0 {
+		if expectedTargets, err = target.ParseTargets(flags.Targets, logger); err != nil {
+			return buildpack.MultiArchConfig{}, err
+		}
+		if len(expectedTargets) > 1 && !flags.Publish && flags.Format == "" {
+			// when we are exporting to daemon, only 1 target is allow
+			return buildpack.MultiArchConfig{}, errors.Errorf("when exporting to daemon only one target is allowed")
+		}
+	}
+
+	if len(buildpackCfg.Targets()) == 0 && len(expectedTargets) == 0 {
+		logger.Warnf("A new '--target' flag is available to set the platform for the buildpack package, using '%s' as default", bpPackageCfg.Platform.OS)
+	}
+
+	currentTargets := buildpackCfg.Targets()
+	if len(buildpackCfg.Order()) > 0 {
+		// it's a composite buildpack, targets must be defined in package.toml
+		currentTargets = bpPackageCfg.Targets
+	}
+
+	multiArchCfg, err := buildpack.NewMultiArchConfig(currentTargets, expectedTargets, logger)
+	if err != nil {
+		return buildpack.MultiArchConfig{}, err
+	}
+	return multiArchCfg, nil
+}
+
+func clean(paths []string) error {
+	// we need to clean the buildpack.toml for each place where we copied to
+	if len(paths) > 0 {
+		for _, path := range paths {
+			os.Remove(path)
 		}
 	}
 	return nil
