@@ -330,13 +330,22 @@ func (b *PackageBuilder) validate() error {
 
 func (b *PackageBuilder) resolvedStacks() []dist.Stack {
 	stacks := b.buildpack.Descriptor().Stacks()
+	if len(stacks) == 0 && len(b.buildpack.Descriptor().Order()) == 0 {
+		// For non-meta-buildpacks using targets, not stacks: assume any stack
+		stacks = append(stacks, dist.Stack{ID: "*"})
+	}
 	for _, bp := range b.AllModules() {
 		bpd := bp.Descriptor()
+		bpdStacks := bp.Descriptor().Stacks()
+		if len(bpdStacks) == 0 && len(bpd.Order()) == 0 {
+			// For non-meta-buildpacks using targets, not stacks: assume any stack
+			bpdStacks = append(bpdStacks, dist.Stack{ID: "*"})
+		}
 
 		if len(stacks) == 0 {
-			stacks = bpd.Stacks()
-		} else if len(bpd.Stacks()) > 0 { // skip over "meta-buildpacks"
-			stacks = stack.MergeCompatible(stacks, bpd.Stacks())
+			stacks = bpdStacks
+		} else if len(bpdStacks) > 0 { // skip over "meta-buildpacks"
+			stacks = stack.MergeCompatible(stacks, bpdStacks)
 		}
 	}
 
