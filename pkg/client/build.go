@@ -204,6 +204,9 @@ type BuildOptions struct {
 	// Directory to output the report.toml metadata artifact
 	ReportDestinationDir string
 
+	// For storing the mac-address to later pass on docker config structure
+	MacAddress string
+
 	// Desired create time in the output image config
 	CreationTime *time.Time
 
@@ -545,6 +548,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Workspace:                opts.Workspace,
 		GID:                      opts.GroupID,
 		UID:                      opts.UserID,
+		MacAddress:               opts.MacAddress,
 		PreviousImage:            opts.PreviousImage,
 		Interactive:              opts.Interactive,
 		Termui:                   termui.NewTermui(imageName, ephemeralBuilder, runImageName),

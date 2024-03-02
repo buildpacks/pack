@@ -46,6 +46,13 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 	provider.ctrConf.Image = lifecycleExec.opts.Builder.Name()
 	provider.ctrConf.Labels = map[string]string{"author": "pack"}
 
+	if lifecycleExec.opts.MacAddress != "" {
+		// TODO fix this
+		//nolint:staticcheck
+		provider.ctrConf.MacAddress = lifecycleExec.opts.MacAddress
+		lifecycleExec.logger.Debugf("MAC Address: %s", style.Symbol(lifecycleExec.opts.MacAddress))
+	}
+
 	if lifecycleExec.os == "windows" {
 		provider.hostConf.Isolation = container.IsolationProcess
 	}
