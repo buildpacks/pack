@@ -45,15 +45,19 @@ const (
 	PullWithInterval
 )
 
+type Interval struct {
+	PullingInterval string `json:"pulling_interval"`
+	PruningInterval string `json:"pruning_interval"`
+	LastPrune       string `json:"last_prune"`
+}
+
+type ImageData struct {
+	ImageIDtoTIME map[string]string
+}
+
 type ImageJSON struct {
-	Interval struct {
-		PullingInterval  string `json:"pulling_interval"`
-		PruningIinterval string `json:"pruning_interval"`
-		LastPrune        string `json:"last_prune"`
-	} `json:"interval"`
-	Image struct {
-		ImageIDtoTIME map[string]string
-	} `json:"image"`
+	Interval *Interval  `json:"interval"`
+	Image    *ImageData `json:"image"`
 }
 
 var nameMap = map[string]PullPolicy{"always": PullAlways, "hourly": PullHourly, "daily": PullDaily, "weekly": PullWeekly, "never": PullNever, "if-not-present": PullIfNotPresent, "": PullAlways}
@@ -138,10 +142,10 @@ func updateImageJSONDuration(intervalStr string) error {
 	return WriteFile(updatedJSON)
 }
 
-func ReadImageJSON(l logging.Logger) (ImageJSON, error) {
+func ReadImageJSON(l logging.Logger) (*ImageJSON, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return ImageJSON{}, errors.Wrap(err, "failed to get home directory")
+		return &ImageJSON{}, errors.Wrap(err, "failed to get home directory")
 	}
 	imagePath = filepath.Join(homeDir, ".pack", "image.json")
 
@@ -151,7 +155,7 @@ func ReadImageJSON(l logging.Logger) (ImageJSON, error) {
 		l.Warnf("missing `.pack` directory under %s directory %s", homeDir, err)
 		l.Debugf("creating `.pack` directory under %s directory", homeDir)
 		if err := os.MkdirAll(dirPath, 0755); err != nil {
-			return ImageJSON{}, errors.Wrap(err, "failed to create directory")
+			return &ImageJSON{}, errors.Wrap(err, "failed to create directory")
 		}
 	}
 
@@ -161,50 +165,21 @@ func ReadImageJSON(l logging.Logger) (ImageJSON, error) {
 		l.Debugf("creating `image.json` file under %s directory", dirPath)
 		minimumJSON := []byte(`{"interval":{"pulling_interval":"","pruning_interval":"7d","last_prune":""},"image":{}}`)
 		if err := WriteFile(minimumJSON); err != nil {
-			return ImageJSON{}, errors.Wrap(err, "failed to create image.json file")
+			return &ImageJSON{}, errors.Wrap(err, "failed to create image.json file")
 		}
 	}
 
 	jsonData, err := os.ReadFile(imagePath)
 	if err != nil && !os.IsNotExist(err) {
-		return ImageJSON{}, errors.Wrap(err, "failed to read image.json")
+		return &ImageJSON{}, errors.Wrap(err, "failed to read image.json")
 	}
 
-	var imageJSON ImageJSON
+	var imageJSON *ImageJSON
 	if err := json.Unmarshal(jsonData, &imageJSON); err != nil && !os.IsNotExist(err) {
-		return ImageJSON{}, errors.Wrap(err, "failed to unmarshal image.json")
+		return &ImageJSON{}, errors.Wrap(err, "failed to unmarshal image.json")
 	}
 
 	return imageJSON, nil
-}
-
-func (f *Fetcher) CheckImagePullInterval(imageID string) (bool, error) {
-	imageJSON, err := ReadImageJSON(f.logger)
-	if err != nil {
-		return false, err
-	}
-
-	timestamp, ok := imageJSON.Image.ImageIDtoTIME[imageID]
-	if !ok {
-		// If the image ID is not present, return true
-		return true, nil
-	}
-
-	imageTimestamp, err := time.Parse(time.RFC3339, timestamp)
-	if err != nil {
-		return false, errors.Wrap(err, "failed to parse image timestamp from JSON")
-	}
-
-	durationStr := imageJSON.Interval.PullingInterval
-
-	duration, err := parseDurationString(durationStr)
-	if err != nil {
-		return false, errors.Wrap(err, "failed to parse duration from JSON")
-	}
-
-	timeThreshold := time.Now().Add(-duration)
-
-	return imageTimestamp.Before(timeThreshold), nil
 }
 
 func parseDurationString(durationStr string) (time.Duration, error) {
@@ -250,7 +225,7 @@ func (f *Fetcher) PruneOldImages() error {
 			return errors.Wrap(err, "failed to parse last prune timestamp from JSON")
 		}
 
-		pruningInterval, err := parseDurationString(imageJSON.Interval.PruningIinterval)
+		pruningInterval, err := parseDurationString(imageJSON.Interval.PruningInterval)
 		if err != nil {
 			return errors.Wrap(err, "failed to parse pruning interval from JSON")
 		}
@@ -262,7 +237,7 @@ func (f *Fetcher) PruneOldImages() error {
 	}
 
 	// prune images older than the pruning interval
-	pruningDuration, err := parseDurationString(imageJSON.Interval.PruningIinterval)
+	pruningDuration, err := parseDurationString(imageJSON.Interval.PruningInterval)
 	if err != nil {
 		return errors.Wrap(err, "failed to parse pruning interval from JSON")
 	}
