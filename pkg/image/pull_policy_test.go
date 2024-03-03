@@ -34,15 +34,38 @@ func testPullPolicy(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, policy, image.PullIfNotPresent)
 		})
 
-		it("defaults to PullAlways, if empty string", func() {
-			policy, err := image.ParsePullPolicy("")
+		it("returns PullHourly for hourly", func() {
+			policy, err := image.ParsePullPolicy("hourly")
 			h.AssertNil(t, err)
-			h.AssertEq(t, policy, image.PullAlways)
+			h.AssertEq(t, policy, image.PullHourly)
+		})
+
+		it("returns PullDaily for daily", func() {
+			policy, err := image.ParsePullPolicy("daily")
+			h.AssertNil(t, err)
+			h.AssertEq(t, policy, image.PullDaily)
+		})
+
+		it("returns PullWeekly for weekly", func() {
+			policy, err := image.ParsePullPolicy("weekly")
+			h.AssertNil(t, err)
+			h.AssertEq(t, policy, image.PullWeekly)
+		})
+
+		it("returns PullWithInterval for interval= format", func() {
+			policy, err := image.ParsePullPolicy("interval=4d")
+			h.AssertNil(t, err)
+			h.AssertEq(t, policy, image.PullWithInterval)
 		})
 
 		it("returns error for unknown string", func() {
 			_, err := image.ParsePullPolicy("fake-policy-here")
 			h.AssertError(t, err, "invalid pull policy")
+		})
+
+		it("returns error for invalid interval format", func() {
+			_, err := image.ParsePullPolicy("interval=invalid")
+			h.AssertError(t, err, "invalid interval format")
 		})
 	})
 
@@ -51,6 +74,10 @@ func testPullPolicy(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, image.PullAlways.String(), "always")
 			h.AssertEq(t, image.PullNever.String(), "never")
 			h.AssertEq(t, image.PullIfNotPresent.String(), "if-not-present")
+			h.AssertEq(t, image.PullHourly.String(), "hourly")
+			h.AssertEq(t, image.PullDaily.String(), "daily")
+			h.AssertEq(t, image.PullWeekly.String(), "weekly")
+			h.AssertContains(t, image.PullWithInterval.String(), "interval=")
 		})
 	})
 }

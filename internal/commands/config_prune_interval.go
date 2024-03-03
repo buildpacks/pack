@@ -36,8 +36,8 @@ func ConfigPruneInterval(logger logging.Logger, cfg config.Config, cfgPath strin
 				if err != nil {
 					return err
 				}
-				oldPruneInterval := imageJSON.Interval.PruningIinterval
-				imageJSON.Interval.PruningIinterval = "7d"
+				oldPruneInterval := imageJSON.Interval.PruningInterval
+				imageJSON.Interval.PruningInterval = "7d"
 
 				updatedJSON, err := json.MarshalIndent(imageJSON, "", "    ")
 				if err != nil {
@@ -48,13 +48,13 @@ func ConfigPruneInterval(logger logging.Logger, cfg config.Config, cfgPath strin
 					return err
 				}
 				logger.Infof("Successfully unset pruning interval %s", style.Symbol(oldPruneInterval))
-				logger.Infof("Pruning interval has been set to %s", style.Symbol(imageJSON.Interval.PruningIinterval))
+				logger.Infof("Pruning interval has been set to %s", style.Symbol(imageJSON.Interval.PruningInterval))
 			case len(args) == 0: // list
 				imageJSON, err := image.ReadImageJSON(logger)
 				if err != nil {
 					return err
 				}
-				pruneInterval := imageJSON.Interval.PruningIinterval
+				pruneInterval := imageJSON.Interval.PruningInterval
 				if err != nil {
 					return err
 				}
@@ -67,7 +67,7 @@ func ConfigPruneInterval(logger logging.Logger, cfg config.Config, cfgPath strin
 				if err != nil {
 					return err
 				}
-				pruneInterval := imageJSON.Interval.PruningIinterval
+				pruneInterval := imageJSON.Interval.PruningInterval
 				if err != nil {
 					return err
 				}
@@ -82,7 +82,7 @@ func ConfigPruneInterval(logger logging.Logger, cfg config.Config, cfgPath strin
 					return errors.Errorf("invalid interval format: %s", newPruneInterval)
 				}
 
-				imageJSON.Interval.PruningIinterval = newPruneInterval
+				imageJSON.Interval.PruningInterval = newPruneInterval
 				updatedJSON, err := json.MarshalIndent(imageJSON, "", "    ")
 				if err != nil {
 					return errors.Wrap(err, "failed to marshal updated records")
@@ -92,7 +92,7 @@ func ConfigPruneInterval(logger logging.Logger, cfg config.Config, cfgPath strin
 					return err
 				}
 
-				logger.Infof("Successfully set %s as the pruning interval", style.Symbol(imageJSON.Interval.PruningIinterval))
+				logger.Infof("Successfully set %s as the pruning interval", style.Symbol(imageJSON.Interval.PruningInterval))
 			}
 
 			return nil

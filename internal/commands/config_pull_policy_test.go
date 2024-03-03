@@ -96,6 +96,54 @@ func testConfigPullPolicyCommand(t *testing.T, when spec.G, it spec.S) {
 					assert.Contains(outBuf.String(), "if-not-present")
 				})
 			})
+
+			when("policy set to hourly in config", func() {
+				it("lists hourly as pull policy", func() {
+					cfg.PullPolicy = "hourly"
+					command = commands.ConfigPullPolicy(logger, cfg, configFile)
+					command.SetArgs([]string{})
+
+					h.AssertNil(t, command.Execute())
+
+					assert.Contains(outBuf.String(), "hourly")
+				})
+			})
+
+			when("policy set to daily in config", func() {
+				it("lists daily as pull policy", func() {
+					cfg.PullPolicy = "daily"
+					command = commands.ConfigPullPolicy(logger, cfg, configFile)
+					command.SetArgs([]string{})
+
+					h.AssertNil(t, command.Execute())
+
+					assert.Contains(outBuf.String(), "daily")
+				})
+			})
+
+			when("policy set to weekly in config", func() {
+				it("lists weekly as pull policy", func() {
+					cfg.PullPolicy = "weekly"
+					command = commands.ConfigPullPolicy(logger, cfg, configFile)
+					command.SetArgs([]string{})
+
+					h.AssertNil(t, command.Execute())
+
+					assert.Contains(outBuf.String(), "weekly")
+				})
+			})
+
+			when("policy set to interval=1d2h30m in config", func() {
+				it("lists interval=1d2h30m as pull policy", func() {
+					cfg.PullPolicy = "interval=1d2h30m"
+					command = commands.ConfigPullPolicy(logger, cfg, configFile)
+					command.SetArgs([]string{})
+
+					h.AssertNil(t, command.Execute())
+
+					assert.Contains(outBuf.String(), "interval=1d2h30m")
+				})
+			})
 		})
 		when("set", func() {
 			when("policy provided is the same as configured pull policy", func() {

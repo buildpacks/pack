@@ -36,6 +36,19 @@ type LayoutOption struct {
 	Sparse bool
 }
 
+type ImagePullChecker interface {
+	CheckImagePullInterval(imageID string, l logging.Logger) (bool, error)
+	ReadImageJSON(l logging.Logger) (*ImageJSON, error)
+}
+
+type PullChecker struct {
+	logger logging.Logger
+}
+
+func NewPullChecker(logger logging.Logger) *PullChecker {
+	return &PullChecker{logger: logger}
+}
+
 // WithRegistryMirrors supply your own mirrors for registry.
 func WithRegistryMirrors(registryMirrors map[string]string) FetcherOption {
 	return func(c *Fetcher) {
@@ -55,10 +68,11 @@ type DockerClient interface {
 }
 
 type Fetcher struct {
-	docker          DockerClient
-	logger          logging.Logger
-	registryMirrors map[string]string
-	keychain        authn.Keychain
+	docker           DockerClient
+	logger           logging.Logger
+	registryMirrors  map[string]string
+	keychain         authn.Keychain
+	imagePullChecker ImagePullChecker
 }
 
 type FetchOptions struct {
@@ -68,11 +82,12 @@ type FetchOptions struct {
 	LayoutOption LayoutOption
 }
 
-func NewFetcher(logger logging.Logger, docker DockerClient, opts ...FetcherOption) *Fetcher {
+func NewFetcher(logger logging.Logger, docker DockerClient, imagePullChecker ImagePullChecker, opts ...FetcherOption) *Fetcher {
 	fetcher := &Fetcher{
-		logger:   logger,
-		docker:   docker,
-		keychain: authn.DefaultKeychain,
+		logger:           logger,
+		docker:           docker,
+		keychain:         authn.DefaultKeychain,
+		imagePullChecker: imagePullChecker,
 	}
 
 	for _, opt := range opts {
@@ -108,15 +123,23 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 			return img, err
 		}
 	case PullWithInterval, PullDaily, PullHourly, PullWeekly:
-		pull, err := f.CheckImagePullInterval(name)
+		pull, err := f.imagePullChecker.CheckImagePullInterval(name, f.logger)
 		if err != nil {
 			f.logger.Warnf("failed to check pulling interval for image %s, %s", name, err)
 		}
 		if !pull {
 			img, err := f.fetchDaemonImage(name)
 			if errors.Is(err, ErrNotFound) {
-				imageJSON, _ := ReadImageJSON(f.logger)
+				imageJSON, _ := f.imagePullChecker.ReadImageJSON(f.logger)
 				delete(imageJSON.Image.ImageIDtoTIME, name)
+				updatedJSON, err := json.MarshalIndent(imageJSON, "", "    ")
+				if err != nil {
+					f.logger.Errorf("failed to marshal updated records %s", err)
+				}
+
+				if err := WriteFile(updatedJSON); err != nil {
+					f.logger.Errorf("failed to write updated image.json %s", err)
+				}
 			}
 			return img, err
 		}
@@ -144,9 +167,11 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		return nil, err
 	}
 
-	// Update image pull record in the JSON file
-	if err := f.updateImagePullRecord(name, time.Now().Format(time.RFC3339)); err != nil {
-		return nil, err
+	if options.PullPolicy == PullWithInterval || options.PullPolicy == PullHourly || options.PullPolicy == PullDaily || options.PullPolicy == PullWeekly {
+		// Update image pull record in the JSON file
+		if err := f.updateImagePullRecord(name, time.Now().Format(time.RFC3339)); err != nil {
+			return nil, err
+		}
 	}
 
 	return image, nil
@@ -298,4 +323,41 @@ func (f *Fetcher) updateImagePullRecord(imageID, timestamp string) error {
 	}
 
 	return nil
+}
+
+func (c *PullChecker) CheckImagePullInterval(imageID string, l logging.Logger) (bool, error) {
+	return CheckImagePullInterval(imageID, c.logger)
+}
+
+func (c *PullChecker) ReadImageJSON(l logging.Logger) (*ImageJSON, error) {
+	return ReadImageJSON(c.logger)
+}
+
+func CheckImagePullInterval(imageID string, l logging.Logger) (bool, error) {
+	imageJSON, err := ReadImageJSON(l)
+	if err != nil {
+		return false, err
+	}
+
+	timestamp, ok := imageJSON.Image.ImageIDtoTIME[imageID]
+	if !ok {
+		// If the image ID is not present, return true
+		return true, nil
+	}
+
+	imageTimestamp, err := time.Parse(time.RFC3339, timestamp)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to parse image timestamp from JSON")
+	}
+
+	durationStr := imageJSON.Interval.PullingInterval
+
+	duration, err := parseDurationString(durationStr)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to parse duration from JSON")
+	}
+
+	timeThreshold := time.Now().Add(-duration)
+
+	return imageTimestamp.Before(timeThreshold), nil
 }
