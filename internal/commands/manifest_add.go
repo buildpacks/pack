@@ -2,8 +2,6 @@ package commands
 
 import (
 	"errors"
-	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -13,9 +11,10 @@ import (
 
 // ManifestAddFlags define flags provided to the ManifestAdd
 type ManifestAddFlags struct {
-	os, osVersion, osArch, osVariant  string
-	osFeatures, annotations, features string
-	all                               bool
+	os, osVersion, osArch, osVariant string
+	osFeatures, features             []string
+	annotations                      map[string]string
+	all                              bool
 }
 
 // ManifestAdd modifies a manifest list (Image index) and add a new image to the list of manifests.
@@ -41,21 +40,6 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 				return err
 			}
 
-			if flags.features != "" {
-				features = strings.Split(flags.features, ";")
-			}
-
-			if flags.osFeatures != "" {
-				features = strings.Split(flags.osFeatures, ";")
-			}
-
-			if flags.annotations != "" {
-				annotations, err = StringToKeyValueMap(flags.annotations)
-				if err != nil {
-					return err
-				}
-			}
-
 			return pack.AddManifest(cmd.Context(), imageIndex, manifests, client.ManifestAddOptions{
 				OS:          flags.os,
 				OSVersion:   flags.osVersion,
@@ -74,9 +58,9 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd.Flags().StringVar(&flags.osArch, "arch", "", "Set the architecture")
 	cmd.Flags().StringVar(&flags.osVariant, "variant", "", "Set the architecture variant")
 	cmd.Flags().StringVar(&flags.osVersion, "os-version", "", "Set the os-version")
-	cmd.Flags().StringVar(&flags.osFeatures, "os-features", "", "Set the OSFeatures")
-	cmd.Flags().StringVar(&flags.features, "features", "", "Set the Features")
-	cmd.Flags().StringVar(&flags.annotations, "annotations", "", "Set the annotations")
+	cmd.Flags().StringSliceVar(&flags.osFeatures, "os-features", []string{}, "Set the OSFeatures")
+	cmd.Flags().StringSliceVar(&flags.features, "features", []string{}, "Set the Features")
+	cmd.Flags().StringToStringVar(&flags.annotations, "annotations", map[string]string{}, "Set the annotations")
 
 	AddHelpFlag(cmd, "add")
 	return cmd
@@ -87,27 +71,4 @@ func validateManifestAddFlags(flags ManifestAddFlags) error {
 		return errors.New("'os' or 'arch' is undefined")
 	}
 	return nil
-}
-
-func StringToKeyValueMap(s string) (map[string]string, error) {
-	keyValues := strings.Split(s, ";")
-
-	var annosMap = make(map[string]string)
-	for _, keyValue := range keyValues {
-		parts := strings.SplitN(keyValue, "=", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid key-value pair: %s", keyValue)
-		}
-
-		key := parts[0]
-		value := parts[1]
-
-		if key == "" || value == "" {
-			return nil, fmt.Errorf("key(%s) or value(%s) is undefined", key, value)
-		}
-
-		annosMap[key] = value
-	}
-
-	return annosMap, nil
 }
