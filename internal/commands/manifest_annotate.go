@@ -27,13 +27,6 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 								cnbs/sample-package:hello-universe --arch amd64`,
 		Long: `manifest annotate modifies a manifest list (Image index) and update the platform information for an image included in the manifest list.`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) (err error) {
-			var (
-				annotations = make(map[string]string, 0)
-				features    = make([]string, 0)
-				osFeatures  = make([]string, 0)
-				urls        = make([]string, 0)
-			)
-
 			if err := validateManifestAnnotateFlags(flags); err != nil {
 				return err
 			}
@@ -43,10 +36,10 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 				OSVersion:   flags.osVersion,
 				OSArch:      flags.arch,
 				OSVariant:   flags.variant,
-				OSFeatures:  osFeatures,
-				Features:    features,
-				URLs:        urls,
-				Annotations: annotations,
+				OSFeatures:  flags.osFeatures,
+				Features:    flags.features,
+				URLs:        flags.urls,
+				Annotations: flags.annotations,
 			})
 		}),
 	}
@@ -55,10 +48,10 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd.Flags().StringVar(&flags.arch, "arch", "", "Set the architecture")
 	cmd.Flags().StringVar(&flags.variant, "variant", "", "Set the architecture")
 	cmd.Flags().StringVar(&flags.osVersion, "os-version", "", "override the os `version` of the specified image")
-	cmd.Flags().StringSliceVar(&flags.features, "features", []string{}, "override the `features` of the specified image")
-	cmd.Flags().StringSliceVar(&flags.urls, "urls", []string{}, "override the `urls` of the specified image")
-	cmd.Flags().StringSliceVar(&flags.osFeatures, "os-features", []string{}, "override the os `features` of the specified image")
-	cmd.Flags().StringToStringVar(&flags.annotations, "annotations", map[string]string{}, "set an `annotation` for the specified image")
+	cmd.Flags().StringSliceVar(&flags.features, "features", make([]string, 0), "override the `features` of the specified image")
+	cmd.Flags().StringSliceVar(&flags.urls, "urls", make([]string, 0), "override the `urls` of the specified image")
+	cmd.Flags().StringSliceVar(&flags.osFeatures, "os-features", make([]string, 0), "override the os `features` of the specified image")
+	cmd.Flags().StringToStringVar(&flags.annotations, "annotations", make(map[string]string, 0), "set an `annotation` for the specified image")
 
 	AddHelpFlag(cmd, "annotate")
 	return cmd

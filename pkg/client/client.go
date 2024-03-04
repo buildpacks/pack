@@ -391,32 +391,13 @@ func (f *indexFactory) CreateIndex(repoName string, opts ...index.Option) (imgut
 }
 
 func withOptions(ops []index.Option, keychain authn.Keychain) ([]index.Option, error) {
+	if xdgPath, ok := os.LookupEnv(xdgRuntimePath); ok {
+		return append(ops, index.WithKeychain(keychain), index.WithXDGRuntimePath(xdgPath)), nil
+	}
+
 	home, err := iconfig.PackHome()
 	if err != nil {
 		return ops, err
 	}
-
-	config, err := getConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	xdgPath, ok := os.LookupEnv(xdgRuntimePath)
-	if ok {
-		ops = append(
-			ops,
-			index.WithKeychain(keychain),
-			index.WithXDGRuntimePath(xdgPath),
-			index.WithManifestOnly(!config.ImageIndexFullMode),
-		)
-		return ops, nil
-	}
-
-	ops = append(
-		ops,
-		index.WithKeychain(keychain),
-		index.WithXDGRuntimePath(filepath.Join(home, "manifests")),
-		index.WithManifestOnly(!config.ImageIndexFullMode),
-	)
-	return ops, nil
+	return append(ops, index.WithKeychain(keychain), index.WithXDGRuntimePath(filepath.Join(home, "manifests"))), nil
 }

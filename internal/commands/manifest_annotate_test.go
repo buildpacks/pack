@@ -89,9 +89,9 @@ func testManifestAnnotateCommand(t *testing.T, when spec.G, it spec.S) {
 	it("should return an error when annotations defined invalidly", func() {
 		prepareAnnotateManifest(t, mockClient)
 
-		command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--annotations", "some-key="})
+		command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--annotations", "some-key"})
 		err := command.Execute()
-		h.AssertEq(t, err.Error(), "key(some-key) or value() is undefined")
+		h.AssertEq(t, err.Error(), `invalid argument "some-key" for "--annotations" flag: some-key must be formatted as key=value`)
 	})
 	it("should have help flag", func() {
 		prepareAnnotateManifest(t, mockClient)

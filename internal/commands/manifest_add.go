@@ -29,11 +29,6 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 		cnbs/sample-package:hello-universe-riscv-linux`,
 		Long: `manifest add modifies a manifest list (Image index) and add a new image to the list of manifests.`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) (err error) {
-			var (
-				annotations = make(map[string]string, 0)
-				features    = make([]string, 0)
-				osFeatures  = make([]string, 0)
-			)
 			imageIndex := args[0]
 			manifests := args[1]
 			if err := validateManifestAddFlags(flags); err != nil {
@@ -45,9 +40,9 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 				OSVersion:   flags.osVersion,
 				OSArch:      flags.osArch,
 				OSVariant:   flags.osVariant,
-				OSFeatures:  osFeatures,
-				Features:    features,
-				Annotations: annotations,
+				OSFeatures:  flags.osFeatures,
+				Features:    flags.features,
+				Annotations: flags.annotations,
 				All:         flags.all,
 			})
 		}),
@@ -58,9 +53,9 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd.Flags().StringVar(&flags.osArch, "arch", "", "Set the architecture")
 	cmd.Flags().StringVar(&flags.osVariant, "variant", "", "Set the architecture variant")
 	cmd.Flags().StringVar(&flags.osVersion, "os-version", "", "Set the os-version")
-	cmd.Flags().StringSliceVar(&flags.osFeatures, "os-features", []string{}, "Set the OSFeatures")
-	cmd.Flags().StringSliceVar(&flags.features, "features", []string{}, "Set the Features")
-	cmd.Flags().StringToStringVar(&flags.annotations, "annotations", map[string]string{}, "Set the annotations")
+	cmd.Flags().StringSliceVar(&flags.osFeatures, "os-features", make([]string, 0), "Set the OSFeatures")
+	cmd.Flags().StringSliceVar(&flags.features, "features", make([]string, 0), "Set the Features")
+	cmd.Flags().StringToStringVar(&flags.annotations, "annotations", make(map[string]string, 0), "Set the annotations")
 
 	AddHelpFlag(cmd, "add")
 	return cmd

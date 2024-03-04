@@ -24,7 +24,6 @@ func NewConfigCommand(logger logging.Logger, cfg config.Config, cfgPath string, 
 	cmd.AddCommand(ConfigTrustedBuilder(logger, cfg, cfgPath))
 	cmd.AddCommand(ConfigLifecycleImage(logger, cfg, cfgPath))
 	cmd.AddCommand(ConfigRegistryMirrors(logger, cfg, cfgPath))
-	cmd.AddCommand(ConfigImageIndexFullMode(logger, cfg, cfgPath))
 
 	AddHelpFlag(cmd, "config")
 	return cmd
