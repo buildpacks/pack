@@ -102,8 +102,16 @@ type moduleWithDiffID struct {
 type BuilderOption func(*options) error
 
 type options struct {
+	runImage  string
 	toFlatten buildpack.FlattenModuleInfos
 	labels    map[string]string
+}
+
+func WithRunImage(name string) BuilderOption {
+	return func(o *options) error {
+		o.runImage = name
+		return nil
+	}
 }
 
 // FromImage constructs a builder from a builder image
