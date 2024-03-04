@@ -1085,6 +1085,12 @@ func testAcceptance(
 						assertOutput = assertions.NewOutputAssertionManager(t, output)
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
 						assertOutput.ReportsSelectingRunImageMirrorFromLocalConfig(localRunImageMirror)
+						if pack.SupportsFeature(invoke.FixesRunImageMetadata) {
+							t.Log(fmt.Sprintf("image %s was NOT added into 'io.buildpacks.lifecycle.metadata' label", localRunImageMirror))
+							assertImage.HasLabelWithNoData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, localRunImageMirror))
+							t.Log(fmt.Sprintf("run-image %s was added into 'io.buildpacks.lifecycle.metadata' label", runImage))
+							assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, runImage))
+						}
 						cachedLaunchLayer := "simple/layers:cached-launch-layer"
 
 						assertLifecycleOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
@@ -1807,6 +1813,10 @@ func testAcceptance(
 
 								t.Log("uses the run image as the base image")
 								assertImage.HasBaseImage(repoName, runImageName)
+								if pack.SupportsFeature(invoke.FixesRunImageMetadata) {
+									t.Log(fmt.Sprintf("run-image %s was added into 'io.buildpacks.lifecycle.metadata' label", runImageName))
+									assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, runImageName))
+								}
 							})
 						})
 
@@ -2842,6 +2852,14 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						var localRunImageMirror string
 
 						it.Before(func() {
+							imageManager.CleanupImages(repoName)
+							pack.RunSuccessfully(
+								"build", repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--builder", builderName,
+								"--pull-policy", "never",
+							)
+
 							localRunImageMirror = registryConfig.RepoName("run-after/" + h.RandString(10))
 							buildRunImage(localRunImageMirror, "local-mirror-after-1", "local-mirror-after-2")
 							pack.JustRunSuccessfully("config", "run-image-mirrors", "add", runImage, "-m", localRunImageMirror)
@@ -2872,9 +2890,16 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					when("image metadata has a mirror", func() {
 						it.Before(func() {
 							// clean up existing mirror first to avoid leaking images
-							imageManager.CleanupImages(runImageMirror)
-
+							imageManager.CleanupImages(runImageMirror, repoName)
 							buildRunImage(runImageMirror, "mirror-after-1", "mirror-after-2")
+
+							pack.RunSuccessfully(
+								"build", repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--builder", builderName,
+								"--pull-policy", "never",
+							)
+
 						})
 
 						it("selects the best mirror", func() {

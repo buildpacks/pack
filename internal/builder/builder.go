@@ -148,16 +148,18 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 		return nil, err
 	}
 
+	if opts.runImage != "" {
+		// Do we need to look for available mirrors? for now the mirrors are gone if you override the run-image
+		// create an issue if you want to preserve the mirrors
+		metadata.RunImages = []RunImageMetadata{{Image: opts.runImage}}
+		metadata.Stack.RunImage = RunImageMetadata{Image: opts.runImage}
+	}
+
 	for labelKey, labelValue := range opts.labels {
 		err = img.SetLabel(labelKey, labelValue)
 		if err != nil {
 			return nil, errors.Wrapf(err, "adding label %s=%s", labelKey, labelValue)
 		}
-	}
-
-	if opts.runImage != "" {
-		metadata.RunImages = []RunImageMetadata{{Image: opts.runImage}}
-		metadata.Stack.RunImage.Image = opts.runImage
 	}
 
 	bldr := &Builder{
