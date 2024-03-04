@@ -41,6 +41,10 @@ type ImagePullChecker interface {
 	ReadImageJSON(l logging.Logger) (*ImageJSON, error)
 }
 
+func intervalPolicy(options FetchOptions) bool {
+	return options.PullPolicy == PullWithInterval || options.PullPolicy == PullHourly || options.PullPolicy == PullDaily || options.PullPolicy == PullWeekly
+}
+
 type PullChecker struct {
 	logger logging.Logger
 }
@@ -167,7 +171,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		return nil, err
 	}
 
-	if options.PullPolicy == PullWithInterval || options.PullPolicy == PullHourly || options.PullPolicy == PullDaily || options.PullPolicy == PullWeekly {
+	if intervalPolicy(options) {
 		// Update image pull record in the JSON file
 		if err := f.updateImagePullRecord(name, time.Now().Format(time.RFC3339)); err != nil {
 			return nil, err

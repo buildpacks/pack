@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 )
 
 func ConfigPruneInterval(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
@@ -30,7 +31,7 @@ func ConfigPruneInterval(logger logging.Logger, cfg config.Config, cfgPath strin
 			switch {
 			case unset:
 				if len(args) > 0 {
-					return errors.Errorf("prune inteval and --unset cannot be specified simultaneously")
+					return errors.Errorf("prune interval and --unset cannot be specified simultaneously")
 				}
 				imageJSON, err := image.ReadImageJSON(logger)
 				if err != nil {

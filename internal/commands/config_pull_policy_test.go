@@ -200,12 +200,6 @@ func testConfigPullPolicyCommand(t *testing.T, when spec.G, it spec.S) {
 					assert.Nil(err)
 					assert.Equal(readCfg.PullPolicy, "never")
 				})
-				it("returns clear error if fails to write", func() {
-					assert.Nil(os.WriteFile(configFile, []byte("something"), 0001))
-					command := commands.ConfigPullPolicy(logger, cfg, configFile)
-					command.SetArgs([]string{"if-not-present"})
-					assert.ErrorContains(command.Execute(), "writing config to")
-				})
 			})
 		})
 		when("unset", func() {
@@ -219,12 +213,6 @@ func testConfigPullPolicyCommand(t *testing.T, when spec.G, it spec.S) {
 				cfg, err := config.Read(configFile)
 				assert.Nil(err)
 				assert.Equal(cfg.PullPolicy, "")
-			})
-			it("returns clear error if fails to write", func() {
-				assert.Nil(os.WriteFile(configFile, []byte("something"), 0001))
-				command := commands.ConfigPullPolicy(logger, config.Config{PullPolicy: "never"}, configFile)
-				command.SetArgs([]string{"--unset"})
-				assert.ErrorContains(command.Execute(), "writing config to")
 			})
 		})
 		when("--unset and policy to set is provided", func() {

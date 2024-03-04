@@ -11,8 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 // PullPolicy defines a policy for how to manage images
