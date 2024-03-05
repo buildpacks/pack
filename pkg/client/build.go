@@ -556,6 +556,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Layout:                   opts.Layout(),
 		Keychain:                 c.keychain,
 	}
+
 	switch {
 	case useCreator:
 		lifecycleOpts.UseCreator = true
@@ -784,7 +785,6 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if bldr.Stack().RunImage.Image == "" && len(bldr.RunImages()) == 0 {
 		return nil, errors.New("builder metadata is missing run-image")
 	}
