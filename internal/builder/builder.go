@@ -148,6 +148,19 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 		return nil, err
 	}
 
+	if opts.runImage != "" {
+		var currentMirrors []string
+		if len(metadata.RunImages) > 0 {
+			for _, runImage := range metadata.RunImages {
+				if len(runImage.Mirrors) > 0 {
+					currentMirrors = append(currentMirrors, runImage.Mirrors...)
+				}
+			}
+		}
+		metadata.RunImages = []RunImageMetadata{{Image: opts.runImage, Mirrors: currentMirrors}}
+		metadata.Stack.RunImage.Image = opts.runImage
+	}
+
 	for labelKey, labelValue := range opts.labels {
 		err = img.SetLabel(labelKey, labelValue)
 		if err != nil {

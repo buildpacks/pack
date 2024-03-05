@@ -2842,6 +2842,14 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						var localRunImageMirror string
 
 						it.Before(func() {
+							imageManager.CleanupImages(repoName)
+							pack.RunSuccessfully(
+								"build", repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--builder", builderName,
+								"--pull-policy", "never",
+							)
+
 							localRunImageMirror = registryConfig.RepoName("run-after/" + h.RandString(10))
 							buildRunImage(localRunImageMirror, "local-mirror-after-1", "local-mirror-after-2")
 							pack.JustRunSuccessfully("config", "run-image-mirrors", "add", runImage, "-m", localRunImageMirror)
@@ -2872,9 +2880,16 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					when("image metadata has a mirror", func() {
 						it.Before(func() {
 							// clean up existing mirror first to avoid leaking images
-							imageManager.CleanupImages(runImageMirror)
-
+							imageManager.CleanupImages(runImageMirror, repoName)
 							buildRunImage(runImageMirror, "mirror-after-1", "mirror-after-2")
+
+							pack.RunSuccessfully(
+								"build", repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--builder", builderName,
+								"--pull-policy", "never",
+							)
+
 						})
 
 						it("selects the best mirror", func() {
