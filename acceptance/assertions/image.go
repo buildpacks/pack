@@ -69,6 +69,15 @@ func (a ImageAssertionManager) HasLabelWithData(image, label, data string) {
 	a.assert.Contains(label, data)
 }
 
+func (a ImageAssertionManager) HasLabelWithNoData(image, label, data string) {
+	a.testObject.Helper()
+	inspect, err := a.imageManager.InspectLocal(image)
+	a.assert.Nil(err)
+	label, ok := inspect.Config.Labels[label]
+	a.assert.TrueWithMessage(ok, fmt.Sprintf("expected label %s to exist", label))
+	a.assert.NotContains(label, data)
+}
+
 func (a ImageAssertionManager) HasLengthLayers(image string, length int) {
 	a.testObject.Helper()
 	inspect, err := a.imageManager.InspectLocal(image)
