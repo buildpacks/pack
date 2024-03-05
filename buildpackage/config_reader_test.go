@@ -3,6 +3,7 @@ package buildpackage_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/heroku/color"
@@ -41,6 +42,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 				},
 				Platform: dist.Platform{
 					OS: "linux",
+					Arch: runtime.GOARCH,
 				},
 			}
 			actual := buildpackage.DefaultConfig()
@@ -55,6 +57,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 				},
 				Platform: dist.Platform{
 					OS: "linux",
+					Arch: runtime.GOARCH,
 				},
 			}
 			actual := buildpackage.DefaultExtensionConfig()

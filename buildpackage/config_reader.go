@@ -1,7 +1,10 @@
 package buildpackage
 
 import (
+	"fmt"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
@@ -12,14 +15,23 @@ import (
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
-const defaultOS = "linux"
+const (
+	defaultOS     = "linux"
+	platformDelim = "/"
+	distroDelim   = "@"
+)
 
 // Config encapsulates the possible configuration options for buildpackage creation.
 type Config struct {
 	Buildpack    dist.BuildpackURI `toml:"buildpack"`
 	Extension    dist.BuildpackURI `toml:"extension"`
 	Dependencies []dist.ImageOrURI `toml:"dependencies"`
-	Platform     dist.Platform     `toml:"platform"`
+	// Deprecared. Use Targets
+	Platform       dist.Platform     `toml:"platform,omitempty"`
+	Target         []dist.Target     `toml:"targets,omitempty"`
+	Flatten        bool              `toml:"flatten,omitempty"`
+	FlattenExclude []string          `toml:"flatten.exclude,omitempty"`
+	Labels         map[string]string `toml:"labels,omitempty"`
 }
 
 func DefaultConfig() Config {
@@ -28,8 +40,60 @@ func DefaultConfig() Config {
 			URI: ".",
 		},
 		Platform: dist.Platform{
-			OS: defaultOS,
+			OS:   defaultOS,
+			Arch: runtime.GOARCH,
 		},
+	}
+}
+
+func MultiArchDefaultConfigs(targets []dist.Target) (configs []Config) {
+	for _, target := range targets {
+		for _, distro := range target.Distributions {
+			for _, version := range distro.Versions {
+				configs = append(configs, processTarget(target, distro, version))
+			}
+		}
+	}
+	return configs
+}
+
+func processTarget(target dist.Target, distro dist.Distribution, version string) Config {
+	return Config{
+		Buildpack: dist.BuildpackURI{
+			URI: processBuildpackURI(target, distro, version),
+		},
+		Platform:       processPlatform(target, distro, version),
+		Flatten:        distro.Specs.Flatten,
+		FlattenExclude: distro.Specs.FlattenExclude,
+		Labels:         distro.Specs.Labels,
+	}
+}
+
+func processBuildpackURI(target dist.Target, distro dist.Distribution, version string) string {
+	return fmt.Sprintf(
+		".%s%s",
+		platformDelim,
+		strings.Join(
+			[]string{
+				target.OS,
+				target.Arch,
+				target.ArchVariant,
+				strings.Join([]string{distro.Name, version}, distroDelim),
+			}, platformDelim,
+		),
+	)
+}
+
+func processPlatform(target dist.Target, distro dist.Distribution, version string) dist.Platform {
+	return dist.Platform{
+		OS:          target.OS,
+		Arch:        target.Arch,
+		Variant:     target.ArchVariant,
+		OSVersion:   version,
+		Features:    distro.Specs.Features,
+		OSFeatures:  distro.Specs.OSFeatures,
+		URLs:        distro.Specs.URLs,
+		Annotations: distro.Specs.Annotations,
 	}
 }
 
@@ -40,6 +104,7 @@ func DefaultExtensionConfig() Config {
 		},
 		Platform: dist.Platform{
 			OS: defaultOS,
+			Arch: runtime.GOARCH,
 		},
 	}
 }
@@ -82,6 +147,10 @@ func (r *ConfigReader) Read(path string) (Config, error) {
 
 	if packageConfig.Platform.OS == "" {
 		packageConfig.Platform.OS = defaultOS
+	}
+
+	if packageConfig.Platform.Arch == "" {
+		packageConfig.Platform.Arch = runtime.GOARCH
 	}
 
 	if packageConfig.Platform.OS != "linux" && packageConfig.Platform.OS != "windows" {

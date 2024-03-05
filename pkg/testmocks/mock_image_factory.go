@@ -35,7 +35,7 @@ func (m *MockImageFactory) EXPECT() *MockImageFactoryMockRecorder {
 }
 
 // NewImage mocks base method.
-func (m *MockImageFactory) NewImage(arg0 string, arg1 bool, arg2 string) (imgutil.Image, error) {
+func (m *MockImageFactory) NewImage(arg0 string, arg1 bool, arg2 imgutil.Platform) (imgutil.Image, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewImage", arg0, arg1, arg2)
 	ret0, _ := ret[0].(imgutil.Image)

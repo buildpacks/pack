@@ -60,6 +60,17 @@ type Target struct {
 }
 
 type Distribution struct {
-	Name     string   `json:"name,omitempty" toml:"name,omitempty"`
-	Versions []string `json:"versions,omitempty" toml:"versions,omitempty"`
+	Name     string      `json:"name,omitempty" toml:"name,omitempty"`
+	Versions []string    `json:"versions,omitempty" toml:"versions,omitempty"`
+	Specs    TargetSpecs `json:"specs,omitempty" toml:"specs,omitempty"`
+}
+
+type TargetSpecs struct {
+	Features       []string          `json:"features,omitempty" toml:"features,omitempty"`
+	OSFeatures     []string          `json:"os.features,omitempty" toml:"os.features,omitempty"`
+	URLs           []string          `json:"urls,omitempty" toml:"urls,omitempty"`
+	Annotations    map[string]string `json:"annotations,omitempty" toml:"annotations,omitempty"`
+	Flatten        bool              `json:"flatten,omitempty" toml:"flatten,omitempty"`
+	FlattenExclude []string          `json:"flatten.exclude,omitempty" toml:"flatten.exclude,omitempty"`
+	Labels         map[string]string `json:"labels,omitempty" toml:"labels,omitempty"`
 }

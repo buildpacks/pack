@@ -5,6 +5,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/imgutil"
+
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/paths"
@@ -124,9 +126,11 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 	switch opts.Format {
 	case FormatFile:
-		return packageBuilder.SaveAsFile(opts.Name, opts.Config.Platform.OS, opts.Labels)
+		// FIXME: Add `variant`, `features`, `osFeatures`, `urls`, `annotations` to imgutil.Platform
+		return packageBuilder.SaveAsFile(opts.Name, imgutil.Platform{OS: opts.Config.Platform.OS, Architecture: opts.Config.Platform.Arch, OSVersion: opts.Config.Platform.OSVersion}, opts.Labels)
 	case FormatImage:
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, opts.Config.Platform.OS, opts.Labels)
+		// FIXME: Add `variant`, `features`, `osFeatures`, `urls`, `annotations` to imgutil.Platform
+		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, imgutil.Platform{OS: opts.Config.Platform.OS, Architecture: opts.Config.Platform.Arch, OSVersion: opts.Config.Platform.OSVersion}, opts.Labels)
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))

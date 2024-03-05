@@ -35,7 +35,14 @@ func (c *ImageOrURI) DisplayString() string {
 }
 
 type Platform struct {
-	OS string `toml:"os"`
+	OS          string            `toml:"os"`
+	Arch        string            `toml:"arch"`
+	Variant     string            `toml:"variant,omitempty"`
+	OSVersion   string            `toml:"version,omitempty"`
+	Features    []string          `toml:"features,omitempty"`
+	OSFeatures  []string          `toml:"os.features,omitempty"`
+	URLs        []string          `toml:"urls,omitempty"`
+	Annotations map[string]string `toml:"annotations,omitempty"`
 }
 
 type Order []OrderEntry
