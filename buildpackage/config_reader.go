@@ -15,11 +15,7 @@ import (
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
-const (
-	defaultOS     = "linux"
-	platformDelim = "/"
-	distroDelim   = "@"
-)
+const defaultOS = "linux"
 
 // Config encapsulates the possible configuration options for buildpackage creation.
 type Config struct {
@@ -27,11 +23,8 @@ type Config struct {
 	Extension    dist.BuildpackURI `toml:"extension"`
 	Dependencies []dist.ImageOrURI `toml:"dependencies"`
 	// Deprecared. Use Targets
-	Platform       dist.Platform     `toml:"platform,omitempty"`
-	Target         []dist.Target     `toml:"targets,omitempty"`
-	Flatten        bool              `toml:"flatten,omitempty"`
-	FlattenExclude []string          `toml:"flatten.exclude,omitempty"`
-	Labels         map[string]string `toml:"labels,omitempty"`
+	Platform dist.Platform `toml:"platform,omitempty"`
+	Targets  []dist.Target `toml:"targets,omitempty"`
 }
 
 func DefaultConfig() Config {
@@ -46,30 +39,7 @@ func DefaultConfig() Config {
 	}
 }
 
-func MultiArchDefaultConfigs(targets []dist.Target) (configs []Config) {
-	for _, target := range targets {
-		for _, distro := range target.Distributions {
-			for _, version := range distro.Versions {
-				configs = append(configs, processTarget(target, distro, version))
-			}
-		}
-	}
-	return configs
-}
-
-func processTarget(target dist.Target, distro dist.Distribution, version string) Config {
-	return Config{
-		Buildpack: dist.BuildpackURI{
-			URI: processBuildpackURI(target, distro, version),
-		},
-		Platform:       processPlatform(target, distro, version),
-		Flatten:        distro.Specs.Flatten,
-		FlattenExclude: distro.Specs.FlattenExclude,
-		Labels:         distro.Specs.Labels,
-	}
-}
-
-func processBuildpackURI(target dist.Target, distro dist.Distribution, version string) string {
+func platformRootDirectory(target dist.Target, distro dist.Distribution, version string) string {
 	return fmt.Sprintf(
 		".%s%s",
 		platformDelim,
@@ -84,26 +54,13 @@ func processBuildpackURI(target dist.Target, distro dist.Distribution, version s
 	)
 }
 
-func processPlatform(target dist.Target, distro dist.Distribution, version string) dist.Platform {
-	return dist.Platform{
-		OS:          target.OS,
-		Arch:        target.Arch,
-		Variant:     target.ArchVariant,
-		OSVersion:   version,
-		Features:    distro.Specs.Features,
-		OSFeatures:  distro.Specs.OSFeatures,
-		URLs:        distro.Specs.URLs,
-		Annotations: distro.Specs.Annotations,
-	}
-}
-
 func DefaultExtensionConfig() Config {
 	return Config{
 		Extension: dist.BuildpackURI{
 			URI: ".",
 		},
 		Platform: dist.Platform{
-			OS: defaultOS,
+			OS:   defaultOS,
 			Arch: runtime.GOARCH,
 		},
 	}

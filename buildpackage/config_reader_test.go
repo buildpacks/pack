@@ -41,7 +41,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 					URI: ".",
 				},
 				Platform: dist.Platform{
-					OS: "linux",
+					OS:   "linux",
 					Arch: runtime.GOARCH,
 				},
 			}
@@ -56,7 +56,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 					URI: ".",
 				},
 				Platform: dist.Platform{
-					OS: "linux",
+					OS:   "linux",
 					Arch: runtime.GOARCH,
 				},
 			}

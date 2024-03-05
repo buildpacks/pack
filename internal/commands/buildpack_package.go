@@ -13,8 +13,8 @@ import (
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/internal/target"
 	"github.com/buildpacks/pack/pkg/client"
-	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -30,7 +30,7 @@ type BuildpackPackageFlags struct {
 	Label             map[string]string
 	Publish           bool
 	Flatten           bool
-	Targets           []dist.Target
+	Targets           []string
 }
 
 // BuildpackPackager packages buildpacks
@@ -73,6 +73,11 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				packageTomlConfig, buildpackTomlConfig pubbldpkg.Config
 				name                                   = args[0]
 			)
+
+			targets, err := target.ParseTargets(flags.Targets, logger)
+			if err != nil {
+				return err
+			}
 
 			if err := validateBuildpackPackageFlags(cfg, &flags); err != nil {
 				return err
@@ -186,8 +191,8 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				from = BuildpackToml
 			}
 
-			if len(flags.Targets) != 0 {
-				bpConfigs = pubbldpkg.MultiArchDefaultConfigs(flags.Targets)
+			if len(flags.Targets) > 0 {
+				bpConfigs = pubbldpkg.MultiArchDefaultConfigs(targets)
 				from = Flags
 			}
 
@@ -318,7 +323,12 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to the Buildpack that needs to be packaged")
 	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")
 	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten the buildpack into a single layer")
-	// cmd.Flags().StringSliceVar(&flags.Targets, "targets", make([]string, 0), "")
+	cmd.Flags().StringSliceVarP(&flags.Targets, "target", "t", nil,
+		`Targets are the platforms list to build. one can provide target platforms in format [os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]
+	- Base case for two different architectures :  '--target "linux/amd64" --target "linux/arm64"'
+	- case for distribution version: '--target "windows/amd64:windows-nano@10.0.19041.1415"'
+	- case for different architecture with distributed versions : '--target "linux/arm/v6:ubuntu@14.04"  --target "linux/arm/v6:ubuntu@16.04"'
+	`)
 	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpacks to exclude from flattening, in the form of '<buildpack-id>@<buildpack-version>'")
 	cmd.Flags().StringToStringVarP(&flags.Label, "label", "l", nil, "Labels to add to packaged Buildpack, in the form of '<name>=<value>'")
 	if !cfg.Experimental {

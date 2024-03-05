@@ -74,3 +74,17 @@ type TargetSpecs struct {
 	FlattenExclude []string          `json:"flatten.exclude,omitempty" toml:"flatten.exclude,omitempty"`
 	Labels         map[string]string `json:"labels,omitempty" toml:"labels,omitempty"`
 }
+
+func (t Target) Platform() Platform {
+	distro := t.Distributions[0]
+	return Platform{
+		OS:          t.OS,
+		Arch:        t.Arch,
+		Variant:     t.ArchVariant,
+		OSVersion:   distro.Versions[0],
+		Features:    distro.Specs.Features,
+		OSFeatures:  distro.Specs.OSFeatures,
+		URLs:        distro.Specs.URLs,
+		Annotations: distro.Specs.Annotations,
+	}
+}
