@@ -214,8 +214,8 @@ func parseDurationString(durationStr string) (time.Duration, error) {
 	return time.Duration(totalMinutes) * time.Minute, nil
 }
 
-func (f *Fetcher) PruneOldImages() error {
-	imageJSON, err := ReadImageJSON(f.logger)
+func PruneOldImages(l logging.Logger, f *Fetcher) error {
+	imageJSON, err := ReadImageJSON(l)
 	if err != nil {
 		return err
 	}
