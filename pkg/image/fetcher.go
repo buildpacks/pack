@@ -39,6 +39,8 @@ type LayoutOption struct {
 type ImagePullChecker interface {
 	CheckImagePullInterval(imageID string, l logging.Logger) (bool, error)
 	ReadImageJSON(l logging.Logger) (*ImageJSON, error)
+	PruneOldImages(l logging.Logger, f *Fetcher) error
+	UpdateImagePullRecord(l logging.Logger, imageID string, timestamp string) error
 }
 
 func intervalPolicy(options FetchOptions) bool {
@@ -148,7 +150,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 			return img, err
 		}
 
-		err = f.PruneOldImages()
+		err = f.imagePullChecker.PruneOldImages(f.logger, f)
 		if err != nil {
 			f.logger.Warnf("Failed to prune images, %s", err)
 		}
@@ -173,7 +175,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 
 	if intervalPolicy(options) {
 		// Update image pull record in the JSON file
-		if err := f.updateImagePullRecord(name, time.Now().Format(time.RFC3339)); err != nil {
+		if err := f.imagePullChecker.UpdateImagePullRecord(f.logger, name, time.Now().Format(time.RFC3339)); err != nil {
 			return nil, err
 		}
 	}
@@ -305,8 +307,8 @@ func (w *colorizedWriter) Write(p []byte) (n int, err error) {
 	return w.writer.Write([]byte(msg))
 }
 
-func (f *Fetcher) updateImagePullRecord(imageID, timestamp string) error {
-	imageJSON, err := ReadImageJSON(f.logger)
+func UpdateImagePullRecord(l logging.Logger, imageID string, timestamp string) error {
+	imageJSON, err := ReadImageJSON(l)
 	if err != nil {
 		return err
 	}
@@ -330,11 +332,19 @@ func (f *Fetcher) updateImagePullRecord(imageID, timestamp string) error {
 }
 
 func (c *PullChecker) CheckImagePullInterval(imageID string, l logging.Logger) (bool, error) {
-	return CheckImagePullInterval(imageID, c.logger)
+	return CheckImagePullInterval(imageID, l)
 }
 
 func (c *PullChecker) ReadImageJSON(l logging.Logger) (*ImageJSON, error) {
-	return ReadImageJSON(c.logger)
+	return ReadImageJSON(l)
+}
+
+func (c *PullChecker) PruneOldImages(l logging.Logger, f *Fetcher) error {
+	return PruneOldImages(l, f)
+}
+
+func (c *PullChecker) UpdateImagePullRecord(l logging.Logger, imageID string, timestamp string) error {
+	return UpdateImagePullRecord(l, imageID, timestamp)
 }
 
 func CheckImagePullInterval(imageID string, l logging.Logger) (bool, error) {
