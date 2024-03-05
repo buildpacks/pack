@@ -1085,8 +1085,10 @@ func testAcceptance(
 						assertOutput = assertions.NewOutputAssertionManager(t, output)
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
 						assertOutput.ReportsSelectingRunImageMirrorFromLocalConfig(localRunImageMirror)
-						assertImage.HasLabelWithNoData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, localRunImageMirror))
-						assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, runImage))
+						if pack.SupportsFeature(invoke.FixesRunImageMetadata) {
+							assertImage.HasLabelWithNoData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, localRunImageMirror))
+							assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, runImage))
+						}
 						cachedLaunchLayer := "simple/layers:cached-launch-layer"
 
 						assertLifecycleOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
@@ -1809,7 +1811,9 @@ func testAcceptance(
 
 								t.Log("uses the run image as the base image")
 								assertImage.HasBaseImage(repoName, runImageName)
-								assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, runImageName))
+								if pack.SupportsFeature(invoke.FixesRunImageMetadata) {
+									assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, runImageName))
+								}
 							})
 						})
 
