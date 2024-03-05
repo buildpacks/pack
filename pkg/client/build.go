@@ -338,7 +338,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "getting builder architecture")
 	}
 
-	bldr, err := c.getBuilder(rawBuilderImage, opts.RunImage)
+	bldr, err := c.getBuilder(rawBuilderImage)
 	if err != nil {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
@@ -779,7 +779,7 @@ func (c *Client) processBuilderName(builderName string) (name.Reference, error) 
 	return name.ParseReference(builderName, name.WeakValidation)
 }
 
-func (c *Client) getBuilder(img imgutil.Image, runImage string) (*builder.Builder, error) {
+func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	bldr, err := builder.FromImage(img)
 	if err != nil {
 		return nil, err
