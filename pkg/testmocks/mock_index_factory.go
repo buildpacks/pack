@@ -5,11 +5,14 @@
 package testmocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	imgutil "github.com/buildpacks/imgutil"
 	index "github.com/buildpacks/imgutil/index"
 	gomock "github.com/golang/mock/gomock"
+	name "github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
 // MockIndexFactory is a mock of IndexFactory interface.
@@ -93,6 +96,21 @@ func (mr *MockIndexFactoryMockRecorder) FindIndex(arg0 interface{}, arg1 ...inte
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0}, arg1...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindIndex", reflect.TypeOf((*MockIndexFactory)(nil).FindIndex), varargs...)
+}
+
+// IndexManifest mocks base method.
+func (m *MockIndexFactory) IndexManifest(arg0 context.Context, arg1 name.Reference) (*v1.IndexManifest, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IndexManifest", arg0, arg1)
+	ret0, _ := ret[0].(*v1.IndexManifest)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IndexManifest indicates an expected call of IndexManifest.
+func (mr *MockIndexFactoryMockRecorder) IndexManifest(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IndexManifest", reflect.TypeOf((*MockIndexFactory)(nil).IndexManifest), arg0, arg1)
 }
 
 // LoadIndex mocks base method.

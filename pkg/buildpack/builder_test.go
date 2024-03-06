@@ -20,6 +20,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/v1/stream"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/heroku/color"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sclevine/spec"
@@ -45,6 +46,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
 		mockController   *gomock.Controller
 		mockImageFactory func(expectedImageOS string) *testmocks.MockImageFactory
+		mockIndexFactory func(expectedImageOS string) *testmocks.MockIndexFactory
 		tmpDir           string
 	)
 
@@ -60,6 +62,14 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			return imageFactory
+		}
+
+		mockIndexFactory = func(expectedImageOS string) *testmocks.MockIndexFactory {
+			indexFactory := testmocks.NewMockIndexFactory(mockController)
+
+			if expectedImageOS != "" {
+				fakeIndex := fakes.NewIndex(types.OCIImageIndex, 1024, 1, 1)
+			}
 		}
 
 		var err error

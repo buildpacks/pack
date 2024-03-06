@@ -93,6 +93,8 @@ type IndexFactory interface {
 	FetchIndex(name string, opts ...index.Option) (imgutil.ImageIndex, error)
 	// FindIndex will find Index locally then on remote
 	FindIndex(name string, opts ...index.Option) (imgutil.ImageIndex, error)
+
+	IndexManifest(ctx context.Context, ref name.Reference) (*v1.IndexManifest, error)
 }
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_buildpack_downloader.go github.com/buildpacks/pack/pkg/client BuildpackDownloader
@@ -390,7 +392,7 @@ func (f *indexFactory) CreateIndex(repoName string, opts ...index.Option) (imgut
 	return index.NewIndex(repoName, opts...)
 }
 
-func (f *Client) IndexManifest(ctx context.Context, ref name.Reference) (*v1.IndexManifest, error) {
+func (f *indexFactory) IndexManifest(ctx context.Context, ref name.Reference) (*v1.IndexManifest, error) {
 	opts, err := withOptions([]index.Option{
 		index.WithInsecure(true),
 	}, f.keychain)
@@ -398,7 +400,7 @@ func (f *Client) IndexManifest(ctx context.Context, ref name.Reference) (*v1.Ind
 		return nil, err
 	}
 
-	idx, err := f.indexFactory.FetchIndex(ref.Name(), opts...)
+	idx, err := f.FetchIndex(ref.Name(), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -409,6 +411,18 @@ func (f *Client) IndexManifest(ctx context.Context, ref name.Reference) (*v1.Ind
 	}
 
 	return ii.IndexManifest()
+}
+
+func (c *Client) IndexManifest(ctx context.Context, ref name.Reference) (*v1.IndexManifest, error) {
+	return c.indexFactory.IndexManifest(ctx, ref)
+}
+
+func (c *Client) CreateIndex(repoName string, opts ...index.Option) (imgutil.ImageIndex, error) {
+	return c.indexFactory.CreateIndex(repoName, opts...)
+}
+
+func (c *Client) LoadIndex(reponame string, opts ...index.Option) (imgutil.ImageIndex, error) {
+	return c.indexFactory.LoadIndex(reponame, opts...)
 }
 
 func withOptions(ops []index.Option, keychain authn.Keychain) ([]index.Option, error) {

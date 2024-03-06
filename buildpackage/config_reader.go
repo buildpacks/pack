@@ -37,8 +37,7 @@ func DefaultConfig() Config {
 
 func platformRootDirectory(target dist.Target, distro dist.Distribution, version string) string {
 	return fmt.Sprintf(
-		".%s%s",
-		platformDelim,
+		"%s",
 		strings.Join(
 			[]string{
 				target.OS,

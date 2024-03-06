@@ -10,6 +10,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/index"
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
@@ -38,6 +40,8 @@ type BuildpackPackageFlags struct {
 type BuildpackPackager interface {
 	PackageBuildpack(ctx context.Context, options client.PackageBuildpackOptions) error
 	IndexManifest(ctx context.Context, ref name.Reference) (*v1.IndexManifest, error)
+	LoadIndex(reponame string, opts ...index.Option) (imgutil.ImageIndex, error)
+	CreateIndex(repoName string, opts ...index.Option) (imgutil.ImageIndex, error)
 }
 
 // PackageConfigReader reads BuildpackPackage configs
@@ -106,8 +110,11 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			if err != nil {
 				return err
 			}
-			bpMultiArchConfig := pubbldpkg.NewMultiArchBuildpack(bpConfig, relativeBaseDir, flags.Flatten, targets, logger)
-			bpConfigs := bpMultiArchConfig.MultiArchConfigs()
+			bpMultiArchConfig := pubbldpkg.NewMultiArchBuildpack(bpConfig, bpPath, flags.Flatten, targets, logger)
+			bpConfigs, err := bpMultiArchConfig.MultiArchConfigs()
+			if err != nil {
+				return err
+			}
 
 			bpName := args[0]
 			if flags.Format == client.FormatFile {
@@ -132,6 +139,8 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				return packager.IndexManifest(cmd.Context(), ref)
 			}
 
+			// packager.LoadIndex(b)
+
 			if len(bpConfigs) > 0 {
 				for _, bpConfig := range bpConfigs {
 					if err = bpConfig.CopyBuildpackToml(getIndexManifestFn); err != nil {
@@ -143,10 +152,10 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 					if bpConfig.BuildpackType() != pubbldpkg.Composite {
 						target := targets[0]
 						distro := target.Distributions[0]
-						if err = pkgMultiArchConfig.CopyPackageToml(target, distro, distro.Versions[0], getIndexManifestFn); err != nil {
+						if err = pkgMultiArchConfig.CopyPackageToml(bpPath, target, distro, distro.Versions[0], getIndexManifestFn); err != nil {
 							return err
 						}
-						defer pkgMultiArchConfig.CleanPackageToml(target, distro, distro.Versions[0])
+						defer pkgMultiArchConfig.CleanPackageToml(bpPath, target, distro, distro.Versions[0])
 					}
 
 					if !flags.Flatten && bpConfig.Flatten {
@@ -154,7 +163,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 					}
 
 					if err := packager.PackageBuildpack(cmd.Context(), client.PackageBuildpackOptions{
-						RelativeBaseDir: relativeBaseDir,
+						RelativeBaseDir: bpConfig.RelativeBaseDir(),
 						Name:            bpName,
 						Format:          flags.Format,
 						Config:          pkgMultiArchConfig.Config(),
