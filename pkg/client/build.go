@@ -204,6 +204,9 @@ type BuildOptions struct {
 	// Directory to output the report.toml metadata artifact
 	ReportDestinationDir string
 
+	// For storing the mac-address to later pass on docker config structure
+	MacAddress string
+
 	// Desired create time in the output image config
 	CreationTime *time.Time
 
@@ -274,9 +277,9 @@ type layoutPathConfig struct {
 	targetRunImagePath      string
 }
 
-var IsSuggestedBuilderFunc = func(b string) bool {
-	for _, suggestedBuilder := range builder.SuggestedBuilders {
-		if b == suggestedBuilder.Image {
+var IsTrustedBuilderFunc = func(b string) bool {
+	for _, knownBuilder := range builder.KnownBuilders {
+		if b == knownBuilder.Image && knownBuilder.Trusted {
 			return true
 		}
 	}
@@ -384,7 +387,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	// Default mode: if the TrustBuilder option is not set, trust the suggested builders.
 	if opts.TrustBuilder == nil {
-		opts.TrustBuilder = IsSuggestedBuilderFunc
+		opts.TrustBuilder = IsTrustedBuilderFunc
 	}
 
 	// Ensure the builder's platform APIs are supported
@@ -543,6 +546,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Workspace:                opts.Workspace,
 		GID:                      opts.GroupID,
 		UID:                      opts.UserID,
+		MacAddress:               opts.MacAddress,
 		PreviousImage:            opts.PreviousImage,
 		Interactive:              opts.Interactive,
 		Termui:                   termui.NewTermui(imageName, ephemeralBuilder, runImageName),

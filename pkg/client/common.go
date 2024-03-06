@@ -120,7 +120,11 @@ func getBestRunMirror(registry string, runImage string, mirrors []string, prefer
 		}
 	}
 
-	return runImageList[0]
+	if len(runImageList) > 0 {
+		return runImageList[0]
+	}
+
+	return runImage
 }
 
 func filterImageList(imageList []string, accessChecker AccessChecker) []string {
