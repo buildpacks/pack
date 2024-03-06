@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+
+	"github.com/buildpacks/imgutil"
 
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
@@ -23,72 +27,72 @@ const (
 	PackageToml   = "package.toml"
 )
 
-type MultiArchBuildpack struct {
-	name        name.Tag
-	bpTargets   []dist.Target
-	flagTargets []dist.Target
-	config dist.BuildpackDescriptor
-	logger      logging.Logger
-}
+type BuildpackType int
 
-type MultiArchPackage struct {
-	pkgTargets  []dist.Target
-	flagTargets []dist.Target
+const (
+	Buildpack BuildpackType = iota
+	Composite
+	Extention
+)
+
+type multiArchBuildpack struct {
 	relativeBaseDir string
-	config      Config
-	logger      logging.Logger
+	flatten         bool
+	flagTargets     []dist.Target
+	config          dist.BuildpackDescriptor
+	logger          logging.Logger
 }
 
-type MultiArchBuildpackConfig struct {
+type multiArchPackage struct {
+	relativeBaseDir string
+	config          Config
+	logger          logging.Logger
+}
+
+type multiArchBuildpackConfig struct {
 	dist.BuildpackDescriptor
 	dist.Platform
-	Flatten        bool
-	FlattenExclude []string
-	Labels         map[string]string
-}
-
-type MultiArchPackageConfig struct {
-	Config
-	Flatten        bool
-	FlattenExclude []string
-	Labels         map[string]string
+	bpType          BuildpackType
 	relativeBaseDir string
+	Flatten         bool
+	FlattenExclude  []string
+	Labels          map[string]string
 }
 
-func NewMultiArchBuildpack(config ,name name.Tag, bp []dist.Target, flags []dist.Target, logger logging.Logger) MultiArchBuildpack {
-	return MultiArchBuildpack{
-		name:        name,
-		bpTargets:   bp,
-		flagTargets: flags,
-		logger:      logger,
+func NewMultiArchBuildpack(config dist.BuildpackDescriptor, relativeBaseDir string, flatten bool, flags []dist.Target, logger logging.Logger) *multiArchBuildpack {
+	if relativeBaseDir == "" {
+		relativeBaseDir = "."
 	}
-}
 
-func NewMultiArchPackage(config Config, relativeBaseDir string, pkg []dist.Target, flags []dist.Target, logger logging.Logger) MultiArchPackage {
-	return MultiArchPackage{
+	return &multiArchBuildpack{
 		relativeBaseDir: relativeBaseDir,
-		config:      config,
-		pkgTargets:  pkg,
-		flagTargets: flags,
-		logger:      logger,
+		config:          config,
+		flatten:         flatten,
+		flagTargets:     flags,
+		logger:          logger,
 	}
 }
 
-func (m *MultiArchBuildpack) Targets() []dist.Target {
+func NewMultiArchPackage(config Config, relativeBaseDir string, logger logging.Logger) *multiArchPackage {
+	if relativeBaseDir == "" {
+		relativeBaseDir = "."
+	}
+
+	return &multiArchPackage{
+		relativeBaseDir: relativeBaseDir,
+		config:          config,
+		logger:          logger,
+	}
+}
+
+func (m *multiArchBuildpack) Targets() []dist.Target {
 	if len(m.flagTargets) > 0 {
 		return m.flagTargets
 	}
-	return m.bpTargets
+	return m.config.WithTargets
 }
 
-func (m *MultiArchPackage) Targets() []dist.Target {
-	if len(m.flagTargets) > 0 {
-		return m.flagTargets
-	}
-	return m.pkgTargets
-}
-
-func (m *MultiArchBuildpack) MultiArchConfigs() (configs []MultiArchBuildpackConfig) {
+func (m *multiArchBuildpack) MultiArchConfigs() (configs []multiArchBuildpackConfig) {
 	targets := m.Targets()
 	for _, target := range targets {
 		for _, distro := range target.Distributions {
@@ -100,20 +104,13 @@ func (m *MultiArchBuildpack) MultiArchConfigs() (configs []MultiArchBuildpackCon
 	return configs
 }
 
-func (m *MultiArchPackage) MultiArchConfigs() (configs []MultiArchPackageConfig) {
-	targets := m.Targets()
-	for _, target := range targets {
-		for _, distro := range target.Distributions {
-			for _, version := range distro.Versions {
-				configs = append(configs, m.processTarget(target, distro, version))
-			}
-		}
+func (m *multiArchBuildpack) processTarget(target dist.Target, distro dist.Distribution, version string) multiArchBuildpackConfig {
+	bpType := Buildpack
+	if len(m.config.WithOrder) > 0 {
+		bpType = Composite
 	}
-	return configs
-}
 
-func (m *MultiArchBuildpack) processTarget(target dist.Target, distro dist.Distribution, version string) MultiArchBuildpackConfig {
-	return MultiArchBuildpackConfig{
+	return multiArchBuildpackConfig{
 		BuildpackDescriptor: dist.BuildpackDescriptor{
 			WithInfo: m.config.WithInfo,
 			WithTargets: []dist.Target{
@@ -122,31 +119,15 @@ func (m *MultiArchBuildpack) processTarget(target dist.Target, distro dist.Distr
 			WithAPI:          m.config.WithAPI,
 			WithLinuxBuild:   m.config.WithLinuxBuild,
 			WithWindowsBuild: m.config.WithWindowsBuild,
-			WithStacks: m.config.WithStacks,
-			WithOrder: m.config.WithOrder,
+			WithStacks:       m.config.WithStacks,
+			WithOrder:        m.config.WithOrder,
 		},
-		Platform:       processPlatform(target, distro, version),
-		Flatten:        distro.Specs.Flatten,
-		FlattenExclude: distro.Specs.FlattenExclude,
-		Labels:         distro.Specs.Labels,
-	}
-}
-
-func (m *MultiArchPackage) processTarget(target dist.Target, distro dist.Distribution, version string) MultiArchPackageConfig {
-	return MultiArchPackageConfig{
-		Config: Config{
-			Buildpack:    m.config.Buildpack,
-			Extension:    m.config.Extension,
-			Dependencies: m.config.Dependencies,
-			Targets: []dist.Target{
-				processTarget(target, distro, version),
-			},
-			Platform: processPlatform(target, distro, version),
-		},
-		Flatten:        distro.Specs.Flatten,
-		FlattenExclude: distro.Specs.FlattenExclude,
-		Labels:         distro.Specs.Labels,
+		Platform:        processPlatform(target, distro, version),
+		Flatten:         m.flatten || distro.Specs.Flatten,
+		FlattenExclude:  distro.Specs.FlattenExclude,
+		Labels:          distro.Specs.Labels,
 		relativeBaseDir: m.relativeBaseDir,
+		bpType:          bpType,
 	}
 }
 
@@ -175,51 +156,84 @@ func processTarget(target dist.Target, distro dist.Distribution, version string)
 
 func processPlatform(target dist.Target, distro dist.Distribution, version string) dist.Platform {
 	return dist.Platform{
-		OS:          target.OS,
-		Arch:        target.Arch,
-		Variant:     target.ArchVariant,
-		OSVersion:   version,
-		Features:    distro.Specs.Features,
-		OSFeatures:  distro.Specs.OSFeatures,
-		URLs:        distro.Specs.URLs,
-		Annotations: distro.Specs.Annotations,
+		OS: target.OS,
 	}
 }
 
-func (m *MultiArchBuildpackConfig) CopyBuildpackToml() error {
-	if m.BuildpackDescriptor.WithInfo.ID != "" {
+func (m *multiArchBuildpackConfig) CopyBuildpackToml(getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (err error) {
+	if uri := m.BuildpackDescriptor.WithInfo.ID; uri != "" {
+		if m.BuildpackDescriptor.WithInfo, err = processModuleInfo(m.BuildpackDescriptor.WithInfo, m.relativeBaseDir, nil, nil); err != nil {
+			return err
+		}
+
 		target := m.BuildpackDescriptor.WithTargets[0]
 		distro := target.Distributions[0]
 		bpFilePath := filepath.Join(platformRootDirectory(target, distro, distro.Versions[0]), BuildpackToml)
-		bpFile, err := os.OpenFile(bpFilePath, os.O_WRONLY|os.O_CREATE, 0644)
-		if err != nil {
-			return err
+		for i, order := range m.WithOrder {
+			for j, mg := range order.Group {
+				if m.WithOrder[i].Group[j].ModuleInfo, err = processModuleInfo(mg.ModuleInfo, m.relativeBaseDir, &target, getIndexManifest); err != nil {
+					return err
+				}
+			}
 		}
-		return toml.NewEncoder(bpFile).Encode(m.BuildpackDescriptor)
+
+		if m.bpType != Composite {
+			bpFile, err := os.OpenFile(bpFilePath, os.O_WRONLY|os.O_CREATE, 0644)
+			if err != nil {
+				return err
+			}
+			return toml.NewEncoder(bpFile).Encode(m.BuildpackDescriptor)
+		}
+
+		return nil
 	}
 	return errors.New("invalid MultiArchBuildpackConfig")
 }
 
-func (m *MultiArchBuildpackConfig) CleanBuildpackToml() error {
+func (m *multiArchBuildpackConfig) BuildpackType() BuildpackType {
+	return m.bpType
+}
+
+func processModuleInfo(module dist.ModuleInfo, relativeBaseDir string, target *dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (m dist.ModuleInfo, err error) {
+	if module.ID == "" {
+		return module, errors.New("module id must be defined")
+	}
+
+	if module.Version == "" {
+		module.Version = "latest"
+	}
+
+	module.ID, err = getRelativeUri(module.ID, relativeBaseDir, target, getIndexManifest)
+	return module, err
+}
+
+func (m *multiArchBuildpackConfig) CleanBuildpackToml() error {
 	target := m.BuildpackDescriptor.WithTargets[0]
 	distro := target.Distributions[0]
 	return os.Remove(filepath.Join(platformRootDirectory(target, distro, distro.Versions[0]), BuildpackToml))
 }
 
-func (m *MultiArchPackageConfig) CopyPackageToml() (err error) {
-	if m.Config.Buildpack.URI != "" || m.Config.Extension.URI != "" {
-		target := m.Config.Targets[0]
-		distro := target.Distributions[0]
-		platformRootDir := platformRootDirectory(target, distro, distro.Versions[0])
-		if uri := m.Config.Buildpack.URI; uri != "" {
-			if m.Config.Buildpack.URI, err = getRelativeUri(uri, m.relativeBaseDir); err != nil {
+func (m *multiArchPackage) CopyPackageToml(target dist.Target, distro dist.Distribution, version string, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (err error) {
+	if m.config.Buildpack.URI != "" || m.config.Extension.URI != "" {
+		platformRootDir := platformRootDirectory(target, distro, version)
+		if uri := m.config.Buildpack.URI; uri != "" {
+			if m.config.Buildpack.URI, err = getRelativeUri(uri, m.relativeBaseDir, &target, getIndexManifest); err != nil {
 				return err
 			}
 		}
 
-		if uri := m.Config.Extension.URI; uri != "" {
-			if m.Config.Extension.URI, err = getRelativeUri(uri, m.relativeBaseDir); err != nil {
+		if uri := m.config.Extension.URI; uri != "" {
+			if m.config.Extension.URI, err = getRelativeUri(uri, m.relativeBaseDir, &target, getIndexManifest); err != nil {
 				return err
+			}
+		}
+
+		for i, dep := range m.config.Dependencies {
+			// dep.ImageName == dep.ImageRef.ImageName, dep.URI == dep.Buildpack.URI
+			if dep.URI != "" {
+				if m.config.Dependencies[i].URI, err = getRelativeUri(dep.URI, m.relativeBaseDir, &target, getIndexManifest); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -228,28 +242,77 @@ func (m *MultiArchPackageConfig) CopyPackageToml() (err error) {
 		if err != nil {
 			return err
 		}
-		return toml.NewEncoder(bpFile).Encode(m.Config)
+		return toml.NewEncoder(bpFile).Encode(m.config)
 	}
 	return nil
 }
 
-func getRelativeUri(uri, relativeBaseDir string) (string, error) {
+func (m *multiArchPackage) Config() Config {
+	return m.config
+}
+
+func getRelativeUri(uri, relativeBaseDir string, target *dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (string, error) {
 	locator, err := buildpack.GetLocatorType(uri, relativeBaseDir, []dist.ModuleInfo{})
 	if err != nil {
 		return "", err
 	}
 
-	if locator == buildpack.URILocator {
-		uri, err = paths.FilePathToURI(uri, relativeBaseDir)
-		if err != nil {
-			return "", fmt.Errorf("making absolute: %s:\n %s", style.Symbol(uri), err.Error())
+	switch locator {
+	case buildpack.URILocator:
+		return paths.FilePathToURI(uri, relativeBaseDir)
+	case buildpack.DockerLocalIndex:
+		if target == nil {
+			return "", fmt.Errorf("nil target")
 		}
+		ref, err := parseURItoString(uri, *target, getIndexManifest)
+		return "docker://" + ref, err
+	case buildpack.OCILocalIndex:
+		if target == nil {
+			return "", fmt.Errorf("nil target")
+		}
+		ref, err := parseURItoString(uri, *target, getIndexManifest)
+		return ref + ".cnb", err
+	default:
+		return uri, nil
 	}
-	return uri, nil
 }
 
-func (m *MultiArchPackageConfig) CleanPackageToml() error {
-	target := m.Config.Targets[0]
-	distro := target.Distributions[0]
-	return os.Remove(filepath.Join(platformRootDirectory(target, distro, distro.Versions[0]), PackageToml))
+func parseURItoString(uri string, target dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (string, error) {
+	loc := strings.SplitN(uri, "//", 2)
+	if len(loc) > 1 {
+		ref, err := name.ParseReference(loc[1], name.Insecure, name.WeakValidation)
+		if err != nil {
+			return "", err
+		}
+
+		idx, err := getIndexManifest(ref)
+		if err != nil {
+			return "", err
+		}
+		return HexFromIndex(idx, target)
+	}
+	return "", fmt.Errorf("invalid uri: %s", style.Symbol(uri))
+}
+
+func (m *multiArchPackage) CleanPackageToml(target dist.Target, distro dist.Distribution, version string) error {
+	return os.Remove(filepath.Join(platformRootDirectory(target, distro, version), PackageToml))
+}
+
+func HexFromIndex(idx *v1.IndexManifest, target dist.Target) (string, error) {
+	if idx == nil {
+		return "", imgutil.ErrManifestUndefined
+	}
+
+	for _, mfest := range idx.Manifests {
+		if mfest.Platform == nil {
+			return "", imgutil.ErrPlatformUndefined
+		}
+
+		platform := mfest.Platform
+		if platform.Satisfies(*target.Platform()) {
+			return mfest.Digest.Hex, nil
+		}
+	}
+
+	return "", errors.New("no image found with given platform")
 }

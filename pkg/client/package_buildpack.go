@@ -88,7 +88,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		packageBuilderOpts = append(packageBuilderOpts, buildpack.DoNotFlatten(opts.FlattenExclude),
 			buildpack.WithLayerWriterFactory(writerFactory), buildpack.WithLogger(c.logger))
 	}
-	packageBuilder := buildpack.NewBuilder(c.imageFactory, packageBuilderOpts...)
+	packageBuilder := buildpack.NewBuilder(c.imageFactory, c.indexFactory, packageBuilderOpts...)
 
 	bpURI := opts.Config.Buildpack.URI
 	if bpURI == "" {
@@ -127,10 +127,10 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 	switch opts.Format {
 	case FormatFile:
 		// FIXME: Add `variant`, `features`, `osFeatures`, `urls`, `annotations` to imgutil.Platform
-		return packageBuilder.SaveAsFile(opts.Name, imgutil.Platform{OS: opts.Config.Platform.OS, Architecture: opts.Config.Platform.Arch, OSVersion: opts.Config.Platform.OSVersion}, opts.Labels)
+		return packageBuilder.SaveAsFile(opts.Name, imgutil.Platform{OS: opts.Config.Platform.OS}, opts.Labels)
 	case FormatImage:
 		// FIXME: Add `variant`, `features`, `osFeatures`, `urls`, `annotations` to imgutil.Platform
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, imgutil.Platform{OS: opts.Config.Platform.OS, Architecture: opts.Config.Platform.Arch, OSVersion: opts.Config.Platform.OSVersion}, opts.Labels)
+		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, imgutil.Platform{OS: opts.Config.Platform.OS}, opts.Labels)
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))

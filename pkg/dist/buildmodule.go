@@ -1,6 +1,7 @@
 package dist
 
 import (
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/style"
@@ -75,16 +76,14 @@ type TargetSpecs struct {
 	Labels         map[string]string `json:"labels,omitempty" toml:"labels,omitempty"`
 }
 
-func (t Target) Platform() Platform {
+func (t *Target) Platform() *v1.Platform {
 	distro := t.Distributions[0]
-	return Platform{
-		OS:          t.OS,
-		Arch:        t.Arch,
-		Variant:     t.ArchVariant,
-		OSVersion:   distro.Versions[0],
-		Features:    distro.Specs.Features,
-		OSFeatures:  distro.Specs.OSFeatures,
-		URLs:        distro.Specs.URLs,
-		Annotations: distro.Specs.Annotations,
+	return &v1.Platform{
+		OS:           t.OS,
+		Architecture: t.Arch,
+		Variant:      t.ArchVariant,
+		OSVersion:    distro.Versions[0],
+		Features:     distro.Specs.Features,
+		OSFeatures:   distro.Specs.OSFeatures,
 	}
 }

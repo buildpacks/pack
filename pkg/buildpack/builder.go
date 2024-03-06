@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/index"
 	"github.com/buildpacks/imgutil/layer"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
@@ -28,6 +29,17 @@ import (
 
 type ImageFactory interface {
 	NewImage(repoName string, local bool, platform imgutil.Platform) (imgutil.Image, error)
+}
+
+type IndexFactory interface {
+	// create ManifestList locally
+	CreateIndex(repoName string, opts ...index.Option) (imgutil.ImageIndex, error)
+	// load ManifestList from local storage with the given name
+	LoadIndex(reponame string, opts ...index.Option) (imgutil.ImageIndex, error)
+	// Fetch ManifestList from Registry with the given name
+	FetchIndex(name string, opts ...index.Option) (imgutil.ImageIndex, error)
+	// FindIndex will find Index locally then on remote
+	FindIndex(name string, opts ...index.Option) (imgutil.ImageIndex, error)
 }
 
 type WorkableImage interface {
@@ -87,12 +99,13 @@ type PackageBuilder struct {
 	layerWriterFactory       archive.TarWriterFactory
 	dependencies             ManagedCollection
 	imageFactory             ImageFactory
+	indexFactory             IndexFactory
 	flattenAllBuildpacks     bool
 	flattenExcludeBuildpacks []string
 }
 
 // TODO: Rename to PackageBuilder
-func NewBuilder(imageFactory ImageFactory, ops ...PackageBuilderOption) *PackageBuilder {
+func NewBuilder(imageFactory ImageFactory, indexFactory IndexFactory, ops ...PackageBuilderOption) *PackageBuilder {
 	opts := &options{}
 	for _, op := range ops {
 		if err := op(opts); err != nil {
@@ -102,6 +115,7 @@ func NewBuilder(imageFactory ImageFactory, ops ...PackageBuilderOption) *Package
 	moduleManager := NewManagedCollectionV1(opts.flatten)
 	return &PackageBuilder{
 		imageFactory:             imageFactory,
+		indexFactory:             indexFactory,
 		dependencies:             moduleManager,
 		flattenAllBuildpacks:     opts.flatten,
 		flattenExcludeBuildpacks: opts.exclude,

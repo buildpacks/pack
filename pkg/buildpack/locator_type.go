@@ -23,6 +23,8 @@ const (
 	IDLocator
 	PackageLocator
 	RegistryLocator
+	DockerLocalIndex
+	OCILocalIndex
 	// added entries here should also be added to `String()`
 )
 
@@ -31,6 +33,11 @@ const (
 	deprecatedFromBuilderPrefix = "from=builder"
 	fromRegistryPrefix          = "urn:cnb:registry"
 	fromDockerPrefix            = "docker:/"
+	fromDockerLocalIndexPrefix  = "urn:cnb:docker"
+	fromOCILocalInexPrefix      = "urn:cnb:oci"
+
+	// misc
+	urnDelim = "."
 )
 
 var (
@@ -47,6 +54,8 @@ func (l LocatorType) String() string {
 		"IDLocator",
 		"PackageLocator",
 		"RegistryLocator",
+		"DockerLocalIndex",
+		"OCILocalIndex",
 	}[l]
 }
 
@@ -54,31 +63,30 @@ func (l LocatorType) String() string {
 // If a type cannot be determined, `INVALID_LOCATOR` will be returned. If an error
 // is encountered, it will be returned.
 func GetLocatorType(locator string, relativeBaseDir string, buildpacksFromBuilder []dist.ModuleInfo) (LocatorType, error) {
-	if locator == deprecatedFromBuilderPrefix {
+	switch {
+	case locator == deprecatedFromBuilderPrefix:
 		return FromBuilderLocator, nil
-	}
-
-	if strings.HasPrefix(locator, fromBuilderPrefix+":") || strings.HasPrefix(locator, deprecatedFromBuilderPrefix+":") {
+	case strings.HasPrefix(locator, fromBuilderPrefix+urnDelim) || strings.HasPrefix(locator, deprecatedFromBuilderPrefix+urnDelim):
 		if !isFoundInBuilder(locator, buildpacksFromBuilder) {
 			return InvalidLocator, fmt.Errorf("%s is not a valid identifier", style.Symbol(locator))
 		}
 		return IDLocator, nil
-	}
-
-	if strings.HasPrefix(locator, fromRegistryPrefix+":") {
+	case strings.HasPrefix(locator, fromRegistryPrefix+urnDelim):
 		return RegistryLocator, nil
-	}
-
-	if paths.IsURI(locator) {
+	case strings.HasPrefix(locator, fromDockerLocalIndexPrefix+urnDelim):
+		return DockerLocalIndex, nil
+	case strings.HasPrefix(locator, fromOCILocalInexPrefix+urnDelim):
+		return OCILocalIndex, nil
+	case paths.IsURI(locator):
 		if HasDockerLocator(locator) {
 			if _, err := name.ParseReference(locator); err == nil {
 				return PackageLocator, nil
 			}
 		}
 		return URILocator, nil
+	default:
+		return parseNakedLocator(locator, relativeBaseDir, buildpacksFromBuilder), nil
 	}
-
-	return parseNakedLocator(locator, relativeBaseDir, buildpacksFromBuilder), nil
 }
 
 func HasDockerLocator(locator string) bool {

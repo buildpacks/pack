@@ -3,7 +3,6 @@ package buildpackage
 import (
 	"fmt"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -22,9 +21,7 @@ type Config struct {
 	Buildpack    dist.BuildpackURI `toml:"buildpack"`
 	Extension    dist.BuildpackURI `toml:"extension"`
 	Dependencies []dist.ImageOrURI `toml:"dependencies"`
-	// Deprecared. Use Targets
-	Platform dist.Platform `toml:"platform,omitempty"`
-	Targets  []dist.Target `toml:"targets,omitempty"`
+	Platform     dist.Platform     `toml:"platform,omitempty"`
 }
 
 func DefaultConfig() Config {
@@ -33,8 +30,7 @@ func DefaultConfig() Config {
 			URI: ".",
 		},
 		Platform: dist.Platform{
-			OS:   defaultOS,
-			Arch: runtime.GOARCH,
+			OS: defaultOS,
 		},
 	}
 }
@@ -60,8 +56,7 @@ func DefaultExtensionConfig() Config {
 			URI: ".",
 		},
 		Platform: dist.Platform{
-			OS:   defaultOS,
-			Arch: runtime.GOARCH,
+			OS: defaultOS,
 		},
 	}
 }
@@ -106,10 +101,6 @@ func (r *ConfigReader) Read(path string) (Config, error) {
 		packageConfig.Platform.OS = defaultOS
 	}
 
-	if packageConfig.Platform.Arch == "" {
-		packageConfig.Platform.Arch = runtime.GOARCH
-	}
-
 	if packageConfig.Platform.OS != "linux" && packageConfig.Platform.OS != "windows" {
 		return packageConfig, errors.Errorf("invalid %s configuration: only [%s, %s] is permitted, found %s",
 			style.Symbol("platform.os"), style.Symbol("linux"), style.Symbol("windows"), style.Symbol(packageConfig.Platform.OS))
@@ -141,6 +132,10 @@ func (r *ConfigReader) Read(path string) (Config, error) {
 	}
 
 	return packageConfig, nil
+}
+
+func (r *ConfigReader) ReadBuildpackDescriptor(path string) (dist.BuildpackDescriptor, error) {
+	return dist.BuildpackDescriptor{}, nil
 }
 
 func validateURI(uri, relativeBaseDir string) error {

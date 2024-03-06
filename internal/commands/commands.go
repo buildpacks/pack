@@ -7,6 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -40,6 +42,7 @@ type PackClient interface {
 	RemoveManifest(ctx context.Context, name string, images []string) []error
 	PushManifest(ctx context.Context, index string, opts client.PushManifestOptions) error
 	InspectManifest(ctx context.Context, name string) error
+	IndexManifest(ctx context.Context, ref name.Reference) (*v1.IndexManifest, error)
 }
 
 func AddHelpFlag(cmd *cobra.Command, commandName string) {

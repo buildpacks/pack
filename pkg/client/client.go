@@ -27,6 +27,8 @@ import (
 	"github.com/buildpacks/imgutil/remote"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack"
@@ -386,6 +388,27 @@ func (f *indexFactory) CreateIndex(repoName string, opts ...index.Option) (imgut
 	}
 
 	return index.NewIndex(repoName, opts...)
+}
+
+func (f *Client) IndexManifest(ctx context.Context, ref name.Reference) (*v1.IndexManifest, error) {
+	opts, err := withOptions([]index.Option{
+		index.WithInsecure(true),
+	}, f.keychain)
+	if err != nil {
+		return nil, err
+	}
+
+	idx, err := f.indexFactory.FetchIndex(ref.Name(), opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	ii, ok := idx.(*imgutil.ManifestHandler)
+	if !ok {
+		return nil, errors.New("unknown instance: ImageIndex")
+	}
+
+	return ii.IndexManifest()
 }
 
 func withOptions(ops []index.Option, keychain authn.Keychain) ([]index.Option, error) {

@@ -2,11 +2,11 @@ package commands
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/BurntSushi/toml"
+	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -15,6 +15,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/internal/target"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -36,17 +37,14 @@ type BuildpackPackageFlags struct {
 // BuildpackPackager packages buildpacks
 type BuildpackPackager interface {
 	PackageBuildpack(ctx context.Context, options client.PackageBuildpackOptions) error
+	IndexManifest(ctx context.Context, ref name.Reference) (*v1.IndexManifest, error)
 }
 
 // PackageConfigReader reads BuildpackPackage configs
 type PackageConfigReader interface {
 	Read(path string) (pubbldpkg.Config, error)
+	ReadBuildpackDescriptor(path string) (dist.BuildpackDescriptor, error)
 }
-
-const (
-	Buildpack = "buildpack.toml"
-	Package   = "package.toml"
-)
 
 // BuildpackPackage packages (a) buildpack(s) into OCI format, based on a package config
 func BuildpackPackage(logger logging.Logger, cfg config.Config, packager BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
@@ -63,22 +61,6 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			"and they can be included in the configs used in `pack builder create` and `pack buildpack package`. For more " +
 			"on how to package a buildpack, see: https://buildpacks.io/docs/buildpack-author-guide/package-a-buildpack/.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			var (
-				bpPackageCfg                           pubbldpkg.Config
-				bpPath                                 string
-				relativeBaseDir                        string
-				bpConfigs                              []pubbldpkg.Config
-				isMultiArch                            bool
-				from                                   BPTargetType
-				packageTomlConfig, buildpackTomlConfig pubbldpkg.Config
-				name                                   = args[0]
-			)
-
-			targets, err := target.ParseTargets(flags.Targets, logger)
-			if err != nil {
-				return err
-			}
-
 			if err := validateBuildpackPackageFlags(cfg, &flags); err != nil {
 				return err
 			}
@@ -87,209 +69,95 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-
 			pullPolicy, err := image.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrap(err, "parsing pull policy")
 			}
 
+			targets, err := target.ParseTargets(flags.Targets, logger)
+			if err != nil {
+				return err
+			}
+
+			bpPackageCfg := pubbldpkg.DefaultConfig()
+			relativeBaseDir := ""
+			if flags.PackageTomlPath != "" {
+				bpPackageCfg, err = packageConfigReader.Read(flags.PackageTomlPath)
+				if err != nil {
+					return errors.Wrap(err, "reading config")
+				}
+
+				relativeBaseDir, err = filepath.Abs(filepath.Dir(flags.PackageTomlPath))
+				if err != nil {
+					return errors.Wrap(err, "getting absolute path for config")
+				}
+			}
+
+			pkgMultiArchConfig := pubbldpkg.NewMultiArchPackage(bpPackageCfg, relativeBaseDir, logger)
+			var bpPath string
 			if flags.Path != "" {
 				if bpPath, err = filepath.Abs(flags.Path); err != nil {
 					return errors.Wrap(err, "resolving buildpack path")
 				}
+				bpPackageCfg.Buildpack.URI = bpPath
 			}
 
-			packageBuildpackFn := func() error {
-				if flags.Path != "" {
-					bpPackageCfg.Buildpack.URI = bpPath
-				}
-
-				if flags.Flatten {
-					bpPackageCfg.Flatten = true
-				}
-
-				if len(flags.FlattenExclude) != 0 {
-					bpPackageCfg.FlattenExclude = flags.FlattenExclude
-				}
-
-				if len(flags.Label) != 0 {
-					bpPackageCfg.Labels = flags.Label
-				}
-
-				if flags.PackageTomlPath != "" {
-					bpPackageCfg, err = packageConfigReader.Read(flags.PackageTomlPath)
-					if err != nil {
-						return errors.Wrap(err, "reading config")
-					}
-
-					relativeBaseDir, err = filepath.Abs(filepath.Dir(flags.PackageTomlPath))
-					if err != nil {
-						return errors.Wrap(err, "getting absolute path for config")
-					}
-				}
-
-				if flags.Format == client.FormatFile {
-					switch ext := filepath.Ext(name); ext {
-					case client.CNBExtension:
-					case "":
-						name += client.CNBExtension
-					default:
-						logger.Warnf("%s is not a valid extension for a packaged buildpack. Packaged buildpacks must have a %s extension", style.Symbol(ext), style.Symbol(client.CNBExtension))
-					}
-				}
-				if flags.Flatten {
-					logger.Warn("Flattening a buildpack package could break the distribution specification. Please use it with caution.")
-				}
-
-				return packager.PackageBuildpack(cmd.Context(), client.PackageBuildpackOptions{
-					RelativeBaseDir: relativeBaseDir,
-					Name:            name,
-					Format:          flags.Format,
-					Config:          bpPackageCfg,
-					Publish:         flags.Publish,
-					PullPolicy:      pullPolicy,
-					Registry:        flags.BuildpackRegistry,
-					Flatten:         bpPackageCfg.Flatten,
-					FlattenExclude:  bpPackageCfg.FlattenExclude,
-					Labels:          bpPackageCfg.Labels,
-				})
+			bpConfig, err := packageConfigReader.ReadBuildpackDescriptor(bpPath)
+			if err != nil {
+				return err
 			}
+			bpMultiArchConfig := pubbldpkg.NewMultiArchBuildpack(bpConfig, relativeBaseDir, flags.Flatten, targets, logger)
+			bpConfigs := bpMultiArchConfig.MultiArchConfigs()
 
-			path := "."
-			if flags.PackageTomlPath != "" {
-				path = flags.PackageTomlPath
-			}
-
-			packageTomlFilePath := filepath.Join(path, Package)
-			if _, err := os.Stat(packageTomlFilePath); err == nil {
-				bpPackageCfg, err = packageConfigReader.Read(packageTomlFilePath)
-				if err != nil {
-					return err
-				}
-
-				packageTomlConfig = bpPackageCfg
-				bpConfigs = pubbldpkg.MultiArchDefaultConfigs(bpPackageCfg.Target)
-				isMultiArch, from = len(bpConfigs) > 1, PackageToml
-			}
-
-			path = "."
-			if flags.Path != "" {
-				path = bpPath
-			}
-
-			buildpackTomlFilePath := filepath.Join(path, Buildpack)
-			if _, err := os.Stat(buildpackTomlFilePath); err == nil {
-				buildpackTomlConfig, err = packageConfigReader.Read(filepath.Join(path, Buildpack))
-				if err != nil {
-					return err
+			bpName := args[0]
+			if flags.Format == client.FormatFile {
+				switch ext := filepath.Ext(bpName); ext {
+				case client.CNBExtension:
+				case "":
+					bpName += client.CNBExtension
+				default:
+					logger.Warnf("%s is not a valid extension for a packaged buildpack. Packaged buildpacks must have a %s extension", style.Symbol(ext), style.Symbol(client.CNBExtension))
 				}
 			}
 
-			if !isMultiArch {
-				bpPackageCfg = buildpackTomlConfig
-				bpConfigs = pubbldpkg.MultiArchDefaultConfigs(bpPackageCfg.Target)
-				from = BuildpackToml
+			if flags.Flatten {
+				logger.Warn("Flattening a buildpack package could break the distribution specification. Please use it with caution.")
 			}
 
-			if len(flags.Targets) > 0 {
-				bpConfigs = pubbldpkg.MultiArchDefaultConfigs(targets)
-				from = Flags
+			var mfest *v1.IndexManifest
+			getIndexManifestFn := func(ref name.Reference) (*v1.IndexManifest, error) {
+				if mfest != nil {
+					return mfest, nil
+				}
+				return packager.IndexManifest(cmd.Context(), ref)
 			}
 
-			switch len(bpConfigs) {
-			case 0:
-				bpPackageCfg = pubbldpkg.DefaultConfig()
-				if err := packageBuildpackFn(); err != nil {
-					return err
-				}
-			case 1:
-				bpPackageCfg = bpConfigs[0]
-				bpPackageCfg.Buildpack.URI = "."
-				if err := packageBuildpackFn(); err != nil {
-					return err
-				}
-			default:
-				if flags.PackageTomlPath != "" {
-					relativeBaseDir, err = filepath.Abs(filepath.Dir(flags.PackageTomlPath))
-					if err != nil {
-						return errors.Wrap(err, "getting absolute path for config")
-					}
-				}
-
-				if flags.Format == client.FormatFile {
-					switch ext := filepath.Ext(name); ext {
-					case client.CNBExtension:
-					case "":
-						name += client.CNBExtension
-					default:
-						logger.Warnf("%s is not a valid extension for a packaged buildpack. Packaged buildpacks must have a %s extension", style.Symbol(ext), style.Symbol(client.CNBExtension))
-					}
-				}
-
+			if len(bpConfigs) > 0 {
 				for _, bpConfig := range bpConfigs {
-					dupBPConfig := buildpackTomlConfig
-					dupPkgConfig := packageTomlConfig
-
-					if dupBPConfig.Buildpack.URI == "" {
-						dupBPConfig = pubbldpkg.DefaultConfig()
+					if err = bpConfig.CopyBuildpackToml(getIndexManifestFn); err != nil {
+						return err
 					}
-					dupBPConfig.Buildpack.URI = "."
+					defer bpConfig.CleanBuildpackToml()
 
-					if dupPkgConfig.Buildpack.URI == "" && dupPkgConfig.Extension.URI == "" {
-						dupPkgConfig, err = packageConfigReader.Read(packageTomlFilePath)
-						if err != nil {
+					targets := bpConfig.Targets()
+					if bpConfig.BuildpackType() != pubbldpkg.Composite {
+						target := targets[0]
+						distro := target.Distributions[0]
+						if err = pkgMultiArchConfig.CopyPackageToml(target, distro, distro.Versions[0], getIndexManifestFn); err != nil {
 							return err
 						}
+						defer pkgMultiArchConfig.CleanPackageToml(target, distro, distro.Versions[0])
 					}
 
-					bpFilePath := filepath.Join(buildpackTomlConfig.Buildpack.URI, Buildpack)
-					bpFile, err := os.OpenFile(bpFilePath, os.O_WRONLY|os.O_CREATE, 0644)
-					if err != nil {
-						return err
-					}
-
-					if err := toml.NewEncoder(bpFile).Encode(dupBPConfig); err != nil {
-						return err
-					}
-
-					pkgFilePath := filepath.Join(buildpackTomlConfig.Buildpack.URI, Package)
-					pkgFile, err := os.OpenFile(pkgFilePath, os.O_WRONLY|os.O_CREATE, 0644)
-					if err != nil {
-						return err
-					}
-
-					if err := toml.NewEncoder(pkgFile).Encode(dupPkgConfig); err != nil {
-						return err
-					}
-
-					defer func() {
-						bpFile.Close()
-						pkgFile.Close()
-						os.Remove(bpFilePath)
-						os.Remove(pkgFilePath)
-					}()
-
-					if flags.Flatten {
+					if !flags.Flatten && bpConfig.Flatten {
 						logger.Warn("Flattening a buildpack package could break the distribution specification. Please use it with caution.")
-						bpConfig.Flatten = true
-					}
-
-					if len(flags.FlattenExclude) > 0 {
-						logger.Warnf("Cannot use %s flag for MultiArch Targets. Please define %s in %s file", style.Symbol("--flatten-exclude"), style.Symbol("flatten.exclude"), style.Symbol(from.String()))
-					}
-
-					if len(flags.Label) != 0 {
-						logger.Warnf("Using %s along with %s defined in %s", style.Symbol("--labels"), style.Symbol("labels table"), style.Symbol(from.String()))
-						for k, v := range flags.Label {
-							bpConfig.Labels[k] = v
-						}
 					}
 
 					if err := packager.PackageBuildpack(cmd.Context(), client.PackageBuildpackOptions{
 						RelativeBaseDir: relativeBaseDir,
-						Name:            name,
+						Name:            bpName,
 						Format:          flags.Format,
-						Config:          bpConfig,
+						Config:          pkgMultiArchConfig.Config(),
 						Publish:         flags.Publish,
 						PullPolicy:      pullPolicy,
 						Registry:        flags.BuildpackRegistry,
@@ -299,6 +167,21 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 					}); err != nil {
 						return err
 					}
+				}
+			} else {
+				if err := packager.PackageBuildpack(cmd.Context(), client.PackageBuildpackOptions{
+					RelativeBaseDir: relativeBaseDir,
+					Name:            bpName,
+					Format:          flags.Format,
+					Config:          bpPackageCfg,
+					Publish:         flags.Publish,
+					PullPolicy:      pullPolicy,
+					Registry:        flags.BuildpackRegistry,
+					Flatten:         flags.Flatten,
+					FlattenExclude:  flags.FlattenExclude,
+					Labels:          flags.Label,
+				}); err != nil {
+					return err
 				}
 			}
 
@@ -311,7 +194,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			if flags.Format == client.FormatFile {
 				location = "file"
 			}
-			logger.Infof("Successfully %s package %s and saved to %s", action, style.Symbol(name), location)
+			logger.Infof("Successfully %s package %s and saved to %s", action, style.Symbol(bpName), location)
 			return nil
 		}),
 	}
@@ -323,14 +206,14 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to the Buildpack that needs to be packaged")
 	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")
 	cmd.Flags().BoolVar(&flags.Flatten, "flatten", false, "Flatten the buildpack into a single layer")
+	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpacks to exclude from flattening, in the form of '<buildpack-id>@<buildpack-version>'")
+	cmd.Flags().StringToStringVarP(&flags.Label, "label", "l", nil, "Labels to add to packaged Buildpack, in the form of '<name>=<value>'")
 	cmd.Flags().StringSliceVarP(&flags.Targets, "target", "t", nil,
 		`Targets are the platforms list to build. one can provide target platforms in format [os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]
 	- Base case for two different architectures :  '--target "linux/amd64" --target "linux/arm64"'
 	- case for distribution version: '--target "windows/amd64:windows-nano@10.0.19041.1415"'
 	- case for different architecture with distributed versions : '--target "linux/arm/v6:ubuntu@14.04"  --target "linux/arm/v6:ubuntu@16.04"'
 	`)
-	cmd.Flags().StringSliceVarP(&flags.FlattenExclude, "flatten-exclude", "e", nil, "Buildpacks to exclude from flattening, in the form of '<buildpack-id>@<buildpack-version>'")
-	cmd.Flags().StringToStringVarP(&flags.Label, "label", "l", nil, "Labels to add to packaged Buildpack, in the form of '<name>=<value>'")
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("flatten")
 		cmd.Flags().MarkHidden("flatten-exclude")
@@ -361,24 +244,4 @@ func validateBuildpackPackageFlags(cfg config.Config, p *BuildpackPackageFlags) 
 		}
 	}
 	return nil
-}
-
-type BPTargetType int
-
-const (
-	// `[]dist.Target` took from pack cli
-	Flags BPTargetType = iota
-	// `[]dist.Target` took from `buildpack.toml` file
-	BuildpackToml
-	// `[]dist.Target` took from `package.toml` file
-	PackageToml
-)
-
-func (t BPTargetType) String() string {
-	switch t {
-	case PackageToml:
-		return Package
-	default:
-		return Buildpack
-	}
 }

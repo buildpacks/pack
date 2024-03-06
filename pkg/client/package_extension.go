@@ -32,7 +32,7 @@ func (c *Client) PackageExtension(ctx context.Context, opts PackageBuildpackOpti
 		return errors.Wrap(err, "creating layer writer factory")
 	}
 
-	packageBuilder := buildpack.NewBuilder(c.imageFactory)
+	packageBuilder := buildpack.NewBuilder(c.imageFactory, c.indexFactory)
 
 	exURI := opts.Config.Extension.URI
 	if exURI == "" {
@@ -53,9 +53,9 @@ func (c *Client) PackageExtension(ctx context.Context, opts PackageBuildpackOpti
 
 	switch opts.Format {
 	case FormatFile:
-		return packageBuilder.SaveAsFile(opts.Name, imgutil.Platform{OS: opts.Config.Platform.OS, Architecture: opts.Config.Platform.Arch, OSVersion: opts.Config.Platform.OSVersion}, map[string]string{})
+		return packageBuilder.SaveAsFile(opts.Name, imgutil.Platform{OS: opts.Config.Platform.OS}, map[string]string{})
 	case FormatImage:
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, imgutil.Platform{OS: opts.Config.Platform.OS, Architecture: opts.Config.Platform.Arch, OSVersion: opts.Config.Platform.OSVersion}, map[string]string{})
+		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, imgutil.Platform{OS: opts.Config.Platform.OS}, map[string]string{})
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))
