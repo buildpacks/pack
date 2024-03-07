@@ -143,7 +143,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				Flatten:         flags.Flatten,
 				FlattenExclude:  flags.FlattenExclude,
 				Labels:          flags.Label,
-				Targets:         targets,
+				Targets:         multiArchCfg.Targets(),
 			}); err != nil {
 				return err
 			}
@@ -233,7 +233,6 @@ func processTargets(flags BuildpackPackageFlags, logger logging.Logger, targets 
 		// it's a composite buildpack, targets must be defined in package.toml
 		currentTargets = bpPackageCfg.Targets
 	}
-
 	multiArchCfg, err := buildpack.NewMultiArchConfig(currentTargets, expectedTargets, logger)
 	if err != nil {
 		return buildpack.MultiArchConfig{}, err
