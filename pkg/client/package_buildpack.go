@@ -3,9 +3,12 @@ package client
 import (
 	"context"
 
+	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/index"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/layer"
@@ -14,6 +17,7 @@ import (
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
 
+	"github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -62,6 +66,9 @@ type PackageBuildpackOptions struct {
 
 	// Map of labels to add to the Buildpack
 	Labels map[string]string
+
+	// Index Options instruct how IndexManifest should be created
+	IndexOptions buildpackage.IndexOptions
 }
 
 // PackageBuildpack packages buildpack(s) into either an image or file.
@@ -89,7 +96,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		packageBuilderOpts = append(packageBuilderOpts, buildpack.DoNotFlatten(opts.FlattenExclude),
 			buildpack.WithLayerWriterFactory(writerFactory), buildpack.WithLogger(c.logger))
 	}
-	packageBuilder := buildpack.NewBuilder(c.imageFactory, c.indexFactory, packageBuilderOpts...)
+	packageBuilder := buildpack.NewBuilder(c.imageFactory, packageBuilderOpts...)
 
 	bpURI := opts.Config.Buildpack.URI
 	if bpURI == "" {
@@ -131,7 +138,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return packageBuilder.SaveAsFile(opts.Name, imgutil.Platform{OS: opts.Config.Platform.OS}, opts.Labels)
 	case FormatImage:
 		// FIXME: Add `variant`, `features`, `osFeatures`, `urls`, `annotations` to imgutil.Platform
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, imgutil.Platform{OS: opts.Config.Platform.OS}, opts.Labels)
+		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, nil, opts.Labels)
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))
@@ -169,4 +176,129 @@ func (c *Client) validateOSPlatform(ctx context.Context, os string, publish bool
 	}
 
 	return nil
+}
+
+func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
+	if opts.IndexOptions.BPConfigs == nil && len(*opts.IndexOptions.BPConfigs) == 0 {
+		return errors.Errorf("%s must not be nil", style.Symbol("IndexOptions"))
+	}
+
+	if opts.IndexOptions.PkgConfig == nil {
+		return errors.Errorf("package configaration is undefined")
+	}
+
+	IndexManifestFn := getIndexManifestFn(c, opts.IndexOptions.Manifest)
+	bpCfg, err := buildpackage.NewConfigReader().ReadBuildpackDescriptor(opts.RelativeBaseDir)
+	if err != nil {
+		return err
+	}
+
+	var repoName string
+	if info := bpCfg.WithInfo; info.Version == "" {
+		repoName = info.ID
+	} else {
+		repoName = info.ID + ":" + info.Version
+	}
+
+	if err := createImageIndex(c, repoName); err != nil {
+		return err
+	}
+
+	pkgConfig, bpConfigs := *opts.IndexOptions.PkgConfig, *opts.IndexOptions.BPConfigs
+	for _, bpConfig := range bpConfigs {
+		if err := bpConfig.CopyBuildpackToml(IndexManifestFn); err != nil {
+			return err
+		}
+		defer bpConfig.CleanBuildpackToml()
+
+		targets := bpConfig.Targets()
+		if bpConfig.BuildpackType() != pubbldpkg.Composite {
+			target := targets[0]
+			distro := target.Distributions[0]
+			if err := pkgConfig.CopyPackageToml(opts.IndexOptions.RelativeBaseDir, target, distro, distro.Versions[0], IndexManifestFn); err != nil {
+				return err
+			}
+			defer pkgConfig.CleanPackageToml(opts.IndexOptions.RelativeBaseDir, target, distro.Name, distro.Versions[0])
+		}
+
+		if !opts.Flatten && bpConfig.Flatten {
+			opts.IndexOptions.Logger.Warn("Flattening a buildpack package could break the distribution specification. Please use it with caution.")
+		}
+
+		if err := c.PackageBuildpack(ctx, PackageBuildpackOptions{
+			RelativeBaseDir: bpConfig.RelativeBaseDir(),
+			Name:            opts.Name,
+			Format:          opts.Format,
+			Config:          pkgConfig.Config,
+			Publish:         opts.Publish,
+			PullPolicy:      opts.PullPolicy,
+			Registry:        opts.Registry,
+			Flatten:         bpConfig.Flatten,
+			FlattenExclude:  bpConfig.FlattenExclude,
+			Labels:          bpConfig.Labels,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func getIndexManifestFn(c *Client, mfest *v1.IndexManifest) func(ref name.Reference) (*v1.IndexManifest, error) {
+	IndexHandlerFn := func(ref name.Reference) (*v1.IndexManifest, error) {
+		if mfest != nil {
+			return mfest, nil
+		}
+
+		fetchOpts, err := withOptions([]index.Option{
+			index.WithInsecure(true),
+		}, c.keychain)
+		if err != nil {
+			return nil, err
+		}
+
+		idx, err := c.indexFactory.FetchIndex(ref.Name(), fetchOpts...)
+		if err != nil {
+			return nil, err
+		}
+
+		ii, ok := idx.(*imgutil.ManifestHandler)
+		if !ok {
+			return nil, errors.Errorf("unknown handler: %s", style.Symbol("ManifestHandler"))
+		}
+
+		return ii.IndexManifest()
+	}
+
+	return IndexHandlerFn
+}
+
+func createImageIndex(c *Client, repoName string) (err error) {
+	opts, err := withOptions([]index.Option{
+		index.WithInsecure(true),
+	}, c.keychain)
+	if err != nil {
+		return err
+	}
+
+	// Delete ImageIndex if already exists
+	if idx, err := c.indexFactory.LoadIndex(repoName, opts...); err == nil {
+		if err = idx.Delete(); err != nil {
+			return err
+		}
+	}
+
+	// Create a new ImageIndex. the newly created index has `Image(hash v1.Hash)` `ImageIndex(hash v1.Hash)` that always returns error.
+	_, err = c.indexFactory.CreateIndex(repoName, opts...)
+	return err
+}
+
+func loadImageIndex(c *Client, repoName string) (imgutil.ImageIndex, error) {
+	opts, err := withOptions([]index.Option{
+		index.WithInsecure(true),
+	}, c.keychain)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.indexFactory.LoadIndex(repoName, opts...)
 }

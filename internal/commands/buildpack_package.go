@@ -5,13 +5,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/imgutil/index"
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
@@ -39,9 +36,6 @@ type BuildpackPackageFlags struct {
 // BuildpackPackager packages buildpacks
 type BuildpackPackager interface {
 	PackageBuildpack(ctx context.Context, options client.PackageBuildpackOptions) error
-	IndexManifest(ctx context.Context, ref name.Reference) (*v1.IndexManifest, error)
-	LoadIndex(reponame string, opts ...index.Option) (imgutil.ImageIndex, error)
-	CreateIndex(repoName string, opts ...index.Option) (imgutil.ImageIndex, error)
 }
 
 // PackageConfigReader reads BuildpackPackage configs
@@ -97,7 +91,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				}
 			}
 
-			pkgMultiArchConfig := pubbldpkg.NewMultiArchPackage(bpPackageCfg, relativeBaseDir, logger)
+			pkgMultiArchConfig := pubbldpkg.NewMultiArchPackage(bpPackageCfg, relativeBaseDir)
 			var bpPath string
 			if flags.Path != "" {
 				if bpPath, err = filepath.Abs(flags.Path); err != nil {
@@ -110,7 +104,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			if err != nil {
 				return err
 			}
-			bpMultiArchConfig := pubbldpkg.NewMultiArchBuildpack(bpConfig, bpPath, flags.Flatten, targets, logger)
+			bpMultiArchConfig := pubbldpkg.NewMultiArchBuildpack(bpConfig, bpPath, flags.Flatten, targets)
 			bpConfigs, err := bpMultiArchConfig.MultiArchConfigs()
 			if err != nil {
 				return err
@@ -132,66 +126,24 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			}
 
 			var mfest *v1.IndexManifest
-			getIndexManifestFn := func(ref name.Reference) (*v1.IndexManifest, error) {
-				if mfest != nil {
-					return mfest, nil
-				}
-				return packager.IndexManifest(cmd.Context(), ref)
-			}
-
-			// packager.LoadIndex(b)
-
-			if len(bpConfigs) > 0 {
-				for _, bpConfig := range bpConfigs {
-					if err = bpConfig.CopyBuildpackToml(getIndexManifestFn); err != nil {
-						return err
-					}
-					defer bpConfig.CleanBuildpackToml()
-
-					targets := bpConfig.Targets()
-					if bpConfig.BuildpackType() != pubbldpkg.Composite {
-						target := targets[0]
-						distro := target.Distributions[0]
-						if err = pkgMultiArchConfig.CopyPackageToml(bpPath, target, distro, distro.Versions[0], getIndexManifestFn); err != nil {
-							return err
-						}
-						defer pkgMultiArchConfig.CleanPackageToml(bpPath, target, distro, distro.Versions[0])
-					}
-
-					if !flags.Flatten && bpConfig.Flatten {
-						logger.Warn("Flattening a buildpack package could break the distribution specification. Please use it with caution.")
-					}
-
-					if err := packager.PackageBuildpack(cmd.Context(), client.PackageBuildpackOptions{
-						RelativeBaseDir: bpConfig.RelativeBaseDir(),
-						Name:            bpName,
-						Format:          flags.Format,
-						Config:          pkgMultiArchConfig.Config(),
-						Publish:         flags.Publish,
-						PullPolicy:      pullPolicy,
-						Registry:        flags.BuildpackRegistry,
-						Flatten:         bpConfig.Flatten,
-						FlattenExclude:  bpConfig.FlattenExclude,
-						Labels:          bpConfig.Labels,
-					}); err != nil {
-						return err
-					}
-				}
-			} else {
-				if err := packager.PackageBuildpack(cmd.Context(), client.PackageBuildpackOptions{
-					RelativeBaseDir: relativeBaseDir,
-					Name:            bpName,
-					Format:          flags.Format,
-					Config:          bpPackageCfg,
-					Publish:         flags.Publish,
-					PullPolicy:      pullPolicy,
-					Registry:        flags.BuildpackRegistry,
-					Flatten:         flags.Flatten,
-					FlattenExclude:  flags.FlattenExclude,
-					Labels:          flags.Label,
-				}); err != nil {
-					return err
-				}
+			if err := packager.PackageBuildpack(cmd.Context(), client.PackageBuildpackOptions{
+				RelativeBaseDir: relativeBaseDir,
+				Name:            bpName,
+				Format:          flags.Format,
+				Config:          bpPackageCfg,
+				Publish:         flags.Publish,
+				PullPolicy:      pullPolicy,
+				Registry:        flags.BuildpackRegistry,
+				Flatten:         flags.Flatten,
+				FlattenExclude:  flags.FlattenExclude,
+				Labels:          flags.Label,
+				IndexOptions: pubbldpkg.IndexOptions{
+					BPConfigs: &bpConfigs,
+					PkgConfig: pkgMultiArchConfig,
+					Manifest:  mfest,
+				},
+			}); err != nil {
+				return err
 			}
 
 			action := "created"

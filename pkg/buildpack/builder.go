@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/index"
 	"github.com/buildpacks/imgutil/layer"
+	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/layout"
@@ -25,21 +26,16 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/dist"
+	pkgImg "github.com/buildpacks/pack/pkg/image"
 )
 
 type ImageFactory interface {
-	NewImage(repoName string, local bool, platform imgutil.Platform) (imgutil.Image, error)
+	NewImage(repoName string, local bool, target dist.Target) (imgutil.Image, error)
 }
 
 type IndexFactory interface {
-	// create ManifestList locally
-	CreateIndex(repoName string, opts ...index.Option) (imgutil.ImageIndex, error)
 	// load ManifestList from local storage with the given name
 	LoadIndex(reponame string, opts ...index.Option) (imgutil.ImageIndex, error)
-	// Fetch ManifestList from Registry with the given name
-	FetchIndex(name string, opts ...index.Option) (imgutil.ImageIndex, error)
-	// FindIndex will find Index locally then on remote
-	FindIndex(name string, opts ...index.Option) (imgutil.ImageIndex, error)
 }
 
 type WorkableImage interface {
@@ -458,12 +454,12 @@ func newLayoutImage(platform imgutil.Platform) (*layoutImage, error) {
 	return &layoutImage{Image: i}, nil
 }
 
-func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, platform imgutil.Platform, labels map[string]string) (imgutil.Image, error) {
+func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, target dist.Target, labels map[string]string) (imgutil.Image, error) {
 	if err := b.validate(); err != nil {
 		return nil, err
 	}
 
-	image, err := b.imageFactory.NewImage(repoName, !publish, platform)
+	image, err := b.imageFactory.NewImage(repoName, !publish, target)
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating image")
 	}
@@ -499,6 +495,52 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, platform img
 
 	if err := image.Save(); err != nil {
 		return nil, err
+	}
+
+	ref, err := name.ParseReference(repoName)
+	if err != nil {
+		return nil, err
+	}
+
+	idx, err := b.indexFactory.LoadIndex(repoName)
+	if err != nil {
+		return nil, err
+	}
+
+	switch image.Kind() {
+	case pkgImg.LOCAL_LAYOUT:
+		fallthrough
+	case pkgImg.LOCAL:
+		id, err := image.Identifier()
+		if err != nil {
+			return nil, err
+		}
+
+		digest := ref.Context().Digest("sha256:" + id.String())
+		if err := idx.Add(digest); err != nil {
+			return nil, err
+		}
+	case pkgImg.LAYOUT:
+		fallthrough
+	case pkgImg.REMOTE:
+		id, err := image.Identifier()
+		if err != nil {
+			return nil, err
+		}
+		digest, err := name.ParseReference(id.String(), name.Insecure, name.WeakValidation)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := idx.Add(digest); err != nil {
+			return nil, err
+		}
+	}
+
+	if publish {
+		if err := idx.Push(imgutil.WithInsecure(true)); err != nil {
+			return nil, err
+		}
 	}
 
 	return image, nil

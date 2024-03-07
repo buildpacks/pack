@@ -26,6 +26,13 @@ import (
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
+const (
+	LOCAL        = "local"
+	LOCAL_LAYOUT = "locallayout"
+	REMOTE       = "remote"
+	LAYOUT       = "layout"
+)
+
 // FetcherOption is a type of function that mutate settings on the client.
 // Values in these functions are set through currying.
 type FetcherOption func(c *Fetcher)

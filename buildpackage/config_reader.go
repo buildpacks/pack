@@ -1,7 +1,6 @@
 package buildpackage
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -35,18 +34,9 @@ func DefaultConfig() Config {
 	}
 }
 
-func platformRootDirectory(target dist.Target, distro dist.Distribution, version string) string {
-	return fmt.Sprintf(
-		"%s",
-		strings.Join(
-			[]string{
-				target.OS,
-				target.Arch,
-				target.ArchVariant,
-				strings.Join([]string{distro.Name, version}, distroDelim),
-			}, platformDelim,
-		),
-	)
+func platformRootDirectory(target dist.Target, distroName, version string) string {
+	distroStr := strings.Join([]string{distroName, version}, distroDelim)
+	return strings.Join([]string{target.OS, target.Arch, target.ArchVariant, distroStr}, platformDelim)
 }
 
 func DefaultExtensionConfig() Config {

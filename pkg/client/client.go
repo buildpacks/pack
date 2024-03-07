@@ -27,8 +27,6 @@ import (
 	"github.com/buildpacks/imgutil/remote"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack"
@@ -37,13 +35,12 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
-const (
-	xdgRuntimePath = "XDG_RUNTIME_DIR"
-)
+const xdgRuntimePath = "XDG_RUNTIME_DIR"
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_docker_client.go github.com/docker/docker/client CommonAPIClient
 
@@ -78,7 +75,7 @@ type BlobDownloader interface {
 type ImageFactory interface {
 	// NewImage initializes an image object with required settings so that it
 	// can be written either locally or to a registry.
-	NewImage(repoName string, local bool, platform imgutil.Platform) (imgutil.Image, error)
+	NewImage(repoName string, local bool, target dist.Target) (imgutil.Image, error)
 }
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_index_factory.go github.com/buildpacks/pack/pkg/client IndexFactory
@@ -93,8 +90,6 @@ type IndexFactory interface {
 	FetchIndex(name string, opts ...index.Option) (imgutil.ImageIndex, error)
 	// FindIndex will find Index locally then on remote
 	FindIndex(name string, opts ...index.Option) (imgutil.ImageIndex, error)
-
-	IndexManifest(ctx context.Context, ref name.Reference) (*v1.IndexManifest, error)
 }
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_buildpack_downloader.go github.com/buildpacks/pack/pkg/client BuildpackDownloader
@@ -323,12 +318,12 @@ type imageFactory struct {
 	keychain     authn.Keychain
 }
 
-func (f *imageFactory) NewImage(repoName string, daemon bool, platform imgutil.Platform) (imgutil.Image, error) {
+func (f *imageFactory) NewImage(repoName string, daemon bool, target dist.Target) (imgutil.Image, error) {
 	if daemon {
-		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(platform))
+		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(*target.Platform()))
 	}
 
-	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform))
+	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(*target.Platform()))
 }
 
 type indexFactory struct {
@@ -390,39 +385,6 @@ func (f *indexFactory) CreateIndex(repoName string, opts ...index.Option) (imgut
 	}
 
 	return index.NewIndex(repoName, opts...)
-}
-
-func (f *indexFactory) IndexManifest(ctx context.Context, ref name.Reference) (*v1.IndexManifest, error) {
-	opts, err := withOptions([]index.Option{
-		index.WithInsecure(true),
-	}, f.keychain)
-	if err != nil {
-		return nil, err
-	}
-
-	idx, err := f.FetchIndex(ref.Name(), opts...)
-	if err != nil {
-		return nil, err
-	}
-
-	ii, ok := idx.(*imgutil.ManifestHandler)
-	if !ok {
-		return nil, errors.New("unknown instance: ImageIndex")
-	}
-
-	return ii.IndexManifest()
-}
-
-func (c *Client) IndexManifest(ctx context.Context, ref name.Reference) (*v1.IndexManifest, error) {
-	return c.indexFactory.IndexManifest(ctx, ref)
-}
-
-func (c *Client) CreateIndex(repoName string, opts ...index.Option) (imgutil.ImageIndex, error) {
-	return c.indexFactory.CreateIndex(repoName, opts...)
-}
-
-func (c *Client) LoadIndex(reponame string, opts ...index.Option) (imgutil.ImageIndex, error) {
-	return c.indexFactory.LoadIndex(reponame, opts...)
 }
 
 func withOptions(ops []index.Option, keychain authn.Keychain) ([]index.Option, error) {
