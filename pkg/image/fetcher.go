@@ -42,6 +42,13 @@ func WithRegistryMirrors(registryMirrors map[string]string) FetcherOption {
 	}
 }
 
+// WithInsecureRegistries supply your own insecure registries.
+func WithInsecureRegistries(insecureRegistries []string) FetcherOption {
+	return func(c *Fetcher) {
+		c.insecureRegistries = insecureRegistries
+	}
+}
+
 func WithKeychain(keychain authn.Keychain) FetcherOption {
 	return func(c *Fetcher) {
 		c.keychain = keychain
@@ -54,17 +61,19 @@ type DockerClient interface {
 }
 
 type Fetcher struct {
-	docker          DockerClient
-	logger          logging.Logger
-	registryMirrors map[string]string
-	keychain        authn.Keychain
+	docker             DockerClient
+	logger             logging.Logger
+	registryMirrors    map[string]string
+	keychain           authn.Keychain
+	insecureRegistries []string
 }
 
 type FetchOptions struct {
-	Daemon       bool
-	Platform     string
-	PullPolicy   PullPolicy
-	LayoutOption LayoutOption
+	Daemon             bool
+	Platform           string
+	PullPolicy         PullPolicy
+	LayoutOption       LayoutOption
+	InsecureRegistries []string
 }
 
 func NewFetcher(logger logging.Logger, docker DockerClient, opts ...FetcherOption) *Fetcher {
@@ -137,7 +146,16 @@ func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 }
 
 func (f *Fetcher) fetchRemoteImage(name string) (imgutil.Image, error) {
-	image, err := remote.NewImage(name, f.keychain, remote.FromBaseImage(name))
+	var options []remote.ImageOption
+
+	if len(f.insecureRegistries) > 0 {
+		for _, registry := range f.insecureRegistries {
+			options = append(options, remote.WithRegistrySetting(registry, true))
+		}
+	}
+
+	image, err := remote.NewImage(name, f.keychain, append(options, remote.FromBaseImage(name))...)
+
 	if err != nil {
 		return nil, err
 	}

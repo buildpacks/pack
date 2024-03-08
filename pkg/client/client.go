@@ -102,9 +102,10 @@ type Client struct {
 	lifecycleExecutor   LifecycleExecutor
 	buildpackDownloader BuildpackDownloader
 
-	experimental    bool
-	registryMirrors map[string]string
-	version         string
+	experimental       bool
+	registryMirrors    map[string]string
+	version            string
+	insecureRegistries []string
 }
 
 // Option is a type of function that mutate settings on the client.
@@ -187,6 +188,13 @@ func WithRegistryMirrors(registryMirrors map[string]string) Option {
 	}
 }
 
+// WithInsecureRegistries sets insecure registry to pull images from.
+func WithInsecureRegistries(insecureRegistries []string) Option {
+	return func(c *Client) {
+		c.insecureRegistries = insecureRegistries
+	}
+}
+
 // WithKeychain sets keychain of credentials to image registries
 func WithKeychain(keychain authn.Keychain) Option {
 	return func(c *Client) {
@@ -231,7 +239,7 @@ func NewClient(opts ...Option) (*Client, error) {
 	}
 
 	if client.imageFetcher == nil {
-		client.imageFetcher = image.NewFetcher(client.logger, client.docker, image.WithRegistryMirrors(client.registryMirrors), image.WithKeychain(client.keychain))
+		client.imageFetcher = image.NewFetcher(client.logger, client.docker, image.WithRegistryMirrors(client.registryMirrors), image.WithKeychain(client.keychain), image.WithInsecureRegistries(client.insecureRegistries))
 	}
 
 	if client.imageFactory == nil {
