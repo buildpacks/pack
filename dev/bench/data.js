@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1709909267196,
+  "lastUpdate": 1709912831304,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -5572,6 +5572,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 54010597489,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2a15554749a9e4520d9d8b1c4c96d2f48eec043b",
+          "message": "Merge pull request #2023 from Parthiba-Hazra/retag\n\nAdd an option to retag rather than replacing the target image while rebasing",
+          "timestamp": "2024-03-08T10:45:24-05:00",
+          "tree_id": "34851455c8ac44518b8db39d9c2b35a9e041ee14",
+          "url": "https://github.com/buildpacks/pack/commit/2a15554749a9e4520d9d8b1c4c96d2f48eec043b"
+        },
+        "date": 1709912830192,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 8223859310,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2696993610,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 58115389385,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
