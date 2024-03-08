@@ -540,7 +540,7 @@ func (b *PackageBuilder) SaveAsFile(path, version string, target dist.Target, la
 		}
 	}
 
-	if annos := target.Annotations(); len(annos) != 0 {
+	if annos, err := target.Annotations(); len(annos) != 0 && err == nil {
 		for k, v := range labels {
 			annos[k] = v
 		}
@@ -705,13 +705,11 @@ func (b *PackageBuilder) SaveAsImage(repoName, version string, publish bool, tar
 	urls, _ := image.URLs()
 	annotations, _ := image.Annotations()
 
-	distro := target.Distributions[0]
-
 	var featuresFound, osFeaturesFound, urlsFound, annosFound = true, true, true, true
-	featuresFound = sliceContains(features, distro.Specs.Features)
-	osFeaturesFound = sliceContains(osFeatures, distro.Specs.OSFeatures)
-	urlsFound = sliceContains(urls, distro.Specs.URLs)
-	annosFound = mapContains(annotations, distro.Specs.Annotations)
+	featuresFound = sliceContains(features, target.Specs.Features)
+	osFeaturesFound = sliceContains(osFeatures, target.Specs.OSFeatures)
+	urlsFound = sliceContains(urls, target.Specs.URLs)
+	annosFound = mapContains(annotations, target.Specs.Annotations)
 	if version != "" {
 		if err := image.SetOSVersion(version); err != nil {
 			return nil, err
@@ -740,7 +738,10 @@ func (b *PackageBuilder) SaveAsImage(repoName, version string, publish bool, tar
 		}
 
 		if !annosFound {
-			annos := target.Annotations()
+			annos, err := target.Annotations()
+			if err != nil {
+				return nil, err
+			}
 			if len(annotations) == 0 {
 				annotations = make(map[string]string)
 			}
@@ -790,7 +791,11 @@ func (b *PackageBuilder) SaveAsImage(repoName, version string, publish bool, tar
 		}
 
 		if !annosFound {
-			annos := target.Annotations()
+			annos, err := target.Annotations()
+			if err != nil {
+				return nil, err
+			}
+
 			if len(annotations) == 0 {
 				annotations = make(map[string]string)
 			}
@@ -860,25 +865,24 @@ func updateImagePlatform(image imgutil.Image, target dist.Target) error {
 		}
 	}
 
-	distro := target.Distributions[0]
 	switch image.Kind() {
 	case pkgImg.LOCAL:
 		return nil
 	default:
-		if len(distro.Specs.Features) > 0 {
-			if err := image.SetFeatures(distro.Specs.Features); err != nil {
+		if len(target.Specs.Features) > 0 {
+			if err := image.SetFeatures(target.Specs.Features); err != nil {
 				return err
 			}
 		}
 
-		if len(distro.Specs.OSFeatures) > 0 {
-			if err := image.SetOSFeatures(distro.Specs.OSFeatures); err != nil {
+		if len(target.Specs.OSFeatures) > 0 {
+			if err := image.SetOSFeatures(target.Specs.OSFeatures); err != nil {
 				return err
 			}
 		}
 
-		if len(distro.Specs.Annotations) > 0 {
-			if err := image.SetAnnotations(distro.Specs.Annotations); err != nil {
+		if len(target.Specs.Annotations) > 0 {
+			if err := image.SetAnnotations(target.Specs.Annotations); err != nil {
 				return err
 			}
 		}
@@ -912,7 +916,8 @@ func getImageDigest(repoName string, image imgutil.Image) (digest name.Digest, e
 		}
 		return name.NewDigest(id.String(), name.Insecure, name.WeakValidation)
 	default:
-		return digest, fmt.Errorf("unsupported image type: %s", k)
+		// fmt.Errorf("unsupported image type: %s", k)
+		return digest, nil
 	}
 }
 

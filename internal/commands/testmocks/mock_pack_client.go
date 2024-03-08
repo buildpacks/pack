@@ -9,8 +9,6 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	name "github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 
 	client "github.com/buildpacks/pack/pkg/client"
 )
@@ -19,11 +17,6 @@ import (
 type MockPackClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockPackClientMockRecorder
-}
-
-// PackageMultiArchBuildpack implements commands.PackClient.
-func (*MockPackClient) PackageMultiArchBuildpack(ctx context.Context, opts client.PackageBuildpackOptions) error {
-	panic("unimplemented")
 }
 
 // MockPackClientMockRecorder is the mock recorder for MockPackClient.
@@ -155,21 +148,6 @@ func (mr *MockPackClientMockRecorder) ExistsManifest(arg0, arg1 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsManifest", reflect.TypeOf((*MockPackClient)(nil).ExistsManifest), arg0, arg1)
 }
 
-// IndexManifest mocks base method.
-func (m *MockPackClient) IndexManifest(arg0 context.Context, arg1 name.Reference) (*v1.IndexManifest, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IndexManifest", arg0, arg1)
-	ret0, _ := ret[0].(*v1.IndexManifest)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// IndexManifest indicates an expected call of IndexManifest.
-func (mr *MockPackClientMockRecorder) IndexManifest(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IndexManifest", reflect.TypeOf((*MockPackClient)(nil).IndexManifest), arg0, arg1)
-}
-
 // InspectBuilder mocks base method.
 func (m *MockPackClient) InspectBuilder(arg0 string, arg1 bool, arg2 ...client.BuilderInspectionModifier) (*client.BuilderInfo, error) {
 	m.ctrl.T.Helper()
@@ -289,6 +267,20 @@ func (m *MockPackClient) PackageExtension(arg0 context.Context, arg1 client.Pack
 func (mr *MockPackClientMockRecorder) PackageExtension(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackageExtension", reflect.TypeOf((*MockPackClient)(nil).PackageExtension), arg0, arg1)
+}
+
+// PackageMultiArchBuildpack mocks base method.
+func (m *MockPackClient) PackageMultiArchBuildpack(arg0 context.Context, arg1 client.PackageBuildpackOptions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PackageMultiArchBuildpack", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PackageMultiArchBuildpack indicates an expected call of PackageMultiArchBuildpack.
+func (mr *MockPackClientMockRecorder) PackageMultiArchBuildpack(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackageMultiArchBuildpack", reflect.TypeOf((*MockPackClient)(nil).PackageMultiArchBuildpack), arg0, arg1)
 }
 
 // PullBuildpack mocks base method.

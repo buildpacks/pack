@@ -136,9 +136,9 @@ func (m *multiArchBuildpack) processTarget(target dist.Target, distro dist.Distr
 			WithOrder:        m.config.WithOrder,
 		},
 		Platform:        dist.Platform{OS: target.OS},
-		Flatten:         m.flatten || distro.Specs.Flatten,
-		FlattenExclude:  distro.Specs.FlattenExclude,
-		Labels:          distro.Specs.Labels,
+		Flatten:         m.flatten || target.Specs.Flatten,
+		FlattenExclude:  target.Specs.FlattenExclude,
+		Labels:          target.Specs.Labels,
 		relativeBaseDir: rel,
 		bpType:          bpType,
 	}, nil
@@ -149,19 +149,19 @@ func processTarget(target dist.Target, distro dist.Distribution, version string)
 		OS:          target.OS,
 		Arch:        target.Arch,
 		ArchVariant: target.ArchVariant,
+		Specs: dist.TargetSpecs{
+			Features:       target.Specs.Features,
+			OSFeatures:     target.Specs.OSFeatures,
+			URLs:           target.Specs.URLs,
+			Annotations:    target.Specs.Annotations,
+			Flatten:        target.Specs.Flatten,
+			FlattenExclude: target.Specs.FlattenExclude,
+			Labels:         target.Specs.Labels,
+		},
 		Distributions: []dist.Distribution{
 			{
 				Name:     distro.Name,
 				Versions: []string{version},
-				Specs: dist.TargetSpecs{
-					Features:       distro.Specs.Features,
-					OSFeatures:     distro.Specs.OSFeatures,
-					URLs:           distro.Specs.URLs,
-					Annotations:    distro.Specs.Annotations,
-					Flatten:        distro.Specs.Flatten,
-					FlattenExclude: distro.Specs.FlattenExclude,
-					Labels:         distro.Specs.Labels,
-				},
 			},
 		},
 	}

@@ -181,6 +181,7 @@ func (c *Client) validateOSPlatform(ctx context.Context, os string, publish bool
 	return nil
 }
 
+// PackageBuildpack packages multiple buildpack(s) into image index with each buildpack into either an image or file.
 func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
 	if opts.IndexOptions.BPConfigs == nil && len(*opts.IndexOptions.BPConfigs) == 0 {
 		return errors.Errorf("%s must not be nil", style.Symbol("IndexOptions"))

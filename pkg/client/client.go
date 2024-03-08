@@ -320,10 +320,12 @@ type imageFactory struct {
 
 func (f *imageFactory) NewImage(repoName string, daemon bool, target dist.Target) (imgutil.Image, error) {
 	if daemon {
-		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(*target.Platform()))
+		// TODO: add *target.Platform()
+		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(imgutil.Platform{}))
 	}
 
-	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(*target.Platform()))
+	// TODO: add *target.Platform()
+	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(imgutil.Platform{}))
 }
 
 type indexFactory struct {

@@ -58,12 +58,12 @@ type Target struct {
 	Arch          string         `json:"arch" toml:"arch"`
 	ArchVariant   string         `json:"variant,omitempty" toml:"variant,omitempty"`
 	Distributions []Distribution `json:"distributions,omitempty" toml:"distributions,omitempty"`
+	Specs         TargetSpecs    `json:"specs,omitempty" toml:"specs,omitempty"`
 }
 
 type Distribution struct {
-	Name     string      `json:"name,omitempty" toml:"name,omitempty"`
-	Versions []string    `json:"versions,omitempty" toml:"versions,omitempty"`
-	Specs    TargetSpecs `json:"specs,omitempty" toml:"specs,omitempty"`
+	Name     string   `json:"name,omitempty" toml:"name,omitempty"`
+	Versions []string `json:"versions,omitempty" toml:"versions,omitempty"`
 }
 
 type TargetSpecs struct {
@@ -74,27 +74,31 @@ type TargetSpecs struct {
 	Flatten        bool              `json:"flatten,omitempty" toml:"flatten,omitempty"`
 	FlattenExclude []string          `json:"flatten.exclude,omitempty" toml:"flatten.exclude,omitempty"`
 	Labels         map[string]string `json:"labels,omitempty" toml:"labels,omitempty"`
+	Path           string            `json:"path,omitempty" toml:"path,omitempty"`
 }
 
 func (t *Target) Platform() *v1.Platform {
-	distro := t.Distributions[0]
 	return &v1.Platform{
 		OS:           t.OS,
 		Architecture: t.Arch,
 		Variant:      t.ArchVariant,
-		Features:     distro.Specs.Features,
-		OSFeatures:   distro.Specs.OSFeatures,
+		Features:     t.Specs.Features,
+		OSFeatures:   t.Specs.OSFeatures,
 	}
 }
 
-func (t *Target) Annotations() map[string]string {
+func (t *Target) Annotations() (map[string]string, error) {
+	if len(t.Distributions) == 0 {
+		return nil, errors.New("unable to get annotations: distroless target provided.")
+	}
+
 	distro := t.Distributions[0]
 	return map[string]string{
 		"io.buildpacks.base.distro.name":    distro.Name,
 		"io.buildpacks.base.distro.version": distro.Versions[0],
-	}
+	}, nil
 }
 
 func (t *Target) URLs() []string {
-	return t.Distributions[0].Specs.URLs
+	return t.Specs.URLs
 }
