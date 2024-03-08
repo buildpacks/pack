@@ -131,9 +131,30 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 				accessChecker.RegistriesToFail = nil
 			})
 
-			it("selects the first accessible run-image", func() {
-				runImageName := subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo.RunImage, nil, true, accessChecker)
-				assert.Equal(runImageName, defaultMirror)
+			when("publish is true", func() {
+				it("selects the first accessible run-image", func() {
+					runImageName := subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo.RunImage, nil, true, accessChecker)
+					assert.Equal(runImageName, defaultMirror)
+				})
+			})
+
+			when("publish is false", func() {
+				it.Before(func() {
+					stackInfo = builder.StackMetadata{
+						RunImage: builder.RunImageMetadata{
+							Image: "stack/run-image",
+						},
+					}
+					accessChecker.RegistriesToFail = []string{
+						stackInfo.RunImage.Image,
+					}
+				})
+
+				it("selects the given run-image", func() {
+					// issue: https://github.com/buildpacks/pack/issues/2078
+					runImageName := subject.resolveRunImage("", "", "", stackInfo.RunImage, nil, false, accessChecker)
+					assert.Equal(runImageName, "stack/run-image")
+				})
 			})
 		})
 	})
