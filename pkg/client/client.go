@@ -84,7 +84,7 @@ type BuildpackDownloader interface {
 
 // AccessChecker is an interface for checking remote images for read access
 type AccessChecker interface {
-	Check(repo string) bool
+	Check(repo string, publish bool) bool
 }
 
 // Client is an orchestration object, it contains all parameters needed to
