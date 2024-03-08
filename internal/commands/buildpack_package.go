@@ -36,6 +36,7 @@ type BuildpackPackageFlags struct {
 // BuildpackPackager packages buildpacks
 type BuildpackPackager interface {
 	PackageBuildpack(ctx context.Context, options client.PackageBuildpackOptions) error
+	PackageMultiArchBuildpack(ctx context.Context, opts client.PackageBuildpackOptions) error
 }
 
 // PackageConfigReader reads BuildpackPackage configs
@@ -126,7 +127,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			}
 
 			var mfest *v1.IndexManifest
-			if err := packager.PackageBuildpack(cmd.Context(), client.PackageBuildpackOptions{
+			pkgBPOpts := client.PackageBuildpackOptions{
 				RelativeBaseDir: relativeBaseDir,
 				Name:            bpName,
 				Format:          flags.Format,
@@ -137,13 +138,23 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				Flatten:         flags.Flatten,
 				FlattenExclude:  flags.FlattenExclude,
 				Labels:          flags.Label,
-				IndexOptions: pubbldpkg.IndexOptions{
+				Version:         bpConfig.WithInfo.Version,
+			}
+
+			if len(bpConfigs) > 1 {
+				pkgBPOpts.IndexOptions = pubbldpkg.IndexOptions{
 					BPConfigs: &bpConfigs,
 					PkgConfig: pkgMultiArchConfig,
 					Manifest:  mfest,
-				},
-			}); err != nil {
-				return err
+				}
+
+				if err := packager.PackageMultiArchBuildpack(cmd.Context(), pkgBPOpts); err != nil {
+					return err
+				}
+			} else {
+				if err := packager.PackageBuildpack(cmd.Context(), pkgBPOpts); err != nil {
+					return err
+				}
 			}
 
 			action := "created"

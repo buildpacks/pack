@@ -13,6 +13,11 @@ type FakeBuildpackPackager struct {
 	CreateCalledWithOptions client.PackageBuildpackOptions
 }
 
+// PackageMultiArchBuildpack implements commands.BuildpackPackager.
+func (*FakeBuildpackPackager) PackageMultiArchBuildpack(ctx context.Context, opts client.PackageBuildpackOptions) error {
+	panic("unimplemented")
+}
+
 // IndexManifest implements commands.BuildpackPackager.
 func (*FakeBuildpackPackager) IndexManifest(ctx context.Context, ref name.Reference) (*v1.IndexManifest, error) {
 	panic("unimplemented")

@@ -82,8 +82,19 @@ func (t *Target) Platform() *v1.Platform {
 		OS:           t.OS,
 		Architecture: t.Arch,
 		Variant:      t.ArchVariant,
-		OSVersion:    distro.Versions[0],
 		Features:     distro.Specs.Features,
 		OSFeatures:   distro.Specs.OSFeatures,
 	}
+}
+
+func (t *Target) Annotations() map[string]string {
+	distro := t.Distributions[0]
+	return map[string]string{
+		"io.buildpacks.base.distro.name":    distro.Name,
+		"io.buildpacks.base.distro.version": distro.Versions[0],
+	}
+}
+
+func (t *Target) URLs() []string {
+	return t.Distributions[0].Specs.URLs
 }

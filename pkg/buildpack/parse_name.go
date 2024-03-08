@@ -3,6 +3,14 @@ package buildpack
 import (
 	"fmt"
 	"strings"
+
+	"github.com/buildpacks/pack/pkg/dist"
+)
+
+const (
+	platformDelim     = "/"
+	platformSafeDelim = "-"
+	distroDelim       = "@"
 )
 
 // ParseIDLocator parses a buildpack locator in the following formats into its ID and version.
@@ -56,4 +64,16 @@ func parseBuilderLocator(locator string) (path string) {
 	return strings.TrimPrefix(
 		strings.TrimPrefix(locator, deprecatedFromBuilderPrefix+":"),
 		fromBuilderPrefix+":")
+}
+
+func PlatformSafeName(uri string, target dist.Target) string {
+	distro := target.Distributions[0]
+	platformDir := PlatformRootDirectory(target, distro.Name, distro.Versions[0])
+
+	return uri + platformSafeDelim + strings.ReplaceAll(platformDir, "/", platformSafeDelim)
+}
+
+func PlatformRootDirectory(target dist.Target, distroName, version string) string {
+	distroStr := strings.Join([]string{distroName, version}, distroDelim)
+	return strings.Join([]string{target.OS, target.Arch, target.ArchVariant, distroStr}, platformDelim)
 }

@@ -21,6 +21,11 @@ type MockPackClient struct {
 	recorder *MockPackClientMockRecorder
 }
 
+// PackageMultiArchBuildpack implements commands.PackClient.
+func (*MockPackClient) PackageMultiArchBuildpack(ctx context.Context, opts client.PackageBuildpackOptions) error {
+	panic("unimplemented")
+}
+
 // MockPackClientMockRecorder is the mock recorder for MockPackClient.
 type MockPackClientMockRecorder struct {
 	mock *MockPackClient

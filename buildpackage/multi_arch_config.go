@@ -21,12 +21,9 @@ import (
 )
 
 const (
-	distroDelim       = "@"
-	DigestDelim       = "@"
-	platformDelim     = "/"
-	platformSafeDelim = "-"
-	PackageToml       = "package.toml"
-	BuildpackToml     = "buildpack.toml"
+	DigestDelim   = "@"
+	PackageToml   = "package.toml"
+	BuildpackToml = "buildpack.toml"
 )
 
 type BuildpackType int
@@ -121,7 +118,7 @@ func (m *multiArchBuildpack) processTarget(target dist.Target, distro dist.Distr
 		bpType = Composite
 	}
 
-	rel, err := filepath.Abs(filepath.Join(m.relativeBaseDir, platformRootDirectory(target, distro.Name, version)))
+	rel, err := filepath.Abs(filepath.Join(m.relativeBaseDir, buildpack.PlatformRootDirectory(target, distro.Name, version)))
 	if err != nil {
 		return MultiArchBuildpackConfig{}, err
 	}
@@ -186,7 +183,7 @@ func (m *MultiArchBuildpackConfig) CopyBuildpackToml(getIndexManifest func(ref n
 		}
 
 		distro := target.Distributions[0]
-		bpPath := filepath.Join(platformRootDirectory(target, distro.Name, distro.Versions[0]), BuildpackToml)
+		bpPath := filepath.Join(buildpack.PlatformRootDirectory(target, distro.Name, distro.Versions[0]), BuildpackToml)
 		path, err := filepath.Abs(filepath.Join(m.relativeBaseDir, bpPath))
 		if err != nil {
 			return err
@@ -253,7 +250,7 @@ func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target
 			}
 		}
 
-		platformRootDir := platformRootDirectory(target, distro.Name, version)
+		platformRootDir := buildpack.PlatformRootDirectory(target, distro.Name, version)
 		path, err := filepath.Abs(filepath.Join(relativeTo, platformRootDir, PackageToml))
 		if err != nil {
 			return err
@@ -278,7 +275,7 @@ func getRelativeUri(uri, relativeBaseDir string, target *dist.Target, getIndexMa
 	case buildpack.URILocator:
 		// returns file://<file-name>-[os][-arch][-variant]-[name@version]
 		// for multi-arch we need target specific path appended at the end of name
-		uri = targetSpecificUri(uri, *target)
+		uri = buildpack.PlatformSafeName(uri, *target)
 		return paths.FilePathToURI(uri, relativeBaseDir)
 	case buildpack.PackageLocator:
 		if target == nil {
@@ -289,13 +286,6 @@ func getRelativeUri(uri, relativeBaseDir string, target *dist.Target, getIndexMa
 	default:
 		return uri, nil
 	}
-}
-
-func targetSpecificUri(uri string, target dist.Target) string {
-	distro := target.Distributions[0]
-	platformDir := platformRootDirectory(target, distro.Name, distro.Versions[0])
-
-	return uri + platformSafeDelim + strings.ReplaceAll(platformDir, "/", platformSafeDelim)
 }
 
 func parseURItoString(uri string, target dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (string, error) {
@@ -322,7 +312,7 @@ func parseURItoString(uri string, target dist.Target, getIndexManifest func(ref 
 }
 
 func (m *MultiArchPackage) CleanPackageToml(relativeTo string, target dist.Target, distroName, version string) error {
-	path, err := filepath.Abs(filepath.Join(relativeTo, platformRootDirectory(target, distroName, version), PackageToml))
+	path, err := filepath.Abs(filepath.Join(relativeTo, buildpack.PlatformRootDirectory(target, distroName, version), PackageToml))
 	if err != nil {
 		return err
 	}

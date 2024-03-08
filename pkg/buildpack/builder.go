@@ -17,6 +17,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/pkg/errors"
 
@@ -41,16 +42,148 @@ type IndexFactory interface {
 type WorkableImage interface {
 	SetLabel(string, string) error
 	AddLayerWithDiffID(path, diffID string) error
+	SetOS(string) error
+	SetArchitecture(string) error
+	SetVariant(string) error
+	SetOSVersion(string) error
+	SetFeatures([]string) error
+	SetOSFeatures([]string) error
+	SetURLs([]string) error
+	SetAnnotations(map[string]string) error
+	Save(...string) error
 }
 
 type layoutImage struct {
 	v1.Image
+	os, arch, variant, osVersion string
+	features, osFeatures, urls   []string
+	annotations                  map[string]string
 }
+
+var _ WorkableImage = (*layoutImage)(nil)
 
 type toAdd struct {
 	tarPath string
 	diffID  string
 	module  BuildModule
+}
+
+func (i *layoutImage) SetOS(os string) error {
+	i.os = os
+	return nil
+}
+
+func (i *layoutImage) SetArchitecture(arch string) error {
+	i.arch = arch
+	return nil
+}
+
+func (i *layoutImage) SetVariant(variant string) error {
+	i.variant = variant
+	return nil
+}
+
+func (i *layoutImage) SetOSVersion(osVersion string) error {
+	i.osVersion = osVersion
+	return nil
+}
+
+func (i *layoutImage) SetFeatures(features []string) error {
+	i.features = append(i.features, features...)
+	return nil
+}
+
+func (i *layoutImage) SetOSFeatures(osFeatures []string) error {
+	i.osFeatures = append(i.osFeatures, osFeatures...)
+	return nil
+}
+
+func (i *layoutImage) SetURLs(urls []string) error {
+	i.urls = append(i.urls, urls...)
+	return nil
+}
+
+func (i *layoutImage) SetAnnotations(annos map[string]string) error {
+	for k, v := range annos {
+		i.annotations[k] = v
+	}
+	return nil
+}
+
+func (i *layoutImage) Save(...string) error {
+	config, err := i.ConfigFile()
+	if err != nil {
+		return err
+	}
+	if config == nil {
+		return imgutil.ErrConfigFileUndefined
+	}
+
+	mfest, err := i.Manifest()
+	if err != nil {
+		return err
+	}
+	if mfest == nil {
+		return imgutil.ErrManifestUndefined
+	}
+
+	digest, err := i.Digest()
+	if err != nil {
+		return err
+	}
+
+	cfg := config.DeepCopy()
+	desc := mfest.Config.DeepCopy()
+	desc.Size, _ = partial.Size(i)
+	desc.MediaType = mfest.MediaType
+	desc.Digest = digest
+	if desc.Platform == nil {
+		desc.Platform = &v1.Platform{}
+	}
+
+	if i.os != "" {
+		cfg.OS = i.os
+		desc.Platform.OS = i.os
+	}
+
+	if i.arch != "" {
+		cfg.Architecture = i.arch
+		desc.Platform.Architecture = i.arch
+	}
+
+	if i.variant != "" {
+		cfg.Variant = i.variant
+		desc.Platform.Variant = i.variant
+	}
+
+	if i.osVersion != "" {
+		cfg.OSVersion = i.osVersion
+		desc.Platform.OSVersion = i.osVersion
+	}
+
+	if len(i.features) != 0 {
+		desc.Platform.Features = append(desc.Platform.Features, i.features...)
+	}
+
+	if len(i.osFeatures) != 0 {
+		cfg.OSFeatures = append(cfg.OSFeatures, i.osFeatures...)
+		desc.Platform.OSFeatures = cfg.OSFeatures
+	}
+
+	if len(i.urls) != 0 {
+		desc.URLs = append(desc.URLs, i.urls...)
+	}
+
+	if len(i.annotations) != 0 {
+		for k, v := range i.annotations {
+			desc.Annotations[k] = v
+		}
+		i.Image = mutate.Annotations(i, desc.Annotations).(v1.Image)
+	}
+
+	i.Image, err = mutate.ConfigFile(i.Image, cfg)
+	i.Image = mutate.Subject(i, *desc).(v1.Image)
+	return err
 }
 
 func (i *layoutImage) SetLabel(key string, val string) error {
@@ -353,14 +486,72 @@ func (b *PackageBuilder) resolvedStacks() []dist.Stack {
 	return stacks
 }
 
-func (b *PackageBuilder) SaveAsFile(path string, platform imgutil.Platform, labels map[string]string) error {
+func (b *PackageBuilder) SaveAsFile(path, version string, target dist.Target, labels map[string]string) error {
 	if err := b.validate(); err != nil {
 		return err
 	}
 
-	layoutImage, err := newLayoutImage(platform)
+	platform := target.Platform()
+	platform.OSVersion = version
+	layoutImage, err := newLayoutImage(*platform)
 	if err != nil {
 		return errors.Wrap(err, "creating layout image")
+	}
+
+	if platform.OS != "" {
+		if err := layoutImage.SetOS(platform.OS); err != nil {
+			return err
+		}
+	}
+
+	if platform.Architecture != "" {
+		if err := layoutImage.SetArchitecture(platform.Architecture); err != nil {
+			return err
+		}
+	}
+
+	if platform.Variant != "" {
+		if err := layoutImage.SetVariant(platform.Variant); err != nil {
+			return err
+		}
+	}
+
+	if platform.OSVersion != "" {
+		if err := layoutImage.SetOSVersion(platform.OSVersion); err != nil {
+			return err
+		}
+	}
+
+	if len(platform.Features) != 0 {
+		if err := layoutImage.SetFeatures(platform.Features); err != nil {
+			return err
+		}
+	}
+
+	if len(platform.OSFeatures) != 0 {
+		if err := layoutImage.SetOSFeatures(platform.OSFeatures); err != nil {
+			return err
+		}
+	}
+
+	if urls := target.URLs(); len(urls) != 0 {
+		if err := layoutImage.SetURLs(urls); err != nil {
+			return err
+		}
+	}
+
+	if annos := target.Annotations(); len(annos) != 0 {
+		for k, v := range labels {
+			annos[k] = v
+		}
+
+		if err := layoutImage.SetAnnotations(annos); err != nil {
+			return err
+		}
+	}
+
+	if err := layoutImage.Save(); err != nil {
+		return err
 	}
 
 	for labelKey, labelValue := range labels {
@@ -418,7 +609,7 @@ func (b *PackageBuilder) SaveAsFile(path string, platform imgutil.Platform, labe
 	return archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, false, nil)
 }
 
-func newLayoutImage(platform imgutil.Platform) (*layoutImage, error) {
+func newLayoutImage(platform v1.Platform) (*layoutImage, error) {
 	i := empty.Image
 
 	configFile, err := i.ConfigFile()
@@ -428,7 +619,9 @@ func newLayoutImage(platform imgutil.Platform) (*layoutImage, error) {
 
 	configFile.OS = platform.OS
 	configFile.Architecture = platform.Architecture
+	configFile.Variant = platform.Variant
 	configFile.OSVersion = platform.OSVersion
+	configFile.OSFeatures = platform.OSFeatures
 	i, err = mutate.ConfigFile(i, configFile)
 	if err != nil {
 		return nil, err
@@ -454,7 +647,7 @@ func newLayoutImage(platform imgutil.Platform) (*layoutImage, error) {
 	return &layoutImage{Image: i}, nil
 }
 
-func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, target dist.Target, labels map[string]string) (imgutil.Image, error) {
+func (b *PackageBuilder) SaveAsImage(repoName, version string, publish bool, target dist.Target, labels map[string]string) (imgutil.Image, error) {
 	if err := b.validate(); err != nil {
 		return nil, err
 	}
@@ -493,12 +686,76 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, target dist.
 		}
 	}
 
-	if err := image.Save(); err != nil {
+	digest, err := getImageDigest(repoName, image)
+	if err != nil {
 		return nil, err
 	}
 
-	ref, err := name.ParseReference(repoName)
+	addtionalNames, err := getAddtionalImageNames(digest, target)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := updateImagePlatform(image, target); err != nil {
+		return nil, err
+	}
+
+	features, _ := image.Features()
+	osFeatures, _ := image.OSFeatures()
+	urls, _ := image.URLs()
+	annotations, _ := image.Annotations()
+
+	distro := target.Distributions[0]
+
+	var featuresFound, osFeaturesFound, urlsFound, annosFound = true, true, true, true
+	featuresFound = sliceContains(features, distro.Specs.Features)
+	osFeaturesFound = sliceContains(osFeatures, distro.Specs.OSFeatures)
+	urlsFound = sliceContains(urls, distro.Specs.URLs)
+	annosFound = mapContains(annotations, distro.Specs.Annotations)
+	if version != "" {
+		if err := image.SetOSVersion(version); err != nil {
+			return nil, err
+		}
+	}
+
+	switch image.Kind() {
+	case pkgImg.LOCAL:
+	default:
+		if !featuresFound {
+			if err := image.SetFeatures(features); err != nil {
+				return nil, err
+			}
+		}
+
+		if !osFeaturesFound {
+			if err := image.SetOSFeatures(osFeatures); err != nil {
+				return nil, err
+			}
+		}
+
+		if !urlsFound {
+			if err := image.SetURLs(urls); err != nil {
+				return nil, err
+			}
+		}
+
+		if !annosFound {
+			annos := target.Annotations()
+			if len(annotations) == 0 {
+				annotations = make(map[string]string)
+			}
+
+			for k, v := range annos {
+				annotations[k] = v
+			}
+
+			if err := image.SetAnnotations(annotations); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if err := image.Save(addtionalNames...); err != nil {
 		return nil, err
 	}
 
@@ -507,33 +764,44 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, target dist.
 		return nil, err
 	}
 
+	if err := idx.Add(digest); err != nil {
+		return nil, err
+	}
+
 	switch image.Kind() {
-	case pkgImg.LOCAL_LAYOUT:
-		fallthrough
 	case pkgImg.LOCAL:
-		id, err := image.Identifier()
-		if err != nil {
-			return nil, err
+	default:
+		if !featuresFound {
+			if err := idx.SetFeatures(digest, features); err != nil {
+				return nil, err
+			}
 		}
 
-		digest := ref.Context().Digest("sha256:" + id.String())
-		if err := idx.Add(digest); err != nil {
-			return nil, err
-		}
-	case pkgImg.LAYOUT:
-		fallthrough
-	case pkgImg.REMOTE:
-		id, err := image.Identifier()
-		if err != nil {
-			return nil, err
-		}
-		digest, err := name.ParseReference(id.String(), name.Insecure, name.WeakValidation)
-		if err != nil {
-			return nil, err
+		if !osFeaturesFound {
+			if err := idx.SetOSFeatures(digest, osFeatures); err != nil {
+				return nil, err
+			}
 		}
 
-		if err := idx.Add(digest); err != nil {
-			return nil, err
+		if !urlsFound {
+			if err := idx.SetURLs(digest, urls); err != nil {
+				return nil, err
+			}
+		}
+
+		if !annosFound {
+			annos := target.Annotations()
+			if len(annotations) == 0 {
+				annotations = make(map[string]string)
+			}
+
+			for k, v := range annos {
+				annotations[k] = v
+			}
+
+			if err := idx.SetAnnotations(digest, annotations); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -544,6 +812,120 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, target dist.
 	}
 
 	return image, nil
+}
+
+func mapContains(src, conatins map[string]string) bool {
+	for k, v := range conatins {
+		if srcValue, ok := src[k]; !ok || srcValue != v {
+			return false
+		}
+	}
+	return true
+}
+
+func sliceContains(src, contains []string) bool {
+	for _, c := range contains {
+		found := false
+		for _, srcString := range src {
+			if c == srcString {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func updateImagePlatform(image imgutil.Image, target dist.Target) error {
+	platform := target.Platform()
+
+	if platform.OS != "" {
+		if err := image.SetOS(platform.OS); err != nil {
+			return err
+		}
+	}
+
+	if platform.Architecture != "" {
+		if err := image.SetArchitecture(platform.Architecture); err != nil {
+			return err
+		}
+	}
+
+	if platform.Variant != "" {
+		if err := image.SetVariant(platform.Variant); err != nil {
+			return err
+		}
+	}
+
+	distro := target.Distributions[0]
+	switch image.Kind() {
+	case pkgImg.LOCAL:
+		return nil
+	default:
+		if len(distro.Specs.Features) > 0 {
+			if err := image.SetFeatures(distro.Specs.Features); err != nil {
+				return err
+			}
+		}
+
+		if len(distro.Specs.OSFeatures) > 0 {
+			if err := image.SetOSFeatures(distro.Specs.OSFeatures); err != nil {
+				return err
+			}
+		}
+
+		if len(distro.Specs.Annotations) > 0 {
+			if err := image.SetAnnotations(distro.Specs.Annotations); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
+func getImageDigest(repoName string, image imgutil.Image) (digest name.Digest, err error) {
+	ref, err := name.ParseReference(repoName)
+	if err != nil {
+		return digest, err
+	}
+
+	switch k := image.Kind(); k {
+	case pkgImg.LOCAL_LAYOUT:
+		fallthrough
+	case pkgImg.LOCAL:
+		id, err := image.Identifier()
+		if err != nil {
+			return digest, err
+		}
+
+		return ref.Context().Digest("sha256:" + id.String()), nil
+	case pkgImg.LAYOUT:
+		fallthrough
+	case pkgImg.REMOTE:
+		id, err := image.Identifier()
+		if err != nil {
+			return digest, err
+		}
+		return name.NewDigest(id.String(), name.Insecure, name.WeakValidation)
+	default:
+		return digest, fmt.Errorf("unsupported image type: %s", k)
+	}
+}
+
+func getAddtionalImageNames(name name.Reference, target dist.Target) ([]string, error) {
+	hash, err := v1.NewHash(name.Identifier())
+	if err != nil {
+		return nil, err
+	}
+
+	return []string{
+		hash.Hex,
+		PlatformSafeName(name.Context().Name(), target),
+	}, nil
 }
 
 func validateBuildpacks(mainBP BuildModule, depBPs []BuildModule) error {

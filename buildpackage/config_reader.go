@@ -2,7 +2,6 @@ package buildpackage
 
 import (
 	"path/filepath"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
@@ -32,11 +31,6 @@ func DefaultConfig() Config {
 			OS: defaultOS,
 		},
 	}
-}
-
-func platformRootDirectory(target dist.Target, distroName, version string) string {
-	distroStr := strings.Join([]string{distroName, version}, distroDelim)
-	return strings.Join([]string{target.OS, target.Arch, target.ArchVariant, distroStr}, platformDelim)
 }
 
 func DefaultExtensionConfig() Config {
