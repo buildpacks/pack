@@ -36,7 +36,7 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 					return errors.Wrapf(err, "writing config to %s", cfgPath)
 				}
 
-				pullPolicy, err := image.ParsePullPolicy(cfg.PullPolicy)
+				pullPolicy, err := image.ParsePullPolicy(cfg.PullPolicy, logger)
 				if err != nil {
 					return err
 				}
@@ -44,7 +44,7 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 				logger.Infof("Successfully unset pull policy %s", style.Symbol(oldPullPolicy))
 				logger.Infof("Pull policy has been set to %s", style.Symbol(pullPolicy.String()))
 			case len(args) == 0: // list
-				pullPolicy, err := image.ParsePullPolicy(cfg.PullPolicy)
+				pullPolicy, err := image.ParsePullPolicy(cfg.PullPolicy, logger)
 				if err != nil {
 					return err
 				}
@@ -58,7 +58,7 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 					return nil
 				}
 
-				pullPolicy, err := image.ParsePullPolicy(newPullPolicy)
+				pullPolicy, err := image.ParsePullPolicy(newPullPolicy, logger)
 				if err != nil {
 					return err
 				}

@@ -231,7 +231,7 @@ func NewClient(opts ...Option) (*Client, error) {
 	}
 
 	if client.imageFetcher == nil {
-		imagePullChecker := image.NewPullChecker(client.logger)
+		imagePullChecker := image.NewPullPolicyManager(client.logger)
 		client.imageFetcher = image.NewFetcher(client.logger, client.docker, imagePullChecker, image.WithRegistryMirrors(client.registryMirrors), image.WithKeychain(client.keychain))
 	}
 

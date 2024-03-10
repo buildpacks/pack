@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -21,12 +21,15 @@ type PullPolicy int
 
 var interval string
 
+type ImagePullPolicyManager struct {
+	Logger logging.Logger
+}
+
 var (
 	hourly        = "1h"
 	daily         = "1d"
 	weekly        = "7d"
 	intervalRegex = regexp.MustCompile(`^(\d+d)?(\d+h)?(\d+m)?$`)
-	imagePath     string
 )
 
 const (
@@ -61,29 +64,40 @@ type ImageJSON struct {
 	Image    *ImageData `json:"image"`
 }
 
+func DefaultImageJSONPath() (string, error) {
+	home, err := config.PackHome()
+	if err != nil {
+		return "", errors.Wrap(err, "getting pack home")
+	}
+	return filepath.Join(home, "image.json"), nil
+}
+
 var nameMap = map[string]PullPolicy{"always": PullAlways, "hourly": PullHourly, "daily": PullDaily, "weekly": PullWeekly, "never": PullNever, "if-not-present": PullIfNotPresent, "": PullAlways}
 
 // ParsePullPolicy from string with support for interval formats
-func ParsePullPolicy(policy string) (PullPolicy, error) {
+func ParsePullPolicy(policy string, logger logging.Logger) (PullPolicy, error) {
+	pullPolicyManager := NewPullPolicyManager(logger)
+
 	if val, ok := nameMap[policy]; ok {
 		if val == PullHourly {
-			err := updateImageJSONDuration(hourly)
+			err := pullPolicyManager.updateImageJSONDuration(hourly)
 			if err != nil {
 				return PullAlways, err
 			}
 		}
 		if val == PullDaily {
-			err := updateImageJSONDuration(daily)
+			err := pullPolicyManager.updateImageJSONDuration(daily)
 			if err != nil {
 				return PullAlways, err
 			}
 		}
 		if val == PullWeekly {
-			err := updateImageJSONDuration(weekly)
+			err := pullPolicyManager.updateImageJSONDuration(weekly)
 			if err != nil {
 				return PullAlways, err
 			}
 		}
+
 		return val, nil
 	}
 
@@ -95,7 +109,7 @@ func ParsePullPolicy(policy string) (PullPolicy, error) {
 			return PullAlways, errors.Errorf("invalid interval format: %s", intervalStr)
 		}
 
-		err := updateImageJSONDuration(intervalStr)
+		err := pullPolicyManager.updateImageJSONDuration(intervalStr)
 		if err != nil {
 			return PullAlways, err
 		}
@@ -127,60 +141,20 @@ func (p PullPolicy) String() string {
 	return ""
 }
 
-func updateImageJSONDuration(intervalStr string) error {
-	imageJSON, err := ReadImageJSON(logging.NewSimpleLogger(os.Stderr))
+func (i *ImagePullPolicyManager) updateImageJSONDuration(intervalStr string) error {
+	path, err := DefaultImageJSONPath()
+	if err != nil {
+		return err
+	}
+
+	imageJSON, err := i.Read(path)
 	if err != nil {
 		return err
 	}
 
 	imageJSON.Interval.PullingInterval = intervalStr
 
-	updatedJSON, err := json.MarshalIndent(imageJSON, "", "    ")
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal updated records")
-	}
-
-	return WriteFile(updatedJSON)
-}
-
-func ReadImageJSON(l logging.Logger) (*ImageJSON, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return &ImageJSON{}, errors.Wrap(err, "failed to get home directory")
-	}
-	imagePath = filepath.Join(homeDir, ".pack", "image.json")
-
-	// Check if the directory exists, if not, create it
-	dirPath := filepath.Dir(imagePath)
-	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-		l.Warnf("missing `.pack` directory under %s directory %s", homeDir, err)
-		l.Debugf("creating `.pack` directory under %s directory", homeDir)
-		if err := os.MkdirAll(dirPath, 0755); err != nil {
-			return &ImageJSON{}, errors.Wrap(err, "failed to create directory")
-		}
-	}
-
-	// Check if the file exists, if not, create it with minimum JSON
-	if _, err := os.Stat(imagePath); os.IsNotExist(err) {
-		l.Warnf("missing `image.json` file under %s directory %s", dirPath, err)
-		l.Debugf("creating `image.json` file under %s directory", dirPath)
-		minimumJSON := []byte(`{"interval":{"pulling_interval":"","pruning_interval":"7d","last_prune":""},"image":{}}`)
-		if err := WriteFile(minimumJSON); err != nil {
-			return &ImageJSON{}, errors.Wrap(err, "failed to create image.json file")
-		}
-	}
-
-	jsonData, err := os.ReadFile(imagePath)
-	if err != nil && !os.IsNotExist(err) {
-		return &ImageJSON{}, errors.Wrap(err, "failed to read image.json")
-	}
-
-	var imageJSON *ImageJSON
-	if err := json.Unmarshal(jsonData, &imageJSON); err != nil && !os.IsNotExist(err) {
-		return &ImageJSON{}, errors.Wrap(err, "failed to unmarshal image.json")
-	}
-
-	return imageJSON, nil
+	return i.Write(imageJSON, path)
 }
 
 func parseDurationString(durationStr string) (time.Duration, error) {
@@ -214,8 +188,12 @@ func parseDurationString(durationStr string) (time.Duration, error) {
 	return time.Duration(totalMinutes) * time.Minute, nil
 }
 
-func PruneOldImages(l logging.Logger, f *Fetcher) error {
-	imageJSON, err := ReadImageJSON(l)
+func (i *ImagePullPolicyManager) PruneOldImages(f *Fetcher) error {
+	path, err := DefaultImageJSONPath()
+	if err != nil {
+		return err
+	}
+	imageJSON, err := i.Read(path)
 	if err != nil {
 		return err
 	}
@@ -263,26 +241,56 @@ func PruneOldImages(l logging.Logger, f *Fetcher) error {
 
 	imageJSON.Interval.LastPrune = time.Now().Format(time.RFC3339)
 
-	updatedJSON, err := json.MarshalIndent(imageJSON, "", "    ")
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal updated records")
-	}
-
-	if err := WriteFile(updatedJSON); err != nil {
+	if err := i.Write(imageJSON, path); err != nil {
 		return errors.Wrap(err, "failed to write updated image.json")
 	}
 
 	return nil
 }
 
-func WriteFile(data []byte) error {
-	cmd := exec.Command("sudo", "sh", "-c", "echo '"+string(data)+"' > "+imagePath)
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-
-	if err := cmd.Run(); err != nil {
-		return errors.New("failed to write file with sudo: " + err.Error())
+func (i *ImagePullPolicyManager) Read(path string) (*ImageJSON, error) {
+	// Check if the file exists, if not, return default values
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return &ImageJSON{
+			Interval: &Interval{
+				PullingInterval: "7d",
+				PruningInterval: "7d",
+				LastPrune:       "",
+			},
+			Image: &ImageData{},
+		}, nil
 	}
 
+	jsonData, err := os.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, errors.Wrap(err, "failed to read image.json")
+	}
+	var imageJSON *ImageJSON
+	if err := json.Unmarshal(jsonData, &imageJSON); err != nil && !os.IsNotExist(err) {
+		return nil, errors.Wrap(err, "failed to unmarshal image.json")
+	}
+	return imageJSON, nil
+}
+
+func (i *ImagePullPolicyManager) Write(imageJSON *ImageJSON, path string) error {
+	updatedJSON, err := json.MarshalIndent(imageJSON, "", "    ")
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal updated records")
+	}
+
+	return WriteFile(updatedJSON, path)
+}
+
+func WriteFile(data []byte, path string) error {
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return errors.New("failed to open file: " + err.Error())
+	}
+	defer file.Close()
+
+	_, err = file.Write(data)
+	if err != nil {
+		return errors.New("failed to write data to file: " + err.Error())
+	}
 	return nil
 }

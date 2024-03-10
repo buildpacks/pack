@@ -41,7 +41,7 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, packager Buildpa
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			pullPolicy, err := image.ParsePullPolicy(stringPolicy)
+			pullPolicy, err := image.ParsePullPolicy(stringPolicy, logger)
 			if err != nil {
 				return errors.Wrap(err, "parsing pull policy")
 			}

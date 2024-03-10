@@ -37,22 +37,19 @@ type LayoutOption struct {
 }
 
 type ImagePullChecker interface {
-	CheckImagePullInterval(imageID string, l logging.Logger) (bool, error)
-	ReadImageJSON(l logging.Logger) (*ImageJSON, error)
-	PruneOldImages(l logging.Logger, f *Fetcher) error
-	UpdateImagePullRecord(l logging.Logger, imageID string, timestamp string) error
+	CheckImagePullInterval(imageID string, path string) (bool, error)
+	Read(path string) (*ImageJSON, error)
+	PruneOldImages(f *Fetcher) error
+	UpdateImagePullRecord(path string, imageID string, timestamp string) error
+	Write(imageJSON *ImageJSON, path string) error
 }
 
 func intervalPolicy(options FetchOptions) bool {
 	return options.PullPolicy == PullWithInterval || options.PullPolicy == PullHourly || options.PullPolicy == PullDaily || options.PullPolicy == PullWeekly
 }
 
-type PullChecker struct {
-	logger logging.Logger
-}
-
-func NewPullChecker(logger logging.Logger) *PullChecker {
-	return &PullChecker{logger: logger}
+func NewPullPolicyManager(logger logging.Logger) *ImagePullPolicyManager {
+	return &ImagePullPolicyManager{Logger: logger}
 }
 
 // WithRegistryMirrors supply your own mirrors for registry.
@@ -119,6 +116,11 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		return f.fetchRemoteImage(name)
 	}
 
+	imageJSONpath, err := DefaultImageJSONPath()
+	if err != nil {
+		return nil, err
+	}
+
 	switch options.PullPolicy {
 	case PullNever:
 		img, err := f.fetchDaemonImage(name)
@@ -129,28 +131,24 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 			return img, err
 		}
 	case PullWithInterval, PullDaily, PullHourly, PullWeekly:
-		pull, err := f.imagePullChecker.CheckImagePullInterval(name, f.logger)
+		pull, err := f.imagePullChecker.CheckImagePullInterval(name, imageJSONpath)
 		if err != nil {
 			f.logger.Warnf("failed to check pulling interval for image %s, %s", name, err)
 		}
 		if !pull {
 			img, err := f.fetchDaemonImage(name)
 			if errors.Is(err, ErrNotFound) {
-				imageJSON, _ := f.imagePullChecker.ReadImageJSON(f.logger)
+				imageJSON, _ := f.imagePullChecker.Read(imageJSONpath)
 				delete(imageJSON.Image.ImageIDtoTIME, name)
-				updatedJSON, err := json.MarshalIndent(imageJSON, "", "    ")
-				if err != nil {
-					f.logger.Errorf("failed to marshal updated records %s", err)
-				}
 
-				if err := WriteFile(updatedJSON); err != nil {
+				if err := f.imagePullChecker.Write(imageJSON, imageJSONpath); err != nil {
 					f.logger.Errorf("failed to write updated image.json %s", err)
 				}
 			}
 			return img, err
 		}
 
-		err = f.imagePullChecker.PruneOldImages(f.logger, f)
+		err = f.imagePullChecker.PruneOldImages(f)
 		if err != nil {
 			f.logger.Warnf("Failed to prune images, %s", err)
 		}
@@ -175,7 +173,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 
 	if intervalPolicy(options) {
 		// Update image pull record in the JSON file
-		if err := f.imagePullChecker.UpdateImagePullRecord(f.logger, name, time.Now().Format(time.RFC3339)); err != nil {
+		if err := f.imagePullChecker.UpdateImagePullRecord(imageJSONpath, name, time.Now().Format(time.RFC3339)); err != nil {
 			return nil, err
 		}
 	}
@@ -307,8 +305,8 @@ func (w *colorizedWriter) Write(p []byte) (n int, err error) {
 	return w.writer.Write([]byte(msg))
 }
 
-func UpdateImagePullRecord(l logging.Logger, imageID string, timestamp string) error {
-	imageJSON, err := ReadImageJSON(l)
+func (i *ImagePullPolicyManager) UpdateImagePullRecord(path string, imageID string, timestamp string) error {
+	imageJSON, err := i.Read(path)
 	if err != nil {
 		return err
 	}
@@ -318,12 +316,7 @@ func UpdateImagePullRecord(l logging.Logger, imageID string, timestamp string) e
 	}
 	imageJSON.Image.ImageIDtoTIME[imageID] = timestamp
 
-	updatedJSON, err := json.MarshalIndent(imageJSON, "", "    ")
-	if err != nil {
-		return errors.New("failed to marshal updated records: " + err.Error())
-	}
-
-	err = WriteFile(updatedJSON)
+	err = i.Write(imageJSON, path)
 	if err != nil {
 		return err
 	}
@@ -331,24 +324,8 @@ func UpdateImagePullRecord(l logging.Logger, imageID string, timestamp string) e
 	return nil
 }
 
-func (c *PullChecker) CheckImagePullInterval(imageID string, l logging.Logger) (bool, error) {
-	return CheckImagePullInterval(imageID, l)
-}
-
-func (c *PullChecker) ReadImageJSON(l logging.Logger) (*ImageJSON, error) {
-	return ReadImageJSON(l)
-}
-
-func (c *PullChecker) PruneOldImages(l logging.Logger, f *Fetcher) error {
-	return PruneOldImages(l, f)
-}
-
-func (c *PullChecker) UpdateImagePullRecord(l logging.Logger, imageID string, timestamp string) error {
-	return UpdateImagePullRecord(l, imageID, timestamp)
-}
-
-func CheckImagePullInterval(imageID string, l logging.Logger) (bool, error) {
-	imageJSON, err := ReadImageJSON(l)
+func (i *ImagePullPolicyManager) CheckImagePullInterval(imageID string, path string) (bool, error) {
+	imageJSON, err := i.Read(path)
 	if err != nil {
 		return false, err
 	}

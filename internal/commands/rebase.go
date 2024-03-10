@@ -33,7 +33,7 @@ func Rebase(logger logging.Logger, cfg config.Config, pack PackClient) *cobra.Co
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			opts.PullPolicy, err = image.ParsePullPolicy(stringPolicy)
+			opts.PullPolicy, err = image.ParsePullPolicy(stringPolicy, logger)
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", stringPolicy)
 			}

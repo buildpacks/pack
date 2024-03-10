@@ -43,7 +43,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			pullPolicy, err := image.ParsePullPolicy(stringPolicy)
+			pullPolicy, err := image.ParsePullPolicy(stringPolicy, logger)
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}

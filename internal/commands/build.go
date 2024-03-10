@@ -128,7 +128,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			pullPolicy, err := image.ParsePullPolicy(stringPolicy)
+			pullPolicy, err := image.ParsePullPolicy(stringPolicy, logger)
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}
