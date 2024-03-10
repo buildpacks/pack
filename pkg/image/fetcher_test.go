@@ -32,29 +32,37 @@ var imageJSON *image.ImageJSON
 var mockImagePullChecker = NewMockImagePullChecker(logger)
 
 type MockPullChecker struct {
-	*image.PullChecker
-	MockCheckImagePullInterval func(imageID string, l logging.Logger) (bool, error)
-	MockReadImageJSON          func(l logging.Logger) (*image.ImageJSON, error)
-	MockPruneOldImages         func(l logging.Logger, f *image.Fetcher) error
-	MockUpdateImagePullRecord  func(l logging.Logger, imageID string, timestamp string) error
+	*image.ImagePullPolicyManager
+	MockCheckImagePullInterval func(imageID string, path string) (bool, error)
+	MockRead                   func(path string) (*image.ImageJSON, error)
+	MockPruneOldImages         func(f *image.Fetcher) error
+	MockUpdateImagePullRecord  func(path string, imageID string, timestamp string) error
+	MockWrite                  func(imageJSON *image.ImageJSON, path string) error
 }
 
 func NewMockImagePullChecker(logger logging.Logger) *MockPullChecker {
 	return &MockPullChecker{
-		PullChecker: image.NewPullChecker(logger),
+		ImagePullPolicyManager: image.NewPullPolicyManager(logger),
 	}
 }
 
-func (m *MockPullChecker) CheckImagePullInterval(imageID string, l logging.Logger) (bool, error) {
+func (m *MockPullChecker) CheckImagePullInterval(imageID string, path string) (bool, error) {
 	if m.MockCheckImagePullInterval != nil {
-		return m.MockCheckImagePullInterval(imageID, l)
+		return m.MockCheckImagePullInterval(imageID, path)
 	}
 	return false, nil
 }
 
-func (m *MockPullChecker) ReadImageJSON(l logging.Logger) (*image.ImageJSON, error) {
-	if m.MockReadImageJSON != nil {
-		return m.MockReadImageJSON(l)
+func (m *MockPullChecker) Write(imageJSON *image.ImageJSON, path string) error {
+	if m.MockWrite != nil {
+		return m.MockWrite(imageJSON, path)
+	}
+	return nil
+}
+
+func (m *MockPullChecker) Read(path string) (*image.ImageJSON, error) {
+	if m.MockRead != nil {
+		return m.MockRead(path)
 	}
 
 	imageJSON = &image.ImageJSON{
@@ -73,18 +81,18 @@ func (m *MockPullChecker) ReadImageJSON(l logging.Logger) (*image.ImageJSON, err
 	return imageJSON, nil
 }
 
-func (m *MockPullChecker) PruneOldImages(l logging.Logger, f *image.Fetcher) error {
+func (m *MockPullChecker) PruneOldImages(f *image.Fetcher) error {
 	if m.MockPruneOldImages != nil {
-		return m.MockPruneOldImages(l, f)
+		return m.MockPruneOldImages(f)
 	}
 
 	return nil
 }
 
-func (m *MockPullChecker) UpdateImagePullRecord(l logging.Logger, imageID string, timestamp string) error {
+func (m *MockPullChecker) UpdateImagePullRecord(path string, imageID string, timestamp string) error {
 	if m.MockUpdateImagePullRecord != nil {
 		fmt.Printf("checking wheather its calling or not")
-		return m.MockUpdateImagePullRecord(l, imageID, timestamp)
+		return m.MockUpdateImagePullRecord(path, imageID, timestamp)
 	}
 
 	return nil
@@ -232,7 +240,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						var outCons *color.Console
 						outCons, output = h.MockWriterAndOutput()
 						logger = logging.NewLogWithWriters(outCons, outCons)
-						mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, l logging.Logger) (bool, error) {
+						mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
 							return true, nil
 						}
 						imageFetcher = image.NewFetcher(logger, docker, mockImagePullChecker)
@@ -440,7 +448,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 					when("there is no local image and CheckImagePullInterval returns true", func() {
 						it.Before(func() {
-							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, l logging.Logger) (bool, error) {
+							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
 								return true, nil
 							}
 							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullChecker)
@@ -462,7 +470,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 					when("there is no local image and CheckImagePullInterval returns false", func() {
 						it.Before(func() {
-							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, l logging.Logger) (bool, error) {
+							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
 								return false, nil
 							}
 
@@ -481,20 +489,20 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullChecker)
 
-							mockImagePullChecker.MockReadImageJSON = func(l logging.Logger) (*image.ImageJSON, error) {
+							mockImagePullChecker.MockRead = func(path string) (*image.ImageJSON, error) {
 								return imageJSON, nil
 							}
 						})
 
 						it.After(func() {
 							mockImagePullChecker.MockCheckImagePullInterval = nil
-							mockImagePullChecker.MockReadImageJSON = nil
+							mockImagePullChecker.MockRead = nil
 						})
 
 						it("returns an error and deletes the image record", func() {
 							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullWeekly})
 							h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
-							imageJSON, err = mockImagePullChecker.ReadImageJSON(logger)
+							imageJSON, err = mockImagePullChecker.Read("")
 							h.AssertNil(t, err)
 							_, exists := imageJSON.Image.ImageIDtoTIME[repoName]
 							h.AssertEq(t, exists, false)
@@ -507,7 +515,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 
 							h.AssertNil(t, img.Save())
-							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, l logging.Logger) (bool, error) {
+							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
 								return true, nil
 							}
 
@@ -524,12 +532,12 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 								},
 							}
 
-							mockImagePullChecker.MockReadImageJSON = func(l logging.Logger) (*image.ImageJSON, error) {
+							mockImagePullChecker.MockRead = func(path string) (*image.ImageJSON, error) {
 								return imageJSON, nil
 							}
 
-							mockImagePullChecker.MockUpdateImagePullRecord = func(l logging.Logger, imageID string, timestamp string) error {
-								imageJSON, _ = mockImagePullChecker.ReadImageJSON(l)
+							mockImagePullChecker.MockUpdateImagePullRecord = func(path string, imageID string, timestamp string) error {
+								imageJSON, _ = mockImagePullChecker.Read("")
 								imageJSON.Image.ImageIDtoTIME[repoName] = timestamp
 								return nil
 							}
@@ -539,7 +547,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 						it.After(func() {
 							mockImagePullChecker.MockCheckImagePullInterval = nil
-							mockImagePullChecker.MockReadImageJSON = nil
+							mockImagePullChecker.MockRead = nil
 							mockImagePullChecker.MockUpdateImagePullRecord = nil
 							h.DockerRmi(docker, repoName)
 						})
@@ -550,7 +558,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullWeekly})
 							h.AssertNil(t, err)
 
-							imageJSON, _ = mockImagePullChecker.ReadImageJSON(logger)
+							imageJSON, _ = mockImagePullChecker.Read("")
 
 							afterFetch, _ := time.Parse(time.RFC3339, imageJSON.Image.ImageIDtoTIME[repoName])
 							fmt.Printf("after fetch: %v\n", imageJSON.Image.ImageIDtoTIME[repoName])
@@ -566,7 +574,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, localImg.SetLabel(label, "2"))
 
 							h.AssertNil(t, localImg.Save())
-							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, l logging.Logger) (bool, error) {
+							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
 								return true, nil
 							}
 							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullChecker)
@@ -593,7 +601,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 					when("there is no local image and CheckImagePullInterval returns true", func() {
 						it.Before(func() {
-							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, l logging.Logger) (bool, error) {
+							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
 								return true, nil
 							}
 							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullChecker)
@@ -611,7 +619,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 					when("there is no local image and CheckImagePullInterval returns false", func() {
 						it.Before(func() {
-							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, l logging.Logger) (bool, error) {
+							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
 								return false, nil
 							}
 
@@ -629,20 +637,20 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 							}
 
 							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullChecker)
-							mockImagePullChecker.MockReadImageJSON = func(l logging.Logger) (*image.ImageJSON, error) {
+							mockImagePullChecker.MockRead = func(path string) (*image.ImageJSON, error) {
 								return imageJSON, nil
 							}
 						})
 
 						it.After(func() {
 							mockImagePullChecker.MockCheckImagePullInterval = nil
-							mockImagePullChecker.MockReadImageJSON = nil
+							mockImagePullChecker.MockRead = nil
 						})
 
 						it("returns an error and deletes the image record", func() {
 							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullWeekly})
 							h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
-							imageJSON, err = mockImagePullChecker.ReadImageJSON(logger)
+							imageJSON, err = mockImagePullChecker.Read("")
 							h.AssertNil(t, err)
 							_, exists := imageJSON.Image.ImageIDtoTIME[repoName]
 							h.AssertEq(t, exists, false)
@@ -656,7 +664,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, localImg.SetLabel(label, "2"))
 
 							h.AssertNil(t, localImg.Save())
-							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, l logging.Logger) (bool, error) {
+							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
 								return true, nil
 							}
 							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullChecker)
@@ -684,7 +692,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, localImg.SetLabel(label, "2"))
 
 							h.AssertNil(t, localImg.Save())
-							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, l logging.Logger) (bool, error) {
+							mockImagePullChecker.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
 								return true, nil
 							}
 							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullChecker)
