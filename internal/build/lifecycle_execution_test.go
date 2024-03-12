@@ -607,20 +607,8 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							platformAPI = api.MustParse("0.10")
 
 							it("runs the extender (build)", func() {
-								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
-									return fakePhaseFactory
-								})
-								h.AssertNil(t, err)
-
-								h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
-
-								var found bool
-								for _, entry := range fakePhaseFactory.NewCalledWithProvider {
-									if entry.Name() == "extender" {
-										found = true
-									}
-								}
-								h.AssertEq(t, found, true)
+								// Add tests from mock docker daemon
+								testBuildDockerfiles(t, when, it)
 							})
 						})
 					})
@@ -1790,14 +1778,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			platformAPI = api.MustParse("0.12")
 			providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
 
-			when("for build", func() {
-				extensionsForBuild = true
-
-				it("configures the phase with registry access", func() {
-					h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
-				})
-			})
-
 			when("for run", func() {
 				extensionsForRun = true
 
@@ -1895,16 +1875,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						it("does not provide -build-image or /kaniko bind", func() {
 							h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-build-image")
 							h.AssertSliceNotContains(t, configProvider.HostConfig().Binds, "some-kaniko-cache:/kaniko")
-						})
-					})
-
-					when("platform >= 0.10", func() {
-						platformAPI = api.MustParse("0.10")
-
-						it("provides -build-image and /kaniko bind", func() {
-							h.AssertSliceContainsInOrder(t, configProvider.ContainerConfig().Cmd, "-build-image", providedBuilderImage)
-							h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
-							h.AssertSliceContains(t, configProvider.HostConfig().Binds, "some-kaniko-cache:/kaniko")
 						})
 					})
 				})

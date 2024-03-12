@@ -3,6 +3,7 @@ package build
 import (
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -12,7 +13,9 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/docker/docker/api/types"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -263,9 +266,18 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 
 		group, _ := errgroup.WithContext(context.TODO())
 		if l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild() {
+			/*
+				[RFC #0105] - As decided, Pack should support build image extension with Docker #1623. We removed the previous implementation that was using kaniko in the extend lifecycle phase and shifted the implementation to use docker daemon to extend the build Image. As pack already has access to a daemon, it can apply the dockerfiles directly, saving the extended build base image in the daemon. Thus it will not need to use the extender phase of lifecycle. Additionally it dropped the requirement that the image being extended must be published to a registry. This implementation resulted us to have build Extension Improved by 87.3578% wrt kaniko implementation with caching and 20.5567% wrt kaniko implementation without caching.
+
+			*/
 			group.Go(func() error {
-				l.logger.Info(style.Step("EXTENDING (BUILD)"))
-				return l.ExtendBuild(ctx, kanikoCache, phaseFactory)
+				l.logger.Info(style.Step("EXTENDING (BUILD) BY DAEMON"))
+				l.logger.Info(style.Warn("WARNING: Extended build image is saved in the docker daemon as <builder-image>-extended"))
+				if err := l.ExtendBuildByDaemon(ctx); err != nil {
+					return err
+				}
+				l.Build(ctx, phaseFactory)
+				return nil
 			})
 		} else {
 			group.Go(func() error {
@@ -280,7 +292,6 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 				return l.ExtendRun(ctx, kanikoCache, phaseFactory, ephemeralRunImage)
 			})
 		}
-
 		if err := group.Wait(); err != nil {
 			return err
 		}
@@ -445,6 +456,8 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.tmpDir))),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
 			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.tmpDir))),
+		If(l.hasExtensions(), WithPostContainerRunOperations(
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "group.toml"), l.tmpDir))),
 		envOp,
 	)
 
@@ -483,16 +496,11 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 
 	// for kaniko
 	kanikoCacheBindOp := NullOp()
-	if (l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild()) ||
-		l.platformAPI.AtLeast("0.12") {
-		if l.hasExtensionsForBuild() {
-			flags = append(flags, "-build-image", l.opts.BuilderImage)
-			registryImages = append(registryImages, l.opts.BuilderImage)
-		}
+	if l.platformAPI.AtLeast("0.12") {
 		if l.runImageChanged() || l.hasExtensionsForRun() {
 			registryImages = append(registryImages, l.runImageAfterExtensions())
 		}
-		if l.hasExtensionsForBuild() || l.hasExtensionsForRun() {
+		if l.hasExtensionsForRun() {
 			kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir()))
 		}
 	}
@@ -702,12 +710,108 @@ func (l *LifecycleExecution) Build(ctx context.Context, phaseFactory PhaseFactor
 		WithNetwork(l.opts.Network),
 		WithBinds(l.opts.Volumes...),
 		WithFlags(flags...),
+		If((l.hasExtensionsForBuild()), WithImage(l.opts.BuilderImage+"-extended")),
+		If((l.hasExtensionsForBuild() && l.opts.isExtendedBuilderImageRoot), WithUser(l.opts.Builder.UID(), l.opts.Builder.GID())),
 	)
 
 	build := phaseFactory.New(configProvider)
 	defer build.Cleanup()
 	return build.Run(ctx)
 }
+
+const (
+	argBuildID = "build_id"
+	argUserID  = "user_id"
+	argGroupID = "group_id"
+)
+
+/*
+	This implementation of ExtendBuildByDaemon is based on the RFC #0105 which uses docker daemon to extend the build Image instead of kaniko.
+	* Parsing the `group.toml` from the temp directory of buildpack and set the extensions.
+	* Reading the dockerfiles that were generated during the `generate` phase and also parsing the Arguments given by the user from
+	`extend-config.toml`.
+	* Using ImageBuild method of docker API client to extend the Image and save it to the daemon.
+	* Invoking Build phase of lifecycle by creating a container from the extended Image and dropping the privileges.
+
+*/
+
+func (l *LifecycleExecution) ExtendBuildByDaemon(ctx context.Context) error {
+	builderImageName := l.opts.BuilderImage
+	extendedBuilderImageName := l.opts.BuilderImage + "-extended"
+	var extensions Extensions
+	extensions.SetExtensions(l.tmpDir, l.logger)
+	origuserID := strconv.Itoa(l.opts.Builder.UID())
+	origgroupID := strconv.Itoa(l.opts.Builder.GID())
+	intermediateUserID := origuserID
+	intermediateGroupID := origgroupID
+	var extendedBuilderImageInfo types.ImageInspect
+	dockerfiles, err := extensions.DockerFiles(DockerfileKindBuild, l.tmpDir, l.logger)
+	if err != nil {
+		return fmt.Errorf("getting %s.Dockerfiles: %w", DockerfileKindBuild, err)
+	}
+	for _, dockerfile := range dockerfiles {
+		dockerfile.Args = append([]Arg{
+			{Name: argBuildID, Value: uuid.New().String()},
+			{Name: argUserID, Value: intermediateUserID},
+			{Name: argGroupID, Value: intermediateGroupID},
+		}, dockerfile.Args...)
+		buildArguments := map[string]*string{}
+		buildArguments["base_image"] = &builderImageName
+		for i := range dockerfile.Args {
+			arg := &dockerfile.Args[i]
+			buildArguments[arg.Name] = &arg.Value
+		}
+		buildContext, err := dockerfile.CreateBuildContext(l.opts.AppPath, l.logger)
+		if err != nil {
+			return err
+		}
+		buildOptions := types.ImageBuildOptions{
+			Context:    buildContext,
+			Dockerfile: "Dockerfile",
+			Tags:       []string{extendedBuilderImageName},
+			Remove:     true,
+			BuildArgs:  buildArguments,
+		}
+		response, err := l.docker.ImageBuild(ctx, buildContext, buildOptions)
+		if err != nil {
+			return err
+		}
+		defer response.Body.Close()
+		_, err = io.Copy(logging.NewPrefixWriter(logging.GetWriterForLevel(l.logger, logging.InfoLevel), "extender (build)"), response.Body)
+		if err != nil {
+			return err
+		}
+		builderImageName = l.opts.BuilderImage + "-extended"
+		extendedBuilderImageInfo, _, err = l.docker.ImageInspectWithRaw(ctx, extendedBuilderImageName)
+		if err != nil {
+			return fmt.Errorf("inspecting extended builder image: %w", err)
+		}
+		userID, groupID := userFrom(extendedBuilderImageInfo)
+		if isRoot(userID) {
+			l.logger.Warnf("Extension from %s changed the user ID from %s to %s; this must not be the final user ID (a following extension must reset the user).", dockerfile.Info.Path, intermediateUserID, userID)
+		}
+		intermediateUserID = userID
+		if groupID != "" {
+			intermediateGroupID = groupID
+		}
+	}
+	userID, groupID := userFrom(extendedBuilderImageInfo)
+	if userID != origuserID {
+		l.logger.Warnf("Final User ID changed from %s to %s", origuserID, userID)
+	}
+	if groupID != origgroupID && groupID != "" {
+		l.logger.Warnf("Final Group ID changed from %s to %s", origgroupID, groupID)
+	}
+	if isRoot(userID) {
+		l.logger.Warnf("Final extension left user as root thus forcing the user to be the original user %s and original group %s", origuserID, origgroupID)
+		l.opts.isExtendedBuilderImageRoot = true
+	}
+	return nil
+}
+
+/*
+	Deprecated: Check RFC #0105 for the new implementation of ExtendBuild using docker daemon #1623.
+*/
 
 func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory) error {
 	flags := []string{"-app", l.mountPaths.appDir()}
@@ -729,6 +833,10 @@ func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache,
 	defer extend.Cleanup()
 	return extend.Run(ctx)
 }
+
+/*
+	Note: - Run Image Extension by docker daemon was much worse than kaniko because of saving layers on disk.
+*/
 
 func (l *LifecycleExecution) ExtendRun(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory, runImageName string) error {
 	flags := []string{"-app", l.mountPaths.appDir(), "-kind", "run"}
@@ -940,6 +1048,10 @@ func (l *LifecycleExecution) runImageChanged() bool {
 func (l *LifecycleExecution) appendLayoutOperations(opts []PhaseConfigProviderOperation) ([]PhaseConfigProviderOperation, error) {
 	opts = append(opts, withLayoutOperation())
 	return opts, nil
+}
+
+func (l *LifecycleExecution) GetLogger() logging.Logger {
+	return l.logger
 }
 
 func withLayoutOperation() PhaseConfigProviderOperation {

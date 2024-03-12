@@ -9,9 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pkg/errors"
-
 	"github.com/heroku/color"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -614,6 +613,53 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				h.AssertOnTarEntry(t, tarFile, "/foo/some-file.txt",
 					h.HasModTime(archive.NormalizedDateTime),
 				)
+			})
+		})
+	})
+
+	when("#WrtieFileToTar", func() {
+		var src string
+		it.Before(func() {
+			src = filepath.Join("testdata", "file-to-tar.txt")
+		})
+
+		when("mode is set to 0777", func() {
+			it("writes a tar to the dest dir with 0777", func() {
+				fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+
+				err = archive.WriteFileToTar(tw, src, "/nested/dir/dir-in-archive/file-to-tar.txt", 1234, 2345, 0777, true)
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+
+				file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+				defer file.Close()
+
+				tr := tar.NewReader(file)
+
+				verify := h.NewTarVerifier(t, tr, 1234, 2345)
+				verify.NextFile("/nested/dir/dir-in-archive/file-to-tar.txt", "Hi I love CNB!", 0777)
+			})
+		})
+
+		when("normalize mod time is false", func() {
+			it("does not normalize mod times", func() {
+				tarFile := filepath.Join(tmpDir, "some.tar")
+				fh, err := os.Create(tarFile)
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+
+				err = archive.WriteFileToTar(tw, src, "/foo/file-to-tar.txt", 1234, 2345, 0777, false)
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+
+				h.AssertOnTarEntry(t, tarFile, "/foo/file-to-tar.txt", h.DoesNotHaveModTime(archive.NormalizedDateTime))
 			})
 		})
 	})

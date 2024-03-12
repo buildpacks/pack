@@ -70,6 +70,7 @@ type LifecycleOptions struct {
 	Image                           name.Reference
 	Builder                         Builder
 	BuilderImage                    string // differs from Builder.Name() and Builder.Image().Name() in that it includes the registry context
+	isExtendedBuilderImageRoot      bool
 	LifecycleImage                  string
 	LifecycleApis                   []string // optional - populated only if custom lifecycle image is downloaded, from that lifecycle's container's Labels.
 	RunImage                        string
