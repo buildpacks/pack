@@ -82,9 +82,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
 
-				// TODO fix this
-				//nolint:staticcheck
-				h.AssertEq(t, phaseConfigProvider.ContainerConfig().MacAddress, expectedMacAddress)
+				h.AssertEq(t, phaseConfigProvider.NetworkConfig().EndpointsConfig[phaseConfigProvider.HostConfig().NetworkMode.NetworkName()].MacAddress, expectedMacAddress)
 			})
 		})
 

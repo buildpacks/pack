@@ -5,6 +5,7 @@ import (
 	"io"
 
 	dcontainer "github.com/docker/docker/api/types/container"
+	dnetwork "github.com/docker/docker/api/types/network"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/container"
@@ -18,6 +19,7 @@ type Phase struct {
 	handler             container.Handler
 	ctrConf             *dcontainer.Config
 	hostConf            *dcontainer.HostConfig
+	netConf             *dnetwork.NetworkingConfig
 	ctr                 dcontainer.CreateResponse
 	uid, gid            int
 	appPath             string
@@ -28,7 +30,7 @@ type Phase struct {
 
 func (p *Phase) Run(ctx context.Context) error {
 	var err error
-	p.ctr, err = p.docker.ContainerCreate(ctx, p.ctrConf, p.hostConf, nil, nil, "")
+	p.ctr, err = p.docker.ContainerCreate(ctx, p.ctrConf, p.hostConf, p.netConf, nil, "")
 	if err != nil {
 		return errors.Wrapf(err, "failed to create '%s' container", p.name)
 	}
