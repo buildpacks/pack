@@ -72,6 +72,7 @@ type LifecycleExecutor interface {
 	// Execute is responsible for invoking each of these binaries
 	// with the desired configuration.
 	Execute(ctx context.Context, opts build.LifecycleOptions) error
+	Detect(ctx context.Context, opts build.LifecycleOptions) error
 }
 
 type IsTrustedBuilder func(string) bool

@@ -130,3 +130,18 @@ func (l *LifecycleExecutor) Execute(ctx context.Context, opts LifecycleOptions) 
 		lifecycleExec.Run(ctx, NewDefaultPhaseFactory)
 	})
 }
+
+func (l *LifecycleExecutor) Detect(ctx context.Context, opts LifecycleOptions) error {
+	tmpDir, err := os.MkdirTemp("", "pack.tmp")
+	if err != nil {
+		return err
+	}
+
+	lifecycleExec, err := NewLifecycleExecution(l.logger, l.docker, tmpDir, opts)
+	if err != nil {
+		return err
+	}
+
+	defer lifecycleExec.Cleanup()
+	return lifecycleExec.RunDetect(ctx, NewDefaultPhaseFactory)
+}

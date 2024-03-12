@@ -64,6 +64,20 @@ func (mr *MockPackClientMockRecorder) CreateBuilder(arg0, arg1 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBuilder", reflect.TypeOf((*MockPackClient)(nil).CreateBuilder), arg0, arg1)
 }
 
+// Detect mocks base method.
+func (m *MockPackClient) Detect(arg0 context.Context, arg1 client.BuildOptions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Detect", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Detect indicates an expected call of Detect.
+func (mr *MockPackClientMockRecorder) Detect(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Detect", reflect.TypeOf((*MockPackClient)(nil).Detect), arg0, arg1)
+}
+
 // DownloadSBOM mocks base method.
 func (m *MockPackClient) DownloadSBOM(arg0 string, arg1 client.DownloadSBOMOptions) error {
 	m.ctrl.T.Helper()
