@@ -11,8 +11,12 @@ import (
 	imgutil "github.com/buildpacks/imgutil"
 	gomock "github.com/golang/mock/gomock"
 
+	"github.com/buildpacks/pack/pkg/logging"
+
 	image "github.com/buildpacks/pack/pkg/image"
 )
+
+var imageJSON *image.ImageJSON
 
 // MockImageFetcher is a mock of ImageFetcher interface.
 type MockImageFetcher struct {
@@ -23,6 +27,17 @@ type MockImageFetcher struct {
 // MockImageFetcherMockRecorder is the mock recorder for MockImageFetcher.
 type MockImageFetcherMockRecorder struct {
 	mock *MockImageFetcher
+}
+
+type MockImagePullPolicyHandler struct {
+	*image.ImagePullPolicyManager
+	MockParsePullPolicy         func(policy string, logger logging.Logger) (image.PullPolicy, error)
+	MockCheckImagePullInterval  func(imageID string, path string) (bool, error)
+	MockPruneOldImages          func(docker *image.DockerClient) error
+	MockUpdateImagePullRecord   func(path string, imageID string, timestamp string) error
+	MockUpdateImageJSONDuration func(intervalStr string) error
+	MockRead                    func(path string) (*image.ImageJSON, error)
+	MockWrite                   func(imageJSON *image.ImageJSON, path string) error
 }
 
 // NewMockImageFetcher creates a new mock instance.
@@ -50,4 +65,67 @@ func (m *MockImageFetcher) Fetch(arg0 context.Context, arg1 string, arg2 image.F
 func (mr *MockImageFetcherMockRecorder) Fetch(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Fetch", reflect.TypeOf((*MockImageFetcher)(nil).Fetch), arg0, arg1, arg2)
+}
+
+func NewMockPullPolicyManager(logger logging.Logger) *MockImagePullPolicyHandler {
+	return &MockImagePullPolicyHandler{}
+}
+
+func (m *MockImagePullPolicyHandler) CheckImagePullInterval(imageID string, path string) (bool, error) {
+	if m.MockCheckImagePullInterval != nil {
+		return m.MockCheckImagePullInterval(imageID, path)
+	}
+	return false, nil
+}
+
+func (m *MockImagePullPolicyHandler) Write(imageJSON *image.ImageJSON, path string) error {
+	if m.MockWrite != nil {
+		return m.MockWrite(imageJSON, path)
+	}
+	return nil
+}
+
+func (m *MockImagePullPolicyHandler) Read(path string) (*image.ImageJSON, error) {
+	if m.MockRead != nil {
+		return m.MockRead(path)
+	}
+
+	imageJSON = &image.ImageJSON{
+		Interval: &image.Interval{
+			PullingInterval: "7d",
+			PruningInterval: "7d",
+			LastPrune:       "2023-01-01T00:00:00Z",
+		},
+		Image: &image.ImageData{
+			ImageIDtoTIME: map[string]string{
+				"repoName": "2023-01-01T00:00:00Z",
+			},
+		},
+	}
+
+	return imageJSON, nil
+}
+
+func (m *MockImagePullPolicyHandler) PruneOldImages(docker image.DockerClient) error {
+	if m.MockPruneOldImages != nil {
+		return m.MockPruneOldImages(&docker)
+	}
+
+	return m.ImagePullPolicyManager.PruneOldImages(docker)
+}
+
+func (m *MockImagePullPolicyHandler) UpdateImagePullRecord(path string, imageID string, timestamp string) error {
+	if m.MockUpdateImagePullRecord != nil {
+		return m.MockUpdateImagePullRecord(path, imageID, timestamp)
+	}
+
+	return nil
+}
+
+func (m *MockImagePullPolicyHandler) UpdateImageJSONDuration(intervalStr string) error {
+	if m.MockUpdateImageJSONDuration != nil {
+		return m.MockUpdateImageJSONDuration(intervalStr)
+	}
+
+	return nil
 }

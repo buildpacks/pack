@@ -18,6 +18,7 @@ import (
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/pkg/logging"
+	fetcher_mock "github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -30,21 +31,23 @@ func TestRebaseCommand(t *testing.T) {
 
 func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		command        *cobra.Command
-		logger         logging.Logger
-		outBuf         bytes.Buffer
-		mockController *gomock.Controller
-		mockClient     *testmocks.MockPackClient
-		cfg            config.Config
+		command                *cobra.Command
+		logger                 logging.Logger
+		outBuf                 bytes.Buffer
+		mockController         *gomock.Controller
+		mockClient             *testmocks.MockPackClient
+		cfg                    config.Config
+		imagePullPolicyHandler image.ImagePullPolicyHandler
 	)
 
 	it.Before(func() {
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
+		imagePullPolicyHandler = fetcher_mock.NewMockPullPolicyManager(logger)
 		cfg = config.Config{}
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 
-		command = commands.Rebase(logger, cfg, mockClient)
+		command = commands.Rebase(logger, cfg, mockClient, imagePullPolicyHandler)
 	})
 
 	when("#RebaseCommand", func() {
@@ -69,7 +72,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 					Image:   runImage,
 					Mirrors: []string{testMirror1, testMirror2},
 				}}
-				command = commands.Rebase(logger, cfg, mockClient)
+				command = commands.Rebase(logger, cfg, mockClient, imagePullPolicyHandler)
 
 				repoName = "test/repo-image"
 				opts = client.RebaseOptions{
@@ -109,7 +112,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 						Return(nil)
 
 					cfg.PullPolicy = "if-not-present"
-					command = commands.Rebase(logger, cfg, mockClient)
+					command = commands.Rebase(logger, cfg, mockClient, imagePullPolicyHandler)
 
 					command.SetArgs([]string{repoName, "--pull-policy", "never"})
 					h.AssertNil(t, command.Execute())
@@ -142,7 +145,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 							Return(nil)
 
 						cfg.PullPolicy = "if-not-present"
-						command = commands.Rebase(logger, cfg, mockClient)
+						command = commands.Rebase(logger, cfg, mockClient, imagePullPolicyHandler)
 
 						command.SetArgs([]string{repoName})
 						h.AssertNil(t, command.Execute())
@@ -152,7 +155,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 					it("passes it through", func() {
 						opts.Force = true
 						mockClient.EXPECT().Rebase(gomock.Any(), opts).Return(nil)
-						command = commands.Rebase(logger, cfg, mockClient)
+						command = commands.Rebase(logger, cfg, mockClient, imagePullPolicyHandler)
 						command.SetArgs([]string{repoName, "--force"})
 						h.AssertNil(t, command.Execute())
 					})
@@ -170,7 +173,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 						Image:   runImage,
 						Mirrors: []string{testMirror1, testMirror2},
 					}}
-					command = commands.Rebase(logger, cfg, mockClient)
+					command = commands.Rebase(logger, cfg, mockClient, imagePullPolicyHandler)
 
 					repoName = "test/repo-image"
 					previousImage := "example.com/previous-image:tag" // Example of previous image with tag

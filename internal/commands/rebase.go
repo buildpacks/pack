@@ -13,7 +13,7 @@ import (
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
-func Rebase(logger logging.Logger, cfg config.Config, pack PackClient) *cobra.Command {
+func Rebase(logger logging.Logger, cfg config.Config, pack PackClient, imagePullPolicyHandler image.ImagePullPolicyHandler) *cobra.Command {
 	var opts client.RebaseOptions
 	var policy string
 
@@ -33,7 +33,7 @@ func Rebase(logger logging.Logger, cfg config.Config, pack PackClient) *cobra.Co
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			opts.PullPolicy, err = image.ParsePullPolicy(stringPolicy, logger)
+			opts.PullPolicy, err = imagePullPolicyHandler.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", stringPolicy)
 			}

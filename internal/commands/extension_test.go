@@ -13,7 +13,9 @@ import (
 	"github.com/buildpacks/pack/internal/commands/fakes"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
+	fetcher_mock "github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -23,17 +25,19 @@ func TestExtensionCommand(t *testing.T) {
 
 func testExtensionCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		cmd        *cobra.Command
-		logger     logging.Logger
-		outBuf     bytes.Buffer
-		mockClient *testmocks.MockPackClient
+		cmd                    *cobra.Command
+		logger                 logging.Logger
+		outBuf                 bytes.Buffer
+		mockClient             *testmocks.MockPackClient
+		imagePullPolicyHandler image.ImagePullPolicyHandler
 	)
 
 	it.Before(func() {
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
+		imagePullPolicyHandler = fetcher_mock.NewMockPullPolicyManager(logger)
 		mockController := gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
-		cmd = commands.NewExtensionCommand(logger, config.Config{}, mockClient, fakes.NewFakePackageConfigReader())
+		cmd = commands.NewExtensionCommand(logger, config.Config{}, mockClient, fakes.NewFakePackageConfigReader(), imagePullPolicyHandler)
 		cmd.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
 	})
 

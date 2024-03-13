@@ -36,11 +36,13 @@ type LayoutOption struct {
 	Sparse bool
 }
 
-type ImagePullChecker interface {
+type ImagePullPolicyHandler interface {
+	ParsePullPolicy(policy string) (PullPolicy, error)
 	CheckImagePullInterval(imageID string, path string) (bool, error)
-	Read(path string) (*ImageJSON, error)
-	PruneOldImages(f *Fetcher) error
+	PruneOldImages(docker DockerClient) error
 	UpdateImagePullRecord(path string, imageID string, timestamp string) error
+	UpdateImageJSONDuration(intervalStr string) error
+	Read(path string) (*ImageJSON, error)
 	Write(imageJSON *ImageJSON, path string) error
 }
 
@@ -48,7 +50,7 @@ func intervalPolicy(options FetchOptions) bool {
 	return options.PullPolicy == PullWithInterval || options.PullPolicy == PullHourly || options.PullPolicy == PullDaily || options.PullPolicy == PullWeekly
 }
 
-func NewPullPolicyManager(logger logging.Logger) *ImagePullPolicyManager {
+func NewPullPolicyManager(logger logging.Logger) ImagePullPolicyHandler {
 	return &ImagePullPolicyManager{Logger: logger}
 }
 
@@ -75,7 +77,7 @@ type Fetcher struct {
 	logger           logging.Logger
 	registryMirrors  map[string]string
 	keychain         authn.Keychain
-	imagePullChecker ImagePullChecker
+	imagePullChecker ImagePullPolicyHandler
 }
 
 type FetchOptions struct {
@@ -85,7 +87,7 @@ type FetchOptions struct {
 	LayoutOption LayoutOption
 }
 
-func NewFetcher(logger logging.Logger, docker DockerClient, imagePullChecker ImagePullChecker, opts ...FetcherOption) *Fetcher {
+func NewFetcher(logger logging.Logger, docker DockerClient, imagePullChecker ImagePullPolicyHandler, opts ...FetcherOption) *Fetcher {
 	fetcher := &Fetcher{
 		logger:           logger,
 		docker:           docker,
@@ -148,7 +150,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 			return img, err
 		}
 
-		err = f.imagePullChecker.PruneOldImages(f)
+		err = f.imagePullChecker.PruneOldImages(f.docker)
 		if err != nil {
 			f.logger.Warnf("Failed to prune images, %s", err)
 		}

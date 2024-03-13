@@ -1,12 +1,15 @@
 package image_test
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
+	fetcher_mock "github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -16,55 +19,66 @@ func TestPullPolicy(t *testing.T) {
 
 func testPullPolicy(t *testing.T, when spec.G, it spec.S) {
 	when("#ParsePullPolicy", func() {
+		var (
+			outBuf           bytes.Buffer
+			logger           logging.Logger
+			imagePullChecker image.ImagePullPolicyHandler
+		)
+
+		it.Before(func() {
+			logger = logging.NewLogWithWriters(&outBuf, &outBuf)
+			imagePullChecker = fetcher_mock.NewMockPullPolicyManager(logger)
+		})
+
 		it("returns PullNever for never", func() {
-			policy, err := image.ParsePullPolicy("never", logger)
+			policy, err := imagePullChecker.ParsePullPolicy("never")
 			h.AssertNil(t, err)
 			h.AssertEq(t, policy, image.PullNever)
 		})
 
 		it("returns PullAlways for always", func() {
-			policy, err := image.ParsePullPolicy("always", logger)
+			policy, err := imagePullChecker.ParsePullPolicy("always")
 			h.AssertNil(t, err)
 			h.AssertEq(t, policy, image.PullAlways)
 		})
 
 		it("returns PullIfNotPresent for if-not-present", func() {
-			policy, err := image.ParsePullPolicy("if-not-present", logger)
+			policy, err := imagePullChecker.ParsePullPolicy("if-not-present")
 			h.AssertNil(t, err)
 			h.AssertEq(t, policy, image.PullIfNotPresent)
 		})
 
 		it("returns PullHourly for hourly", func() {
-			policy, err := image.ParsePullPolicy("hourly", logger)
+			policy, err := imagePullChecker.ParsePullPolicy("hourly")
 			h.AssertNil(t, err)
 			h.AssertEq(t, policy, image.PullHourly)
 		})
 
 		it("returns PullDaily for daily", func() {
-			policy, err := image.ParsePullPolicy("daily", logger)
+			policy, err := imagePullChecker.ParsePullPolicy("daily")
 			h.AssertNil(t, err)
 			h.AssertEq(t, policy, image.PullDaily)
 		})
 
 		it("returns PullWeekly for weekly", func() {
-			policy, err := image.ParsePullPolicy("weekly", logger)
+			policy, err := imagePullChecker.ParsePullPolicy("weekly")
 			h.AssertNil(t, err)
 			h.AssertEq(t, policy, image.PullWeekly)
 		})
 
 		it("returns PullWithInterval for interval= format", func() {
-			policy, err := image.ParsePullPolicy("interval=4d", logger)
+			policy, err := imagePullChecker.ParsePullPolicy("interval=4d")
 			h.AssertNil(t, err)
 			h.AssertEq(t, policy, image.PullWithInterval)
 		})
 
 		it("returns error for unknown string", func() {
-			_, err := image.ParsePullPolicy("fake-policy-here", logger)
+			_, err := imagePullChecker.ParsePullPolicy("fake-policy-here")
 			h.AssertError(t, err, "invalid pull policy")
 		})
 
 		it("returns error for invalid interval format", func() {
-			_, err := image.ParsePullPolicy("interval=invalid", logger)
+			_, err := imagePullChecker.ParsePullPolicy("interval=invalid")
 			h.AssertError(t, err, "invalid interval format")
 		})
 	})

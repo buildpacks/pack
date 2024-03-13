@@ -62,7 +62,7 @@ type BuildFlags struct {
 var macAddressRegex = regexp.MustCompile(`^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
 
 // Build an image from source code
-func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cobra.Command {
+func Build(logger logging.Logger, cfg config.Config, packClient PackClient, imagePullPolicyHandler image.ImagePullPolicyHandler) *cobra.Command {
 	var flags BuildFlags
 
 	cmd := &cobra.Command{
@@ -132,7 +132,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			pullPolicy, err := image.ParsePullPolicy(stringPolicy, logger)
+			pullPolicy, err := imagePullPolicyHandler.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}
