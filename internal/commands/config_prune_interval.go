@@ -13,10 +13,9 @@ import (
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
-func ConfigPruneInterval(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
+func ConfigPruneInterval(logger logging.Logger, cfg config.Config, cfgPath string, imagePullPolicyHandler image.ImagePullPolicyHandler) *cobra.Command {
 	var unset bool
 	var intervalRegex = regexp.MustCompile(`^(\d+d)?(\d+h)?(\d+m)?$`)
-	pullPolicyManager := image.NewPullPolicyManager(logger)
 
 	cmd := &cobra.Command{
 		Use:   "prune-interval",
@@ -38,21 +37,21 @@ func ConfigPruneInterval(logger logging.Logger, cfg config.Config, cfgPath strin
 				if len(args) > 0 {
 					return errors.Errorf("prune interval and --unset cannot be specified simultaneously")
 				}
-				imageJSON, err := pullPolicyManager.Read(imageJSONPath)
+				imageJSON, err := imagePullPolicyHandler.Read(imageJSONPath)
 				if err != nil {
 					return err
 				}
 				oldPruneInterval := imageJSON.Interval.PruningInterval
 				imageJSON.Interval.PruningInterval = "7d"
 
-				err = pullPolicyManager.Write(imageJSON, imageJSONPath)
+				err = imagePullPolicyHandler.Write(imageJSON, imageJSONPath)
 				if err != nil {
 					return err
 				}
 				logger.Infof("Successfully unset pruning interval %s", style.Symbol(oldPruneInterval))
 				logger.Infof("Pruning interval has been set to %s", style.Symbol(imageJSON.Interval.PruningInterval))
 			case len(args) == 0: // list
-				imageJSON, err := pullPolicyManager.Read(imageJSONPath)
+				imageJSON, err := imagePullPolicyHandler.Read(imageJSONPath)
 				if err != nil {
 					return err
 				}
@@ -65,7 +64,7 @@ func ConfigPruneInterval(logger logging.Logger, cfg config.Config, cfgPath strin
 			default: // set
 				newPruneInterval := args[0]
 
-				imageJSON, err := pullPolicyManager.Read(imageJSONPath)
+				imageJSON, err := imagePullPolicyHandler.Read(imageJSONPath)
 				if err != nil {
 					return err
 				}
@@ -86,7 +85,7 @@ func ConfigPruneInterval(logger logging.Logger, cfg config.Config, cfgPath strin
 
 				imageJSON.Interval.PruningInterval = newPruneInterval
 
-				err = pullPolicyManager.Write(imageJSON, imageJSONPath)
+				err = imagePullPolicyHandler.Write(imageJSON, imageJSONPath)
 				if err != nil {
 					return err
 				}

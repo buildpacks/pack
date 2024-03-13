@@ -12,6 +12,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/imgutil/local"
+
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -75,24 +77,22 @@ func DefaultImageJSONPath() (string, error) {
 var nameMap = map[string]PullPolicy{"always": PullAlways, "hourly": PullHourly, "daily": PullDaily, "weekly": PullWeekly, "never": PullNever, "if-not-present": PullIfNotPresent, "": PullAlways}
 
 // ParsePullPolicy from string with support for interval formats
-func ParsePullPolicy(policy string, logger logging.Logger) (PullPolicy, error) {
-	pullPolicyManager := NewPullPolicyManager(logger)
-
+func (i *ImagePullPolicyManager) ParsePullPolicy(policy string) (PullPolicy, error) {
 	if val, ok := nameMap[policy]; ok {
 		if val == PullHourly {
-			err := pullPolicyManager.updateImageJSONDuration(hourly)
+			err := i.UpdateImageJSONDuration(hourly)
 			if err != nil {
 				return PullAlways, err
 			}
 		}
 		if val == PullDaily {
-			err := pullPolicyManager.updateImageJSONDuration(daily)
+			err := i.UpdateImageJSONDuration(daily)
 			if err != nil {
 				return PullAlways, err
 			}
 		}
 		if val == PullWeekly {
-			err := pullPolicyManager.updateImageJSONDuration(weekly)
+			err := i.UpdateImageJSONDuration(weekly)
 			if err != nil {
 				return PullAlways, err
 			}
@@ -109,7 +109,7 @@ func ParsePullPolicy(policy string, logger logging.Logger) (PullPolicy, error) {
 			return PullAlways, errors.Errorf("invalid interval format: %s", intervalStr)
 		}
 
-		err := pullPolicyManager.updateImageJSONDuration(intervalStr)
+		err := i.UpdateImageJSONDuration(intervalStr)
 		if err != nil {
 			return PullAlways, err
 		}
@@ -141,7 +141,7 @@ func (p PullPolicy) String() string {
 	return ""
 }
 
-func (i *ImagePullPolicyManager) updateImageJSONDuration(intervalStr string) error {
+func (i *ImagePullPolicyManager) UpdateImageJSONDuration(intervalStr string) error {
 	path, err := DefaultImageJSONPath()
 	if err != nil {
 		return err
@@ -188,7 +188,7 @@ func parseDurationString(durationStr string) (time.Duration, error) {
 	return time.Duration(totalMinutes) * time.Minute, nil
 }
 
-func (i *ImagePullPolicyManager) PruneOldImages(f *Fetcher) error {
+func (i *ImagePullPolicyManager) PruneOldImages(docker DockerClient) error {
 	path, err := DefaultImageJSONPath()
 	if err != nil {
 		return err
@@ -229,8 +229,11 @@ func (i *ImagePullPolicyManager) PruneOldImages(f *Fetcher) error {
 			return errors.Wrap(err, "failed to parse image timestamp fron JSON")
 		}
 
-		_, err = f.fetchDaemonImage(imageID)
-		if !errors.Is(err, ErrNotFound) {
+		image, err := local.NewImage(imageID, docker, local.FromBaseImage(imageID))
+		if err != nil {
+			return err
+		}
+		if !image.Found() {
 			delete(imageJSON.Image.ImageIDtoTIME, imageID)
 		}
 

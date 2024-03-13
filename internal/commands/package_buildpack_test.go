@@ -18,6 +18,7 @@ import (
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
+	fetcher_mock "github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -131,11 +132,12 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 				it("takes precedence over a configured pull policy", func() {
 					logger := logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
+					imagePullPolicyHandler := fetcher_mock.NewMockPullPolicyManager(logger)
 					configReader := fakes.NewFakePackageConfigReader()
 					buildpackPackager := &fakes.FakeBuildpackPackager{}
 					clientConfig := config.Config{PullPolicy: "if-not-present"}
 
-					command := commands.PackageBuildpack(logger, clientConfig, buildpackPackager, configReader)
+					command := commands.PackageBuildpack(logger, clientConfig, buildpackPackager, configReader, imagePullPolicyHandler)
 					command.SetArgs([]string{
 						"some-image-name",
 						"--config", "/path/to/some/file",
@@ -153,11 +155,12 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			when("configured pull policy", func() {
 				it("uses the configured pull policy", func() {
 					logger := logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
+					imagePullChecker := fetcher_mock.NewMockPullPolicyManager(logger)
 					configReader := fakes.NewFakePackageConfigReader()
 					buildpackPackager := &fakes.FakeBuildpackPackager{}
 					clientConfig := config.Config{PullPolicy: "never"}
 
-					command := commands.PackageBuildpack(logger, clientConfig, buildpackPackager, configReader)
+					command := commands.PackageBuildpack(logger, clientConfig, buildpackPackager, configReader, imagePullChecker)
 					command.SetArgs([]string{
 						"some-image-name",
 						"--config", "/path/to/some/file",
@@ -177,11 +180,12 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		when("both --publish and --pull-policy never flags are specified", func() {
 			it("errors with a descriptive message", func() {
 				logger := logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
+				imagePullChecker := fetcher_mock.NewMockPullPolicyManager(logger)
 				configReader := fakes.NewFakePackageConfigReader()
 				buildpackPackager := &fakes.FakeBuildpackPackager{}
 				clientConfig := config.Config{}
 
-				command := commands.PackageBuildpack(logger, clientConfig, buildpackPackager, configReader)
+				command := commands.PackageBuildpack(logger, clientConfig, buildpackPackager, configReader, imagePullChecker)
 				command.SetArgs([]string{
 					"some-image-name",
 					"--config", "/path/to/some/file",
@@ -226,7 +230,9 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					configPath: "/path/to/some/file",
 				}
 
-				cmd := commands.PackageBuildpack(config.logger, config.clientConfig, config.buildpackPackager, config.packageConfigReader)
+				imagePullPolicyHandler := fetcher_mock.NewMockPullPolicyManager(config.logger)
+
+				cmd := commands.PackageBuildpack(config.logger, config.clientConfig, config.buildpackPackager, config.packageConfigReader, imagePullPolicyHandler)
 				cmd.SetArgs([]string{config.imageName, "--package-config", config.configPath})
 
 				err := cmd.Execute()
@@ -244,7 +250,9 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					imageName: "some-image-name",
 				}
 
-				cmd := commands.PackageBuildpack(config.logger, config.clientConfig, config.buildpackPackager, config.packageConfigReader)
+				imagePullChecker := fetcher_mock.NewMockPullPolicyManager(config.logger)
+
+				cmd := commands.PackageBuildpack(config.logger, config.clientConfig, config.buildpackPackager, config.packageConfigReader, imagePullChecker)
 				cmd.SetArgs([]string{config.imageName})
 
 				err := cmd.Execute()
@@ -258,11 +266,12 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		when("--pull-policy unknown-policy", func() {
 			it("fails to run", func() {
 				logger := logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
+				imagePullChecker := fetcher_mock.NewMockPullPolicyManager(logger)
 				configReader := fakes.NewFakePackageConfigReader()
 				buildpackPackager := &fakes.FakeBuildpackPackager{}
 				clientConfig := config.Config{}
 
-				command := commands.PackageBuildpack(logger, clientConfig, buildpackPackager, configReader)
+				command := commands.PackageBuildpack(logger, clientConfig, buildpackPackager, configReader, imagePullChecker)
 				command.SetArgs([]string{
 					"some-image-name",
 					"--config", "/path/to/some/file",
@@ -287,11 +296,13 @@ func packageBuildpackCommand(ops ...packageCommandOption) *cobra.Command {
 		configPath: "/path/to/some/file",
 	}
 
+	imagePullChecker := fetcher_mock.NewMockPullPolicyManager(config.logger)
+
 	for _, op := range ops {
 		op(config)
 	}
 
-	cmd := commands.PackageBuildpack(config.logger, config.clientConfig, config.buildpackPackager, config.packageConfigReader)
+	cmd := commands.PackageBuildpack(config.logger, config.clientConfig, config.buildpackPackager, config.packageConfigReader, imagePullChecker)
 	cmd.SetArgs([]string{config.imageName, "--config", config.configPath})
 
 	return cmd

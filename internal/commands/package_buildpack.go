@@ -16,7 +16,7 @@ import (
 
 // Deprecated: use BuildpackPackage instead
 // PackageBuildpack packages (a) buildpack(s) into OCI format, based on a package config
-func PackageBuildpack(logger logging.Logger, cfg config.Config, packager BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
+func PackageBuildpack(logger logging.Logger, cfg config.Config, packager BuildpackPackager, packageConfigReader PackageConfigReader, imagePullPolicyHandler image.ImagePullPolicyHandler) *cobra.Command {
 	var flags BuildpackPackageFlags
 
 	cmd := &cobra.Command{
@@ -41,7 +41,7 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, packager Buildpa
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			pullPolicy, err := image.ParsePullPolicy(stringPolicy, logger)
+			pullPolicy, err := imagePullPolicyHandler.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrap(err, "parsing pull policy")
 			}
