@@ -186,23 +186,23 @@ func ParseBuildConfigEnv(env []BuildConfigEnv, path string) (envMap map[string]s
 	envMap = map[string]string{}
 	var appendOrPrependWithoutDelim = 0
 	for _, v := range env {
-		if name := v.Name; name == "" || len(name) == 0 {
+		if name := v.Name; name == "" {
 			return nil, nil, errors.Wrapf(errors.Errorf("env name should not be empty"), "parse contents of '%s'", path)
 		}
-		if val := v.Value; val == "" || len(val) == 0 {
+		if val := v.Value; val == "" {
 			warnings = append(warnings, fmt.Sprintf("empty value for key/name %s", style.Symbol(v.Name)))
 		}
 		suffixName, delimName, err := getBuildConfigEnvFileName(v)
 		if err != nil {
 			return envMap, warnings, err
 		}
-		if val, e := envMap[suffixName]; e {
+		if val, ok := envMap[suffixName]; ok {
 			warnings = append(warnings, fmt.Sprintf(errors.Errorf("overriding env with name: %s and suffix: %s from %s to %s", style.Symbol(v.Name), style.Symbol(string(v.Suffix)), style.Symbol(val), style.Symbol(v.Value)).Error(), "parse contents of '%s'", path))
 		}
-		if val, e := envMap[delimName]; e {
+		if val, ok := envMap[delimName]; ok {
 			warnings = append(warnings, fmt.Sprintf(errors.Errorf("overriding env with name: %s and delim: %s from %s to %s", style.Symbol(v.Name), style.Symbol(v.Delim), style.Symbol(val), style.Symbol(v.Value)).Error(), "parse contents of '%s'", path))
 		}
-		if delim := v.Delim; (delim != "" || len(delim) != 0) && (delimName != "" || len(delimName) != 0) {
+		if delim := v.Delim; delim != "" && delimName != "" {
 			envMap[delimName] = delim
 		}
 		envMap[suffixName] = v.Value
@@ -234,7 +234,7 @@ func getBuildConfigEnvFileName(env BuildConfigEnv) (suffixName, delimName string
 	} else {
 		suffixName = env.Name + suffix
 	}
-	if delim := env.Delim; delim != "" || len(delim) != 0 {
+	if delim := env.Delim; delim != "" {
 		delimName = env.Name + ".delim"
 	}
 	return suffixName, delimName, err

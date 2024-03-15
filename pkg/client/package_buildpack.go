@@ -2,10 +2,12 @@ package client
 
 import (
 	"context"
+	"sync"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/index"
@@ -16,8 +18,8 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 
-	"github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -71,7 +73,7 @@ type PackageBuildpackOptions struct {
 	Version string
 
 	// Index Options instruct how IndexManifest should be created
-	IndexOptions buildpackage.IndexOptions
+	IndexOptions pubbldpkg.IndexOptions
 }
 
 // PackageBuildpack packages buildpack(s) into either an image or file.
@@ -137,11 +139,9 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 	switch opts.Format {
 	case FormatFile:
-		// FIXME: Add `variant`, `features`, `osFeatures`, `urls`, `annotations` to imgutil.Platform
-		return packageBuilder.SaveAsFile(opts.Name, opts.Version, opts.IndexOptions.Target, opts.Labels)
+		return packageBuilder.SaveAsFile(opts.Name, opts.Version, opts.IndexOptions.Target, opts.IndexOptions.ImageIndex, opts.Labels)
 	case FormatImage:
-		// FIXME: Add `variant`, `features`, `osFeatures`, `urls`, `annotations` to imgutil.Platform
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Version, opts.Publish, opts.IndexOptions.Target, opts.Labels)
+		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Version, opts.Publish, opts.IndexOptions.Target, opts.IndexOptions.ImageIndex, opts.Labels)
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))
@@ -192,7 +192,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 	}
 
 	IndexManifestFn := getIndexManifestFn(c, opts.IndexOptions.Manifest)
-	bpCfg, err := buildpackage.NewConfigReader().ReadBuildpackDescriptor(opts.RelativeBaseDir)
+	bpCfg, err := pubbldpkg.NewConfigReader().ReadBuildpackDescriptor(opts.RelativeBaseDir)
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,17 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 	}
 
 	pkgConfig, bpConfigs := *opts.IndexOptions.PkgConfig, *opts.IndexOptions.BPConfigs
-	for _, bpConfig := range bpConfigs {
+	var (
+		errs errgroup.Group
+		wg   *sync.WaitGroup
+	)
+	wg.Add(len(bpConfigs))
+
+	idx, err := loadImageIndex(c, repoName)
+	if err != nil {
+		return err
+	}
+	packageMultiArchBuildpackFn := func(bpConfig pubbldpkg.MultiArchBuildpackConfig) error {
 		if err := bpConfig.CopyBuildpackToml(IndexManifestFn); err != nil {
 			return err
 		}
@@ -217,19 +227,30 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 
 		targets := bpConfig.Targets()
 		if bpConfig.BuildpackType() != pubbldpkg.Composite {
-			target := targets[0]
-			distro := target.Distributions[0]
-			if err := pkgConfig.CopyPackageToml(opts.IndexOptions.RelativeBaseDir, target, distro, distro.Versions[0], IndexManifestFn); err != nil {
+			target := dist.Target{}
+			if len(targets) != 0 {
+				target = targets[0]
+			}
+			distro := dist.Distribution{}
+			if len(target.Distributions) != 0 {
+				distro = target.Distributions[0]
+			}
+
+			version := ""
+			if len(distro.Versions) != 0 {
+				version = distro.Versions[0]
+			}
+			if err := pkgConfig.CopyPackageToml(opts.IndexOptions.RelativeBaseDir, target, distro, version, IndexManifestFn); err != nil {
 				return err
 			}
-			defer pkgConfig.CleanPackageToml(opts.IndexOptions.RelativeBaseDir, target, distro.Name, distro.Versions[0])
+			defer pkgConfig.CleanPackageToml(opts.IndexOptions.RelativeBaseDir, target, distro.Name, version)
 		}
 
 		if !opts.Flatten && bpConfig.Flatten {
 			opts.IndexOptions.Logger.Warn("Flattening a buildpack package could break the distribution specification. Please use it with caution.")
 		}
 
-		if err := c.PackageBuildpack(ctx, PackageBuildpackOptions{
+		return c.PackageBuildpack(ctx, PackageBuildpackOptions{
 			RelativeBaseDir: bpConfig.RelativeBaseDir(),
 			Name:            opts.Name,
 			Format:          opts.Format,
@@ -241,11 +262,25 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 			FlattenExclude:  bpConfig.FlattenExclude,
 			Labels:          bpConfig.Labels,
 			Version:         opts.Version,
-		}); err != nil {
-			return err
-		}
+			IndexOptions: pubbldpkg.IndexOptions{
+				ImageIndex: idx,
+			},
+		})
 	}
-	return nil
+
+	for _, bpConfig := range bpConfigs {
+		c := bpConfig
+		errs.Go(func() error {
+			defer wg.Done()
+			return packageMultiArchBuildpackFn(c)
+		})
+	}
+	wg.Wait()
+	if err := errs.Wait(); err != nil {
+		return err
+	}
+
+	return idx.Save()
 }
 
 func getIndexManifestFn(c *Client, mfest *v1.IndexManifest) func(ref name.Reference) (*v1.IndexManifest, error) {

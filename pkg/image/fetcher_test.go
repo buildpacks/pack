@@ -9,12 +9,11 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/buildpacks/imgutil"
-
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -224,7 +223,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 					when("remote platform does not match", func() {
 						it.Before(func() {
-							img, err := remote.NewImage(repoName, authn.DefaultKeychain, remote.WithDefaultPlatform(imgutil.Platform{OS: osType, Architecture: ""}))
+							img, err := remote.NewImage(repoName, authn.DefaultKeychain, remote.WithDefaultPlatform(v1.Platform{OS: osType, Architecture: ""}))
 							h.AssertNil(t, err)
 							h.AssertNil(t, img.Save())
 						})

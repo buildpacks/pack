@@ -67,13 +67,31 @@ func parseBuilderLocator(locator string) (path string) {
 }
 
 func PlatformSafeName(uri string, target dist.Target) string {
-	distro := target.Distributions[0]
-	platformDir := PlatformRootDirectory(target, distro.Name, distro.Versions[0])
+	var distro = dist.Distribution{}
+	if len(target.Distributions) != 0 {
+		distro = target.Distributions[0]
+	}
+
+	var version = ""
+	if len(distro.Versions) != 0 {
+		version = distro.Versions[0]
+	}
+	platformDir := PlatformRootDirectory(target, distro.Name, version)
 
 	return uri + platformSafeDelim + strings.ReplaceAll(platformDir, "/", platformSafeDelim)
 }
 
 func PlatformRootDirectory(target dist.Target, distroName, version string) string {
-	distroStr := strings.Join([]string{distroName, version}, distroDelim)
-	return strings.Join([]string{target.OS, target.Arch, target.ArchVariant, distroStr}, platformDelim)
+	distroStr := strings.Join(getNonNilStringSlice([]string{distroName, version}), distroDelim)
+	return strings.Join(getNonNilStringSlice([]string{target.OS, target.Arch, target.ArchVariant, distroStr}), platformDelim)
+}
+
+func getNonNilStringSlice(slice []string) (nonNil []string) {
+	for _, s := range slice {
+		if s != "" {
+			nonNil = append(nonNil, s)
+		}
+	}
+
+	return nonNil
 }

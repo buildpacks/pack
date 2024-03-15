@@ -118,7 +118,24 @@ func (r *ConfigReader) Read(path string) (Config, error) {
 }
 
 func (r *ConfigReader) ReadBuildpackDescriptor(path string) (dist.BuildpackDescriptor, error) {
-	return dist.BuildpackDescriptor{}, nil
+	buildpackConfig := dist.BuildpackDescriptor{}
+
+	tomlMetadata, err := toml.DecodeFile(path, &buildpackConfig)
+	if err != nil {
+		return buildpackConfig, errors.Wrap(err, "decoding toml")
+	}
+
+	undecodedKeys := tomlMetadata.Undecoded()
+	if len(undecodedKeys) > 0 {
+		unknownElementsMsg := config.FormatUndecodedKeys(undecodedKeys)
+
+		return buildpackConfig, errors.Errorf("%s in %s",
+			unknownElementsMsg,
+			style.Symbol(path),
+		)
+	}
+
+	return buildpackConfig, nil
 }
 
 func validateURI(uri, relativeBaseDir string) error {

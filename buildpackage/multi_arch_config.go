@@ -31,7 +31,7 @@ type BuildpackType int
 const (
 	Buildpack BuildpackType = iota
 	Composite
-	Extention
+	Extension
 )
 
 type multiArchBuildpack struct {
@@ -48,6 +48,7 @@ type IndexOptions struct {
 	Logger          logging.Logger
 	RelativeBaseDir string
 	Target          dist.Target
+	ImageIndex      imgutil.ImageIndex
 }
 
 type MultiArchPackage struct {
@@ -182,15 +183,23 @@ func (m *MultiArchBuildpackConfig) CopyBuildpackToml(getIndexManifest func(ref n
 			}
 		}
 
-		distro := target.Distributions[0]
-		bpPath := filepath.Join(buildpack.PlatformRootDirectory(target, distro.Name, distro.Versions[0]), BuildpackToml)
+		distro := dist.Distribution{}
+		if len(target.Distributions) != 0 {
+			distro = target.Distributions[0]
+		}
+
+		version := ""
+		if len(distro.Versions) != 0 {
+			version = distro.Versions[0]
+		}
+		bpPath := filepath.Join(buildpack.PlatformRootDirectory(target, distro.Name, version), BuildpackToml)
 		path, err := filepath.Abs(filepath.Join(m.relativeBaseDir, bpPath))
 		if err != nil {
 			return err
 		}
 
 		if m.bpType != Composite {
-			bpFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0644)
+			bpFile, err := os.Create(path)
 			if err != nil {
 				return err
 			}
@@ -219,7 +228,7 @@ func processModuleInfo(module dist.ModuleInfo, relativeBaseDir string, target *d
 		module.Version = "latest"
 	}
 
-	module.ID, err = getRelativeUri(module.ID, relativeBaseDir, target, getIndexManifest)
+	module.ID, err = getRelativeURI(module.ID, relativeBaseDir, target, getIndexManifest)
 	return module, err
 }
 
@@ -230,13 +239,13 @@ func (m *MultiArchBuildpackConfig) CleanBuildpackToml() error {
 func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target, distro dist.Distribution, version string, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (err error) {
 	if m.Buildpack.URI != "" || m.Extension.URI != "" {
 		if uri := m.Buildpack.URI; uri != "" {
-			if m.Buildpack.URI, err = getRelativeUri(uri, relativeTo, &target, getIndexManifest); err != nil {
+			if m.Buildpack.URI, err = getRelativeURI(uri, relativeTo, &target, getIndexManifest); err != nil {
 				return err
 			}
 		}
 
 		if uri := m.Extension.URI; uri != "" {
-			if m.Extension.URI, err = getRelativeUri(uri, relativeTo, &target, getIndexManifest); err != nil {
+			if m.Extension.URI, err = getRelativeURI(uri, relativeTo, &target, getIndexManifest); err != nil {
 				return err
 			}
 		}
@@ -244,7 +253,7 @@ func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target
 		for i, dep := range m.Dependencies {
 			// dep.ImageName == dep.ImageRef.ImageName, dep.URI == dep.Buildpack.URI
 			if dep.URI != "" {
-				if m.Dependencies[i].URI, err = getRelativeUri(dep.URI, relativeTo, &target, getIndexManifest); err != nil {
+				if m.Dependencies[i].URI, err = getRelativeURI(dep.URI, relativeTo, &target, getIndexManifest); err != nil {
 					return err
 				}
 			}
@@ -256,7 +265,7 @@ func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target
 			return err
 		}
 
-		bpFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0644)
+		bpFile, err := os.Create(path)
 		if err != nil {
 			return err
 		}
@@ -265,7 +274,7 @@ func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target
 	return nil
 }
 
-func getRelativeUri(uri, relativeBaseDir string, target *dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (string, error) {
+func getRelativeURI(uri, relativeBaseDir string, target *dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (string, error) {
 	locator, err := buildpack.GetLocatorType(uri, relativeBaseDir, []dist.ModuleInfo{})
 	if err != nil {
 		return "", err

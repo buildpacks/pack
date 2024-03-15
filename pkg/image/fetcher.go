@@ -27,10 +27,10 @@ import (
 )
 
 const (
-	LOCAL        = "local"
-	LOCAL_LAYOUT = "locallayout"
-	REMOTE       = "remote"
-	LAYOUT       = "layout"
+	LOCAL       = "local"
+	LOCALLAYOUT = "locallayout"
+	REMOTE      = "remote"
+	LAYOUT      = "layout"
 )
 
 // FetcherOption is a type of function that mutate settings on the client.
