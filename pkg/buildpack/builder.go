@@ -983,12 +983,7 @@ func (b *PackageBuilder) SaveAsImage(repoName, version string, publish bool, tar
 	urls, _ := image.URLs()
 	annotations, _ := image.Annotations()
 
-	var (
-		featuresFound   = true
-		osFeaturesFound = true
-		urlsFound       = true
-		annosFound      = true
-	)
+	var featuresFound, osFeaturesFound, urlsFound, annosFound bool
 	featuresFound = sliceContains(features, target.Specs.Features)
 	osFeaturesFound = sliceContains(osFeatures, target.Specs.OSFeatures)
 	urlsFound = sliceContains(urls, target.Specs.URLs)

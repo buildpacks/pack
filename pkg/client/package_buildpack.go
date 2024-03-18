@@ -240,7 +240,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 			if len(distro.Versions) != 0 {
 				version = distro.Versions[0]
 			}
-			if err := pkgConfig.CopyPackageToml(opts.IndexOptions.RelativeBaseDir, target, distro, version, IndexManifestFn); err != nil {
+			if err := pkgConfig.CopyPackageToml(opts.IndexOptions.RelativeBaseDir, target, distro.Name, version, IndexManifestFn); err != nil {
 				return err
 			}
 			defer pkgConfig.CleanPackageToml(opts.IndexOptions.RelativeBaseDir, target, distro.Name, version)
@@ -298,7 +298,7 @@ func getIndexManifestFn(c *Client, mfest *v1.IndexManifest) func(ref name.Refere
 
 		idx, err := c.indexFactory.FetchIndex(ref.Name(), fetchOpts...)
 		if err != nil {
-			return nil, err
+			return nil, errors.Errorf("the given reference either doesn't exist or not referencing IndexManifest")
 		}
 
 		ii, ok := idx.(*imgutil.ManifestHandler)

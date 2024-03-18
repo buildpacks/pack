@@ -105,7 +105,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			if err != nil {
 				return err
 			}
-			bpMultiArchConfig := pubbldpkg.NewMultiArchBuildpack(bpConfig, bpPath, flags.Flatten, targets)
+			bpMultiArchConfig := pubbldpkg.NewMultiArchBuildpack(bpConfig, bpPath, flags.Flatten, cmd.Flags().Changed("flatten"), targets)
 			bpConfigs, err := bpMultiArchConfig.MultiArchConfigs()
 			if err != nil {
 				return err

@@ -66,6 +66,7 @@ func parseBuilderLocator(locator string) (path string) {
 		fromBuilderPrefix+":")
 }
 
+// Returns uri + "/" + [-os][-arch][-variant][-distro@version]
 func PlatformSafeName(uri string, target dist.Target) string {
 	var distro = dist.Distribution{}
 	if len(target.Distributions) != 0 {
@@ -77,10 +78,10 @@ func PlatformSafeName(uri string, target dist.Target) string {
 		version = distro.Versions[0]
 	}
 	platformDir := PlatformRootDirectory(target, distro.Name, version)
-
 	return uri + platformSafeDelim + strings.ReplaceAll(platformDir, "/", platformSafeDelim)
 }
 
+// Returns os/[arch]/[variant]/[distroName@variant]
 func PlatformRootDirectory(target dist.Target, distroName, version string) string {
 	distroStr := strings.Join(getNonNilStringSlice([]string{distroName, version}), distroDelim)
 	return strings.Join(getNonNilStringSlice([]string{target.OS, target.Arch, target.ArchVariant, distroStr}), platformDelim)
