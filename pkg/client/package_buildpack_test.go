@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
@@ -18,6 +19,9 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/pkg/archive"
+
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	ggcrTypes "github.com/google/go-containerregistry/pkg/v1/types"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	cfg "github.com/buildpacks/pack/internal/config"
@@ -46,6 +50,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		mockDownloader   *testmocks.MockBlobDownloader
 		mockImageFactory *testmocks.MockImageFactory
 		mockImageFetcher *testmocks.MockImageFetcher
+		mockIndexFactory *testmocks.MockIndexFactory
 		mockDockerClient *testmocks.MockCommonAPIClient
 		out              bytes.Buffer
 	)
@@ -55,6 +60,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		mockDownloader = testmocks.NewMockBlobDownloader(mockController)
 		mockImageFactory = testmocks.NewMockImageFactory(mockController)
 		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
+		mockIndexFactory = testmocks.NewMockIndexFactory(mockController)
 		mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
 
 		var err error
@@ -62,6 +68,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			client.WithLogger(logging.NewLogWithWriters(&out, &out)),
 			client.WithDownloader(mockDownloader),
 			client.WithImageFactory(mockImageFactory),
+			client.WithIndexFactory(mockIndexFactory),
 			client.WithFetcher(mockImageFetcher),
 			client.WithDockerClient(mockDockerClient),
 		)
@@ -872,7 +879,95 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+	when("#PackageMultiArchBuildpack", func() {
+		it("should return an error when BPConfig is not provided", func() {
+			h.AssertEq(t, subject.PackageMultiArchBuildpack(context.TODO(), client.PackageBuildpackOptions{}).Error(), "'IndexOptions' must not be nil")
+		})
+		it("should return an error when BPConfig is nil", func() {
+			h.AssertEq(t, subject.PackageMultiArchBuildpack(context.TODO(), client.PackageBuildpackOptions{}).Error(), "'IndexOptions' must not be nil")
+		})
+		it("should return an error when PKGConfig is not provided", func() {
+			h.AssertEq(t, subject.PackageMultiArchBuildpack(context.TODO(), client.PackageBuildpackOptions{
+				IndexOptions: pubbldpkg.IndexOptions{
+					BPConfigs: &[]pubbldpkg.MultiArchBuildpackConfig{
+						{
+							BuildpackDescriptor: dist.BuildpackDescriptor{},
+						},
+					},
+				},
+			}).Error(), "package configaration is undefined")
+		})
+		when("ImageIndex", func() {
+			it("should create a new ImageIndex", func() {
+				tmpDir, err := os.MkdirTemp("", "test_dir")
+				h.AssertNil(t, err)
 
+				f, err := os.CreateTemp(tmpDir, "buildpack.toml")
+				h.AssertNil(t, err)
+
+				toml.NewEncoder(f).Encode(
+					dist.BuildpackDescriptor{
+						WithInfo: dist.ModuleInfo{
+							ID:      "some/bp",
+							Version: "latest",
+						},
+					},
+				)
+				_, err = os.Stat(f.Name())
+				h.AssertNil(t, err)
+
+				expectCreateIndex(t, mockIndexFactory)
+				expectLoadIndex(t, mockIndexFactory)
+				err = subject.PackageMultiArchBuildpack(context.TODO(), client.PackageBuildpackOptions{
+					IndexOptions: pubbldpkg.IndexOptions{
+						BPConfigs: &[]pubbldpkg.MultiArchBuildpackConfig{
+							{
+								BuildpackDescriptor: dist.BuildpackDescriptor{
+									WithInfo: dist.ModuleInfo{
+										ID:      "some/bp",
+										Version: "latest",
+									},
+								},
+							},
+						},
+						PkgConfig:       pubbldpkg.NewMultiArchPackage(pubbldpkg.DefaultConfig(), tmpDir),
+						RelativeBaseDir: f.Name(),
+					},
+				})
+				h.AssertNil(t, err)
+
+				h.AssertNil(t, subject.ExistsManifest(context.TODO(), "some/bp:latest"))
+			})
+			it("should overwrite Index if exists", func() {
+				tmpDir, err := os.MkdirTemp("", "test_dir")
+				h.AssertNil(t, err)
+
+				h.AssertNil(t, subject.CreateManifest(context.TODO(), "some/bp:latest", []string{}, client.CreateManifestOptions{}))
+
+				err = subject.PackageMultiArchBuildpack(context.TODO(), client.PackageBuildpackOptions{
+					IndexOptions: pubbldpkg.IndexOptions{
+						BPConfigs: &[]pubbldpkg.MultiArchBuildpackConfig{
+							{
+								BuildpackDescriptor: dist.BuildpackDescriptor{
+									WithInfo: dist.ModuleInfo{
+										ID:      "some/bp",
+										Version: "latest",
+									},
+								},
+							},
+						},
+						PkgConfig: pubbldpkg.NewMultiArchPackage(pubbldpkg.DefaultConfig(), tmpDir),
+					},
+				})
+				h.AssertNil(t, err)
+
+				h.AssertNil(t, subject.ExistsManifest(context.TODO(), "some/bp:latst"))
+			})
+			it("should create an ImageIndex with all Buildpacks", func() {
+
+			})
+		})
+	})
 	when("unknown format is provided", func() {
 		it("should error", func() {
 			mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
@@ -901,4 +996,26 @@ func assertPackageBPFileHasBuildpacks(t *testing.T, path string, descriptors []d
 	mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(packageBlob)
 	h.AssertNil(t, err)
 	h.AssertBuildpacksHaveDescriptors(t, append([]buildpack.BuildModule{mainBP}, depBPs...), descriptors)
+}
+
+func expectLoadIndex(t *testing.T, mock *testmocks.MockIndexFactory) {
+	idx, err := fakes.NewIndex(ggcrTypes.OCIImageIndex, 1024, 1, 1, v1.Descriptor{})
+	h.AssertNil(t, err)
+
+	mock.
+		EXPECT().
+		LoadIndex(gomock.Any(), gomock.Any()).
+		AnyTimes().
+		Return(idx, nil)
+}
+
+func expectCreateIndex(t *testing.T, mock *testmocks.MockIndexFactory) {
+	idx, err := fakes.NewIndex(ggcrTypes.OCIImageIndex, 1024, 1, 1, v1.Descriptor{})
+	h.AssertNil(t, err)
+
+	mock.
+		EXPECT().
+		CreateIndex(gomock.Any(), gomock.Any()).
+		AnyTimes().
+		Return(idx, nil)
 }

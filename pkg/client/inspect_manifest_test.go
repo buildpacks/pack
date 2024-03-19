@@ -61,7 +61,7 @@ func testInspectManifest(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, os.RemoveAll(tmpDir))
 		})
 		it("should return an error when index not found", func() {
-			prepareFindIndexWithError(t, *mockIndexFactory)
+			prepareFindIndexWithError(*mockIndexFactory)
 
 			err := subject.InspectManifest(
 				context.TODO(),
@@ -82,7 +82,7 @@ func testInspectManifest(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func prepareFindIndexWithError(t *testing.T, mockIndexFactory testmocks.MockIndexFactory) {
+func prepareFindIndexWithError(mockIndexFactory testmocks.MockIndexFactory) {
 	mockIndexFactory.
 		EXPECT().
 		FindIndex(gomock.Any(), gomock.Any()).

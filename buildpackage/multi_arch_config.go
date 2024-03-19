@@ -248,6 +248,10 @@ func (m *MultiArchBuildpackConfig) CleanBuildpackToml() error {
 	return os.Remove(m.Path())
 }
 
+func (m *MultiArchPackage) RelativeBaseDir() string {
+	return m.relativeBaseDir
+}
+
 func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target, distroName, version string, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (err error) {
 	if m.Buildpack.URI != "" || m.Extension.URI != "" {
 		if uri := m.Buildpack.URI; uri != "" {

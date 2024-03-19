@@ -60,7 +60,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, os.RemoveAll(tmpDir))
 		})
 		it("should return an error if index doesn't exists locally", func() {
-			prepareIndexWithoutLocallyExists(t, *mockIndexFactory)
+			prepareIndexWithoutLocallyExists(*mockIndexFactory)
 			err = subject.AddManifest(
 				context.TODO(),
 				"pack/index",
@@ -233,7 +233,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func prepareIndexWithoutLocallyExists(t *testing.T, mockIndexFactory testmocks.MockIndexFactory) {
+func prepareIndexWithoutLocallyExists(mockIndexFactory testmocks.MockIndexFactory) {
 	mockIndexFactory.
 		EXPECT().
 		LoadIndex(gomock.Any(), gomock.Any()).

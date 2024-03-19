@@ -119,7 +119,7 @@ func testNewBuildpack(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func assertBuildpackToml(t *testing.T, path string, id string) {
+func assertBuildpackToml(t *testing.T, path string, _ string) {
 	buildpackTOML := filepath.Join(path, "buildpack.toml")
 	_, err := os.Stat(buildpackTOML)
 	h.AssertFalse(t, os.IsNotExist(err))

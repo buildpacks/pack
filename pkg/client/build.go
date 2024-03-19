@@ -1295,7 +1295,7 @@ func prependBuildpackToOrder(order dist.Order, bpInfo dist.ModuleInfo) (newOrder
 	return newOrder
 }
 
-func (c *Client) processExtensions(ctx context.Context, builderImage imgutil.Image, builderExs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedExs []buildpack.BuildModule, orderExtensions dist.Order, err error) {
+func (c *Client) processExtensions(ctx context.Context, builderImage imgutil.Image, builderExs []dist.ModuleInfo, _ dist.Order, _ string, opts BuildOptions) (fetchedExs []buildpack.BuildModule, orderExtensions dist.Order, err error) {
 	relativeBaseDir := opts.RelativeBaseDir
 	declaredExs := opts.Extensions
 

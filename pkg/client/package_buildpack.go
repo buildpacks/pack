@@ -183,7 +183,7 @@ func (c *Client) validateOSPlatform(ctx context.Context, os string, publish bool
 
 // PackageBuildpack packages multiple buildpack(s) into image index with each buildpack into either an image or file.
 func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
-	if opts.IndexOptions.BPConfigs == nil && len(*opts.IndexOptions.BPConfigs) == 0 {
+	if opts.IndexOptions.BPConfigs == nil || len(*opts.IndexOptions.BPConfigs) == 0 {
 		return errors.Errorf("%s must not be nil", style.Symbol("IndexOptions"))
 	}
 
@@ -192,7 +192,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 	}
 
 	IndexManifestFn := getIndexManifestFn(c, opts.IndexOptions.Manifest)
-	bpCfg, err := pubbldpkg.NewConfigReader().ReadBuildpackDescriptor(opts.RelativeBaseDir)
+	bpCfg, err := pubbldpkg.NewConfigReader().ReadBuildpackDescriptor(opts.IndexOptions.RelativeBaseDir)
 	if err != nil {
 		return err
 	}
@@ -211,7 +211,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 	pkgConfig, bpConfigs := *opts.IndexOptions.PkgConfig, *opts.IndexOptions.BPConfigs
 	var (
 		errs errgroup.Group
-		wg   *sync.WaitGroup
+		wg   = &sync.WaitGroup{}
 	)
 	wg.Add(len(bpConfigs))
 
@@ -251,7 +251,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 		}
 
 		return c.PackageBuildpack(ctx, PackageBuildpackOptions{
-			RelativeBaseDir: bpConfig.RelativeBaseDir(),
+			RelativeBaseDir: pkgConfig.RelativeBaseDir(),
 			Name:            opts.Name,
 			Format:          opts.Format,
 			Config:          pkgConfig.Config,
@@ -263,7 +263,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 			Labels:          bpConfig.Labels,
 			Version:         opts.Version,
 			IndexOptions: pubbldpkg.IndexOptions{
-				ImageIndex: idx,
+				ImageIndex: opts.IndexOptions.ImageIndex,
 			},
 		})
 	}

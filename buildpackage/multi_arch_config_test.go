@@ -450,8 +450,6 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 				configs, err := multiArchBP.MultiArchConfigs()
 				h.AssertNil(t, err)
 
-				defer os.RemoveAll(bpPath)
-
 				h.AssertNil(t, configs[0].CopyBuildpackToml(fakeIndexManifestBuilderFn(append(targets, target))))
 
 				bp1Target := configs[0].Targets()[0]
@@ -501,6 +499,8 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 					WithInfo:         configs[1].WithInfo,
 				}
 				h.AssertEq(t, configs[1].BuildpackDescriptor, expectedBP2Config)
+
+				h.AssertNil(t, os.Remove(configs[0].Path()))
 			})
 		})
 		it("should cleanBuildpackToml", func() {

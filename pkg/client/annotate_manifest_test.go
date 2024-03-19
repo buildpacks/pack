@@ -60,7 +60,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 		})
 		when("successful when", func() {
 			it("should return an error if index doesn't exists locally", func() {
-				prepareIndexWithoutLocallyExists(t, *mockIndexFactory)
+				prepareIndexWithoutLocallyExists(*mockIndexFactory)
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"pack/index",
@@ -346,7 +346,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 		})
 		when("return an error when", func() {
 			it("has no Index locally by given Name", func() {
-				prepareIndexWithoutLocallyExists(t, *mockIndexFactory)
+				prepareIndexWithoutLocallyExists(*mockIndexFactory)
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					"some/repo",

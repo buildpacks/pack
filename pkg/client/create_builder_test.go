@@ -74,7 +74,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			return buildpack
 		}
 
-		var shouldCallBuildpackDownloaderWith = func(uri string, buildpackDownloadOptions buildpack.DownloadOptions) {
+		var shouldCallBuildpackDownloaderWith = func(uri string, _ buildpack.DownloadOptions) {
 			buildpack := createBuildpack(dist.BuildpackDescriptor{
 				WithAPI:    api.MustParse("0.3"),
 				WithInfo:   dist.ModuleInfo{ID: "example/foo", Version: "1.1.0"},

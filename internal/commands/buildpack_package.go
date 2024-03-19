@@ -142,6 +142,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			}
 
 			if len(bpConfigs) > 1 {
+				pkgBPOpts.RelativeBaseDir = bpPath
 				pkgBPOpts.IndexOptions = pubbldpkg.IndexOptions{
 					BPConfigs: &bpConfigs,
 					PkgConfig: pkgMultiArchConfig,
