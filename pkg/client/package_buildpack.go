@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"path/filepath"
 	"sync"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -192,7 +193,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 	}
 
 	IndexManifestFn := getIndexManifestFn(c, opts.IndexOptions.Manifest)
-	bpCfg, err := pubbldpkg.NewConfigReader().ReadBuildpackDescriptor(opts.IndexOptions.RelativeBaseDir)
+	bpCfg, err := pubbldpkg.NewConfigReader().ReadBuildpackDescriptor(opts.RelativeBaseDir)
 	if err != nil {
 		return err
 	}
@@ -240,10 +241,10 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 			if len(distro.Versions) != 0 {
 				version = distro.Versions[0]
 			}
-			if err := pkgConfig.CopyPackageToml(opts.IndexOptions.RelativeBaseDir, target, distro.Name, version, IndexManifestFn); err != nil {
+			if err := pkgConfig.CopyPackageToml(filepath.Dir(bpConfig.Path()), target, distro.Name, version, IndexManifestFn); err != nil {
 				return err
 			}
-			defer pkgConfig.CleanPackageToml(opts.IndexOptions.RelativeBaseDir, target, distro.Name, version)
+			defer pkgConfig.CleanPackageToml(filepath.Dir(bpConfig.Path()), target, distro.Name, version)
 		}
 
 		if !opts.Flatten && bpConfig.Flatten {
@@ -264,6 +265,8 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 			Version:         opts.Version,
 			IndexOptions: pubbldpkg.IndexOptions{
 				ImageIndex: opts.IndexOptions.ImageIndex,
+				Logger:     opts.IndexOptions.Logger,
+				Target:     bpConfig.WithTargets[0],
 			},
 		})
 	}

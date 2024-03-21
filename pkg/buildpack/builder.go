@@ -1034,7 +1034,7 @@ func (b *PackageBuilder) SaveAsImage(repoName, version string, publish bool, tar
 		}
 	}
 
-	if err := image.Save(getAddtionalImageNames(digest, target)...); err != nil {
+	if err := image.Save(getAddtionalImageNames(ref, target)...); err != nil {
 		return nil, err
 	}
 

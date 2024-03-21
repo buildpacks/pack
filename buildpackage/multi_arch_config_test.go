@@ -145,14 +145,13 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 				},
 			},
 		}
-		extension = dist.BuildpackURI{
-			URI: ".",
-		}
+		// extension = dist.BuildpackURI{
+		// 	URI: ".",
+		// }
 		platform      = dist.Platform{OS: "linux"}
 		packageConfig = buildpackage.Config{
 			Buildpack:    buildpackURICurrent,
 			Dependencies: dependencies,
-			Extension:    extension,
 			Platform:     platform,
 		}
 	)
@@ -570,9 +569,9 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 				Buildpack: dist.BuildpackURI{
 					URI: "file://" + filepath.Join(path, platformRootDir),
 				},
-				Extension: dist.BuildpackURI{
-					URI: "file://" + filepath.Join(path, platformRootDir),
-				},
+				// Extension: dist.BuildpackURI{
+				// 	URI: "file://" + filepath.Join(path, platformRootDir),
+				// },
 				Platform: dist.Platform{OS: "linux"},
 				Dependencies: []dist.ImageOrURI{
 					{

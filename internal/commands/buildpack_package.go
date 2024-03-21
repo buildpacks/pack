@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -101,7 +102,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				bpPackageCfg.Buildpack.URI = bpPath
 			}
 
-			bpConfig, err := packageConfigReader.ReadBuildpackDescriptor(bpPath)
+			bpConfig, err := packageConfigReader.ReadBuildpackDescriptor(filepath.Join(bpPath, "buildpack.toml"))
 			if err != nil {
 				return err
 			}
@@ -139,14 +140,26 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				FlattenExclude:  flags.FlattenExclude,
 				Labels:          flags.Label,
 				Version:         bpConfig.WithInfo.Version,
+				IndexOptions: pubbldpkg.IndexOptions{
+					Target: dist.Target{
+						OS: bpPackageCfg.Platform.OS,
+					},
+				},
 			}
 
 			if len(bpConfigs) > 1 {
+				if f, err := os.Stat(bpPath); err != nil {
+					return err
+				} else if f.IsDir() {
+					bpPath = filepath.Join(f.Name(), "buildpack.toml")
+				}
+
 				pkgBPOpts.RelativeBaseDir = bpPath
 				pkgBPOpts.IndexOptions = pubbldpkg.IndexOptions{
 					BPConfigs: &bpConfigs,
 					PkgConfig: pkgMultiArchConfig,
 					Manifest:  mfest,
+					Logger:    logger,
 				}
 
 				if err := packager.PackageMultiArchBuildpack(cmd.Context(), pkgBPOpts); err != nil {

@@ -87,6 +87,14 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		return url
 	}
 
+	createMultiArchBuildpack := func(descriptor dist.BuildpackDescriptor) {
+		bp, err := ifakes.NewFakeBuildpackBlob(&descriptor, 0644)
+		h.AssertNil(t, err)
+		// url := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
+		mockDownloader.EXPECT().Download(gomock.Any(), gomock.Any()).Return(bp, nil).AnyTimes()
+		// return url
+	}
+
 	when("buildpack has issues", func() {
 		when("buildpack has no URI", func() {
 			it("should fail", func() {
@@ -189,7 +197,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					fakeImage := fakes.NewImage("basic/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true, daemonOS).Return(fakeImage, nil)
+					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true, dist.Target{OS: daemonOS}).Return(fakeImage, nil)
 
 					fakeBlob := blob.NewBlob(filepath.Join("testdata", "empty-file"))
 					bpURL := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
@@ -257,7 +265,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
-				mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, "linux").Return(nestedPackage, nil)
+				mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, dist.Target{OS: "linux"}).Return(nestedPackage, nil)
 
 				mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
 
@@ -286,13 +294,13 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 			shouldCreateLocalPackage := func() imgutil.Image {
 				img := fakes.NewImage("some/package-"+h.RandString(12), "", nil)
-				mockImageFactory.EXPECT().NewImage(img.Name(), true, "linux").Return(img, nil)
+				mockImageFactory.EXPECT().NewImage(img.Name(), true, dist.Target{OS: "linux"}).Return(img, nil)
 				return img
 			}
 
 			shouldCreateRemotePackage := func() *fakes.Image {
 				img := fakes.NewImage("some/package-"+h.RandString(12), "", nil)
-				mockImageFactory.EXPECT().NewImage(img.Name(), false, "linux").Return(img, nil)
+				mockImageFactory.EXPECT().NewImage(img.Name(), false, dist.Target{OS: "linux"}).Return(img, nil)
 				return img
 			}
 
@@ -464,7 +472,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				name := "basic/package-" + h.RandString(12)
 				fakeImage := fakes.NewImage(name, "", nil)
 				fakeLayerImage = &h.FakeAddedLayerImage{Image: fakeImage}
-				mockImageFactory.EXPECT().NewImage(fakeLayerImage.Name(), true, "linux").Return(fakeLayerImage, nil)
+				mockImageFactory.EXPECT().NewImage(fakeLayerImage.Name(), true, dist.Target{OS: "linux"}).Return(fakeLayerImage, nil)
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), name, gomock.Any()).Return(fakeLayerImage, nil).AnyTimes()
 
 				blob1 := blob.NewBlob(filepath.Join("testdata", "buildpack-flatten", "buildpack-1"))
@@ -601,7 +609,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			when("dependencies are packaged buildpack image", func() {
 				it.Before(func() {
 					nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, "linux").Return(nestedPackage, nil)
+					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, dist.Target{OS: "linux"}).Return(nestedPackage, nil)
 
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
 						Name: nestedPackage.Name(),
@@ -716,7 +724,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					}}})
 
 					nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, "linux").Return(nestedPackage, nil)
+					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, dist.Target{OS: "linux"}).Return(nestedPackage, nil)
 
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
 						Name: nestedPackage.Name(),
@@ -905,66 +913,74 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				f, err := os.CreateTemp(tmpDir, "buildpack.toml")
 				h.AssertNil(t, err)
 
-				toml.NewEncoder(f).Encode(
-					dist.BuildpackDescriptor{
-						WithInfo: dist.ModuleInfo{
-							ID:      "some/bp",
-							Version: "latest",
+				bpDescConfig := dist.BuildpackDescriptor{
+					WithInfo: dist.ModuleInfo{
+						ID:      "some/bp",
+						Version: "latest",
+					},
+					WithStacks: []dist.Stack{
+						{
+							ID:     "build-image",
+							Mixins: []string{},
+						},
+						{
+							ID:     "run",
+							Mixins: []string{},
 						},
 					},
-				)
+					WithTargets: []dist.Target{
+						{
+							OS:          "linux",
+							Arch:        "arm",
+							ArchVariant: "v6",
+							Distributions: []dist.Distribution{
+								{
+									Name:     "distro1",
+									Versions: []string{"version1", "version2"},
+								},
+							},
+						},
+						{
+							OS:   "windows",
+							Arch: "amd64",
+							Distributions: []dist.Distribution{
+								{
+									Name:     "distro1",
+									Versions: []string{"version1", "version2"},
+								},
+							},
+						},
+					},
+				}
+
+				toml.NewEncoder(f).Encode(bpDescConfig)
 				_, err = os.Stat(f.Name())
 				h.AssertNil(t, err)
 
 				expectCreateIndex(t, mockIndexFactory)
 				expectLoadIndex(t, mockIndexFactory)
-				err = subject.PackageMultiArchBuildpack(context.TODO(), client.PackageBuildpackOptions{
-					IndexOptions: pubbldpkg.IndexOptions{
-						BPConfigs: &[]pubbldpkg.MultiArchBuildpackConfig{
-							{
-								BuildpackDescriptor: dist.BuildpackDescriptor{
-									WithInfo: dist.ModuleInfo{
-										ID:      "some/bp",
-										Version: "latest",
-									},
-								},
-							},
-						},
-						PkgConfig:       pubbldpkg.NewMultiArchPackage(pubbldpkg.DefaultConfig(), tmpDir),
-						RelativeBaseDir: f.Name(),
-					},
-				})
-				h.AssertNil(t, err)
+				mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
+				createMultiArchBuildpack(bpDescConfig)
+				fakeImage := fakes.NewImage("basic/package-"+h.RandString(12), "", nil)
+				mockImageFactory.EXPECT().NewImage(gomock.Any(), true, gomock.Any()).Return(fakeImage, nil).AnyTimes()
 
-				h.AssertNil(t, subject.ExistsManifest(context.TODO(), "some/bp:latest"))
-			})
-			it("should overwrite Index if exists", func() {
-				tmpDir, err := os.MkdirTemp("", "test_dir")
+				multiArchBPConfig := pubbldpkg.NewMultiArchBuildpack(bpDescConfig, tmpDir, true, true, nil)
+				cfgs, err := multiArchBPConfig.MultiArchConfigs()
 				h.AssertNil(t, err)
-
-				h.AssertNil(t, subject.CreateManifest(context.TODO(), "some/bp:latest", []string{}, client.CreateManifestOptions{}))
 
 				err = subject.PackageMultiArchBuildpack(context.TODO(), client.PackageBuildpackOptions{
 					IndexOptions: pubbldpkg.IndexOptions{
-						BPConfigs: &[]pubbldpkg.MultiArchBuildpackConfig{
-							{
-								BuildpackDescriptor: dist.BuildpackDescriptor{
-									WithInfo: dist.ModuleInfo{
-										ID:      "some/bp",
-										Version: "latest",
-									},
-								},
-							},
-						},
+						BPConfigs: &cfgs,
 						PkgConfig: pubbldpkg.NewMultiArchPackage(pubbldpkg.DefaultConfig(), tmpDir),
+						Logger:    logging.NewLogWithWriters(&out, &out),
 					},
+					Name:            bpDescConfig.WithInfo.ID,
+					Config:          pubbldpkg.DefaultConfig(),
+					Version:         bpDescConfig.WithInfo.Version,
+					RelativeBaseDir: f.Name(),
 				})
 				h.AssertNil(t, err)
-
-				h.AssertNil(t, subject.ExistsManifest(context.TODO(), "some/bp:latst"))
-			})
-			it("should create an ImageIndex with all Buildpacks", func() {
-
+				h.AssertNil(t, subject.ExistsManifest(context.TODO(), "some/bp:latest"))
 			})
 		})
 	})

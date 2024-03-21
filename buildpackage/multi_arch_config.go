@@ -179,48 +179,21 @@ func (m *MultiArchBuildpackConfig) Path() string {
 }
 
 func (m *MultiArchBuildpackConfig) CopyBuildpackToml(getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (err error) {
-	if uri := m.BuildpackDescriptor.WithInfo.ID; uri != "" {
-		// if m.BuildpackDescriptor.WithInfo, err = processModuleInfo(m.BuildpackDescriptor.WithInfo, m.relativeBaseDir, nil, nil); err != nil {
-		// 	return err
-		// }
-
-		// target := m.BuildpackDescriptor.WithTargets[0]
-		// for i, order := range m.WithOrder {
-		// 	for j, mg := range order.Group {
-		// 		if m.WithOrder[i].Group[j].ModuleInfo, err = processModuleInfo(mg.ModuleInfo, m.relativeBaseDir, &target, getIndexManifest); err != nil {
-		// 			return err
-		// 		}
-		// 	}
-		// }
-
-		// distro := dist.Distribution{}
-		// if len(target.Distributions) != 0 {
-		// 	distro = target.Distributions[0]
-		// }
-
-		// version := ""
-		// if len(distro.Versions) != 0 {
-		// 	version = distro.Versions[0]
-		// }
-		// bpPath := filepath.Join(buildpack.PlatformRootDirectory(target, distro.Name, version), BuildpackToml)
-		// path, err := filepath.Abs(filepath.Join(m.relativeBaseDir, bpPath))
-		// if err != nil {
-		// 	return err
-		// }
-
-		// if m.bpType != Composite {
-		writeBPPath := m.Path()
-		os.MkdirAll(filepath.Dir(writeBPPath), os.ModePerm)
-		bpFile, err := os.Create(writeBPPath)
-		if err != nil {
-			return err
-		}
-		return toml.NewEncoder(bpFile).Encode(m.BuildpackDescriptor)
-		// }
-
-		// return nil
+	if uri := m.BuildpackDescriptor.WithInfo.ID; uri == "" {
+		return errors.New("invalid MultiArchBuildpackConfig")
 	}
-	return errors.New("invalid MultiArchBuildpackConfig")
+
+	writeBPPath := m.Path()
+	if err := os.MkdirAll(filepath.Dir(writeBPPath), os.ModePerm); err != nil {
+		return err
+	}
+
+	bpFile, err := os.Create(writeBPPath)
+	if err != nil {
+		return err
+	}
+
+	return toml.NewEncoder(bpFile).Encode(m.BuildpackDescriptor)
 }
 
 func (m *MultiArchBuildpackConfig) BuildpackType() BuildpackType {
@@ -231,19 +204,6 @@ func (m *MultiArchBuildpackConfig) RelativeBaseDir() string {
 	return m.relativeBaseDir
 }
 
-// func processModuleInfo(module dist.ModuleInfo, relativeBaseDir string, target *dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (m dist.ModuleInfo, err error) {
-// 	if module.ID == "" {
-// 		return module, errors.New("module id must be defined")
-// 	}
-
-// 	if module.Version == "" {
-// 		module.Version = "latest"
-// 	}
-
-// 	module.ID, err = getRelativeURI(module.ID, relativeBaseDir, target, getIndexManifest)
-// 	return module, err
-// }
-
 func (m *MultiArchBuildpackConfig) CleanBuildpackToml() error {
 	return os.Remove(m.Path())
 }
@@ -253,46 +213,47 @@ func (m *MultiArchPackage) RelativeBaseDir() string {
 }
 
 func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target, distroName, version string, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (err error) {
-	if m.Buildpack.URI != "" || m.Extension.URI != "" {
-		if uri := m.Buildpack.URI; uri != "" {
-			if m.Buildpack.URI, err = getRelativeURI(uri, m.relativeBaseDir, &target, getIndexManifest); err != nil {
-				return err
-			}
-		}
-
-		if uri := m.Extension.URI; uri != "" {
-			if m.Extension.URI, err = getRelativeURI(uri, m.relativeBaseDir, &target, getIndexManifest); err != nil {
-				return err
-			}
-		}
-
-		for i, dep := range m.Dependencies {
-			// dep.ImageName == dep.ImageRef.ImageName, dep.URI == dep.Buildpack.URI
-			if dep.URI != "" {
-				if m.Dependencies[i].URI, err = getRelativeURI(dep.URI, m.relativeBaseDir, &target, getIndexManifest); err != nil {
-					return err
-				}
-			}
-		}
-
-		platformRootDir := buildpack.PlatformRootDirectory(target, distroName, version)
-		path, err := filepath.Abs(filepath.Join(relativeTo, platformRootDir, PackageToml))
-		if err != nil {
-			return err
-		}
-
-		// create parent folder if not exists
-		if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
-			return err
-		}
-
-		bpFile, err := os.Create(path)
-		if err != nil {
-			return err
-		}
-		return toml.NewEncoder(bpFile).Encode(m.Config)
+	if (m.Buildpack.URI == "" && m.Extension.URI == "") || (m.Buildpack.URI != "" && m.Extension.URI != "") {
+		return errors.New("unexpected: one of Buildpack URI, Extension URI must be specified")
 	}
-	return nil
+
+	if uri := m.Buildpack.URI; uri != "" {
+		if m.Buildpack.URI, err = getRelativeURI(uri, m.relativeBaseDir, &target, getIndexManifest); err != nil {
+			return err
+		}
+	}
+
+	if uri := m.Extension.URI; uri != "" {
+		if m.Extension.URI, err = getRelativeURI(uri, m.relativeBaseDir, &target, getIndexManifest); err != nil {
+			return err
+		}
+	}
+
+	for i, dep := range m.Dependencies {
+		// dep.ImageName == dep.ImageRef.ImageName, dep.URI == dep.Buildpack.URI
+		if dep.URI != "" {
+			if m.Dependencies[i].URI, err = getRelativeURI(dep.URI, m.relativeBaseDir, &target, getIndexManifest); err != nil {
+				return err
+			}
+		}
+	}
+
+	platformRootDir := buildpack.PlatformRootDirectory(target, distroName, version)
+	path, err := filepath.Abs(filepath.Join(relativeTo, platformRootDir, PackageToml))
+	if err != nil {
+		return err
+	}
+
+	// create parent folder if not exists
+	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+		return err
+	}
+
+	bpFile, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	return toml.NewEncoder(bpFile).Encode(m.Config)
 }
 
 func getRelativeURI(uri, relativeBaseDir string, target *dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (string, error) {
