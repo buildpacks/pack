@@ -4,10 +4,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
-func NewBuildpackCommand(logger logging.Logger, cfg config.Config, client PackClient, packageConfigReader PackageConfigReader) *cobra.Command {
+func NewBuildpackCommand(logger logging.Logger, cfg config.Config, client PackClient, packageConfigReader PackageConfigReader, imagePullPolicyHandler image.ImagePullPolicyHandler) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "buildpack",
 		Aliases: []string{"buildpacks"},
@@ -16,7 +17,7 @@ func NewBuildpackCommand(logger logging.Logger, cfg config.Config, client PackCl
 	}
 
 	cmd.AddCommand(BuildpackInspect(logger, cfg, client))
-	cmd.AddCommand(BuildpackPackage(logger, cfg, client, packageConfigReader))
+	cmd.AddCommand(BuildpackPackage(logger, cfg, client, packageConfigReader, imagePullPolicyHandler))
 	cmd.AddCommand(BuildpackNew(logger, client))
 	cmd.AddCommand(BuildpackPull(logger, cfg, client))
 	cmd.AddCommand(BuildpackRegister(logger, cfg, client))

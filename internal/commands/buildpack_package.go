@@ -40,7 +40,7 @@ type PackageConfigReader interface {
 }
 
 // BuildpackPackage packages (a) buildpack(s) into OCI format, based on a package config
-func BuildpackPackage(logger logging.Logger, cfg config.Config, packager BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
+func BuildpackPackage(logger logging.Logger, cfg config.Config, packager BuildpackPackager, packageConfigReader PackageConfigReader, imagePullPolicyHandler image.ImagePullPolicyHandler) *cobra.Command {
 	var flags BuildpackPackageFlags
 	cmd := &cobra.Command{
 		Use:     "package <name> --config <config-path>",
@@ -62,7 +62,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			pullPolicy, err := image.ParsePullPolicy(stringPolicy)
+			pullPolicy, err := imagePullPolicyHandler.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrap(err, "parsing pull policy")
 			}

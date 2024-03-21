@@ -17,7 +17,9 @@ import (
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
+	fetcher_mock "github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -160,14 +162,15 @@ func TestCreateCommand(t *testing.T) {
 
 func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		command           *cobra.Command
-		logger            logging.Logger
-		outBuf            bytes.Buffer
-		mockController    *gomock.Controller
-		mockClient        *testmocks.MockPackClient
-		tmpDir            string
-		builderConfigPath string
-		cfg               config.Config
+		command                *cobra.Command
+		logger                 logging.Logger
+		outBuf                 bytes.Buffer
+		mockController         *gomock.Controller
+		mockClient             *testmocks.MockPackClient
+		tmpDir                 string
+		builderConfigPath      string
+		cfg                    config.Config
+		imagePullPolicyHandler image.ImagePullPolicyHandler
 	)
 
 	it.Before(func() {
@@ -180,7 +183,8 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
-		command = commands.BuilderCreate(logger, cfg, mockClient)
+		imagePullPolicyHandler = fetcher_mock.NewMockPullPolicyManager(logger)
+		command = commands.BuilderCreate(logger, cfg, mockClient, imagePullPolicyHandler)
 	})
 
 	it.After(func() {
@@ -218,7 +222,7 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 			when("configured pull policy is invalid", func() {
 				it("errors when config set with unknown policy", func() {
 					cfg = config.Config{PullPolicy: "unknown-policy"}
-					command = commands.BuilderCreate(logger, cfg, mockClient)
+					command = commands.BuilderCreate(logger, cfg, mockClient, imagePullPolicyHandler)
 					command.SetArgs([]string{
 						"some/builder",
 						"--config", builderConfigPath,

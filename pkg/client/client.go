@@ -94,13 +94,14 @@ type Client struct {
 	logger logging.Logger
 	docker DockerClient
 
-	keychain            authn.Keychain
-	imageFactory        ImageFactory
-	imageFetcher        ImageFetcher
-	accessChecker       AccessChecker
-	downloader          BlobDownloader
-	lifecycleExecutor   LifecycleExecutor
-	buildpackDownloader BuildpackDownloader
+	keychain               authn.Keychain
+	imageFactory           ImageFactory
+	imageFetcher           ImageFetcher
+	imagePullPolicyHandler image.ImagePullPolicyHandler
+	accessChecker          AccessChecker
+	downloader             BlobDownloader
+	lifecycleExecutor      LifecycleExecutor
+	buildpackDownloader    BuildpackDownloader
 
 	experimental    bool
 	registryMirrors map[string]string
@@ -130,6 +131,14 @@ func WithImageFactory(f ImageFactory) Option {
 func WithFetcher(f ImageFetcher) Option {
 	return func(c *Client) {
 		c.imageFetcher = f
+	}
+}
+
+// WithImagePullChecker supply your own ImagePullChecker.
+// An ImagePullChecker provides functionality to check and manage image pulling intervals.
+func WithImagePullChecker(i image.ImagePullPolicyHandler) Option {
+	return func(c *Client) {
+		c.imagePullPolicyHandler = i
 	}
 }
 
@@ -231,7 +240,7 @@ func NewClient(opts ...Option) (*Client, error) {
 	}
 
 	if client.imageFetcher == nil {
-		client.imageFetcher = image.NewFetcher(client.logger, client.docker, image.WithRegistryMirrors(client.registryMirrors), image.WithKeychain(client.keychain))
+		client.imageFetcher = image.NewFetcher(client.logger, client.docker, client.imagePullPolicyHandler, image.WithRegistryMirrors(client.registryMirrors), image.WithKeychain(client.keychain))
 	}
 
 	if client.imageFactory == nil {

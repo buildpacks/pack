@@ -15,7 +15,9 @@ import (
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
+	fetcher_mock "github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -27,12 +29,13 @@ func TestConfigCommand(t *testing.T) {
 
 func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		command      *cobra.Command
-		logger       logging.Logger
-		outBuf       bytes.Buffer
-		tempPackHome string
-		configPath   string
-		mockClient   *testmocks.MockPackClient
+		command                *cobra.Command
+		logger                 logging.Logger
+		outBuf                 bytes.Buffer
+		tempPackHome           string
+		configPath             string
+		mockClient             *testmocks.MockPackClient
+		imagePullPolicyHandler image.ImagePullPolicyHandler
 	)
 
 	it.Before(func() {
@@ -42,11 +45,12 @@ func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 		mockClient = testmocks.NewMockPackClient(mockController)
 
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
+		imagePullPolicyHandler = fetcher_mock.NewMockPullPolicyManager(logger)
 		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
 
-		command = commands.NewConfigCommand(logger, config.Config{Experimental: true}, configPath, mockClient)
+		command = commands.NewConfigCommand(logger, config.Config{Experimental: true}, configPath, mockClient, imagePullPolicyHandler)
 		command.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
 	})
 
