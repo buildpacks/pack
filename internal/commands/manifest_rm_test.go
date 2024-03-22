@@ -41,7 +41,7 @@ func testManifestRemoveCommand(t *testing.T, when spec.G, it spec.S) {
 		command = commands.ManifestRemove(logger, mockClient)
 	})
 	it("should remove index", func() {
-		prepareRemoveManifest(t, mockClient)
+		prepareRemoveManifest(mockClient)
 
 		command.SetArgs([]string{
 			"some-index",
@@ -50,7 +50,7 @@ func testManifestRemoveCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, command.Execute())
 	})
 	it("should return an error", func() {
-		prepareRemoveManifest(t, mockClient)
+		prepareRemoveManifest(mockClient)
 
 		command.SetArgs([]string{"some-index", "some-image"})
 		err := command.Execute()
@@ -66,7 +66,7 @@ func testManifestRemoveCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func prepareRemoveManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
+func prepareRemoveManifest(mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
 		RemoveManifest(

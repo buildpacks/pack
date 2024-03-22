@@ -40,7 +40,7 @@ func testManifestInspectCommand(t *testing.T, when spec.G, it spec.S) {
 		command = commands.ManifestInspect(logger, mockClient)
 	})
 	it("should annotate images with given flags", func() {
-		prepareInspectManifest(t, mockClient)
+		prepareInspectManifest(mockClient)
 
 		command.SetArgs([]string{
 			"some-index",
@@ -48,14 +48,14 @@ func testManifestInspectCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, command.Execute())
 	})
 	it("should return an error when index not passed", func() {
-		prepareInspectManifest(t, mockClient)
+		prepareInspectManifest(mockClient)
 
 		command.SetArgs([]string(nil))
 		err := command.Execute()
 		h.AssertNotNil(t, err)
 	})
 	it("should have help flag", func() {
-		prepareInspectManifest(t, mockClient)
+		prepareInspectManifest(mockClient)
 
 		command.SetArgs([]string{"--help"})
 		h.AssertNilE(t, command.Execute())
@@ -63,7 +63,7 @@ func testManifestInspectCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func prepareInspectManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
+func prepareInspectManifest(mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
 		InspectManifest(

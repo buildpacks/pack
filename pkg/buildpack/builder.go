@@ -463,6 +463,10 @@ func (i *layoutImage) SetLabel(key string, val string) error {
 	if err != nil {
 		return err
 	}
+	if configFile == nil {
+		return imgutil.ErrConfigFileUndefined
+	}
+
 	config := *configFile.Config.DeepCopy()
 	if config.Labels == nil {
 		config.Labels = map[string]string{}
@@ -822,7 +826,12 @@ func (b *PackageBuilder) SaveAsFile(path, version string, target dist.Target, id
 		}
 	}
 
-	if err := layoutImage.Save(); err != nil {
+	ref, err := name.ParseReference(path, name.Insecure, name.WeakValidation)
+	if err != nil {
+		return err
+	}
+
+	if err := layoutImage.Save(getAddtionalImageNames(ref, target)...); err != nil {
 		return err
 	}
 
@@ -870,11 +879,6 @@ func (b *PackageBuilder) SaveAsFile(path, version string, target dist.Target, id
 	}
 
 	if idx != nil {
-		ref, err := name.ParseReference(path, name.Insecure, name.WeakValidation)
-		if err != nil {
-			return err
-		}
-
 		if err := idx.Add(ref, imgutil.WithLocalImage(layoutImage)); err != nil {
 			return err
 		}
@@ -1034,7 +1038,8 @@ func (b *PackageBuilder) SaveAsImage(repoName, version string, publish bool, tar
 		}
 	}
 
-	if err := image.Save(getAddtionalImageNames(ref, target)...); err != nil {
+	// getAddtionalImageNames(ref, target)...
+	if err := image.Save(); err != nil {
 		return nil, err
 	}
 

@@ -41,7 +41,7 @@ func testManifestExistsCommand(t *testing.T, when spec.G, it spec.S) {
 		command = commands.ManifestExists(logger, mockClient)
 	})
 	it("should annotate images with given flags", func() {
-		prepareExistsManifest(t, mockClient)
+		prepareExistsManifest(mockClient)
 
 		command.SetArgs([]string{
 			"some-index",
@@ -50,14 +50,14 @@ func testManifestExistsCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertEq(t, outBuf.String(), "")
 	})
 	it("should return an error when index doesn't exists", func() {
-		prepareNotExistsManifest(t, mockClient)
+		prepareNotExistsManifest(mockClient)
 
 		command.SetArgs([]string{"some-other-index"})
 		err := command.Execute()
 		h.AssertEq(t, err.Error(), "no index found with given name")
 	})
 	it("should have help flag", func() {
-		prepareExistsManifest(t, mockClient)
+		prepareExistsManifest(mockClient)
 
 		command.SetArgs([]string{"--help"})
 		h.AssertNilE(t, command.Execute())
@@ -65,7 +65,7 @@ func testManifestExistsCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func prepareExistsManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
+func prepareExistsManifest(mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
 		ExistsManifest(
@@ -76,7 +76,7 @@ func prepareExistsManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
 		Return(nil)
 }
 
-func prepareNotExistsManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
+func prepareNotExistsManifest(mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
 		ExistsManifest(

@@ -40,7 +40,7 @@ func testManifestCreateCommand(t *testing.T, when spec.G, it spec.S) {
 		command = commands.ManifestCreate(logger, mockClient)
 	})
 	it("should annotate images with given flags", func() {
-		prepareCreateManifest(t, mockClient)
+		prepareCreateManifest(mockClient)
 
 		command.SetArgs([]string{
 			"some-index",
@@ -58,7 +58,7 @@ func testManifestCreateCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertEq(t, outBuf.String(), "")
 	})
 	it("should return an error when platform's os and arch not defined", func() {
-		prepareCreateManifest(t, mockClient)
+		prepareCreateManifest(mockClient)
 
 		command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--os", "linux"})
 		err := command.Execute()
@@ -66,7 +66,7 @@ func testManifestCreateCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertEq(t, outBuf.String(), "ERROR: 'os' or 'arch' is undefined\n")
 	})
 	it("should have help flag", func() {
-		prepareCreateManifest(t, mockClient)
+		prepareCreateManifest(mockClient)
 
 		command.SetArgs([]string{"--help"})
 		h.AssertNilE(t, command.Execute())
@@ -74,7 +74,7 @@ func testManifestCreateCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func prepareCreateManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
+func prepareCreateManifest(mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
 		CreateManifest(

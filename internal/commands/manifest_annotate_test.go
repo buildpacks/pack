@@ -40,7 +40,7 @@ func testManifestAnnotateCommand(t *testing.T, when spec.G, it spec.S) {
 		command = commands.ManifestAnnotate(logger, mockClient)
 	})
 	it("should annotate images with given flags", func() {
-		prepareAnnotateManifest(t, mockClient)
+		prepareAnnotateManifest(mockClient)
 
 		command.SetArgs([]string{
 			"some-index",
@@ -58,7 +58,7 @@ func testManifestAnnotateCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertEq(t, outBuf.String(), "")
 	})
 	it("should return an error when platform's os and arch not defined", func() {
-		prepareAnnotateManifest(t, mockClient)
+		prepareAnnotateManifest(mockClient)
 
 		command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--os", "linux"})
 		err := command.Execute()
@@ -66,35 +66,35 @@ func testManifestAnnotateCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertEq(t, outBuf.String(), "ERROR: 'os' or 'arch' is undefined\n")
 	})
 	it("should return an error when features defined invalidly", func() {
-		prepareAnnotateManifest(t, mockClient)
+		prepareAnnotateManifest(mockClient)
 
 		command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--features"})
 		err := command.Execute()
 		h.AssertEq(t, err.Error(), "flag needs an argument: --features")
 	})
 	it("should return an error when osFeatures defined invalidly", func() {
-		prepareAnnotateManifest(t, mockClient)
+		prepareAnnotateManifest(mockClient)
 
 		command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--os-features"})
 		err := command.Execute()
 		h.AssertEq(t, err.Error(), "flag needs an argument: --os-features")
 	})
 	it("should return an error when urls defined invalidly", func() {
-		prepareAnnotateManifest(t, mockClient)
+		prepareAnnotateManifest(mockClient)
 
 		command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--urls"})
 		err := command.Execute()
 		h.AssertEq(t, err.Error(), "flag needs an argument: --urls")
 	})
 	it("should return an error when annotations defined invalidly", func() {
-		prepareAnnotateManifest(t, mockClient)
+		prepareAnnotateManifest(mockClient)
 
 		command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--annotations", "some-key"})
 		err := command.Execute()
 		h.AssertEq(t, err.Error(), `invalid argument "some-key" for "--annotations" flag: some-key must be formatted as key=value`)
 	})
 	it("should have help flag", func() {
-		prepareAnnotateManifest(t, mockClient)
+		prepareAnnotateManifest(mockClient)
 
 		command.SetArgs([]string{"--help"})
 		h.AssertNilE(t, command.Execute())
@@ -102,7 +102,7 @@ func testManifestAnnotateCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func prepareAnnotateManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
+func prepareAnnotateManifest(mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
 		AnnotateManifest(

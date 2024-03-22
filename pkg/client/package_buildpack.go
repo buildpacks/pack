@@ -3,12 +3,10 @@ package client
 import (
 	"context"
 	"path/filepath"
-	"sync"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/index"
@@ -210,11 +208,11 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 	}
 
 	pkgConfig, bpConfigs := *opts.IndexOptions.PkgConfig, *opts.IndexOptions.BPConfigs
-	var (
-		errs errgroup.Group
-		wg   = &sync.WaitGroup{}
-	)
-	wg.Add(len(bpConfigs))
+	// var (
+	// 	errs errgroup.Group
+	// 	wg   = &sync.WaitGroup{}
+	// )
+	// wg.Add(len(bpConfigs))
 
 	idx, err := loadImageIndex(c, repoName)
 	if err != nil {
@@ -273,15 +271,15 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 
 	for _, bpConfig := range bpConfigs {
 		c := bpConfig
-		errs.Go(func() error {
-			defer wg.Done()
-			return packageMultiArchBuildpackFn(c)
-		})
+		// errs.Go(func() error {
+		// 	defer wg.Done()
+		return packageMultiArchBuildpackFn(c)
+		// })
 	}
-	wg.Wait()
-	if err := errs.Wait(); err != nil {
-		return err
-	}
+	// wg.Wait()
+	// if err := errs.Wait(); err != nil {
+	// 	return err
+	// }
 
 	return idx.Save()
 }

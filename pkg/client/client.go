@@ -27,7 +27,6 @@ import (
 	"github.com/buildpacks/imgutil/remote"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack"
@@ -321,12 +320,9 @@ type imageFactory struct {
 
 func (f *imageFactory) NewImage(repoName string, daemon bool, target dist.Target) (imgutil.Image, error) {
 	if daemon {
-		// TODO: add *target.Platform()
-		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(v1.Platform{}))
+		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(*target.Platform()))
 	}
-
-	// TODO: add *target.Platform()
-	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(v1.Platform{}))
+	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(*target.Platform()))
 }
 
 type indexFactory struct {

@@ -3,14 +3,18 @@ package commands_test
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
+
+	"github.com/buildpacks/lifecycle/api"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/commands"
@@ -70,6 +74,55 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 
 				receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
 				h.AssertEq(t, receivedOptions.Name, "my-specific-image")
+			})
+
+			it("#MultiArchBuildpack", func() {
+				tmpDir, err := os.MkdirTemp("", "tmpDir")
+				h.AssertNilE(t, err)
+
+				bpFile, err := os.CreateTemp(tmpDir, "buildpack-*.toml")
+				h.AssertNilE(t, err)
+
+				bpConfig := dist.BuildpackDescriptor{
+					WithAPI: api.Platform.Latest(),
+					WithInfo: dist.ModuleInfo{
+						ID: "some/bp",
+					},
+					WithTargets: []dist.Target{
+						{
+							OS:          "linux",
+							Arch:        "arm",
+							ArchVariant: "v6",
+							Distributions: []dist.Distribution{
+								{
+									Name:     "ubuntu",
+									Versions: []string{"22.04", "20.04"},
+								},
+								{
+									Name:     "debian",
+									Versions: []string{"8.0"},
+								},
+							},
+							Specs: dist.TargetSpecs{
+								Features:       []string{"feature1", "feature2"},
+								OSFeatures:     []string{"osFeature1", "osFeature2"},
+								URLs:           []string{"url1", "url2"},
+								Annotations:    map[string]string{"key1": "value1", "key2": "value2"},
+								Flatten:        false,
+								FlattenExclude: make([]string, 0),
+								Labels:         map[string]string{"io.buildpacks.distro.name": "debian"},
+								Path:           "some-path",
+							},
+						},
+					},
+				}
+
+				h.AssertNilE(t, toml.NewEncoder(bpFile).Encode(bpConfig))
+				h.AssertNilE(t, os.Chdir(tmpDir))
+
+				cmd := packageCommand(withBuildpackPackager(fakeBuildpackPackager))
+				cmd.SetArgs([]string{"some/bp", "-p", "./buildpack.toml"})
+				h.AssertNil(t, cmd.Execute())
 			})
 
 			it("creates package with config returned by the reader", func() {

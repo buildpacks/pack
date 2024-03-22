@@ -104,6 +104,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						Platform:  dist.Platform{OS: "linux"},
 						Buildpack: dist.BuildpackURI{URI: ""},
 					},
+					IndexOptions: pubbldpkg.IndexOptions{
+						Target: dist.Target{OS: "linux"},
+					},
 					Publish: true,
 				})
 				h.AssertError(t, err, "buildpack URI must be provided")
@@ -120,6 +123,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Config: pubbldpkg.Config{
 						Platform:  dist.Platform{OS: "linux"},
 						Buildpack: dist.BuildpackURI{URI: bpURL},
+					},
+					IndexOptions: pubbldpkg.IndexOptions{
+						Target: dist.Target{OS: "linux"},
 					},
 					Publish: true,
 				})
@@ -138,6 +144,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Config: pubbldpkg.Config{
 						Platform:  dist.Platform{OS: "linux"},
 						Buildpack: dist.BuildpackURI{URI: bpURL},
+					},
+					IndexOptions: pubbldpkg.IndexOptions{
+						Target: dist.Target{OS: "linux"},
 					},
 					Publish: true,
 				})
@@ -171,6 +180,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						Platform:     dist.Platform{OS: "linux"},
 						Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 						Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: dependencyPath}}},
+					},
+					IndexOptions: pubbldpkg.IndexOptions{
+						Target: dist.Target{OS: "linux"},
 					},
 					Publish:    false,
 					PullPolicy: image.PullAlways,
@@ -213,6 +225,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 								WithInfo:   dist.ModuleInfo{ID: "bp.basic", Version: "2.3.4"},
 								WithStacks: []dist.Stack{{ID: "some.stack.id"}},
 							})},
+						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: daemonOS},
 						},
 						PullPolicy: image.PullNever,
 					}))
@@ -279,6 +294,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							WithStacks: []dist.Stack{{ID: "some.stack.id"}},
 						})},
 					},
+					IndexOptions: pubbldpkg.IndexOptions{
+						Target: dist.Target{OS: "linux"},
+					},
 					Publish:    true,
 					PullPolicy: image.PullAlways,
 				}))
@@ -325,6 +343,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							})},
 							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: "linux"},
+						},
 						Publish:    false,
 						PullPolicy: image.PullAlways,
 					}))
@@ -351,6 +372,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 								}},
 							})},
 							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
+						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: "linux"},
 						},
 						Publish:    true,
 						PullPolicy: image.PullAlways,
@@ -379,6 +403,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							})},
 							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: "linux"},
+						},
 						Publish:    true,
 						PullPolicy: image.PullNever,
 					}))
@@ -399,6 +426,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 								WithStacks: []dist.Stack{{ID: "some.stack.id"}},
 							})},
 							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
+						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: "linux"},
 						},
 						Publish:    false,
 						PullPolicy: image.PullNever,
@@ -424,6 +454,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							WithStacks: []dist.Stack{{ID: "some.stack.id"}},
 						})},
 						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: notPackageImage.Name()}}},
+					},
+					IndexOptions: pubbldpkg.IndexOptions{
+						Target: dist.Target{OS: "linux"},
 					},
 					Publish:    false,
 					PullPolicy: image.PullAlways,
@@ -512,6 +545,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							{BuildpackURI: dist.BuildpackURI{URI: "https://example.fake/flatten-bp-3.tgz"}},
 						},
 					},
+					IndexOptions: pubbldpkg.IndexOptions{
+						Target: dist.Target{OS: "linux"},
+					},
 					PullPolicy: image.PullNever,
 					Flatten:    true,
 				}
@@ -565,6 +601,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 								WithStacks: []dist.Stack{{ID: "some.stack.id"}},
 							})},
 						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: imageOS},
+						},
 						PullPolicy: image.PullNever,
 					}))
 				}
@@ -617,6 +656,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							Platform:  dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(childDescriptor)},
 						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: "linux"},
+						},
 						Publish:    true,
 						PullPolicy: image.PullAlways,
 					}))
@@ -633,6 +675,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							Platform:     dist.Platform{OS: "linux"},
 							Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
+						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: "linux"},
 						},
 						Publish:    false,
 						PullPolicy: image.PullAlways,
@@ -653,6 +698,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							Platform:     dist.Platform{OS: "linux"},
 							Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 							Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: createBuildpack(childDescriptor)}}},
+						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: "linux"},
 						},
 						Publish:    false,
 						PullPolicy: image.PullAlways,
@@ -676,6 +724,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 								Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 								Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: bpURL}}},
 							},
+							IndexOptions: pubbldpkg.IndexOptions{
+								Target: dist.Target{OS: "linux"},
+							},
 							Publish:    false,
 							PullPolicy: image.PullAlways,
 							Format:     client.FormatFile,
@@ -698,6 +749,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 								Platform:     dist.Platform{OS: "linux"},
 								Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 								Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: bpURL}}},
+							},
+							IndexOptions: pubbldpkg.IndexOptions{
+								Target: dist.Target{OS: "linux"},
 							},
 							Publish:    false,
 							PullPolicy: image.PullAlways,
@@ -732,6 +786,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							Platform:  dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(childDescriptor)},
 						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: "linux"},
+						},
 						Publish:    true,
 						PullPolicy: image.PullAlways,
 					}))
@@ -749,6 +806,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}},
 								{BuildpackURI: dist.BuildpackURI{URI: createBuildpack(secondChildDescriptor)}}},
+						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: "linux"},
 						},
 						Publish:    false,
 						PullPolicy: image.PullAlways,
@@ -774,6 +834,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							Platform:  dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(childDescriptor)},
 						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: "linux"},
+						},
 						PullPolicy: image.PullAlways,
 						Format:     client.FormatFile,
 					}))
@@ -790,6 +853,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							Platform:     dist.Platform{OS: "linux"},
 							Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 							Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: dependencyPackagePath}}},
+						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: "linux"},
 						},
 						Publish:    false,
 						PullPolicy: image.PullAlways,
@@ -875,6 +941,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							Platform:     dist.Platform{OS: "linux"},
 							Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 							Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: "urn:cnb:registry:example/foo@1.1.0"}}},
+						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: "linux"},
 						},
 						Publish:    false,
 						PullPolicy: image.PullAlways,
@@ -998,6 +1067,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						WithInfo:   dist.ModuleInfo{ID: "bp.1", Version: "1.2.3"},
 						WithStacks: []dist.Stack{{ID: "some.stack.id"}},
 					})},
+				},
+				IndexOptions: pubbldpkg.IndexOptions{
+					Target: dist.Target{OS: "linux"},
 				},
 				Publish:    false,
 				PullPolicy: image.PullAlways,

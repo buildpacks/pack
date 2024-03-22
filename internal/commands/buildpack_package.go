@@ -166,6 +166,10 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 					return err
 				}
 			} else {
+				if len(bpConfigs) == 1 {
+					pkgBPOpts.IndexOptions.Target = bpConfigs[0].WithTargets[0]
+				}
+
 				if err := packager.PackageBuildpack(cmd.Context(), pkgBPOpts); err != nil {
 					return err
 				}

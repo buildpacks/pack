@@ -41,7 +41,7 @@ func testManifestPushCommand(t *testing.T, when spec.G, it spec.S) {
 		command = commands.ManifestPush(logger, mockClient)
 	})
 	it("should annotate images with given flags", func() {
-		preparePushManifest(t, mockClient)
+		preparePushManifest(mockClient)
 
 		command.SetArgs([]string{
 			"some-index",
@@ -53,14 +53,14 @@ func testManifestPushCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, command.Execute())
 	})
 	it("should return an error when index not exists locally", func() {
-		preparePushManifestWithError(t, mockClient)
+		preparePushManifestWithError(mockClient)
 
 		command.SetArgs([]string{"some-index"})
 		err := command.Execute()
 		h.AssertNotNil(t, err)
 	})
 	it("should have help flag", func() {
-		preparePushManifest(t, mockClient)
+		preparePushManifest(mockClient)
 
 		command.SetArgs([]string{"--help"})
 		h.AssertNilE(t, command.Execute())
@@ -68,7 +68,7 @@ func testManifestPushCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func preparePushManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
+func preparePushManifest(mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
 		PushManifest(
@@ -80,7 +80,7 @@ func preparePushManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
 		Return(nil)
 }
 
-func preparePushManifestWithError(t *testing.T, mockClient *testmocks.MockPackClient) {
+func preparePushManifestWithError(mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
 		PushManifest(

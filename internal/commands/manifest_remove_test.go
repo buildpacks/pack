@@ -41,7 +41,7 @@ func testManifestDeleteCommand(t *testing.T, when spec.G, it spec.S) {
 		command = commands.ManifestDelete(logger, mockClient)
 	})
 	it("should delete index", func() {
-		prepareDeleteManifest(t, mockClient)
+		prepareDeleteManifest(mockClient)
 
 		command.SetArgs([]string{
 			"some-index",
@@ -54,7 +54,7 @@ func testManifestDeleteCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertEq(t, outBuf.String(), "")
 	})
 	it("should return an error", func() {
-		prepareDeleteManifest(t, mockClient)
+		prepareDeleteManifest(mockClient)
 
 		command.SetArgs([]string{"some-index"})
 		err := command.Execute()
@@ -65,7 +65,7 @@ func testManifestDeleteCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func prepareDeleteManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
+func prepareDeleteManifest(mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
 		DeleteManifest(
