@@ -138,6 +138,27 @@ func (r *ConfigReader) ReadBuildpackDescriptor(path string) (dist.BuildpackDescr
 	return buildpackConfig, nil
 }
 
+func (r *ConfigReader) ReadExtensionDescriptor(path string) (dist.ExtensionDescriptor, error) {
+	extensionConfig := dist.ExtensionDescriptor{}
+
+	tomlMetadata, err := toml.DecodeFile(path, &extensionConfig)
+	if err != nil {
+		return extensionConfig, errors.Wrap(err, "decoding toml")
+	}
+
+	undecodedKeys := tomlMetadata.Undecoded()
+	if len(undecodedKeys) > 0 {
+		unknownElementsMsg := config.FormatUndecodedKeys(undecodedKeys)
+
+		return extensionConfig, errors.Errorf("%s in %s",
+			unknownElementsMsg,
+			style.Symbol(path),
+		)
+	}
+
+	return extensionConfig, nil
+}
+
 func validateURI(uri, relativeBaseDir string) error {
 	locatorType, err := buildpack.GetLocatorType(uri, relativeBaseDir, nil)
 	if err != nil {

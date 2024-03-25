@@ -27,6 +27,7 @@ import (
 	"github.com/buildpacks/imgutil/remote"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack"
@@ -35,7 +36,6 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
-	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -75,7 +75,7 @@ type BlobDownloader interface {
 type ImageFactory interface {
 	// NewImage initializes an image object with required settings so that it
 	// can be written either locally or to a registry.
-	NewImage(repoName string, local bool, target dist.Target) (imgutil.Image, error)
+	NewImage(repoName string, local bool, platform v1.Platform) (imgutil.Image, error)
 }
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_index_factory.go github.com/buildpacks/pack/pkg/client IndexFactory
@@ -318,11 +318,11 @@ type imageFactory struct {
 	keychain     authn.Keychain
 }
 
-func (f *imageFactory) NewImage(repoName string, daemon bool, target dist.Target) (imgutil.Image, error) {
+func (f *imageFactory) NewImage(repoName string, daemon bool, platform v1.Platform) (imgutil.Image, error) {
 	if daemon {
-		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(*target.Platform()))
+		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(platform))
 	}
-	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(*target.Platform()))
+	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform))
 }
 
 type indexFactory struct {

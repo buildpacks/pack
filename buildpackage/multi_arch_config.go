@@ -44,8 +44,15 @@ type multiArchBuildpack struct {
 	flattenChanged  bool
 }
 
+type multiArchExtension struct {
+	config          dist.ExtensionDescriptor
+	flagTargets     []dist.Target
+	relativeBaseDir string
+}
+
 type IndexOptions struct {
 	BPConfigs       *[]MultiArchBuildpackConfig
+	ExtConfigs      *[]MultiArchExtensionConfig
 	PkgConfig       *MultiArchPackage
 	Manifest        *v1.IndexManifest
 	Logger          logging.Logger
@@ -69,6 +76,12 @@ type MultiArchBuildpackConfig struct {
 	Labels          map[string]string
 }
 
+type MultiArchExtensionConfig struct {
+	dist.ExtensionDescriptor
+	dist.Platform
+	relativeBaseDir string
+}
+
 func NewMultiArchBuildpack(config dist.BuildpackDescriptor, relativeBaseDir string, flatten, flattenChanged bool, flags []dist.Target) *multiArchBuildpack {
 	if relativeBaseDir == "" {
 		relativeBaseDir = "."
@@ -80,6 +93,18 @@ func NewMultiArchBuildpack(config dist.BuildpackDescriptor, relativeBaseDir stri
 		flatten:         flatten,
 		flagTargets:     flags,
 		flattenChanged:  flattenChanged,
+	}
+}
+
+func NewMultiArchExtension(config dist.ExtensionDescriptor, relativeBaseDir string, flags []dist.Target) *multiArchExtension {
+	if relativeBaseDir == "" {
+		relativeBaseDir = "."
+	}
+
+	return &multiArchExtension{
+		config:          config,
+		flagTargets:     flags,
+		relativeBaseDir: relativeBaseDir,
 	}
 }
 
@@ -101,16 +126,71 @@ func (m *multiArchBuildpack) Targets() []dist.Target {
 	return m.config.WithTargets
 }
 
+func (m *multiArchExtension) Targets() []dist.Target {
+	if len(m.flagTargets) > 0 {
+		return m.flagTargets
+	}
+	return m.config.WithTargets
+}
+
 func (m *multiArchBuildpack) MultiArchConfigs() (configs []MultiArchBuildpackConfig, err error) {
 	targets := m.Targets()
 	for _, target := range targets {
-		for _, distro := range target.Distributions {
-			for _, version := range distro.Versions {
-				cfg, err := m.processTarget(target, distro, version)
-				if err != nil {
-					return configs, err
+		if len(target.Distributions) == 0 {
+			cfg, err := m.processTarget(target, dist.Distribution{}, "")
+			if err != nil {
+				return configs, err
+			}
+			configs = append(configs, cfg)
+		} else {
+			for _, distro := range target.Distributions {
+				if len(distro.Versions) == 0 {
+					cfg, err := m.processTarget(target, distro, "")
+					if err != nil {
+						return configs, err
+					}
+					configs = append(configs, cfg)
+				} else {
+					for _, version := range distro.Versions {
+						cfg, err := m.processTarget(target, distro, version)
+						if err != nil {
+							return configs, err
+						}
+						configs = append(configs, cfg)
+					}
 				}
-				configs = append(configs, cfg)
+			}
+		}
+	}
+	return configs, nil
+}
+
+func (m *multiArchExtension) MultiArchConfigs() (configs []MultiArchExtensionConfig, err error) {
+	targets := m.Targets()
+	for _, target := range targets {
+		if len(target.Distributions) == 0 {
+			cfg, err := m.processTarget(target, dist.Distribution{}, "")
+			if err != nil {
+				return configs, err
+			}
+			configs = append(configs, cfg)
+		} else {
+			for _, distro := range target.Distributions {
+				if len(distro.Versions) == 0 {
+					cfg, err := m.processTarget(target, distro, "")
+					if err != nil {
+						return configs, err
+					}
+					configs = append(configs, cfg)
+				} else {
+					for _, version := range distro.Versions {
+						cfg, err := m.processTarget(target, distro, version)
+						if err != nil {
+							return configs, err
+						}
+						configs = append(configs, cfg)
+					}
+				}
 			}
 		}
 	}
@@ -121,6 +201,10 @@ func (m *multiArchBuildpack) processTarget(target dist.Target, distro dist.Distr
 	bpType := Buildpack
 	if len(m.config.WithOrder) > 0 {
 		bpType = Composite
+	}
+
+	if m.config.WithInfo.Version != "" {
+		target.Specs.OSVersion = m.config.WithInfo.Version
 	}
 
 	rel, err := filepath.Abs(filepath.Join(m.relativeBaseDir, buildpack.PlatformRootDirectory(target, distro.Name, version), "buildpack.toml"))
@@ -146,6 +230,29 @@ func (m *multiArchBuildpack) processTarget(target dist.Target, distro dist.Distr
 		Labels:          target.Specs.Labels,
 		relativeBaseDir: rel,
 		bpType:          bpType,
+	}, nil
+}
+
+func (m *multiArchExtension) processTarget(target dist.Target, distro dist.Distribution, version string) (MultiArchExtensionConfig, error) {
+	if m.config.WithInfo.Version != "" {
+		target.Specs.OSVersion = m.config.WithInfo.Version
+	}
+
+	rel, err := filepath.Abs(filepath.Join(m.relativeBaseDir, buildpack.PlatformRootDirectory(target, distro.Name, version), "extension.toml"))
+	if err != nil {
+		return MultiArchExtensionConfig{}, err
+	}
+
+	return MultiArchExtensionConfig{
+		ExtensionDescriptor: dist.ExtensionDescriptor{
+			WithInfo: m.config.WithInfo,
+			WithTargets: []dist.Target{
+				processTarget(target, distro, version),
+			},
+			WithAPI: m.config.WithAPI,
+		},
+		Platform:        dist.Platform{OS: target.OS},
+		relativeBaseDir: rel,
 	}, nil
 }
 
@@ -178,6 +285,20 @@ func (m *MultiArchBuildpackConfig) Path() string {
 	return m.relativeBaseDir
 }
 
+func (m *MultiArchExtensionConfig) Path() string {
+	var target dist.Target
+	targets := m.WithTargets
+	if len(targets) != 0 {
+		target = targets[0]
+	}
+
+	if path := target.Specs.Path; path != "" {
+		return filepath.Join(path, "extension.toml")
+	}
+
+	return m.relativeBaseDir
+}
+
 func (m *MultiArchBuildpackConfig) CopyBuildpackToml(getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (err error) {
 	if uri := m.BuildpackDescriptor.WithInfo.ID; uri == "" {
 		return errors.New("invalid MultiArchBuildpackConfig")
@@ -196,6 +317,24 @@ func (m *MultiArchBuildpackConfig) CopyBuildpackToml(getIndexManifest func(ref n
 	return toml.NewEncoder(bpFile).Encode(m.BuildpackDescriptor)
 }
 
+func (m *MultiArchExtensionConfig) CopyExtensionToml(getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (err error) {
+	if uri := m.ExtensionDescriptor.WithInfo.ID; uri == "" {
+		return errors.New("invalid MultiArchBuildpackConfig")
+	}
+
+	writeExtPath := m.Path()
+	if err := os.MkdirAll(filepath.Dir(writeExtPath), os.ModePerm); err != nil {
+		return err
+	}
+
+	extFile, err := os.Create(writeExtPath)
+	if err != nil {
+		return err
+	}
+
+	return toml.NewEncoder(extFile).Encode(m.ExtensionDescriptor)
+}
+
 func (m *MultiArchBuildpackConfig) BuildpackType() BuildpackType {
 	return m.bpType
 }
@@ -204,7 +343,15 @@ func (m *MultiArchBuildpackConfig) RelativeBaseDir() string {
 	return m.relativeBaseDir
 }
 
+func (m *MultiArchExtensionConfig) RelativeBaseDir() string {
+	return m.relativeBaseDir
+}
+
 func (m *MultiArchBuildpackConfig) CleanBuildpackToml() error {
+	return os.Remove(m.Path())
+}
+
+func (m *MultiArchExtensionConfig) CleanExtensionToml() error {
 	return os.Remove(m.Path())
 }
 
@@ -213,26 +360,27 @@ func (m *MultiArchPackage) RelativeBaseDir() string {
 }
 
 func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target, distroName, version string, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (err error) {
-	if (m.Buildpack.URI == "" && m.Extension.URI == "") || (m.Buildpack.URI != "" && m.Extension.URI != "") {
+	multiArchPKGConfig := *m
+	if (multiArchPKGConfig.Buildpack.URI == "" && multiArchPKGConfig.Extension.URI == "") || (multiArchPKGConfig.Buildpack.URI != "" && multiArchPKGConfig.Extension.URI != "") {
 		return errors.New("unexpected: one of Buildpack URI, Extension URI must be specified")
 	}
 
-	if uri := m.Buildpack.URI; uri != "" {
-		if m.Buildpack.URI, err = getRelativeURI(uri, m.relativeBaseDir, &target, getIndexManifest); err != nil {
+	if uri := multiArchPKGConfig.Buildpack.URI; uri != "" {
+		if multiArchPKGConfig.Buildpack.URI, err = getRelativeURI(uri, multiArchPKGConfig.relativeBaseDir, &target, getIndexManifest); err != nil {
 			return err
 		}
 	}
 
-	if uri := m.Extension.URI; uri != "" {
-		if m.Extension.URI, err = getRelativeURI(uri, m.relativeBaseDir, &target, getIndexManifest); err != nil {
+	if uri := multiArchPKGConfig.Extension.URI; uri != "" {
+		if multiArchPKGConfig.Extension.URI, err = getRelativeURI(uri, multiArchPKGConfig.relativeBaseDir, &target, getIndexManifest); err != nil {
 			return err
 		}
 	}
 
-	for i, dep := range m.Dependencies {
+	for i, dep := range multiArchPKGConfig.Dependencies {
 		// dep.ImageName == dep.ImageRef.ImageName, dep.URI == dep.Buildpack.URI
 		if dep.URI != "" {
-			if m.Dependencies[i].URI, err = getRelativeURI(dep.URI, m.relativeBaseDir, &target, getIndexManifest); err != nil {
+			if m.Dependencies[i].URI, err = getRelativeURI(dep.URI, multiArchPKGConfig.relativeBaseDir, &target, getIndexManifest); err != nil {
 				return err
 			}
 		}
@@ -253,7 +401,7 @@ func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target
 	if err != nil {
 		return err
 	}
-	return toml.NewEncoder(bpFile).Encode(m.Config)
+	return toml.NewEncoder(bpFile).Encode(multiArchPKGConfig.Config)
 }
 
 func getRelativeURI(uri, relativeBaseDir string, target *dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (string, error) {

@@ -26,6 +26,7 @@ type PackClient interface {
 	PackageBuildpack(ctx context.Context, opts client.PackageBuildpackOptions) error
 	PackageMultiArchBuildpack(ctx context.Context, opts client.PackageBuildpackOptions) error
 	PackageExtension(ctx context.Context, opts client.PackageBuildpackOptions) error
+	PackageMultiArchExtension(ctx context.Context, opts client.PackageBuildpackOptions) error
 	Build(context.Context, client.BuildOptions) error
 	RegisterBuildpack(context.Context, client.RegisterBuildpackOptions) error
 	YankBuildpack(client.YankBuildpackOptions) error

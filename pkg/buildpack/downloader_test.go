@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/docker/docker/api/types"
 	"github.com/golang/mock/gomock"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
@@ -48,6 +49,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 		logger               logging.Logger
 		out                  bytes.Buffer
 		tmpDir               string
+		imageIdentifier      = "74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7"
 	)
 
 	var createBuildpack = func(descriptor dist.BuildpackDescriptor) string {
@@ -59,8 +61,8 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 	}
 
 	var createPackage = func(imageName string) *fakes.Image {
-		packageImage := fakes.NewImage(imageName, "", nil)
-		mockImageFactory.EXPECT().NewImage(packageImage.Name(), false, "linux").Return(packageImage, nil)
+		packageImage := fakes.NewImage(imageName, "", NewIdentifier(imageIdentifier))
+		mockImageFactory.EXPECT().NewImage(packageImage.Name(), false, v1.Platform{OS: "linux"}).Return(packageImage, nil)
 
 		pack, err := client.NewClient(
 			client.WithLogger(logger),
@@ -80,6 +82,9 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					WithInfo:   dist.ModuleInfo{ID: "example/foo", Version: "1.1.0"},
 					WithStacks: []dist.Stack{{ID: "some.stack.id"}},
 				})},
+			},
+			IndexOptions: pubbldpkg.IndexOptions{
+				Target: dist.Target{OS: "linux"},
 			},
 			Publish: true,
 		}))

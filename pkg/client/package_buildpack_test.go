@@ -43,6 +43,20 @@ func TestPackageBuildpack(t *testing.T) {
 	spec.Run(t, "PackageBuildpack", testPackageBuildpack, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
+type Identifier struct {
+	id string
+}
+
+func NewIdentifier(id string) Identifier {
+	return Identifier{
+		id: id,
+	}
+}
+
+func (i Identifier) String() string {
+	return i.id
+}
+
 func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 	var (
 		subject          *client.Client
@@ -53,6 +67,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		mockIndexFactory *testmocks.MockIndexFactory
 		mockDockerClient *testmocks.MockCommonAPIClient
 		out              bytes.Buffer
+		imageIdentifier  = "74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7"
 	)
 
 	it.Before(func() {
@@ -208,8 +223,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					)
 					h.AssertNil(t, err)
 
-					fakeImage := fakes.NewImage("basic/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true, dist.Target{OS: daemonOS}).Return(fakeImage, nil)
+					fakeImage := fakes.NewImage("basic/package-"+h.RandString(12), "", NewIdentifier(imageIdentifier))
+					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true, v1.Platform{OS: daemonOS}).Return(fakeImage, nil)
 
 					fakeBlob := blob.NewBlob(filepath.Join("testdata", "empty-file"))
 					bpURL := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
@@ -279,8 +294,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			var nestedPackage *fakes.Image
 
 			it.Before(func() {
-				nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
-				mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, dist.Target{OS: "linux"}).Return(nestedPackage, nil)
+				nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", NewIdentifier(imageIdentifier))
+				mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, v1.Platform{OS: "linux"}).Return(nestedPackage, nil)
 
 				mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
 
@@ -311,14 +326,14 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			shouldCreateLocalPackage := func() imgutil.Image {
-				img := fakes.NewImage("some/package-"+h.RandString(12), "", nil)
-				mockImageFactory.EXPECT().NewImage(img.Name(), true, dist.Target{OS: "linux"}).Return(img, nil)
+				img := fakes.NewImage("some/package-"+h.RandString(12), "", NewIdentifier(imageIdentifier))
+				mockImageFactory.EXPECT().NewImage(img.Name(), true, v1.Platform{OS: "linux"}).Return(img, nil)
 				return img
 			}
 
 			shouldCreateRemotePackage := func() *fakes.Image {
-				img := fakes.NewImage("some/package-"+h.RandString(12), "", nil)
-				mockImageFactory.EXPECT().NewImage(img.Name(), false, dist.Target{OS: "linux"}).Return(img, nil)
+				img := fakes.NewImage("some/package-"+h.RandString(12), "", NewIdentifier(imageIdentifier))
+				mockImageFactory.EXPECT().NewImage(img.Name(), false, v1.Platform{OS: "linux"}).Return(img, nil)
 				return img
 			}
 
@@ -439,7 +454,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 		when("nested package is not a valid package", func() {
 			it("should error", func() {
-				notPackageImage := fakes.NewImage("not/package", "", nil)
+				notPackageImage := fakes.NewImage("not/package", "", NewIdentifier(imageIdentifier))
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(notPackageImage, nil)
 
 				mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
@@ -503,9 +518,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
 
 				name := "basic/package-" + h.RandString(12)
-				fakeImage := fakes.NewImage(name, "", nil)
+				fakeImage := fakes.NewImage(name, "", NewIdentifier(imageIdentifier))
 				fakeLayerImage = &h.FakeAddedLayerImage{Image: fakeImage}
-				mockImageFactory.EXPECT().NewImage(fakeLayerImage.Name(), true, dist.Target{OS: "linux"}).Return(fakeLayerImage, nil)
+				mockImageFactory.EXPECT().NewImage(fakeLayerImage.Name(), true, v1.Platform{OS: "linux"}).Return(fakeLayerImage, nil)
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), name, gomock.Any()).Return(fakeLayerImage, nil).AnyTimes()
 
 				blob1 := blob.NewBlob(filepath.Join("testdata", "buildpack-flatten", "buildpack-1"))
@@ -647,8 +662,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 			when("dependencies are packaged buildpack image", func() {
 				it.Before(func() {
-					nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, dist.Target{OS: "linux"}).Return(nestedPackage, nil)
+					nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", NewIdentifier(imageIdentifier))
+					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, v1.Platform{OS: "linux"}).Return(nestedPackage, nil)
 
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
 						Name: nestedPackage.Name(),
@@ -777,8 +792,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						Optional:   false,
 					}}})
 
-					nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, dist.Target{OS: "linux"}).Return(nestedPackage, nil)
+					nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", NewIdentifier(imageIdentifier))
+					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, v1.Platform{OS: "linux"}).Return(nestedPackage, nil)
 
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
 						Name: nestedPackage.Name(),
@@ -903,7 +918,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
 					h.AssertNotNil(t, registryFixture)
 
-					packageImage := fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
+					packageImage := fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", NewIdentifier(imageIdentifier))
 					err = packageImage.AddLayerWithDiffID("testdata/empty-file", "sha256:xxx")
 					h.AssertNil(t, err)
 					err = packageImage.SetLabel("io.buildpacks.buildpackage.metadata", `{"id":"example/foo", "version":"1.1.0", "stacks":[{"id":"some.stack.id"}]}`)
@@ -970,6 +985,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						{
 							BuildpackDescriptor: dist.BuildpackDescriptor{},
 						},
+						{
+							BuildpackDescriptor: dist.BuildpackDescriptor{},
+						},
 					},
 				},
 			}).Error(), "package configaration is undefined")
@@ -1030,7 +1048,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				expectLoadIndex(t, mockIndexFactory)
 				mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
 				createMultiArchBuildpack(bpDescConfig)
-				fakeImage := fakes.NewImage("basic/package-"+h.RandString(12), "", nil)
+				fakeImage := fakes.NewImage("basic/package-"+h.RandString(12), "", NewIdentifier(imageIdentifier))
 				mockImageFactory.EXPECT().NewImage(gomock.Any(), true, gomock.Any()).Return(fakeImage, nil).AnyTimes()
 
 				multiArchBPConfig := pubbldpkg.NewMultiArchBuildpack(bpDescConfig, tmpDir, true, true, nil)

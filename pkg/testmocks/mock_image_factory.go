@@ -9,8 +9,7 @@ import (
 
 	imgutil "github.com/buildpacks/imgutil"
 	gomock "github.com/golang/mock/gomock"
-
-	dist "github.com/buildpacks/pack/pkg/dist"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
 // MockImageFactory is a mock of ImageFactory interface.
@@ -37,7 +36,7 @@ func (m *MockImageFactory) EXPECT() *MockImageFactoryMockRecorder {
 }
 
 // NewImage mocks base method.
-func (m *MockImageFactory) NewImage(arg0 string, arg1 bool, arg2 dist.Target) (imgutil.Image, error) {
+func (m *MockImageFactory) NewImage(arg0 string, arg1 bool, arg2 v1.Platform) (imgutil.Image, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewImage", arg0, arg1, arg2)
 	ret0, _ := ret[0].(imgutil.Image)

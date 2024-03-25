@@ -283,6 +283,20 @@ func (mr *MockPackClientMockRecorder) PackageMultiArchBuildpack(arg0, arg1 inter
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackageMultiArchBuildpack", reflect.TypeOf((*MockPackClient)(nil).PackageMultiArchBuildpack), arg0, arg1)
 }
 
+// PackageMultiArchExtension mocks base method.
+func (m *MockPackClient) PackageMultiArchExtension(arg0 context.Context, arg1 client.PackageBuildpackOptions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PackageMultiArchExtension", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PackageMultiArchExtension indicates an expected call of PackageMultiArchExtension.
+func (mr *MockPackClientMockRecorder) PackageMultiArchExtension(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackageMultiArchExtension", reflect.TypeOf((*MockPackClient)(nil).PackageMultiArchExtension), arg0, arg1)
+}
+
 // PullBuildpack mocks base method.
 func (m *MockPackClient) PullBuildpack(arg0 context.Context, arg1 client.PullBuildpackOptions) error {
 	m.ctrl.T.Helper()

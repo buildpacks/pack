@@ -18,6 +18,7 @@ import (
 	"github.com/buildpacks/imgutil/layer"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/golang/mock/gomock"
+	ggcrV1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/stream"
 	"github.com/heroku/color"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
@@ -40,10 +41,25 @@ func TestPackageBuilder(t *testing.T) {
 	spec.Run(t, "PackageBuilder", testPackageBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
+type Identifier struct {
+	id string
+}
+
+func NewIdentifier(id string) Identifier {
+	return Identifier{
+		id: id,
+	}
+}
+
+func (i Identifier) String() string {
+	return i.id
+}
+
 const (
-	version = "latest"
-	linux   = "linux"
-	windows = "windows"
+	version         = "latest"
+	linux           = "linux"
+	windows         = "windows"
+	imageIdentifier = "74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7"
 )
 
 func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
@@ -61,8 +77,8 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			imageFactory := testmocks.NewMockImageFactory(mockController)
 
 			if expectedImageOS != "" {
-				fakePackageImage := fakes.NewImage("some/package", "", nil)
-				imageFactory.EXPECT().NewImage("some/package", true, dist.Target{OS: expectedImageOS}).Return(fakePackageImage, nil).MaxTimes(1)
+				fakePackageImage := fakes.NewImage("some/package", "", NewIdentifier(imageIdentifier))
+				imageFactory.EXPECT().NewImage("some/package", true, ggcrV1.Platform{OS: expectedImageOS}).Return(fakePackageImage, nil).MaxTimes(1)
 			}
 
 			return imageFactory
@@ -737,9 +753,9 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		it("should report an error when custom label cannot be set", func() {
 			mockImageFactory = func(expectedImageOS string) *testmocks.MockImageFactory {
-				var imageWithLabelError = &imageWithLabelError{Image: fakes.NewImage("some/package", "", nil)}
+				var imageWithLabelError = &imageWithLabelError{Image: fakes.NewImage("some/package", "", NewIdentifier(imageIdentifier))}
 				imageFactory := testmocks.NewMockImageFactory(mockController)
-				imageFactory.EXPECT().NewImage("some/package", true, dist.Target{OS: expectedImageOS}).Return(imageWithLabelError, nil).MaxTimes(1)
+				imageFactory.EXPECT().NewImage("some/package", true, ggcrV1.Platform{OS: expectedImageOS}).Return(imageWithLabelError, nil).MaxTimes(1)
 				return imageFactory
 			}
 

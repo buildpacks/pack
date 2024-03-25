@@ -84,6 +84,10 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	return bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version})
 }
 
+func (c *Client) CreateMultiArchBuilder(ctx context.Context, opts CreateBuilderOptions) error {
+	return nil
+}
+
 func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions) error {
 	if err := pubbldr.ValidateConfig(opts.Config); err != nil {
 		return errors.Wrap(err, "invalid builder config")

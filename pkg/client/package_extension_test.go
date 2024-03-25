@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/docker/docker/api/types"
 	"github.com/golang/mock/gomock"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -42,6 +43,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 		mockImageFetcher *testmocks.MockImageFetcher
 		mockDockerClient *testmocks.MockCommonAPIClient
 		out              bytes.Buffer
+		imageIdentifier  = "74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7"
 	)
 
 	it.Before(func() {
@@ -83,6 +85,9 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 						Platform:  dist.Platform{OS: "linux"},
 						Extension: dist.BuildpackURI{URI: ""},
 					},
+					IndexOptions: pubbldpkg.IndexOptions{
+						Target: dist.Target{OS: "linux"},
+					},
 					Publish: true,
 				})
 				h.AssertError(t, err, "extension URI must be provided")
@@ -99,6 +104,9 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 					Config: pubbldpkg.Config{
 						Platform:  dist.Platform{OS: "linux"},
 						Extension: dist.BuildpackURI{URI: exURL},
+					},
+					IndexOptions: pubbldpkg.IndexOptions{
+						Target: dist.Target{OS: "linux"},
 					},
 					Publish: true,
 				})
@@ -117,6 +125,9 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 					Config: pubbldpkg.Config{
 						Platform:  dist.Platform{OS: "linux"},
 						Extension: dist.BuildpackURI{URI: exURL},
+					},
+					IndexOptions: pubbldpkg.IndexOptions{
+						Target: dist.Target{OS: "linux"},
 					},
 					Publish: true,
 				})
@@ -140,8 +151,8 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 					)
 					h.AssertNil(t, err)
 
-					fakeImage := fakes.NewImage("basic/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true, daemonOS).Return(fakeImage, nil)
+					fakeImage := fakes.NewImage("basic/package-"+h.RandString(12), "", NewIdentifier(imageIdentifier))
+					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true, v1.Platform{OS: daemonOS}).Return(fakeImage, nil)
 
 					fakeBlob := blob.NewBlob(filepath.Join("testdata", "empty-file"))
 					exURL := fmt.Sprintf("https://example.com/ex.%s.tgz", h.RandString(12))
@@ -156,6 +167,9 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 								WithAPI:  api.MustParse("0.2"),
 								WithInfo: dist.ModuleInfo{ID: "ex.basic", Version: "2.3.4"},
 							})},
+						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: daemonOS},
 						},
 						PullPolicy: image.PullNever,
 					}))
@@ -177,6 +191,9 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 							OS: "windows",
 						},
 					},
+					IndexOptions: pubbldpkg.IndexOptions{
+						Target: dist.Target{OS: "linux"},
+					},
 				})
 				h.AssertError(t, err, "Windows extensionpackage support is currently experimental.")
 			})
@@ -196,6 +213,9 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 						Platform: dist.Platform{
 							OS: "linux",
 						},
+					},
+					IndexOptions: pubbldpkg.IndexOptions{
+						Target: dist.Target{OS: "linux"},
 					},
 				})
 
@@ -238,6 +258,9 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 								WithInfo: dist.ModuleInfo{ID: "ex.basic", Version: "2.3.4"},
 							})},
 						},
+						IndexOptions: pubbldpkg.IndexOptions{
+							Target: dist.Target{OS: imageOS},
+						},
 						PullPolicy: image.PullNever,
 					}))
 				}
@@ -258,6 +281,9 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 						WithAPI:  api.MustParse("0.2"),
 						WithInfo: dist.ModuleInfo{ID: "ex.1", Version: "1.2.3"},
 					})},
+				},
+				IndexOptions: pubbldpkg.IndexOptions{
+					Target: dist.Target{OS: "linux"},
 				},
 				Publish:    false,
 				PullPolicy: image.PullAlways,

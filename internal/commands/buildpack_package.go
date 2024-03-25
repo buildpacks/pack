@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,6 +45,7 @@ type BuildpackPackager interface {
 type PackageConfigReader interface {
 	Read(path string) (pubbldpkg.Config, error)
 	ReadBuildpackDescriptor(path string) (dist.BuildpackDescriptor, error)
+	ReadExtensionDescriptor(path string) (dist.ExtensionDescriptor, error)
 }
 
 // BuildpackPackage packages (a) buildpack(s) into OCI format, based on a package config
@@ -102,7 +104,21 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				bpPackageCfg.Buildpack.URI = bpPath
 			}
 
-			bpConfig, err := packageConfigReader.ReadBuildpackDescriptor(filepath.Join(bpPath, "buildpack.toml"))
+			bpConfigPathAbs, err := filepath.Abs(bpPath)
+			if err != nil {
+				return err
+			}
+			bpConfigPath := filepath.Join(bpConfigPathAbs, "buildpack.toml")
+			if _, err = os.Stat(bpConfigPath); err != nil {
+				return fmt.Errorf("cannot find %s: %s", style.Symbol("buildpack.toml"), style.Symbol(bpConfigPath))
+			}
+
+			// bpConfigFile, err := os.OpenFile(bpConfigPath, os.O_RDONLY|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+			// if err != nil {
+			// 	return err
+			// }
+
+			bpConfig, err := packageConfigReader.ReadBuildpackDescriptor(bpConfigPath)
 			if err != nil {
 				return err
 			}
@@ -148,13 +164,14 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			}
 
 			if len(bpConfigs) > 1 {
-				if f, err := os.Stat(bpPath); err != nil {
-					return err
-				} else if f.IsDir() {
-					bpPath = filepath.Join(f.Name(), "buildpack.toml")
-				}
+				// if _, err := os.Stat(filepath.Join(bpPath, "buildpack.toml")); err != nil {
+				// 	return fmt.Errorf("cannot open %s", bpPath)
+				// bpPath = filepath.Join(bpPath, "buildpack.toml")
+				// } else if f.IsDir() {
+				// bpPath = filepath.Join(f.Name(), "buildpack.toml")
+				// }
 
-				pkgBPOpts.RelativeBaseDir = bpPath
+				pkgBPOpts.RelativeBaseDir = bpConfigPath
 				pkgBPOpts.IndexOptions = pubbldpkg.IndexOptions{
 					BPConfigs: &bpConfigs,
 					PkgConfig: pkgMultiArchConfig,
@@ -163,8 +180,15 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				}
 
 				if err := packager.PackageMultiArchBuildpack(cmd.Context(), pkgBPOpts); err != nil {
+					// if err := toml.NewEncoder(bpConfigFile).Encode(bpConfig); err != nil {
+					// 	return err
+					// }
 					return err
 				}
+
+				// if err := toml.NewEncoder(bpConfigFile).Encode(bpConfig); err != nil {
+				// 	return err
+				// }
 			} else {
 				if len(bpConfigs) == 1 {
 					pkgBPOpts.IndexOptions.Target = bpConfigs[0].WithTargets[0]
@@ -205,6 +229,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 	- case for different architecture with distributed versions : '--target "linux/arm/v6:ubuntu@14.04"  --target "linux/arm/v6:ubuntu@16.04"'
 	`)
 	if !cfg.Experimental {
+		cmd.Flags().MarkHidden("target")
 		cmd.Flags().MarkHidden("flatten")
 		cmd.Flags().MarkHidden("flatten-exclude")
 	}

@@ -2,11 +2,14 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
+	"sync"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/index"
@@ -141,6 +144,14 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return packageBuilder.SaveAsFile(opts.Name, opts.Version, opts.IndexOptions.Target, opts.IndexOptions.ImageIndex, opts.Labels)
 	case FormatImage:
 		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Version, opts.Publish, opts.IndexOptions.Target, opts.IndexOptions.ImageIndex, opts.Labels)
+		if err == nil {
+			version := opts.Version
+			if version == "" {
+				version = "latest"
+			}
+			fmt.Println("Successfully saved image: " + opts.Name + ":" + version)
+			return nil
+		}
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))
@@ -182,7 +193,7 @@ func (c *Client) validateOSPlatform(ctx context.Context, os string, publish bool
 
 // PackageBuildpack packages multiple buildpack(s) into image index with each buildpack into either an image or file.
 func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
-	if opts.IndexOptions.BPConfigs == nil || len(*opts.IndexOptions.BPConfigs) == 0 {
+	if opts.IndexOptions.BPConfigs == nil || len(*opts.IndexOptions.BPConfigs) < 2 {
 		return errors.Errorf("%s must not be nil", style.Symbol("IndexOptions"))
 	}
 
@@ -193,7 +204,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 	IndexManifestFn := getIndexManifestFn(c, opts.IndexOptions.Manifest)
 	bpCfg, err := pubbldpkg.NewConfigReader().ReadBuildpackDescriptor(opts.RelativeBaseDir)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot read %s file: %s", style.Symbol("buildpack.toml"), style.Symbol(opts.RelativeBaseDir))
 	}
 
 	var repoName string
@@ -208,11 +219,11 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 	}
 
 	pkgConfig, bpConfigs := *opts.IndexOptions.PkgConfig, *opts.IndexOptions.BPConfigs
-	// var (
-	// 	errs errgroup.Group
-	// 	wg   = &sync.WaitGroup{}
-	// )
-	// wg.Add(len(bpConfigs))
+	var (
+		errs errgroup.Group
+		wg   = &sync.WaitGroup{}
+	)
+	wg.Add(len(bpConfigs))
 
 	idx, err := loadImageIndex(c, repoName)
 	if err != nil {
@@ -250,7 +261,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 		}
 
 		return c.PackageBuildpack(ctx, PackageBuildpackOptions{
-			RelativeBaseDir: pkgConfig.RelativeBaseDir(),
+			RelativeBaseDir: "",
 			Name:            opts.Name,
 			Format:          opts.Format,
 			Config:          pkgConfig.Config,
@@ -262,7 +273,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 			Labels:          bpConfig.Labels,
 			Version:         opts.Version,
 			IndexOptions: pubbldpkg.IndexOptions{
-				ImageIndex: opts.IndexOptions.ImageIndex,
+				ImageIndex: idx,
 				Logger:     opts.IndexOptions.Logger,
 				Target:     bpConfig.WithTargets[0],
 			},
@@ -271,17 +282,25 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 
 	for _, bpConfig := range bpConfigs {
 		c := bpConfig
-		// errs.Go(func() error {
-		// 	defer wg.Done()
-		return packageMultiArchBuildpackFn(c)
-		// })
+		errs.Go(func() error {
+			defer wg.Done()
+			return packageMultiArchBuildpackFn(c)
+		})
 	}
-	// wg.Wait()
-	// if err := errs.Wait(); err != nil {
-	// 	return err
-	// }
+	wg.Wait()
+	if err := errs.Wait(); err != nil {
+		return err
+	}
 
-	return idx.Save()
+	if err := idx.Save(); err != nil {
+		return err
+	}
+
+	if !opts.Publish {
+		return nil
+	}
+
+	return idx.Push(imgutil.WithInsecure(true))
 }
 
 func getIndexManifestFn(c *Client, mfest *v1.IndexManifest) func(ref name.Reference) (*v1.IndexManifest, error) {

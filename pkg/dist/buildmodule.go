@@ -74,6 +74,7 @@ type TargetSpecs struct {
 	Flatten        bool              `json:"flatten,omitempty" toml:"flatten,omitempty"`
 	FlattenExclude []string          `json:"flatten.exclude,omitempty" toml:"flatten.exclude,omitempty"`
 	Labels         map[string]string `json:"labels,omitempty" toml:"labels,omitempty"`
+	OSVersion      string            `json:"os.version,omitempty" toml:"os.version,omitempty"`
 	Path           string            `json:"path,omitempty" toml:"path,omitempty"`
 }
 
@@ -82,6 +83,7 @@ func (t *Target) Platform() *v1.Platform {
 		OS:           t.OS,
 		Architecture: t.Arch,
 		Variant:      t.ArchVariant,
+		OSVersion:    t.Specs.OSVersion,
 		Features:     t.Specs.Features,
 		OSFeatures:   t.Specs.OSFeatures,
 	}
