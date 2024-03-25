@@ -143,7 +143,7 @@ require (
 go 1.21
 
 replace (
-	github.com/buildpacks/imgutil => github.com/WYGIN/buildpacks-imgutil v0.0.0-20240315104835-49941eefaae6
+	github.com/buildpacks/imgutil => github.com/WYGIN/buildpacks-imgutil v0.0.0-20240325135654-3acfd71179eb
 
 	github.com/buildpacks/lifecycle => github.com/WYGIN/buildpacks-lifecycle v0.0.0-20240322102900-d5cc232ef875
 
