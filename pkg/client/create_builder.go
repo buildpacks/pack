@@ -8,6 +8,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -36,7 +37,7 @@ type CreateBuilderOptions struct {
 	Labels map[string]string
 
 	// Configuration that defines the functionality a builder provides.
-	Config pubbldr.Config
+	Config pubbldr.MultiArchConfig
 
 	// Skip building image locally, directly publish to a registry.
 	// Requires BuilderName to be a valid registry location.
@@ -50,6 +51,9 @@ type CreateBuilderOptions struct {
 
 	// List of modules to be flattened
 	Flatten buildpack.FlattenModuleInfos
+
+	// Optional: ImageIndex used for creating IndexManifest
+	ImageIndex imgutil.ImageIndex
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.
@@ -81,15 +85,86 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	bldr.SetRunImage(opts.Config.Run)
 	bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
 
-	return bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version})
+	if err := bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version}); err != nil {
+		return err
+	}
+
+	if opts.ImageIndex == nil {
+		return nil
+	}
+
+	ref, err := name.ParseReference(opts.BuilderName, name.Insecure, name.WeakValidation)
+	if err != nil {
+		return err
+	}
+
+	underlyingImage := bldr.Image().UnderlyingImage()
+
+	if underlyingImage != nil {
+		digest, err := underlyingImage.Digest()
+		if err != nil {
+			return err
+		}
+
+		if err := opts.ImageIndex.Add(ref.Context().Digest(digest.String()), imgutil.WithLocalImage(bldr.Image())); err != nil {
+			return err
+		}
+	} else {
+		id, err := bldr.Image().Identifier()
+		if err != nil {
+			return err
+		}
+
+		digest := ref.Context().Digest("sha256:" + id.String())
+		if err := opts.ImageIndex.Add(ref.Context().Digest(digest.String()), imgutil.WithLocalImage(bldr.Image())); err != nil {
+			return err
+		}
+	}
+
+	return opts.ImageIndex.Save()
 }
 
 func (c *Client) CreateMultiArchBuilder(ctx context.Context, opts CreateBuilderOptions) error {
-	return nil
+	if err := c.validateConfig(ctx, opts); err != nil {
+		return err
+	}
+
+	configs, err := opts.Config.BuilderConfigs(c.GetIndexManifestFn())
+	if err != nil {
+		return err
+	}
+
+	if err := createImageIndex(c, opts.BuilderName); err != nil {
+		return err
+	}
+
+	idx, err := loadImageIndex(c, opts.BuilderName)
+	if err != nil {
+		return err
+	}
+
+	ops := opts
+	ops.ImageIndex = idx
+	for _, config := range configs {
+		ops.Config.Config = config
+		if err := c.CreateBuilder(ctx, ops); err != nil {
+			return err
+		}
+	}
+
+	if !opts.Publish {
+		return nil
+	}
+
+	if err := idx.Save(); err != nil {
+		return err
+	}
+
+	return idx.Push(imgutil.WithInsecure(true))
 }
 
 func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions) error {
-	if err := pubbldr.ValidateConfig(opts.Config); err != nil {
+	if err := pubbldr.ValidateConfig(opts.Config.Config); err != nil {
 		return errors.Wrap(err, "invalid builder config")
 	}
 

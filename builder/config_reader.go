@@ -7,8 +7,13 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/imgutil"
+
+	"github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/dist"
@@ -25,6 +30,13 @@ type Config struct {
 	Lifecycle       LifecycleConfig  `toml:"lifecycle"`
 	Run             RunConfig        `toml:"run"`
 	Build           BuildConfig      `toml:"build"`
+	WithTargets     []dist.Target    `toml:"targets,omitempty"`
+}
+
+type MultiArchConfig struct {
+	Config
+	flagTargets     []dist.Target
+	relativeBaseDir string
 }
 
 // ModuleCollection is a list of ModuleConfigs
@@ -115,6 +127,129 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 	return config, warnings, nil
 }
 
+func (c *MultiArchConfig) Targets() []dist.Target {
+	if len(c.flagTargets) != 0 {
+		return c.flagTargets
+	}
+
+	return c.WithTargets
+}
+
+func ReadMultiArchConfig(path string, flagTargets []dist.Target) (config MultiArchConfig, warnings []string, err error) {
+	file, err := os.Open(filepath.Clean(path))
+	if err != nil {
+		return MultiArchConfig{}, nil, errors.Wrap(err, "opening config file")
+	}
+	defer file.Close()
+
+	config, err = parseMultiArchConfig(file)
+	if err != nil {
+		return MultiArchConfig{}, nil, errors.Wrapf(err, "parse contents of '%s'", path)
+	}
+
+	if len(config.Order) == 0 {
+		warnings = append(warnings, fmt.Sprintf("empty %s definition", style.Symbol("order")))
+	}
+
+	config.mergeStackWithImages()
+	config.flagTargets = flagTargets
+	return config, warnings, nil
+}
+
+func (c *MultiArchConfig) BuilderConfigs(getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (configs []Config, err error) {
+	targets := c.Targets()
+	for _, target := range targets {
+		if len(target.Distributions) == 0 {
+			cfg, err := c.processTarget(target, dist.Distribution{}, "", getIndexManifest)
+			if err != nil {
+				return configs, err
+			}
+			configs = append(configs, cfg)
+		} else {
+			for _, distro := range target.Distributions {
+				if len(distro.Versions) == 0 {
+					cfg, err := c.processTarget(target, distro, "", getIndexManifest)
+					if err != nil {
+						return configs, err
+					}
+					configs = append(configs, cfg)
+				} else {
+					for _, version := range distro.Versions {
+						cfg, err := c.processTarget(target, distro, version, getIndexManifest)
+						if err != nil {
+							return configs, err
+						}
+						configs = append(configs, cfg)
+					}
+				}
+			}
+		}
+	}
+
+	return configs, nil
+}
+
+func (c *MultiArchConfig) processTarget(target dist.Target, distro dist.Distribution, version string, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (config Config, err error) {
+	processedTarget := buildpackage.ProcessTarget(target, distro, version)
+	for _, bp := range c.Config.Buildpacks {
+		if bp.URI != "" {
+			if bp.URI, err = buildpackage.GetRelativeURI(bp.URI, c.relativeBaseDir, &processedTarget, getIndexManifest); err != nil {
+				return config, err
+			}
+		}
+	}
+
+	for _, ext := range c.Config.Extensions {
+		if ext.URI != "" {
+			if ext.URI, err = buildpackage.GetRelativeURI(ext.URI, c.relativeBaseDir, &processedTarget, getIndexManifest); err != nil {
+				return config, err
+			}
+		}
+	}
+
+	if img := c.Build.Image; img != "" {
+		if c.Build.Image, err = targetSpecificDigest(img, processedTarget, getIndexManifest); err != nil {
+			return config, err
+		}
+	}
+
+	for i, runImg := range c.Run.Images {
+		c.Run.Images[i].Image, err = targetSpecificDigest(runImg.Image, processedTarget, getIndexManifest)
+		if err != nil {
+			for j, mirror := range runImg.Mirrors {
+				if c.Run.Images[i].Mirrors[j], err = targetSpecificDigest(mirror, processedTarget, getIndexManifest); err == nil {
+					break
+				}
+			}
+		}
+	}
+
+	config.WithTargets = []dist.Target{processedTarget}
+	return config, nil
+}
+
+func targetSpecificDigest(tag string, processedTarget dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (digest string, err error) {
+	ref, err := name.ParseReference(tag)
+	if err != nil {
+		return digest, err
+	}
+
+	idx, err := getIndexManifest(ref)
+	if err != nil {
+		return digest, err
+	}
+	if idx == nil {
+		return digest, imgutil.ErrManifestUndefined
+	}
+
+	digestStr, err := buildpackage.DigestFromIndex(idx, processedTarget)
+	if err != nil {
+		return digest, err
+	}
+
+	return ref.Context().Digest(digestStr).Name(), nil
+}
+
 // ValidateConfig validates the config
 func ValidateConfig(c Config) error {
 	if c.Build.Image == "" && c.Stack.BuildImage == "" {
@@ -180,6 +315,27 @@ func parseConfig(file *os.File) (Config, error) {
 	}
 
 	return builderConfig, nil
+}
+
+// parseMultiArchConfig reads a builder configuration from file
+func parseMultiArchConfig(file *os.File) (MultiArchConfig, error) {
+	multiArchBuilderConfig := MultiArchConfig{}
+	tomlMetadata, err := toml.NewDecoder(file).Decode(&multiArchBuilderConfig)
+	if err != nil {
+		return MultiArchConfig{}, errors.Wrap(err, "decoding MultiArchBuilder Toml")
+	}
+
+	undecodedKeys := tomlMetadata.Undecoded()
+	if len(undecodedKeys) > 0 {
+		unknownElementsMsg := config.FormatUndecodedKeys(undecodedKeys)
+
+		return MultiArchConfig{}, errors.Errorf("%s in %s",
+			unknownElementsMsg,
+			style.Symbol(file.Name()),
+		)
+	}
+
+	return multiArchBuilderConfig, nil
 }
 
 func ParseBuildConfigEnv(env []BuildConfigEnv, path string) (envMap map[string]string, warnings []string, err error) {

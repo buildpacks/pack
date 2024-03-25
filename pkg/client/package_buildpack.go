@@ -201,7 +201,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 		return errors.Errorf("package configaration is undefined")
 	}
 
-	IndexManifestFn := getIndexManifestFn(c, opts.IndexOptions.Manifest)
+	IndexManifestFn := c.GetIndexManifestFn()
 	bpCfg, err := pubbldpkg.NewConfigReader().ReadBuildpackDescriptor(opts.RelativeBaseDir)
 	if err != nil {
 		return fmt.Errorf("cannot read %s file: %s", style.Symbol("buildpack.toml"), style.Symbol(opts.RelativeBaseDir))
@@ -303,8 +303,9 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 	return idx.Push(imgutil.WithInsecure(true))
 }
 
-func getIndexManifestFn(c *Client, mfest *v1.IndexManifest) func(ref name.Reference) (*v1.IndexManifest, error) {
+func (c *Client) GetIndexManifestFn() func(ref name.Reference) (*v1.IndexManifest, error) {
 	IndexHandlerFn := func(ref name.Reference) (*v1.IndexManifest, error) {
+		mfest := c.cachedIndexManifests[ref]
 		if mfest != nil {
 			return mfest, nil
 		}
@@ -326,7 +327,13 @@ func getIndexManifestFn(c *Client, mfest *v1.IndexManifest) func(ref name.Refere
 			return nil, errors.Errorf("unknown handler: %s", style.Symbol("ManifestHandler"))
 		}
 
-		return ii.IndexManifest()
+		mfest, err = ii.IndexManifest()
+		if err != nil {
+			return mfest, err
+		}
+
+		c.cachedIndexManifests[ref] = mfest
+		return mfest, nil
 	}
 
 	return IndexHandlerFn

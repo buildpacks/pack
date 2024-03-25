@@ -54,7 +54,6 @@ type IndexOptions struct {
 	BPConfigs       *[]MultiArchBuildpackConfig
 	ExtConfigs      *[]MultiArchExtensionConfig
 	PkgConfig       *MultiArchPackage
-	Manifest        *v1.IndexManifest
 	Logger          logging.Logger
 	RelativeBaseDir string
 	Target          dist.Target
@@ -216,7 +215,7 @@ func (m *multiArchBuildpack) processTarget(target dist.Target, distro dist.Distr
 		BuildpackDescriptor: dist.BuildpackDescriptor{
 			WithInfo: m.config.WithInfo,
 			WithTargets: []dist.Target{
-				processTarget(target, distro, version),
+				ProcessTarget(target, distro, version),
 			},
 			WithAPI:          m.config.WithAPI,
 			WithLinuxBuild:   m.config.WithLinuxBuild,
@@ -247,7 +246,7 @@ func (m *multiArchExtension) processTarget(target dist.Target, distro dist.Distr
 		ExtensionDescriptor: dist.ExtensionDescriptor{
 			WithInfo: m.config.WithInfo,
 			WithTargets: []dist.Target{
-				processTarget(target, distro, version),
+				ProcessTarget(target, distro, version),
 			},
 			WithAPI: m.config.WithAPI,
 		},
@@ -256,7 +255,7 @@ func (m *multiArchExtension) processTarget(target dist.Target, distro dist.Distr
 	}, nil
 }
 
-func processTarget(target dist.Target, distro dist.Distribution, version string) dist.Target {
+func ProcessTarget(target dist.Target, distro dist.Distribution, version string) dist.Target {
 	return dist.Target{
 		OS:          target.OS,
 		Arch:        target.Arch,
@@ -366,13 +365,13 @@ func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target
 	}
 
 	if uri := multiArchPKGConfig.Buildpack.URI; uri != "" {
-		if multiArchPKGConfig.Buildpack.URI, err = getRelativeURI(uri, multiArchPKGConfig.relativeBaseDir, &target, getIndexManifest); err != nil {
+		if multiArchPKGConfig.Buildpack.URI, err = GetRelativeURI(uri, multiArchPKGConfig.relativeBaseDir, &target, getIndexManifest); err != nil {
 			return err
 		}
 	}
 
 	if uri := multiArchPKGConfig.Extension.URI; uri != "" {
-		if multiArchPKGConfig.Extension.URI, err = getRelativeURI(uri, multiArchPKGConfig.relativeBaseDir, &target, getIndexManifest); err != nil {
+		if multiArchPKGConfig.Extension.URI, err = GetRelativeURI(uri, multiArchPKGConfig.relativeBaseDir, &target, getIndexManifest); err != nil {
 			return err
 		}
 	}
@@ -380,7 +379,7 @@ func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target
 	for i, dep := range multiArchPKGConfig.Dependencies {
 		// dep.ImageName == dep.ImageRef.ImageName, dep.URI == dep.Buildpack.URI
 		if dep.URI != "" {
-			if m.Dependencies[i].URI, err = getRelativeURI(dep.URI, multiArchPKGConfig.relativeBaseDir, &target, getIndexManifest); err != nil {
+			if m.Dependencies[i].URI, err = GetRelativeURI(dep.URI, multiArchPKGConfig.relativeBaseDir, &target, getIndexManifest); err != nil {
 				return err
 			}
 		}
@@ -404,7 +403,7 @@ func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target
 	return toml.NewEncoder(bpFile).Encode(multiArchPKGConfig.Config)
 }
 
-func getRelativeURI(uri, relativeBaseDir string, target *dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (string, error) {
+func GetRelativeURI(uri, relativeBaseDir string, target *dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (string, error) {
 	locator, err := buildpack.GetLocatorType(uri, relativeBaseDir, []dist.ModuleInfo{})
 	if err != nil {
 		return "", err
@@ -436,7 +435,7 @@ func getRelativeURI(uri, relativeBaseDir string, target *dist.Target, getIndexMa
 		}
 
 		// uri = buildpack.PlatformSafeName(uri, target)
-		return paths.FilePathToURI(filepath.Join(uri, buildpack.PlatformRootDirectory(target, distro.Name, version)), relativeBaseDir)
+		return paths.FilePathToURI(filepath.Join(uri, buildpack.PlatformRootDirectory(target, distro.Name, version)), "")
 	case buildpack.PackageLocator:
 		if target == nil {
 			return "", fmt.Errorf("nil target")
@@ -456,9 +455,11 @@ func getRelativeURI(uri, relativeBaseDir string, target *dist.Target, getIndexMa
 		ref, err := parseURItoString(rNS+RegistryDelim+rName+DigestDelim+rVersion, *target, getIndexManifest)
 		return "urn:cnb:registry:" + ref, err
 	case buildpack.FromBuilderLocator:
-		return uri, fmt.Errorf("buildpacks doesn't support '%s' or '%s'", "from=builder", "urn:cnb:builder")
+		fallthrough
+		// return uri, fmt.Errorf("buildpacks doesn't support '%s' or '%s'", "from=builder", "urn:cnb:builder")
 	case buildpack.IDLocator:
-		return uri, fmt.Errorf("buildpacks doesn't support '%s'", "IDLocator")
+		fallthrough
+		// return uri, fmt.Errorf("buildpacks doesn't support '%s'", "IDLocator")
 	// case buildpack.InvalidLocator:
 	// 	return uri, fmt.Errorf("%s: '%s' not supported", "InvalidLocator", uri)
 	default:

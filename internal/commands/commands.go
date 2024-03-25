@@ -22,6 +22,7 @@ type PackClient interface {
 	InspectImage(string, bool) (*client.ImageInfo, error)
 	Rebase(context.Context, client.RebaseOptions) error
 	CreateBuilder(context.Context, client.CreateBuilderOptions) error
+	CreateMultiArchBuilder(context.Context, client.CreateBuilderOptions) error
 	NewBuildpack(context.Context, client.NewBuildpackOptions) error
 	PackageBuildpack(ctx context.Context, opts client.PackageBuildpackOptions) error
 	PackageMultiArchBuildpack(ctx context.Context, opts client.PackageBuildpackOptions) error

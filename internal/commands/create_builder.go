@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/internal/target"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -48,7 +49,12 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}
 
-			builderConfig, warnings, err := builder.ReadConfig(flags.BuilderTomlPath)
+			targets, err := target.ParseTargets(flags.Targets, logger)
+			if err != nil {
+				return err
+			}
+
+			builderConfig, warnings, err := builder.ReadMultiArchConfig(flags.BuilderTomlPath, targets)
 			if err != nil {
 				return errors.Wrap(err, "invalid builder toml")
 			}
@@ -56,7 +62,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				logger.Warnf("builder configuration: %s", w)
 			}
 
-			if hasExtensions(builderConfig) {
+			if hasExtensions(builderConfig.Config) {
 				if !cfg.Experimental {
 					return errors.New("builder config contains image extensions; support for image extensions is currently experimental")
 				}
@@ -68,15 +74,22 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 			}
 
 			imageName := args[0]
-			if err := pack.CreateBuilder(cmd.Context(), client.CreateBuilderOptions{
+			builderOpts := client.CreateBuilderOptions{
 				RelativeBaseDir: relativeBaseDir,
 				BuilderName:     imageName,
 				Config:          builderConfig,
 				Publish:         flags.Publish,
 				Registry:        flags.Registry,
 				PullPolicy:      pullPolicy,
-			}); err != nil {
-				return err
+			}
+			if len(builderConfig.Targets()) > 1 {
+				if err := pack.CreateMultiArchBuilder(cmd.Context(), builderOpts); err != nil {
+					return err
+				}
+			} else {
+				if err := pack.CreateBuilder(cmd.Context(), builderOpts); err != nil {
+					return err
+				}
 			}
 			logger.Infof("Successfully created builder image %s", style.Symbol(imageName))
 			logging.Tip(logger, "Run %s to use this builder", style.Symbol(fmt.Sprintf("pack build <image-name> --builder %s", imageName)))
@@ -91,5 +104,14 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish the builder directly to the container registry specified in <image-name>, instead of the daemon.")
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
+	cmd.Flags().StringSliceVarP(&flags.Targets, "target", "t", nil,
+		`Targets are the platforms list to build. one can provide target platforms in format [os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]
+	- Base case for two different architectures :  '--target "linux/amd64" --target "linux/arm64"'
+	- case for distribution version: '--target "windows/amd64:windows-nano@10.0.19041.1415"'
+	- case for different architecture with distributed versions : '--target "linux/arm/v6:ubuntu@14.04"  --target "linux/arm/v6:ubuntu@16.04"'
+	`)
+	if !cfg.Experimental {
+		cmd.Flags().MarkHidden("target")
+	}
 	return cmd
 }

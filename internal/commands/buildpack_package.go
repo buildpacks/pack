@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -143,7 +142,6 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				logger.Warn("Flattening a buildpack package could break the distribution specification. Please use it with caution.")
 			}
 
-			var mfest *v1.IndexManifest
 			pkgBPOpts := client.PackageBuildpackOptions{
 				RelativeBaseDir: relativeBaseDir,
 				Name:            bpName,
@@ -175,7 +173,6 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				pkgBPOpts.IndexOptions = pubbldpkg.IndexOptions{
 					BPConfigs: &bpConfigs,
 					PkgConfig: pkgMultiArchConfig,
-					Manifest:  mfest,
 					Logger:    logger,
 				}
 

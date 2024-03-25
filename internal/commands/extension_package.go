@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -117,7 +116,6 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 				}
 			}
 
-			var mfest *v1.IndexManifest
 			pkgExtOpts := client.PackageBuildpackOptions{
 				RelativeBaseDir: relativeBaseDir,
 				Name:            name,
@@ -139,7 +137,6 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 				pkgExtOpts.IndexOptions = pubbldpkg.IndexOptions{
 					ExtConfigs: &extConfigs,
 					PkgConfig:  pkgMultiArchConfig,
-					Manifest:   mfest,
 					Logger:     logger,
 				}
 

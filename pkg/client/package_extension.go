@@ -77,7 +77,7 @@ func (c *Client) PackageMultiArchExtension(ctx context.Context, opts PackageBuil
 		return errors.Errorf("package configaration is undefined")
 	}
 
-	IndexManifestFn := getIndexManifestFn(c, opts.IndexOptions.Manifest)
+	IndexManifestFn := c.GetIndexManifestFn()
 	extCfg, err := pubbldpkg.NewConfigReader().ReadExtensionDescriptor(opts.RelativeBaseDir)
 	if err != nil {
 		return fmt.Errorf("cannot read %s file: %s", style.Symbol("extension.toml"), style.Symbol(opts.RelativeBaseDir))

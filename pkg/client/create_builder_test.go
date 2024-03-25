@@ -134,51 +134,53 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			opts = client.CreateBuilderOptions{
 				RelativeBaseDir: "/",
 				BuilderName:     "some/builder",
-				Config: pubbldr.Config{
-					Description: "Some description",
-					Buildpacks: []pubbldr.ModuleConfig{
-						{
-							ModuleInfo: dist.ModuleInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"},
-							ImageOrURI: dist.ImageOrURI{
-								BuildpackURI: dist.BuildpackURI{
-									URI: "https://example.fake/bp-one.tgz",
+				Config: pubbldr.MultiArchConfig{
+					Config: pubbldr.Config{
+						Description: "Some description",
+						Buildpacks: []pubbldr.ModuleConfig{
+							{
+								ModuleInfo: dist.ModuleInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"},
+								ImageOrURI: dist.ImageOrURI{
+									BuildpackURI: dist.BuildpackURI{
+										URI: "https://example.fake/bp-one.tgz",
+									},
 								},
 							},
 						},
-					},
-					Extensions: []pubbldr.ModuleConfig{
-						{
-							ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3", Homepage: "http://one.extension"},
-							ImageOrURI: dist.ImageOrURI{
-								BuildpackURI: dist.BuildpackURI{
-									URI: "https://example.fake/ext-one.tgz",
+						Extensions: []pubbldr.ModuleConfig{
+							{
+								ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3", Homepage: "http://one.extension"},
+								ImageOrURI: dist.ImageOrURI{
+									BuildpackURI: dist.BuildpackURI{
+										URI: "https://example.fake/ext-one.tgz",
+									},
 								},
 							},
 						},
+						Order: []dist.OrderEntry{{
+							Group: []dist.ModuleRef{
+								{ModuleInfo: dist.ModuleInfo{ID: "bp.one", Version: "1.2.3"}, Optional: false},
+							}},
+						},
+						OrderExtensions: []dist.OrderEntry{{
+							Group: []dist.ModuleRef{
+								{ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3"}, Optional: true},
+							}},
+						},
+						Stack: pubbldr.StackConfig{
+							ID: "some.stack.id",
+						},
+						Run: pubbldr.RunConfig{
+							Images: []pubbldr.RunImageConfig{{
+								Image:   "some/run-image",
+								Mirrors: []string{"localhost:5000/some/run-image"},
+							}},
+						},
+						Build: pubbldr.BuildConfig{
+							Image: "some/build-image",
+						},
+						Lifecycle: pubbldr.LifecycleConfig{URI: "file:///some-lifecycle"},
 					},
-					Order: []dist.OrderEntry{{
-						Group: []dist.ModuleRef{
-							{ModuleInfo: dist.ModuleInfo{ID: "bp.one", Version: "1.2.3"}, Optional: false},
-						}},
-					},
-					OrderExtensions: []dist.OrderEntry{{
-						Group: []dist.ModuleRef{
-							{ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3"}, Optional: true},
-						}},
-					},
-					Stack: pubbldr.StackConfig{
-						ID: "some.stack.id",
-					},
-					Run: pubbldr.RunConfig{
-						Images: []pubbldr.RunImageConfig{{
-							Image:   "some/run-image",
-							Mirrors: []string{"localhost:5000/some/run-image"},
-						}},
-					},
-					Build: pubbldr.BuildConfig{
-						Image: "some/build-image",
-					},
-					Lifecycle: pubbldr.LifecycleConfig{URI: "file:///some-lifecycle"},
 				},
 				Publish:    false,
 				PullPolicy: image.PullAlways,
@@ -1043,39 +1045,41 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				opts = client.CreateBuilderOptions{
 					RelativeBaseDir: "/",
 					BuilderName:     "some/builder",
-					Config: pubbldr.Config{
-						Description: "Some description",
-						Buildpacks: []pubbldr.ModuleConfig{
-							{
-								ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-1", Version: "1", Homepage: "http://buildpack-1"},
-								ImageOrURI: dist.ImageOrURI{
-									BuildpackURI: dist.BuildpackURI{
-										URI: "https://example.fake/flatten-bp-1.tgz",
+					Config: pubbldr.MultiArchConfig{
+						Config: pubbldr.Config{
+							Description: "Some description",
+							Buildpacks: []pubbldr.ModuleConfig{
+								{
+									ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-1", Version: "1", Homepage: "http://buildpack-1"},
+									ImageOrURI: dist.ImageOrURI{
+										BuildpackURI: dist.BuildpackURI{
+											URI: "https://example.fake/flatten-bp-1.tgz",
+										},
 									},
 								},
 							},
+							Order: []dist.OrderEntry{{
+								Group: []dist.ModuleRef{
+									{ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-2", Version: "2"}, Optional: false},
+									{ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-4", Version: "4"}, Optional: false},
+									{ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-6", Version: "6"}, Optional: false},
+									{ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-7", Version: "7"}, Optional: false},
+								}},
+							},
+							Stack: pubbldr.StackConfig{
+								ID: "some.stack.id",
+							},
+							Run: pubbldr.RunConfig{
+								Images: []pubbldr.RunImageConfig{{
+									Image:   "some/run-image",
+									Mirrors: []string{"localhost:5000/some/run-image"},
+								}},
+							},
+							Build: pubbldr.BuildConfig{
+								Image: "some/build-image",
+							},
+							Lifecycle: pubbldr.LifecycleConfig{URI: "file:///some-lifecycle"},
 						},
-						Order: []dist.OrderEntry{{
-							Group: []dist.ModuleRef{
-								{ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-2", Version: "2"}, Optional: false},
-								{ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-4", Version: "4"}, Optional: false},
-								{ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-6", Version: "6"}, Optional: false},
-								{ModuleInfo: dist.ModuleInfo{ID: "flatten/bp-7", Version: "7"}, Optional: false},
-							}},
-						},
-						Stack: pubbldr.StackConfig{
-							ID: "some.stack.id",
-						},
-						Run: pubbldr.RunConfig{
-							Images: []pubbldr.RunImageConfig{{
-								Image:   "some/run-image",
-								Mirrors: []string{"localhost:5000/some/run-image"},
-							}},
-						},
-						Build: pubbldr.BuildConfig{
-							Image: "some/build-image",
-						},
-						Lifecycle: pubbldr.LifecycleConfig{URI: "file:///some-lifecycle"},
 					},
 					Publish:    false,
 					PullPolicy: image.PullAlways,

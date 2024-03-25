@@ -13,6 +13,17 @@ type FakePackageConfigReader struct {
 	ReadBuildpackDescriptorCalledWithArg string
 	ReadBuildpackDescriptorReturn        dist.BuildpackDescriptor
 	ReadBuildpackDescriptorReturnError   error
+
+	ReadExtensionDescriptorCalledWithArg string
+	ReadExtensionDescriptorReturn        dist.ExtensionDescriptor
+	ReadExtensionDescriptorReturnError   error
+}
+
+// ReadExtensionDescriptor implements commands.PackageConfigReader.
+func (r *FakePackageConfigReader) ReadExtensionDescriptor(path string) (dist.ExtensionDescriptor, error) {
+	r.ReadExtensionDescriptorCalledWithArg = path
+
+	return r.ReadExtensionDescriptorReturn, r.ReadExtensionDescriptorReturnError
 }
 
 func (r *FakePackageConfigReader) Read(path string) (pubbldpkg.Config, error) {
@@ -33,6 +44,8 @@ func NewFakePackageConfigReader(ops ...func(*FakePackageConfigReader)) *FakePack
 		ReadBuildpackDescriptorReturn:      dist.BuildpackDescriptor{},
 		ReadReturnError:                    nil,
 		ReadBuildpackDescriptorReturnError: nil,
+		ReadExtensionDescriptorReturn:      dist.ExtensionDescriptor{},
+		ReadExtensionDescriptorReturnError: nil,
 	}
 
 	for _, op := range ops {

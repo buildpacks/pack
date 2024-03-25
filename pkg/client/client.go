@@ -27,6 +27,7 @@ import (
 	"github.com/buildpacks/imgutil/remote"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
@@ -123,9 +124,10 @@ type Client struct {
 	lifecycleExecutor   LifecycleExecutor
 	buildpackDownloader BuildpackDownloader
 
-	experimental    bool
-	registryMirrors map[string]string
-	version         string
+	experimental         bool
+	registryMirrors      map[string]string
+	version              string
+	cachedIndexManifests map[name.Reference]*v1.IndexManifest
 }
 
 // Option is a type of function that mutate settings on the client.

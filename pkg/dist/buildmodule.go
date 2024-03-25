@@ -76,6 +76,7 @@ type TargetSpecs struct {
 	Labels         map[string]string `json:"labels,omitempty" toml:"labels,omitempty"`
 	OSVersion      string            `json:"os.version,omitempty" toml:"os.version,omitempty"`
 	Path           string            `json:"path,omitempty" toml:"path,omitempty"`
+	BuildConfigEnv map[string]string `json:"build.envs,omitempty" toml:"build.envs,omitempty"`
 }
 
 func (t *Target) Platform() *v1.Platform {
