@@ -193,6 +193,10 @@ func (c *Client) validateOSPlatform(ctx context.Context, os string, publish bool
 
 // PackageBuildpack packages multiple buildpack(s) into image index with each buildpack into either an image or file.
 func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
+	if !c.experimental {
+		return errors.Errorf("packaging %s is currently %s", style.Symbol("multi arch buildpacks"), style.Symbol(("experimental")))
+	}
+
 	if opts.IndexOptions.BPConfigs == nil || len(*opts.IndexOptions.BPConfigs) < 2 {
 		return errors.Errorf("%s must not be nil", style.Symbol("IndexOptions"))
 	}
@@ -300,7 +304,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 		return nil
 	}
 
-	return idx.Push(imgutil.WithInsecure(true))
+	return idx.Push(imgutil.WithInsecure(true) /* imgutil.WithTags("latest") */)
 }
 
 func (c *Client) GetIndexManifestFn() func(ref name.Reference) (*v1.IndexManifest, error) {
@@ -319,7 +323,7 @@ func (c *Client) GetIndexManifestFn() func(ref name.Reference) (*v1.IndexManifes
 
 		idx, err := c.indexFactory.FetchIndex(ref.Name(), fetchOpts...)
 		if err != nil {
-			return nil, errors.Errorf("the given reference either doesn't exist or not referencing IndexManifest")
+			return nil, errors.Errorf("the given reference(%s) either doesn't exist or not referencing IndexManifest", style.Symbol(ref.Name()))
 		}
 
 		ii, ok := idx.(*imgutil.ManifestHandler)

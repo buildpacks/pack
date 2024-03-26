@@ -11,8 +11,6 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/imgutil"
-
 	"github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
@@ -194,7 +192,7 @@ func (c *MultiArchConfig) processTarget(target dist.Target, distro dist.Distribu
 	for _, bp := range c.Config.Buildpacks {
 		if bp.URI != "" {
 			if bp.URI, err = buildpackage.GetRelativeURI(bp.URI, c.relativeBaseDir, &processedTarget, getIndexManifest); err != nil {
-				return config, err
+				return c.Config, err
 			}
 		}
 	}
@@ -202,52 +200,54 @@ func (c *MultiArchConfig) processTarget(target dist.Target, distro dist.Distribu
 	for _, ext := range c.Config.Extensions {
 		if ext.URI != "" {
 			if ext.URI, err = buildpackage.GetRelativeURI(ext.URI, c.relativeBaseDir, &processedTarget, getIndexManifest); err != nil {
-				return config, err
+				return c.Config, err
 			}
 		}
 	}
 
 	if img := c.Build.Image; img != "" {
-		if c.Build.Image, err = targetSpecificDigest(img, processedTarget, getIndexManifest); err != nil {
-			return config, err
+		if c.Build.Image, err = buildpackage.ParseURItoString(img, processedTarget, getIndexManifest); err != nil {
+			return c.Config, err
 		}
 	}
 
 	for i, runImg := range c.Run.Images {
-		c.Run.Images[i].Image, err = targetSpecificDigest(runImg.Image, processedTarget, getIndexManifest)
+		c.Run.Images[i].Image, err = buildpackage.ParseURItoString(runImg.Image, processedTarget, getIndexManifest)
 		if err != nil {
 			for j, mirror := range runImg.Mirrors {
-				if c.Run.Images[i].Mirrors[j], err = targetSpecificDigest(mirror, processedTarget, getIndexManifest); err == nil {
+				if c.Run.Images[i].Mirrors[j], err = buildpackage.ParseURItoString(mirror, processedTarget, getIndexManifest); err == nil {
 					break
 				}
+			}
+
+			if err != nil {
+				return c.Config, err
+			}
+		}
+	}
+
+	if img := c.Stack.BuildImage; img != "" {
+		if c.Stack.BuildImage, err = buildpackage.ParseURItoString(img, processedTarget, getIndexManifest); err != nil {
+			return c.Config, err
+		}
+	}
+
+	if img := c.Stack.RunImage; img != "" {
+		if c.Stack.RunImage, err = buildpackage.ParseURItoString(img, processedTarget, getIndexManifest); err != nil {
+			for i, mirror := range c.Stack.RunImageMirrors {
+				if c.Stack.RunImageMirrors[i], err = buildpackage.ParseURItoString(mirror, processedTarget, getIndexManifest); err == nil {
+					break
+				}
+			}
+
+			if err != nil {
+				return c.Config, err
 			}
 		}
 	}
 
 	config.WithTargets = []dist.Target{processedTarget}
-	return config, nil
-}
-
-func targetSpecificDigest(tag string, processedTarget dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (digest string, err error) {
-	ref, err := name.ParseReference(tag)
-	if err != nil {
-		return digest, err
-	}
-
-	idx, err := getIndexManifest(ref)
-	if err != nil {
-		return digest, err
-	}
-	if idx == nil {
-		return digest, imgutil.ErrManifestUndefined
-	}
-
-	digestStr, err := buildpackage.DigestFromIndex(idx, processedTarget)
-	if err != nil {
-		return digest, err
-	}
-
-	return ref.Context().Digest(digestStr).Name(), nil
+	return c.Config, nil
 }
 
 // ValidateConfig validates the config

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/internal/target"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -90,11 +92,6 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 				return fmt.Errorf("cannot find %s: %s", style.Symbol("extension.toml"), style.Symbol(extConfigPath))
 			}
 
-			// extConfigFile, err := os.OpenFile(extConfigPath, os.O_RDONLY|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
-			// if err != nil {
-			// 	return err
-			// }
-
 			extConfig, err := packageConfigReader.ReadExtensionDescriptor(extConfigPath)
 			if err != nil {
 				return err
@@ -141,15 +138,15 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 				}
 
 				if err := packager.PackageMultiArchExtension(cmd.Context(), pkgExtOpts); err != nil {
-					// if err := toml.NewEncoder(extConfigFile).Encode(extConfig); err != nil {
-					// 	return err
-					// }
+					if err := revertExtConfig(extConfigPath, extConfig); err != nil {
+						return fmt.Errorf("unable to revert changes of extention %s", style.Symbol(name))
+					}
 					return err
 				}
 
-				// if err := toml.NewEncoder(extConfigFile).Encode(extConfig); err != nil {
-				// 	return err
-				// }
+				if err := revertExtConfig(extConfigPath, extConfig); err != nil {
+					return fmt.Errorf("unable to revert changes of extention %s", style.Symbol(name))
+				}
 			} else {
 				if len(extConfigs) == 1 {
 					pkgExtOpts.IndexOptions.Target = extConfigs[0].WithTargets[0]
@@ -190,6 +187,15 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 	}
 	AddHelpFlag(cmd, "package")
 	return cmd
+}
+
+func revertExtConfig(extConfigPath string, extConfig dist.ExtensionDescriptor) error {
+	extConfigFile, err := os.OpenFile(extConfigPath, os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	return toml.NewEncoder(extConfigFile).Encode(extConfig)
 }
 
 func validateExtensionPackageFlags(p *ExtensionPackageFlags) error {

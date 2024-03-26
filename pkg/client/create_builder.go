@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -125,6 +127,10 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 }
 
 func (c *Client) CreateMultiArchBuilder(ctx context.Context, opts CreateBuilderOptions) error {
+	if !c.experimental {
+		return errors.Errorf("creating %s is currently %s", style.Symbol("multi arch builder"), style.Symbol(("experimental")))
+	}
+
 	if err := c.validateConfig(ctx, opts); err != nil {
 		return err
 	}
@@ -143,13 +149,24 @@ func (c *Client) CreateMultiArchBuilder(ctx context.Context, opts CreateBuilderO
 		return err
 	}
 
+	var (
+		errs errgroup.Group
+		wg   = &sync.WaitGroup{}
+	)
+	wg.Add(len(configs))
+
 	ops := opts
 	ops.ImageIndex = idx
 	for _, config := range configs {
 		ops.Config.Config = config
-		if err := c.CreateBuilder(ctx, ops); err != nil {
-			return err
-		}
+		errs.Go(func() error {
+			return c.CreateBuilder(ctx, ops)
+		})
+	}
+
+	wg.Wait()
+	if err := errs.Wait(); err != nil {
+		return err
 	}
 
 	if !opts.Publish {
@@ -160,7 +177,7 @@ func (c *Client) CreateMultiArchBuilder(ctx context.Context, opts CreateBuilderO
 		return err
 	}
 
-	return idx.Push(imgutil.WithInsecure(true))
+	return idx.Push(imgutil.WithInsecure(true) /* imgutil.WithTags("latest") */)
 }
 
 func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions) error {

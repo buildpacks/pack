@@ -912,7 +912,7 @@ func (b *PackageBuilder) SaveAsImage(repoName, version string, publish bool, tar
 	platform := *target.Platform()
 	imageName := repoName
 	if idx != nil {
-		imageName += ":" + strings.Join(strings.Split(PlatformSafeName("", target), "-")[1:], "-")
+		imageName += ":" + strings.Join(strings.Split(strings.Replace(PlatformSafeName("", target), "@", "-", -1), "-")[1:], "-")
 	}
 
 	image, err := b.imageFactory.NewImage(imageName, !publish, platform)

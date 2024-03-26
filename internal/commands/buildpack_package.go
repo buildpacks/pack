@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -112,11 +113,6 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				return fmt.Errorf("cannot find %s: %s", style.Symbol("buildpack.toml"), style.Symbol(bpConfigPath))
 			}
 
-			// bpConfigFile, err := os.OpenFile(bpConfigPath, os.O_RDONLY|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
-			// if err != nil {
-			// 	return err
-			// }
-
 			bpConfig, err := packageConfigReader.ReadBuildpackDescriptor(bpConfigPath)
 			if err != nil {
 				return err
@@ -177,15 +173,15 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				}
 
 				if err := packager.PackageMultiArchBuildpack(cmd.Context(), pkgBPOpts); err != nil {
-					// if err := toml.NewEncoder(bpConfigFile).Encode(bpConfig); err != nil {
-					// 	return err
-					// }
+					if err := revertBPConfig(bpConfigPath, bpConfig); err != nil {
+						return fmt.Errorf("unable to revert changes of buildpack %s", style.Symbol(bpName))
+					}
 					return err
 				}
 
-				// if err := toml.NewEncoder(bpConfigFile).Encode(bpConfig); err != nil {
-				// 	return err
-				// }
+				if err := revertBPConfig(bpConfigPath, bpConfig); err != nil {
+					return fmt.Errorf("unable to revert changes of buildpack %s", style.Symbol(bpName))
+				}
 			} else {
 				if len(bpConfigs) == 1 {
 					pkgBPOpts.IndexOptions.Target = bpConfigs[0].WithTargets[0]
@@ -232,6 +228,15 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 	}
 	AddHelpFlag(cmd, "package")
 	return cmd
+}
+
+func revertBPConfig(bpConfigPath string, bpConfig dist.BuildpackDescriptor) error {
+	bpConfigFile, err := os.OpenFile(bpConfigPath, os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	return toml.NewEncoder(bpConfigFile).Encode(bpConfig)
 }
 
 func validateBuildpackPackageFlags(cfg config.Config, p *BuildpackPackageFlags) error {

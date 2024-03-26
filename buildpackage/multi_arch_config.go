@@ -15,6 +15,7 @@ import (
 	"github.com/buildpacks/imgutil"
 
 	"github.com/buildpacks/pack/internal/paths"
+	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -440,7 +441,7 @@ func GetRelativeURI(uri, relativeBaseDir string, target *dist.Target, getIndexMa
 		if target == nil {
 			return "", fmt.Errorf("nil target")
 		}
-		ref, err := parseURItoString(buildpack.ParsePackageLocator(uri), *target, getIndexManifest)
+		ref, err := ParseURItoString(buildpack.ParsePackageLocator(uri), *target, getIndexManifest)
 		return "docker://" + ref, err
 	case buildpack.RegistryLocator:
 		if target == nil {
@@ -452,7 +453,7 @@ func GetRelativeURI(uri, relativeBaseDir string, target *dist.Target, getIndexMa
 			return uri, err
 		}
 
-		ref, err := parseURItoString(rNS+RegistryDelim+rName+DigestDelim+rVersion, *target, getIndexManifest)
+		ref, err := ParseURItoString(rNS+RegistryDelim+rName+DigestDelim+rVersion, *target, getIndexManifest)
 		return "urn:cnb:registry:" + ref, err
 	case buildpack.FromBuilderLocator:
 		fallthrough
@@ -484,7 +485,7 @@ func platformSafeURL(url *url.URL, target *dist.Target) error {
 	return nil
 }
 
-func parseURItoString(uri string, target dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (string, error) {
+func ParseURItoString(uri string, target dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (string, error) {
 	if strings.Contains(uri, DigestDelim) {
 		ref := strings.Split(uri, DigestDelim)
 		registry := ref[0]
@@ -504,12 +505,17 @@ func parseURItoString(uri string, target dist.Target, getIndexManifest func(ref 
 		return "", err
 	}
 
+	if idx == nil {
+		return "", imgutil.ErrManifestUndefined
+	}
+
+	fmt.Printf("fetching image from repo: %s", style.Symbol(uri))
 	digest, err := DigestFromIndex(idx, target)
 	if err != nil {
 		return "", err
 	}
 
-	return ref.Context().Name() + DigestDelim + digest, nil
+	return ref.Context().Digest(digest).Name(), nil
 }
 
 func (m *MultiArchPackage) CleanPackageToml(relativeTo string, target dist.Target, distroName, version string) error {
@@ -526,16 +532,17 @@ func DigestFromIndex(idx *v1.IndexManifest, target dist.Target) (string, error) 
 		return "", imgutil.ErrManifestUndefined
 	}
 
+	targetPlatform := *target.Platform()
 	for _, mfest := range idx.Manifests {
 		if mfest.Platform == nil {
 			return "", imgutil.ErrPlatformUndefined
 		}
 
 		platform := mfest.Platform
-		if platform.Satisfies(*target.Platform()) {
+		if platform.Satisfies(targetPlatform) {
 			return mfest.Digest.String(), nil
 		}
 	}
 
-	return "", errors.New("no image found with given platform")
+	return "", fmt.Errorf("no image found for given platform %s", style.Symbol(fmt.Sprintf("%s%s%s", targetPlatform.OS, "/"+targetPlatform.Architecture, "/"+targetPlatform.Variant)))
 }
