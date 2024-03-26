@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
-	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -149,25 +147,27 @@ func (c *Client) CreateMultiArchBuilder(ctx context.Context, opts CreateBuilderO
 		return err
 	}
 
-	var (
-		errs errgroup.Group
-		wg   = &sync.WaitGroup{}
-	)
-	wg.Add(len(configs))
+	// var (
+	// 	errs errgroup.Group
+	// 	wg   = &sync.WaitGroup{}
+	// )
+	// wg.Add(len(configs))
 
 	ops := opts
 	ops.ImageIndex = idx
 	for _, config := range configs {
 		ops.Config.Config = config
-		errs.Go(func() error {
-			return c.CreateBuilder(ctx, ops)
-		})
+		// errs.Go(func() error {
+			if err := c.CreateBuilder(ctx, ops); err != nil {
+				return err
+			}
+		// })
 	}
 
-	wg.Wait()
-	if err := errs.Wait(); err != nil {
-		return err
-	}
+	// wg.Wait()
+	// if err := errs.Wait(); err != nil {
+	// 	return err
+	// }
 
 	if !opts.Publish {
 		return nil

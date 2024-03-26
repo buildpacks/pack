@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"path/filepath"
+	"runtime"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -13,6 +14,7 @@ import (
 	"github.com/buildpacks/pack/internal/target"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -106,15 +108,27 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				Flatten:         toFlatten,
 				Labels:          flags.Label,
 			}
-			if len(builderConfig.WithTargets) > 1 {
+
+			switch multiArch, publish := builderConfig.MultiArch(), flags.Publish; {
+			case multiArch && !publish:
+				builderConfig.WithTargets = []dist.Target{{OS: runtime.GOOS, Arch: runtime.GOARCH}}
+				if err := pack.CreateBuilder(cmd.Context(), builderOpts); err != nil {
+					return err
+				}
+			case multiArch && publish:
 				if err := pack.CreateMultiArchBuilder(cmd.Context(), builderOpts); err != nil {
 					return err
 				}
-			} else {
+			default:
+				if len(builderConfig.Targets()) == 0 {
+					logger.Warnf("A new '--target' flag is available to set the platform for a builder, using '%s' as default", style.Symbol("---os---"))
+				}
+
 				if err := pack.CreateBuilder(cmd.Context(), builderOpts); err != nil {
 					return err
 				}
 			}
+
 			logger.Infof("Successfully created builder image %s", style.Symbol(imageName))
 			logging.Tip(logger, "Run %s to use this builder", style.Symbol(fmt.Sprintf("pack build <image-name> --builder %s", imageName)))
 			return nil

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -123,6 +124,16 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				return err
 			}
 
+			// if not publishing image and is a MultiArch image, only build the target with target's specific device's platform
+			if !flags.Publish && len(bpConfigs) > 1 {
+				targets = []dist.Target{{OS: runtime.GOOS, Arch: runtime.GOARCH}}
+				bpMultiArchConfig = pubbldpkg.NewMultiArchBuildpack(bpConfig, bpPath, flags.Flatten, cmd.Flags().Changed("flatten"), targets)
+				bpConfigs, err = bpMultiArchConfig.MultiArchConfigs()
+				if err != nil {
+					return err
+				}
+			}
+
 			bpName := args[0]
 			if flags.Format == client.FormatFile {
 				switch ext := filepath.Ext(bpName); ext {
@@ -185,6 +196,8 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			} else {
 				if len(bpConfigs) == 1 {
 					pkgBPOpts.IndexOptions.Target = bpConfigs[0].WithTargets[0]
+				} else {
+					logger.Warnf("A new '--target' flag is available to set the platform for the buildpack package, using '%s' as default", bpPackageCfg.Platform.OS)
 				}
 
 				if err := packager.PackageBuildpack(cmd.Context(), pkgBPOpts); err != nil {

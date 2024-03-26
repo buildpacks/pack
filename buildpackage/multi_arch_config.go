@@ -509,7 +509,7 @@ func ParseURItoString(uri string, target dist.Target, getIndexManifest func(ref 
 		return "", imgutil.ErrManifestUndefined
 	}
 
-	fmt.Printf("fetching image from repo: %s", style.Symbol(uri))
+	fmt.Printf("fetching image from repo: %s \n", style.Symbol(uri))
 	digest, err := DigestFromIndex(idx, target)
 	if err != nil {
 		return "", err

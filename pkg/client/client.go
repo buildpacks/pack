@@ -292,6 +292,10 @@ func NewClient(opts ...Option) (*Client, error) {
 		)
 	}
 
+	if len(client.cachedIndexManifests) == 0 {
+		client.cachedIndexManifests = make(map[name.Reference]*v1.IndexManifest)
+	}
+
 	client.lifecycleExecutor = build.NewLifecycleExecutor(client.logger, client.docker)
 
 	return client, nil

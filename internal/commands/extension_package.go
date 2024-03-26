@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
@@ -57,11 +58,6 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 				return errors.Wrap(err, "parsing pull policy")
 			}
 
-			targets, err := target.ParseTargets(flags.Targets, logger)
-			if err != nil {
-				return err
-			}
-
 			exPackageCfg := pubbldpkg.DefaultExtensionConfig()
 			relativeBaseDir := ""
 			if flags.PackageTomlPath != "" {
@@ -96,10 +92,25 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 			if err != nil {
 				return err
 			}
+
+			targets, err := target.ParseTargets(flags.Targets, logger)
+			if err != nil {
+				return err
+			}
+
 			extMultiArchConfig := pubbldpkg.NewMultiArchExtension(extConfig, extPath, targets)
 			extConfigs, err := extMultiArchConfig.MultiArchConfigs()
 			if err != nil {
 				return err
+			}
+
+			if !flags.Publish && len(extConfigs) > 1 {
+				targets = []dist.Target{{OS: runtime.GOOS, Arch: runtime.GOARCH}}
+				extMultiArchConfig = pubbldpkg.NewMultiArchExtension(extConfig, extPath, targets)
+				extConfigs, err = extMultiArchConfig.MultiArchConfigs()
+				if err != nil {
+					return err
+				}
 			}
 
 			name := args[0]
@@ -150,6 +161,8 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 			} else {
 				if len(extConfigs) == 1 {
 					pkgExtOpts.IndexOptions.Target = extConfigs[0].WithTargets[0]
+				} else {
+					logger.Warnf("A new '--target' flag is available to set the platform for the extension package, using '%s' as default", exPackageCfg.Platform.OS)
 				}
 
 				if err := packager.PackageExtension(cmd.Context(), pkgExtOpts); err != nil {
