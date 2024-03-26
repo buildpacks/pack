@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1710246998493,
+  "lastUpdate": 1711489502531,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -5698,6 +5698,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 52931886086,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b64adbd6459c6c916bb4c292638bfb51f06f969c",
+          "message": "Merge pull request #2106 from dgannon991/contribfest/fix-readme-links\n\nFixed broken links within the readme",
+          "timestamp": "2024-03-26T22:43:15+01:00",
+          "tree_id": "693df0d2a16d3304671470a186eec44e11d5c9cb",
+          "url": "https://github.com/buildpacks/pack/commit/b64adbd6459c6c916bb4c292638bfb51f06f969c"
+        },
+        "date": 1711489502026,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4117871801,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 885440715,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 49292432990,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
