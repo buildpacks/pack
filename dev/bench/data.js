@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1711489931786,
+  "lastUpdate": 1711492187945,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -5782,6 +5782,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 54284287344,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "52145f4c450e6c77c6424cbb3a23a415e22de3a3",
+          "message": "Merge pull request #2097 from buildpacks/dependabot/go_modules/google.golang.org/protobuf-1.33.0\n\nbuild(deps): bump google.golang.org/protobuf from 1.32.0 to 1.33.0",
+          "timestamp": "2024-03-26T23:27:39+01:00",
+          "tree_id": "73e4d03b4e9bcf21c29ad6d74d0cb396424fb37d",
+          "url": "https://github.com/buildpacks/pack/commit/52145f4c450e6c77c6424cbb3a23a415e22de3a3"
+        },
+        "date": 1711492187252,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5196484154,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1385006628,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 53382189296,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
