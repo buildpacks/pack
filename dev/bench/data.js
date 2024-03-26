@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1711489502531,
+  "lastUpdate": 1711489931786,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -5740,6 +5740,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 49292432990,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "55086ca041fe14517bc21df95634040b73992da6",
+          "message": "Merge pull request #2100 from mstergianis/fix-extldflags-quoting\n\nQuotes extldflags in the Makefile",
+          "timestamp": "2024-03-26T22:50:21+01:00",
+          "tree_id": "df5f4606db5b1836c6d144b97b69f4d4d4544c3b",
+          "url": "https://github.com/buildpacks/pack/commit/55086ca041fe14517bc21df95634040b73992da6"
+        },
+        "date": 1711489931053,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4779780211,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1468274174,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 54284287344,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
