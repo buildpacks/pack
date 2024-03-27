@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1711550253497,
+  "lastUpdate": 1711553211690,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -5908,6 +5908,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 54481635514,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9dafd73017ada6f3508a841143a57821f4d7717d",
+          "message": "Merge pull request #2107 from a1flecke/add-noble-ppa\n\nRelease Noble Numbat",
+          "timestamp": "2024-03-27T16:25:04+01:00",
+          "tree_id": "c5ed605e7be78c454c9169814a076f4c435f33d4",
+          "url": "https://github.com/buildpacks/pack/commit/9dafd73017ada6f3508a841143a57821f4d7717d"
+        },
+        "date": 1711553211128,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4063570301,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1059312849,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 53640311286,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
