@@ -10,6 +10,7 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/system"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
@@ -129,6 +130,8 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 		when("simple package for both OS formats (experimental only)", func() {
 			it("creates package image based on daemon OS", func() {
 				for _, daemonOS := range []string{"linux", "windows"} {
+					daemonArch := "amd64"
+
 					localMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
 					localMockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: daemonOS}, nil).AnyTimes()
 
@@ -140,8 +143,10 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 					)
 					h.AssertNil(t, err)
 
+					daemonPlatform := dist.Platform{OS: daemonOS, Architecture: daemonArch, Platform: fmt.Sprintf("%s/%s", daemonOS, daemonArch)}
+
 					fakeImage := fakes.NewImage("basic/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true, daemonOS).Return(fakeImage, nil)
+					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true, daemonPlatform).Return(fakeImage, nil)
 
 					fakeBlob := blob.NewBlob(filepath.Join("testdata", "empty-file"))
 					exURL := fmt.Sprintf("https://example.com/ex.%s.tgz", h.RandString(12))
@@ -151,7 +156,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 						Format: client.FormatImage,
 						Name:   fakeImage.Name(),
 						Config: pubbldpkg.Config{
-							Platform: dist.Platform{OS: daemonOS},
+							Platform: dist.Platform{OS: daemonOS, Architecture: daemonArch},
 							Extension: dist.BuildpackURI{URI: createExtension(dist.ExtensionDescriptor{
 								WithAPI:  api.MustParse("0.2"),
 								WithInfo: dist.ModuleInfo{ID: "ex.basic", Version: "2.3.4"},
@@ -248,6 +253,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 	when("unknown format is provided", func() {
 		it("should error", func() {
 			mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+			mockDockerClient.EXPECT().ServerVersion(context.TODO()).Return(types.Version{Arch: "amd64"}, nil).AnyTimes()
 
 			err := subject.PackageExtension(context.TODO(), client.PackageBuildpackOptions{
 				Name:   "some-extension",
