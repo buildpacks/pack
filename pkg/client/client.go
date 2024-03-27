@@ -72,6 +72,10 @@ type ImageFactory interface {
 	NewImage(repoName string, local bool, imageOS string) (imgutil.Image, error)
 }
 
+type IndexFactory interface {
+	NewIndex(CreateManifestOptions) (imgutil.ImageIndex, error)
+}
+
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_buildpack_downloader.go github.com/buildpacks/pack/pkg/client BuildpackDownloader
 
 // BuildpackDownloader is an interface for downloading and extracting buildpacks from various sources
@@ -97,6 +101,7 @@ type Client struct {
 	keychain            authn.Keychain
 	imageFactory        ImageFactory
 	imageFetcher        ImageFetcher
+	indexFactory        IndexFactory
 	accessChecker       AccessChecker
 	downloader          BlobDownloader
 	lifecycleExecutor   LifecycleExecutor
@@ -241,6 +246,12 @@ func NewClient(opts ...Option) (*Client, error) {
 		}
 	}
 
+	if client.indexFactory == nil {
+		client.indexFactory = &indexFactory{
+			dockerClient: client.docker,
+			keychain:     client.keychain,
+	}
+
 	if client.accessChecker == nil {
 		client.accessChecker = image.NewAccessChecker(client.logger, client.keychain)
 	}
@@ -292,4 +303,23 @@ func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (i
 	}
 
 	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform))
+}
+
+type indexFactory struct {
+	dockerClient local.DockerClient
+	keychain     authn.Keychain
+}
+
+func (f *indexFactory) NewIndex(opts CreateManifestOptions) (imgutil.ImageIndex, error) {
+	if opts.Publish {
+		return remote.NewIndex(
+			opts.ManifestName,
+			f.keychain,
+			remote.WithIndexMediaTypes(opts.MediaType))
+	}
+
+	return local.NewIndex(
+		opts.ManifestName,
+		opts.ManifestDir,
+		local.WithIndexMediaTypes(opts.MediaType))
 }

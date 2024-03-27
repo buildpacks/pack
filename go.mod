@@ -140,3 +140,5 @@ require (
 )
 
 go 1.21
+
+replace github.com/buildpacks/imgutil => github.com/drac98/imgutil v1.4.0
