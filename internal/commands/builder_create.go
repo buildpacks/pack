@@ -10,8 +10,10 @@ import (
 	"github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/internal/target"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -23,6 +25,7 @@ type BuilderCreateFlags struct {
 	Registry        string
 	Policy          string
 	Flatten         []string
+	Targets         []string
 	Label           map[string]string
 }
 
@@ -87,6 +90,11 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				return err
 			}
 
+			multiArchCfg, err := processBuilderTargets(flags, logger, builderConfig)
+			if err != nil {
+				return err
+			}
+
 			imageName := args[0]
 			if err := pack.CreateBuilder(cmd.Context(), client.CreateBuilderOptions{
 				RelativeBaseDir: relativeBaseDir,
@@ -98,6 +106,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				PullPolicy:      pullPolicy,
 				Flatten:         toFlatten,
 				Labels:          flags.Label,
+				Targets:         multiArchCfg.Targets(),
 			}); err != nil {
 				return err
 			}
@@ -139,4 +148,31 @@ func validateCreateFlags(flags *BuilderCreateFlags, cfg config.Config) error {
 	}
 
 	return nil
+}
+
+func processBuilderTargets(flags BuilderCreateFlags, logger logging.Logger, builderCfg builder.Config) (buildpack.MultiArchConfig, error) {
+	var (
+		expectedTargets []dist.Target
+		err             error
+	)
+	if len(flags.Targets) > 0 {
+		if expectedTargets, err = target.ParseTargets(flags.Targets, logger); err != nil {
+			return buildpack.MultiArchConfig{}, err
+		}
+		if len(expectedTargets) > 1 && !flags.Publish {
+			// when we are exporting to daemon, only 1 target is allow
+			return buildpack.MultiArchConfig{}, errors.Errorf("when exporting to daemon only one target is allowed")
+		}
+	}
+
+	if len(builderCfg.Targets) == 0 && len(expectedTargets) == 0 {
+		logger.Warnf("A new '--target' flag is available to set the platform for a builder, using '%s' as default", "---os---")
+	}
+
+	currentTargets := builderCfg.Targets
+	multiArchCfg, err := buildpack.NewMultiArchConfig(currentTargets, expectedTargets, logger)
+	if err != nil {
+		return buildpack.MultiArchConfig{}, err
+	}
+	return multiArchCfg, nil
 }

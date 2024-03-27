@@ -23,6 +23,7 @@ import (
 	pname "github.com/buildpacks/pack/internal/name"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/internal/term"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -62,7 +63,9 @@ type Fetcher struct {
 
 type FetchOptions struct {
 	Daemon       bool
+	Multiarch    bool
 	Platform     string
+	Target       *dist.Target
 	PullPolicy   PullPolicy
 	LayoutOption LayoutOption
 }
@@ -94,7 +97,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 	}
 
 	if !options.Daemon {
-		return f.fetchRemoteImage(name)
+		return f.fetchRemoteImage(name, options.Target, options.Multiarch)
 	}
 
 	switch options.PullPolicy {
@@ -136,8 +139,21 @@ func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 	return image, nil
 }
 
-func (f *Fetcher) fetchRemoteImage(name string) (imgutil.Image, error) {
-	image, err := remote.NewImage(name, f.keychain, remote.FromBaseImage(name))
+func (f *Fetcher) fetchRemoteImage(name string, target *dist.Target, multiarch bool) (imgutil.Image, error) {
+	var (
+		image imgutil.Image
+		err   error
+	)
+
+	if target == nil {
+		image, err = remote.NewImage(name, f.keychain, remote.FromBaseImage(name))
+	} else {
+		if multiarch {
+			image, err = remote.NewImage(name, f.keychain, remote.FromBaseImage(name), remote.WithDefaultPlatform(imgutil.Platform{OS: target.OS, Architecture: target.Arch}), remote.SaveWithDigest())
+		} else {
+			image, err = remote.NewImage(name, f.keychain, remote.FromBaseImage(name), remote.WithDefaultPlatform(imgutil.Platform{OS: target.OS, Architecture: target.Arch}))
+		}
+	}
 	if err != nil {
 		return nil, err
 	}

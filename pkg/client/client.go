@@ -32,6 +32,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -69,7 +70,11 @@ type BlobDownloader interface {
 type ImageFactory interface {
 	// NewImage initializes an image object with required settings so that it
 	// can be written either locally or to a registry.
-	NewImage(repoName string, local bool, imageOS string) (imgutil.Image, error)
+	NewImage(repoName string, local bool, target dist.Target, multiarch bool) (imgutil.Image, error)
+}
+
+type IndexFactory interface {
+	NewIndex(CreateManifestOptions) (imgutil.ImageIndex, error)
 }
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_buildpack_downloader.go github.com/buildpacks/pack/pkg/client BuildpackDownloader
@@ -97,6 +102,7 @@ type Client struct {
 	keychain            authn.Keychain
 	imageFactory        ImageFactory
 	imageFetcher        ImageFetcher
+	indexFactory        IndexFactory
 	accessChecker       AccessChecker
 	downloader          BlobDownloader
 	lifecycleExecutor   LifecycleExecutor
@@ -241,6 +247,13 @@ func NewClient(opts ...Option) (*Client, error) {
 		}
 	}
 
+	if client.indexFactory == nil {
+		client.indexFactory = &indexFactory{
+			dockerClient: client.docker,
+			keychain:     client.keychain,
+		}
+	}
+
 	if client.accessChecker == nil {
 		client.accessChecker = image.NewAccessChecker(client.logger, client.keychain)
 	}
@@ -284,12 +297,36 @@ type imageFactory struct {
 	keychain     authn.Keychain
 }
 
-func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (imgutil.Image, error) {
-	platform := imgutil.Platform{OS: imageOS}
+func (f *imageFactory) NewImage(repoName string, daemon bool, target dist.Target, multiarch bool) (imgutil.Image, error) {
+	// TODO Check the equivalent with the Target OS Version
+	platform := imgutil.Platform{OS: target.OS, Architecture: target.Arch}
 
 	if daemon {
 		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(platform))
 	}
 
+	if multiarch {
+		return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform), remote.SaveWithDigest())
+	}
+
 	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform))
+}
+
+type indexFactory struct {
+	dockerClient local.DockerClient
+	keychain     authn.Keychain
+}
+
+func (f *indexFactory) NewIndex(opts CreateManifestOptions) (imgutil.ImageIndex, error) {
+	if opts.Publish {
+		return remote.NewIndex(
+			opts.ManifestName,
+			f.keychain,
+			remote.WithIndexMediaTypes(opts.MediaType))
+	}
+
+	return local.NewIndex(
+		opts.ManifestName,
+		opts.ManifestDir,
+		local.WithIndexMediaTypes(opts.MediaType))
 }

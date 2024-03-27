@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -50,6 +52,9 @@ type CreateBuilderOptions struct {
 
 	// List of modules to be flattened
 	Flatten buildpack.FlattenModuleInfos
+
+	// Targets platform for each Buildpack package to be built
+	Targets []dist.Target
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.
@@ -59,29 +64,72 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		return err
 	}
 
-	bldr, err := c.createBaseBuilder(ctx, opts)
-	if err != nil {
-		return errors.Wrap(err, "failed to create builder")
+	var targets []dist.Target
+	if len(opts.Targets) > 0 {
+		// when exporting to the daemon, we need to select just one target
+		if !opts.Publish {
+			daemonTarget, err := c.daemonTarget(ctx, opts.Targets)
+			if err != nil {
+				return err
+			}
+			targets = append(targets, daemonTarget)
+		} else {
+			targets = opts.Targets
+		}
+	} else {
+		targets = append(targets, dist.Target{OS: runtime.GOOS, Arch: runtime.GOARCH})
 	}
 
-	if err := c.addBuildpacksToBuilder(ctx, opts, bldr); err != nil {
-		return errors.Wrap(err, "failed to add buildpacks to builder")
+	multiArch := len(targets) > 1 && opts.Publish
+
+	var digests []string
+	for _, target := range targets {
+		bldr, err := c.createBaseBuilder(ctx, opts, target, multiArch)
+		if err != nil {
+			return errors.Wrap(err, "failed to create builder")
+		}
+
+		if err := c.addBuildpacksToBuilder(ctx, opts, bldr, multiArch); err != nil {
+			return errors.Wrap(err, "failed to add buildpacks to builder")
+		}
+
+		if err := c.addExtensionsToBuilder(ctx, opts, bldr, false); err != nil {
+			return errors.Wrap(err, "failed to add extensions to builder")
+		}
+
+		bldr.SetOrder(opts.Config.Order)
+		bldr.SetOrderExtensions(opts.Config.OrderExtensions)
+
+		if opts.Config.Stack.ID != "" {
+			bldr.SetStack(opts.Config.Stack)
+		}
+		bldr.SetRunImage(opts.Config.Run)
+		bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
+
+		err = bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version})
+		if err != nil {
+			return err
+		}
+
+		if multiArch {
+			// We need to keep the identifier to create the image index
+			id, err := bldr.Image().Identifier()
+			if err != nil {
+				return errors.Wrapf(err, "determining image manifest digest")
+			}
+			digests = append(digests, id.String())
+		}
 	}
 
-	if err := c.addExtensionsToBuilder(ctx, opts, bldr); err != nil {
-		return errors.Wrap(err, "failed to add extensions to builder")
+	if multiArch && len(digests) > 1 {
+		return c.CreateManifest(ctx, CreateManifestOptions{
+			ManifestName: opts.BuilderName,
+			Manifests:    digests,
+			Publish:      true,
+		})
 	}
 
-	bldr.SetOrder(opts.Config.Order)
-	bldr.SetOrderExtensions(opts.Config.OrderExtensions)
-
-	if opts.Config.Stack.ID != "" {
-		bldr.SetStack(opts.Config.Stack)
-	}
-	bldr.SetRunImage(opts.Config.Run)
-	bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
-
-	return bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version})
+	return nil
 }
 
 func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions) error {
@@ -145,8 +193,8 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 	return nil
 }
 
-func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOptions) (*builder.Builder, error) {
-	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Build.Image, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
+func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOptions, target dist.Target, multiarch bool) (*builder.Builder, error) {
+	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Build.Image, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy, Platform: fmt.Sprintf("%s/%s", target.OS, target.Arch), Target: &target, Multiarch: multiarch})
 	if err != nil {
 		return nil, errors.Wrap(err, "fetch build image")
 	}
@@ -241,25 +289,25 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 	return lifecycle, nil
 }
 
-func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
+func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder, multiarch bool) error {
 	for _, b := range opts.Config.Buildpacks {
-		if err := c.addConfig(ctx, buildpack.KindBuildpack, b, opts, bldr); err != nil {
+		if err := c.addConfig(ctx, buildpack.KindBuildpack, b, opts, bldr, multiarch); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (c *Client) addExtensionsToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
+func (c *Client) addExtensionsToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder, multiarch bool) error {
 	for _, e := range opts.Config.Extensions {
-		if err := c.addConfig(ctx, buildpack.KindExtension, e, opts, bldr); err != nil {
+		if err := c.addConfig(ctx, buildpack.KindExtension, e, opts, bldr, multiarch); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.ModuleConfig, opts CreateBuilderOptions, bldr *builder.Builder) error {
+func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.ModuleConfig, opts CreateBuilderOptions, bldr *builder.Builder, multiarch bool) error {
 	c.logger.Debugf("Looking up %s %s", kind, style.Symbol(config.DisplayString()))
 
 	builderOS, err := bldr.Image().OS()
@@ -271,15 +319,20 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 		return errors.Wrapf(err, "getting builder architecture")
 	}
 
+	platform := fmt.Sprintf("%s/%s", builderOS, builderArch)
+	c.logger.Debugf("Downloading buildpack for platform: %s", platform)
+
 	mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, config.URI, buildpack.DownloadOptions{
 		Daemon:          !opts.Publish,
 		ImageName:       config.ImageName,
 		ImageOS:         builderOS,
-		Platform:        fmt.Sprintf("%s/%s", builderOS, builderArch),
+		Platform:        platform,
 		ModuleKind:      kind,
 		PullPolicy:      opts.PullPolicy,
 		RegistryName:    opts.Registry,
 		RelativeBaseDir: opts.RelativeBaseDir,
+		Target:          &dist.Target{OS: builderOS, Arch: builderArch},
+		Multiarch:       multiarch,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "downloading %s", kind)

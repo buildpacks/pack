@@ -2,6 +2,9 @@ package client
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 
@@ -11,6 +14,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -54,11 +58,14 @@ type PackageBuildpackOptions struct {
 	// Flatten layers
 	Flatten bool
 
-	// List of buildpack images to exclude from the package been flatten.
+	// List of buildpack images to exclude from the package been flattened.
 	FlattenExclude []string
 
 	// Map of labels to add to the Buildpack
 	Labels map[string]string
+
+	// Targets platform for each Buildpack package to be built
+	Targets []dist.Target
 }
 
 // PackageBuildpack packages buildpack(s) into either an image or file.
@@ -67,70 +74,151 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		opts.Format = FormatImage
 	}
 
-	if opts.Config.Platform.OS == "windows" && !c.experimental {
-		return NewExperimentError("Windows buildpackage support is currently experimental.")
+	var targets []dist.Target
+	if len(opts.Targets) > 0 {
+		// when exporting to the daemon, we need to select just one target
+		if !opts.Publish && opts.Format == FormatImage {
+			daemonTarget, err := c.daemonTarget(ctx, opts.Targets)
+			if err != nil {
+				return err
+			}
+			targets = append(targets, daemonTarget)
+		} else {
+			targets = opts.Targets
+		}
+	} else {
+		targets = append(targets, dist.Target{OS: opts.Config.Platform.OS})
 	}
 
-	err := c.validateOSPlatform(ctx, opts.Config.Platform.OS, opts.Publish, opts.Format)
-	if err != nil {
-		return err
-	}
+	multiArch := len(targets) > 1 && (opts.Publish || opts.Format == FormatFile)
 
-	writerFactory, err := layer.NewWriterFactory(opts.Config.Platform.OS)
-	if err != nil {
-		return errors.Wrap(err, "creating layer writer factory")
-	}
-
-	var packageBuilderOpts []buildpack.PackageBuilderOption
-	if opts.Flatten {
-		packageBuilderOpts = append(packageBuilderOpts, buildpack.DoNotFlatten(opts.FlattenExclude),
-			buildpack.WithLayerWriterFactory(writerFactory), buildpack.WithLogger(c.logger))
-	}
-	packageBuilder := buildpack.NewBuilder(c.imageFactory, packageBuilderOpts...)
-
-	bpURI := opts.Config.Buildpack.URI
-	if bpURI == "" {
-		return errors.New("buildpack URI must be provided")
-	}
-
-	mainBlob, err := c.downloadBuildpackFromURI(ctx, bpURI, opts.RelativeBaseDir)
-	if err != nil {
-		return err
-	}
-
-	bp, err := buildpack.FromBuildpackRootBlob(mainBlob, writerFactory)
-	if err != nil {
-		return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bpURI))
-	}
-
-	packageBuilder.SetBuildpack(bp)
-
-	for _, dep := range opts.Config.Dependencies {
-		mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
-			RegistryName:    opts.Registry,
-			RelativeBaseDir: opts.RelativeBaseDir,
-			ImageOS:         opts.Config.Platform.OS,
-			ImageName:       dep.ImageName,
-			Daemon:          !opts.Publish,
-			PullPolicy:      opts.PullPolicy,
-		})
-
-		if err != nil {
-			return errors.Wrapf(err, "packaging dependencies (uri=%s,image=%s)", style.Symbol(dep.URI), style.Symbol(dep.ImageName))
+	var digests []string
+	for _, target := range targets {
+		if target.OS == "windows" && !c.experimental {
+			return NewExperimentError("Windows buildpackage support is currently experimental.")
 		}
 
-		packageBuilder.AddDependencies(mainBP, deps)
+		err := c.validateOSPlatform(ctx, target.OS, opts.Publish, opts.Format)
+		if err != nil {
+			return err
+		}
+
+		writerFactory, err := layer.NewWriterFactory(target.OS)
+		if err != nil {
+			return errors.Wrap(err, "creating layer writer factory")
+		}
+
+		var packageBuilderOpts []buildpack.PackageBuilderOption
+		if opts.Flatten {
+			packageBuilderOpts = append(packageBuilderOpts, buildpack.DoNotFlatten(opts.FlattenExclude),
+				buildpack.WithLayerWriterFactory(writerFactory), buildpack.WithLogger(c.logger))
+		}
+		packageBuilder := buildpack.NewBuilder(c.imageFactory, packageBuilderOpts...)
+
+		bpURI := opts.Config.Buildpack.URI
+		if bpURI == "" {
+			return errors.New("buildpack URI must be provided")
+		}
+
+		// We need to calculate the relative base directory
+		relativeBaseDir := opts.RelativeBaseDir
+		if ok, platformRootFolder := buildpack.PlatformRootFolder(relativeBaseDir, target, ""); ok {
+			relativeBaseDir = platformRootFolder
+		}
+
+		mainBlob, err := c.downloadBuildpackFromURI(ctx, bpURI, relativeBaseDir)
+		if err != nil {
+			return err
+		}
+
+		bp, err := buildpack.FromBuildpackRootBlob(mainBlob, writerFactory)
+		if err != nil {
+			return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bpURI))
+		}
+
+		packageBuilder.SetBuildpack(bp)
+
+		platform := target.OS
+		if target.Arch != "" {
+			if target.ArchVariant != "" {
+				platform = fmt.Sprintf("%s/%s/%s", platform, target.Arch, target.ArchVariant)
+			} else {
+				platform = fmt.Sprintf("%s/%s", platform, target.Arch)
+			}
+		}
+
+		for _, dep := range opts.Config.Dependencies {
+			depURI := dep.URI
+			fileToClean, err := buildpack.PrepareDependencyConfigFile(relativeBaseDir, dep.URI, target, "", multiArch)
+			if err != nil {
+				return err
+			}
+			if fileToClean != "" {
+				defer os.Remove(fileToClean)
+				depURI = filepath.Dir(fileToClean)
+			}
+			c.logger.Debugf("Downloading buildpack dependency for platform %s", platform)
+			mainBP, deps, err := c.buildpackDownloader.Download(ctx, depURI, buildpack.DownloadOptions{
+				RegistryName:    opts.Registry,
+				RelativeBaseDir: relativeBaseDir,
+				ImageOS:         target.OS,
+				Platform:        platform,
+				ImageName:       dep.ImageName,
+				Daemon:          !opts.Publish,
+				PullPolicy:      opts.PullPolicy,
+				Target:          &target,
+				Multiarch:       multiArch,
+			})
+			if err != nil {
+				return errors.Wrapf(err, "packaging dependencies (uri=%s,image=%s)", style.Symbol(dep.URI), style.Symbol(dep.ImageName))
+			}
+
+			packageBuilder.AddDependencies(mainBP, deps)
+		}
+
+		switch opts.Format {
+		case FormatFile:
+			name := opts.Name
+			if multiArch {
+				extension := filepath.Ext(name)
+				origFileName := name[:len(name)-len(filepath.Ext(name))]
+				if target.Arch != "" {
+					name = fmt.Sprintf("%s-%s-%s%s", origFileName, target.OS, target.Arch, extension)
+				} else {
+					name = fmt.Sprintf("%s-%s%s", origFileName, target.OS, extension)
+				}
+			}
+			err = packageBuilder.SaveAsFile(name, target, opts.Labels)
+			if err != nil {
+				return err
+			}
+		case FormatImage:
+			img, err := packageBuilder.SaveAsImage(opts.Name, opts.Publish, target, opts.Labels, multiArch)
+			if err != nil {
+				return errors.Wrapf(err, "saving image")
+			}
+			if multiArch {
+				// We need to keep the identifier to create the image index
+				id, err := img.Identifier()
+				if err != nil {
+					return errors.Wrapf(err, "determining image manifest digest")
+				}
+				digests = append(digests, id.String())
+			}
+		default:
+			return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))
+		}
 	}
 
-	switch opts.Format {
-	case FormatFile:
-		return packageBuilder.SaveAsFile(opts.Name, opts.Config.Platform.OS, opts.Labels)
-	case FormatImage:
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, opts.Config.Platform.OS, opts.Labels)
-		return errors.Wrapf(err, "saving image")
-	default:
-		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))
+	if multiArch && len(digests) > 1 {
+		return c.CreateManifest(ctx, CreateManifestOptions{
+			ManifestName: opts.Name,
+			Manifests:    digests,
+			Publish:      true,
+		})
 	}
+
+	return nil
 }
 
 func (c *Client) downloadBuildpackFromURI(ctx context.Context, uri, relativeBaseDir string) (blob.Blob, error) {
@@ -164,4 +252,18 @@ func (c *Client) validateOSPlatform(ctx context.Context, os string, publish bool
 	}
 
 	return nil
+}
+
+func (c *Client) daemonTarget(ctx context.Context, targets []dist.Target) (dist.Target, error) {
+	info, err := c.docker.ServerVersion(ctx)
+	if err != nil {
+		return dist.Target{}, err
+	}
+
+	for _, t := range targets {
+		if t.OS == info.Os && t.Arch == info.Arch {
+			return t, nil
+		}
+	}
+	return dist.Target{}, errors.Errorf("could not find a target that matches daemon os=%s and architecture=%s", info.Os, info.Arch)
 }

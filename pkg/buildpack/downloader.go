@@ -76,9 +76,12 @@ type DownloadOptions struct {
 	// The kind of module to download (valid values: "buildpack", "extension"). Defaults to "buildpack".
 	ModuleKind string
 
-	Daemon bool
+	Daemon    bool
+	Multiarch bool
 
 	PullPolicy image.PullPolicy
+
+	Target *dist.Target
 }
 
 func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, opts DownloadOptions) (BuildModule, []BuildModule, error) {
@@ -109,6 +112,8 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 			Daemon:     opts.Daemon,
 			PullPolicy: opts.PullPolicy,
 			Platform:   opts.Platform,
+			Target:     opts.Target,
+			Multiarch:  opts.Multiarch,
 		})
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from registry %s", style.Symbol(moduleURI))
@@ -124,6 +129,8 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 			Daemon:     opts.Daemon,
 			PullPolicy: opts.PullPolicy,
 			Platform:   opts.Platform,
+			Target:     opts.Target,
+			Multiarch:  opts.Multiarch,
 		})
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from registry %s", style.Symbol(moduleURI))

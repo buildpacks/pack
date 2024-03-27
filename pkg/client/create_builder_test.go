@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -58,6 +59,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			logger                  logging.Logger
 			out                     bytes.Buffer
 			tmpDir                  string
+			platform                string
+			target                  dist.Target
 		)
 		var prepareFetcherWithRunImages = func() {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", gomock.Any()).Return(fakeRunImage, nil).AnyTimes()
@@ -186,6 +189,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			tmpDir, err = os.MkdirTemp("", "create-builder-test")
 			h.AssertNil(t, err)
+
+			target = dist.Target{
+				OS:   runtime.GOOS,
+				Arch: runtime.GOARCH,
+			}
+			platform = fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
 		})
 
 		it.After(func() {
@@ -218,7 +227,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should fail when the stack ID from the builder config does not match the stack ID from the build image", func() {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(fakeBuildImage, nil)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: platform, Target: &target, Multiarch: false}).Return(fakeBuildImage, nil)
 				h.AssertNil(t, fakeBuildImage.SetLabel("io.buildpacks.stack.id", "other.stack.id"))
 				prepareFetcherWithRunImages()
 
@@ -362,7 +371,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should warn when the run image cannot be found", func() {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(fakeBuildImage, nil)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: platform, Target: &target, Multiarch: false}).Return(fakeBuildImage, nil)
 
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways}).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
@@ -407,7 +416,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", image.FetchOptions{Daemon: true}).Times(0)
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", image.FetchOptions{Daemon: true}).Times(0)
 
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: false}).Return(fakeBuildImage, nil)
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: false, Platform: platform, Target: &target}).Return(fakeBuildImage, nil)
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", image.FetchOptions{Daemon: false}).Return(fakeRunImage, nil)
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", image.FetchOptions{Daemon: false}).Return(fakeRunImageMirror, nil)
 
@@ -423,7 +432,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("build image not found", func() {
 				it("should fail", func() {
 					prepareFetcherWithRunImages()
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(nil, image.ErrNotFound)
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: platform, Target: &target}).Return(nil, image.ErrNotFound)
 
 					err := subject.CreateBuilder(context.TODO(), opts)
 					h.AssertError(t, err, "fetch build image: not found")
@@ -435,7 +444,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					fakeImage := fakeBadImageStruct{}
 
 					prepareFetcherWithRunImages()
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(fakeImage, nil)
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: platform, Target: &target}).Return(fakeImage, nil)
 
 					err := subject.CreateBuilder(context.TODO(), opts)
 					h.AssertError(t, err, "failed to create builder: invalid build-image")
@@ -459,7 +468,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						prepareFetcherWithRunImages()
 
 						h.AssertNil(t, fakeBuildImage.SetOS("windows"))
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(fakeBuildImage, nil)
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: platform, Target: &target}).Return(fakeBuildImage, nil)
 
 						err = packClientWithExperimental.CreateBuilder(context.TODO(), opts)
 						h.AssertNil(t, err)
@@ -471,7 +480,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						prepareFetcherWithRunImages()
 
 						h.AssertNil(t, fakeBuildImage.SetOS("windows"))
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(fakeBuildImage, nil)
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: platform, Target: &target}).Return(fakeBuildImage, nil)
 
 						err := subject.CreateBuilder(context.TODO(), opts)
 						h.AssertError(t, err, "failed to create builder: Windows containers support is currently experimental.")
