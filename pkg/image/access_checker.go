@@ -25,7 +25,12 @@ func NewAccessChecker(logger logging.Logger, keychain authn.Keychain) *Checker {
 	return checker
 }
 
-func (c *Checker) Check(repo string) bool {
+func (c *Checker) Check(repo string, publish bool) bool {
+	if !publish {
+		// nop checker, we are running against the daemon
+		return true
+	}
+
 	img, err := remote.NewImage(repo, c.keychain)
 	if err != nil {
 		return false

@@ -44,6 +44,7 @@ func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, run
 		runImageMetadata.Image,
 		runImageMetadata.Mirrors,
 		additionalMirrors[runImageMetadata.Image],
+		publish,
 		accessChecker,
 	)
 
@@ -108,8 +109,8 @@ func contains(slc []string, v string) bool {
 	return false
 }
 
-func getBestRunMirror(registry string, runImage string, mirrors []string, preferredMirrors []string, accessChecker AccessChecker) string {
-	runImageList := filterImageList(append(append(append([]string{}, preferredMirrors...), runImage), mirrors...), accessChecker)
+func getBestRunMirror(registry string, runImage string, mirrors []string, preferredMirrors []string, publish bool, accessChecker AccessChecker) string {
+	runImageList := filterImageList(append(append(append([]string{}, preferredMirrors...), runImage), mirrors...), publish, accessChecker)
 	for _, img := range runImageList {
 		ref, err := name.ParseReference(img, name.WeakValidation)
 		if err != nil {
@@ -127,11 +128,11 @@ func getBestRunMirror(registry string, runImage string, mirrors []string, prefer
 	return runImage
 }
 
-func filterImageList(imageList []string, accessChecker AccessChecker) []string {
+func filterImageList(imageList []string, publish bool, accessChecker AccessChecker) []string {
 	var accessibleImages []string
 
 	for i, img := range imageList {
-		if accessChecker.Check(img) {
+		if accessChecker.Check(img, publish) {
 			accessibleImages = append(accessibleImages, imageList[i])
 		}
 	}
