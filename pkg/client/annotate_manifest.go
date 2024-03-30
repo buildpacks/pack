@@ -71,8 +71,7 @@ func (c *Client) AnnotateManifest(ctx context.Context, name string, image string
 		}
 	}
 
-	err = idx.Save()
-	if err != nil {
+	if err = idx.Save(); err != nil {
 		return err
 	}
 

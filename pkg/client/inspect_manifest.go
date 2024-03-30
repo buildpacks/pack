@@ -6,17 +6,15 @@ import (
 )
 
 // InspectManifest implements commands.PackClient.
-func (c *Client) InspectManifest(ctx context.Context, name string) error {
+func (c *Client) InspectManifest(ctx context.Context, name string) (err error) {
 	idx, err := c.indexFactory.FindIndex(name)
 	if err != nil {
 		return err
 	}
 
-	mfest, err := idx.Inspect()
-	if err != nil {
-		return err
+	if mfest, err := idx.Inspect(); err == nil {
+		fmt.Println(mfest)
 	}
 
-	fmt.Println(mfest)
-	return nil
+	return err
 }
