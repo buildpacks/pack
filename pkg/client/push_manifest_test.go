@@ -55,7 +55,7 @@ func testPushManifest(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, os.RemoveAll(tmpDir))
 		})
 		it("should not have local image index", func() {
-			prepareLoadIndexWithError(t, *mockIndexFactory)
+			prepareLoadIndexWithError(*mockIndexFactory)
 
 			err := subject.PushManifest(context.TODO(), "some-index", PushManifestOptions{})
 			h.AssertEq(t, err.Error(), imgutil.ErrNoImageOrIndexFoundWithGivenDigest("").Error())
@@ -69,7 +69,7 @@ func testPushManifest(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func prepareLoadIndexWithError(t *testing.T, mockIndexFactory testmocks.MockIndexFactory) {
+func prepareLoadIndexWithError(mockIndexFactory testmocks.MockIndexFactory) {
 	mockIndexFactory.
 		EXPECT().
 		LoadIndex(gomock.Any(), gomock.Any()).

@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/index"
@@ -25,9 +24,8 @@ func (c *Client) CreateManifest(ctx context.Context, name string, images []strin
 		return fmt.Errorf("exits in your local storage, use 'pack manifest remove' if you want to delete it")
 	}
 
-	_, err = c.indexFactory.CreateIndex(name, ops...)
-	if err != nil {
-		return
+	if _, err = c.indexFactory.CreateIndex(name, ops...); err != nil {
+		return err
 	}
 
 	index, err := c.indexFactory.LoadIndex(name, ops...)
@@ -36,36 +34,32 @@ func (c *Client) CreateManifest(ctx context.Context, name string, images []strin
 	}
 
 	var errGroup, _ = errgroup.WithContext(ctx)
-	var wg sync.WaitGroup
 	for _, img := range images {
 		img := img
-		wg.Add(1)
 		errGroup.Go(func() error {
-			return addImage(index, img, &wg, opts)
+			return addImage(index, img, opts)
 		})
 	}
 
-	wg.Wait()
 	if err = errGroup.Wait(); err != nil {
 		return err
 	}
 
-	err = index.Save()
-	if err != nil {
+	if err = index.Save(); err != nil {
 		return err
 	}
 
 	fmt.Printf("successfully created index: '%s'\n", name)
-	if opts.Publish {
-		err = index.Push(imgutil.WithInsecure(opts.Insecure))
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("successfully pushed '%s' to registry \n", name)
+	if !opts.Publish {
+		return nil
 	}
 
-	return err
+	if err = index.Push(imgutil.WithInsecure(opts.Insecure)); err != nil {
+		return err
+	}
+
+	fmt.Printf("successfully pushed '%s' to registry \n", name)
+	return nil
 }
 
 func parseOptsToIndexOptions(opts CreateManifestOptions) (idxOpts []index.Option) {
@@ -82,15 +76,11 @@ func parseOptsToIndexOptions(opts CreateManifestOptions) (idxOpts []index.Option
 	}
 }
 
-func addImage(index imgutil.ImageIndex, img string, wg *sync.WaitGroup, opts CreateManifestOptions) error {
+func addImage(index imgutil.ImageIndex, img string, opts CreateManifestOptions) error {
 	ref, err := ggcrName.ParseReference(img)
 	if err != nil {
 		return err
 	}
-	if err = index.Add(ref, imgutil.WithAll(opts.All)); err != nil {
-		return err
-	}
 
-	wg.Done()
-	return nil
+	return index.Add(ref, imgutil.WithAll(opts.All))
 }

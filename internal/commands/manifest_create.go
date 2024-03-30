@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -29,17 +27,14 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 		cnbs/sample-package:hello-universe-windows`,
 		Long: `Generate manifest list for a multi-arch image which will be stored locally for manipulating images within index`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			imageIndex := args[0]
-			manifests := args[1:]
-
 			if err := validateManifestCreateFlags(flags); err != nil {
 				return err
 			}
 
 			return pack.CreateManifest(
 				cmd.Context(),
-				imageIndex,
-				manifests,
+				args[0],
+				args[1:],
 				client.CreateManifestOptions{
 					Format:   flags.format,
 					Insecure: flags.insecure,
@@ -54,17 +49,8 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 
 	cmdFlags.StringVarP(&flags.format, "format", "f", "v2s2", "Format to save image index as ('OCI' or 'V2S2')")
 	cmdFlags.StringVar(&flags.os, "os", "", "If any of the specified images is a list/index, choose the one for `os`")
-	if err := cmdFlags.MarkHidden("os"); err != nil {
-		panic(fmt.Sprintf("error marking --os as hidden: %v", err))
-	}
 	cmdFlags.StringVar(&flags.arch, "arch", "", "If any of the specified images is a list/index, choose the one for `arch`")
-	if err := cmdFlags.MarkHidden("arch"); err != nil {
-		panic(fmt.Sprintf("error marking --arch as hidden: %v", err))
-	}
 	cmdFlags.BoolVar(&flags.insecure, "insecure", false, "Allow publishing to insecure registry")
-	if err := cmdFlags.MarkHidden("insecure"); err != nil {
-		panic(fmt.Sprintf("error marking insecure as hidden: %v", err))
-	}
 	cmdFlags.BoolVar(&flags.publish, "publish", false, "Publish to registry")
 	cmdFlags.BoolVar(&flags.all, "all", false, "Add all of the list's images if the images to add are lists/index")
 

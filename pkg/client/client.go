@@ -335,32 +335,27 @@ type indexFactory struct {
 }
 
 func (f *indexFactory) LoadIndex(repoName string, opts ...index.Option) (img imgutil.ImageIndex, err error) {
-	opts, err = withOptions(opts, f.keychain)
-	if err != nil {
+	if opts, err = withOptions(opts, f.keychain); err != nil {
 		return nil, err
 	}
 
-	img, err = local.NewIndex(repoName, opts...)
-	if err == nil {
-		return
+	if img, err = local.NewIndex(repoName, opts...); err == nil {
+		return img, err
 	}
 
-	img, err = layout.NewIndex(repoName, opts...)
-	if err == nil {
-		return
+	if img, err = layout.NewIndex(repoName, opts...); err == nil {
+		return img, err
 	}
 
 	return nil, errors.Wrap(err, errors.Errorf("Image: '%s' not found", repoName).Error())
 }
 
 func (f *indexFactory) FetchIndex(name string, opts ...index.Option) (idx imgutil.ImageIndex, err error) {
-	opts, err = withOptions(opts, f.keychain)
-	if err != nil {
+	if opts, err = withOptions(opts, f.keychain); err != nil {
 		return nil, err
 	}
 
-	idx, err = remote.NewIndex(name, opts...)
-	if err != nil {
+	if idx, err = remote.NewIndex(name, opts...); err != nil {
 		return idx, fmt.Errorf("ImageIndex in not available at registry")
 	}
 
@@ -368,22 +363,19 @@ func (f *indexFactory) FetchIndex(name string, opts ...index.Option) (idx imguti
 }
 
 func (f *indexFactory) FindIndex(repoName string, opts ...index.Option) (idx imgutil.ImageIndex, err error) {
-	opts, err = withOptions(opts, f.keychain)
-	if err != nil {
+	if opts, err = withOptions(opts, f.keychain); err != nil {
 		return nil, err
 	}
 
-	idx, err = f.LoadIndex(repoName, opts...)
-	if err == nil {
+	if idx, err = f.LoadIndex(repoName, opts...); err == nil {
 		return idx, err
 	}
 
 	return f.FetchIndex(repoName, opts...)
 }
 
-func (f *indexFactory) CreateIndex(repoName string, opts ...index.Option) (imgutil.ImageIndex, error) {
-	opts, err := withOptions(opts, f.keychain)
-	if err != nil {
+func (f *indexFactory) CreateIndex(repoName string, opts ...index.Option) (idx imgutil.ImageIndex, err error) {
+	if opts, err = withOptions(opts, f.keychain); err != nil {
 		return nil, err
 	}
 
@@ -391,13 +383,14 @@ func (f *indexFactory) CreateIndex(repoName string, opts ...index.Option) (imgut
 }
 
 func withOptions(ops []index.Option, keychain authn.Keychain) ([]index.Option, error) {
+	ops = append(ops, index.WithKeychain(keychain))
 	if xdgPath, ok := os.LookupEnv(xdgRuntimePath); ok {
-		return append(ops, index.WithKeychain(keychain), index.WithXDGRuntimePath(xdgPath)), nil
+		return append(ops, index.WithXDGRuntimePath(xdgPath)), nil
 	}
 
 	home, err := iconfig.PackHome()
 	if err != nil {
 		return ops, err
 	}
-	return append(ops, index.WithKeychain(keychain), index.WithXDGRuntimePath(filepath.Join(home, "manifests"))), nil
+	return append(ops, index.WithXDGRuntimePath(filepath.Join(home, "manifests"))), nil
 }

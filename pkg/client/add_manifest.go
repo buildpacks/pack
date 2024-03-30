@@ -60,13 +60,11 @@ func (c *Client) AddManifest(ctx context.Context, ii string, image string, opts 
 		return err
 	}
 
-	err = idx.Add(ref, ops...)
-	if err != nil {
+	if err = idx.Add(ref, ops...); err != nil {
 		return err
 	}
 
-	err = idx.Save()
-	if err != nil {
+	if err = idx.Save(); err != nil {
 		return err
 	}
 

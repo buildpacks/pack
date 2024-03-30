@@ -20,36 +20,26 @@ func (c *Client) PushManifest(ctx context.Context, index string, opts PushManife
 		return
 	}
 
-	err = idx.Push(parseFalgsForImgUtil(opts)...)
-	if err != nil {
-		return
+	if err = idx.Push(parseFalgsForImgUtil(opts)...); err != nil {
+		return err
 	}
 
-	if opts.Purge {
-		if err = idx.Delete(); err != nil {
-			return
-		}
+	if !opts.Purge {
+		fmt.Printf("successfully pushed index: '%s'\n", index)
+		return nil
 	}
 
-	fmt.Printf("successfully pushed index: '%s'\n", index)
-	return
+	return idx.Delete()
 }
 
 func parseFalgsForImgUtil(opts PushManifestOptions) (idxOptions []imgutil.IndexPushOption) {
+	idxOptions = append(idxOptions, imgutil.WithInsecure(opts.Insecure))
 	switch opts.Format {
 	case "oci":
-		return []imgutil.IndexPushOption{
-			imgutil.WithFormat(types.OCIImageIndex),
-			imgutil.WithInsecure(opts.Insecure),
-		}
+		return append(idxOptions, imgutil.WithFormat(types.OCIImageIndex))
 	case "v2s2":
-		return []imgutil.IndexPushOption{
-			imgutil.WithFormat(types.DockerManifestList),
-			imgutil.WithInsecure(opts.Insecure),
-		}
+		return append(idxOptions, imgutil.WithFormat(types.DockerManifestList))
 	default:
-		return []imgutil.IndexPushOption{
-			imgutil.WithInsecure(opts.Insecure),
-		}
+		return idxOptions
 	}
 }

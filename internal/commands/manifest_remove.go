@@ -37,13 +37,13 @@ func NewErrors(errs []error) Errors {
 
 func (e Errors) Error() error {
 	var errMsg string
-	if len(e.errs) > 0 {
-		for _, err := range e.errs {
-			errMsg += err.Error()
-		}
-
-		return errors.New(errMsg)
+	if len(e.errs) == 0 {
+		return nil
 	}
 
-	return nil
+	for _, err := range e.errs {
+		errMsg += err.Error()
+	}
+
+	return errors.New(errMsg)
 }

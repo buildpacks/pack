@@ -29,13 +29,11 @@ func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
 		cnbs/sample-package:hello-universe-riscv-linux`,
 		Long: `manifest add modifies a manifest list (Image index) and add a new image to the list of manifests.`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) (err error) {
-			imageIndex := args[0]
-			manifests := args[1]
 			if err := validateManifestAddFlags(flags); err != nil {
 				return err
 			}
 
-			return pack.AddManifest(cmd.Context(), imageIndex, manifests, client.ManifestAddOptions{
+			return pack.AddManifest(cmd.Context(), args[0], args[1], client.ManifestAddOptions{
 				OS:          flags.os,
 				OSVersion:   flags.osVersion,
 				OSArch:      flags.osArch,

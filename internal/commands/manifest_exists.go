@@ -8,8 +8,6 @@ import (
 
 // ManifestExists checks if a manifest list exists in local storage
 func ManifestExists(logger logging.Logger, pack PackClient) *cobra.Command {
-	// var flags ManifestDeleteFlags
-
 	cmd := &cobra.Command{
 		Use:     "exists [manifest-list]",
 		Args:    cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
