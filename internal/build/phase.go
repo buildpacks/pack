@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/container"
@@ -18,6 +18,7 @@ type Phase struct {
 	docker              DockerClient
 	handler             container.Handler
 	ctrConf             *dcontainer.Config
+	endpoint            *network.EndpointSettings
 	hostConf            *dcontainer.HostConfig
 	ctr                 dcontainer.CreateResponse
 	uid, gid            int
@@ -29,7 +30,7 @@ type Phase struct {
 
 func (p *Phase) Run(ctx context.Context) error {
 	var err error
-	p.ctr, err = p.docker.ContainerCreate(ctx, p.ctrConf, p.hostConf, nil, nil, "")
+	p.ctr, err = p.docker.ContainerCreate(ctx, p.ctrConf, p.hostConf, &network.NetworkingConfig{EndpointsConfig: make(map[string]*network.EndpointSettings)}, nil, "")
 	if err != nil {
 		return errors.Wrapf(err, "failed to create '%s' container", p.name)
 	}
@@ -64,5 +65,5 @@ func (p *Phase) Run(ctx context.Context) error {
 }
 
 func (p *Phase) Cleanup() error {
-	return p.docker.ContainerRemove(context.Background(), p.ctr.ID, types.ContainerRemoveOptions{Force: true})
+	return p.docker.ContainerRemove(context.Background(), p.ctr.ID, dcontainer.RemoveOptions{Force: true})
 }

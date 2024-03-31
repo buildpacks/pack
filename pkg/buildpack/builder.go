@@ -912,7 +912,7 @@ func (b *PackageBuilder) SaveAsImage(repoName, version string, publish bool, tar
 	platform := *target.Platform()
 	imageName := repoName
 	if idx != nil {
-		imageName += ":" + strings.Join(strings.Split(strings.Replace(PlatformSafeName("", target), "@", "-", -1), "-")[1:], "-")
+		imageName += ":" + strings.Join(strings.Split(strings.ReplaceAll(PlatformSafeName("", target), "@", "-"), "-")[1:], "-")
 	}
 
 	image, err := b.imageFactory.NewImage(imageName, !publish, platform)
@@ -1233,14 +1233,14 @@ func getImageDigest(repoName string, image v1.Image) (ref name.Reference, digest
 	// }
 }
 
-func getAddtionalImageNames(name name.Reference, target dist.Target) (additionalNames []string) {
-	hash, err := v1.NewHash(name.Identifier())
-	if err == nil {
-		additionalNames = append(additionalNames, hash.DeepCopy().Hex)
-	}
+// func getAddtionalImageNames(name name.Reference, target dist.Target) (additionalNames []string) {
+// 	hash, err := v1.NewHash(name.Identifier())
+// 	if err == nil {
+// 		additionalNames = append(additionalNames, hash.DeepCopy().Hex)
+// 	}
 
-	return append(additionalNames, PlatformSafeName(name.Context().Name(), target))
-}
+// 	return append(additionalNames, PlatformSafeName(name.Context().Name(), target))
+// }
 
 func validateBuildpacks(mainBP BuildModule, depBPs []BuildModule) error {
 	depsWithRefs := map[string][]dist.ModuleInfo{}

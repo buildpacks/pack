@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/buildpacks/lifecycle/platform/files"
-	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
@@ -468,7 +467,7 @@ drwxrwxrwx    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			writeOp := build.WriteRunToml(containerPath, []builder.RunImageMetadata{builder.RunImageMetadata{
+			writeOp := build.WriteRunToml(containerPath, []builder.RunImageMetadata{{
 				Image: "image-1",
 				Mirrors: []string{
 					"mirror-1",
@@ -709,7 +708,7 @@ func cleanupContainer(ctx context.Context, ctrID string) {
 	}
 
 	// remove container
-	err = ctrClient.ContainerRemove(ctx, ctrID, types.ContainerRemoveOptions{})
+	err = ctrClient.ContainerRemove(ctx, ctrID, dcontainer.RemoveOptions{})
 	if err != nil {
 		return
 	}

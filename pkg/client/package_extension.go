@@ -70,7 +70,7 @@ func (c *Client) PackageExtension(ctx context.Context, opts PackageBuildpackOpti
 
 func (c *Client) PackageMultiArchExtension(ctx context.Context, opts PackageBuildpackOptions) error {
 	if !c.experimental {
-		return errors.Errorf("packaging %s is currently %s", style.Symbol("multi arch extentions"), style.Symbol(("experimental")))
+		return errors.Errorf("packaging %s is currently %s", style.Symbol("multi arch extensions"), style.Symbol(("experimental")))
 	}
 
 	if opts.IndexOptions.ExtConfigs == nil || len(*opts.IndexOptions.ExtConfigs) < 2 {

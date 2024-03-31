@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 
 	pcontainer "github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/internal/style"
@@ -23,6 +24,7 @@ type PhaseConfigProviderOperation func(*PhaseConfigProvider)
 
 type PhaseConfigProvider struct {
 	ctrConf             *container.Config
+	endpoint            *network.EndpointSettings
 	hostConf            *container.HostConfig
 	name                string
 	os                  string
@@ -37,6 +39,7 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 	provider := &PhaseConfigProvider{
 		ctrConf:     new(container.Config),
 		hostConf:    new(container.HostConfig),
+		endpoint:    new(network.EndpointSettings),
 		name:        name,
 		os:          lifecycleExec.os,
 		infoWriter:  logging.GetWriterForLevel(lifecycleExec.logger, logging.InfoLevel),
@@ -47,7 +50,7 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 	provider.ctrConf.Labels = map[string]string{"author": "pack"}
 
 	if lifecycleExec.opts.MacAddress != "" {
-		provider.ctrConf.MacAddress = lifecycleExec.opts.MacAddress
+		provider.endpoint.MacAddress = lifecycleExec.opts.MacAddress
 		lifecycleExec.logger.Debugf("MAC Address: %s", style.Symbol(lifecycleExec.opts.MacAddress))
 	}
 
@@ -104,6 +107,10 @@ func sanitized(origEnv []string) []string {
 
 func (p *PhaseConfigProvider) ContainerConfig() *container.Config {
 	return p.ctrConf
+}
+
+func (p *PhaseConfigProvider) Endpoint() *network.EndpointSettings {
+	return p.endpoint
 }
 
 func (p *PhaseConfigProvider) ContainerOps() []ContainerOperation {

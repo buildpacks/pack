@@ -311,7 +311,7 @@ func (c *Client) GetIndexManifestFn() func(ref name.Reference) (*v1.IndexManifes
 	if len(c.cachedIndexManifests) == 0 {
 		c.cachedIndexManifests = make(map[name.Reference]*v1.IndexManifest)
 	}
-	
+
 	IndexHandlerFn := func(ref name.Reference) (*v1.IndexManifest, error) {
 		mfest := c.cachedIndexManifests[ref]
 		if mfest != nil {

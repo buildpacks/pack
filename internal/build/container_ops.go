@@ -12,12 +12,13 @@ import (
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/errdefs"
 	darchive "github.com/docker/docker/pkg/archive"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/container"
+	pcontainer "github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/pkg/archive"
 )
@@ -175,23 +176,23 @@ func copyDirWindows(ctx context.Context, ctrClient DockerClient, containerID str
 			Binds:     []string{fmt.Sprintf("%s:%s", mnt.Name, mnt.Destination)},
 			Isolation: dcontainer.IsolationProcess,
 		},
-		nil, nil, "",
+		&network.NetworkingConfig{EndpointsConfig: make(map[string]*network.EndpointSettings)}, nil, "",
 	)
 	if err != nil {
 		return errors.Wrapf(err, "creating prep container")
 	}
-	defer ctrClient.ContainerRemove(context.Background(), ctr.ID, types.ContainerRemoveOptions{Force: true})
+	defer ctrClient.ContainerRemove(context.Background(), ctr.ID, dcontainer.RemoveOptions{Force: true})
 
 	err = ctrClient.CopyToContainer(ctx, ctr.ID, "/windows", reader, types.CopyToContainerOptions{})
 	if err != nil {
 		return errors.Wrap(err, "copy app to container")
 	}
 
-	return container.RunWithHandler(
+	return pcontainer.RunWithHandler(
 		ctx,
 		ctrClient,
 		ctr.ID,
-		container.DefaultHandler(
+		pcontainer.DefaultHandler(
 			io.Discard, // Suppress xcopy output
 			stderr,
 		),
@@ -327,13 +328,13 @@ func EnsureVolumeAccess(uid, gid int, os string, volumeNames ...string) Containe
 		if err != nil {
 			return err
 		}
-		defer ctrClient.ContainerRemove(context.Background(), ctr.ID, types.ContainerRemoveOptions{Force: true})
+		defer ctrClient.ContainerRemove(context.Background(), ctr.ID, dcontainer.RemoveOptions{Force: true})
 
-		return container.RunWithHandler(
+		return pcontainer.RunWithHandler(
 			ctx,
 			ctrClient,
 			ctr.ID,
-			container.DefaultHandler(
+			pcontainer.DefaultHandler(
 				io.Discard, // Suppress icacls output
 				stderr,
 			),

@@ -30,6 +30,7 @@ const (
 )
 
 type BuildpackType int
+type GetIndexManifestFn func(ref name.Reference) (*v1.IndexManifest, error)
 
 const (
 	Buildpack BuildpackType = iota
@@ -299,7 +300,7 @@ func (m *MultiArchExtensionConfig) Path() string {
 	return m.relativeBaseDir
 }
 
-func (m *MultiArchBuildpackConfig) CopyBuildpackToml(getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (err error) {
+func (m *MultiArchBuildpackConfig) CopyBuildpackToml(getIndexManifest GetIndexManifestFn) (err error) {
 	if uri := m.BuildpackDescriptor.WithInfo.ID; uri == "" {
 		return errors.New("invalid MultiArchBuildpackConfig")
 	}
@@ -317,7 +318,7 @@ func (m *MultiArchBuildpackConfig) CopyBuildpackToml(getIndexManifest func(ref n
 	return toml.NewEncoder(bpFile).Encode(m.BuildpackDescriptor)
 }
 
-func (m *MultiArchExtensionConfig) CopyExtensionToml(getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (err error) {
+func (m *MultiArchExtensionConfig) CopyExtensionToml(getIndexManifest GetIndexManifestFn) (err error) {
 	if uri := m.ExtensionDescriptor.WithInfo.ID; uri == "" {
 		return errors.New("invalid MultiArchBuildpackConfig")
 	}
@@ -359,7 +360,7 @@ func (m *MultiArchPackage) RelativeBaseDir() string {
 	return m.relativeBaseDir
 }
 
-func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target, distroName, version string, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (err error) {
+func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target, distroName, version string, getIndexManifest GetIndexManifestFn) (err error) {
 	multiArchPKGConfig := *m
 	if (multiArchPKGConfig.Buildpack.URI == "" && multiArchPKGConfig.Extension.URI == "") || (multiArchPKGConfig.Buildpack.URI != "" && multiArchPKGConfig.Extension.URI != "") {
 		return errors.New("unexpected: one of Buildpack URI, Extension URI must be specified")
@@ -404,7 +405,7 @@ func (m *MultiArchPackage) CopyPackageToml(relativeTo string, target dist.Target
 	return toml.NewEncoder(bpFile).Encode(multiArchPKGConfig.Config)
 }
 
-func GetRelativeURI(uri, relativeBaseDir string, target *dist.Target, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (string, error) {
+func GetRelativeURI(uri, relativeBaseDir string, target *dist.Target, getIndexManifest GetIndexManifestFn) (string, error) {
 	locator, err := buildpack.GetLocatorType(uri, relativeBaseDir, []dist.ModuleInfo{})
 	if err != nil {
 		return "", err

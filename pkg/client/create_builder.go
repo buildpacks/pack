@@ -158,9 +158,9 @@ func (c *Client) CreateMultiArchBuilder(ctx context.Context, opts CreateBuilderO
 	for _, config := range configs {
 		ops.Config.Config = config
 		// errs.Go(func() error {
-			if err := c.CreateBuilder(ctx, ops); err != nil {
-				return err
-			}
+		if err := c.CreateBuilder(ctx, ops); err != nil {
+			return err
+		}
 		// })
 	}
 

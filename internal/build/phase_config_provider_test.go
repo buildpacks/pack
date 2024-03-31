@@ -82,7 +82,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
 
-				h.AssertEq(t, phaseConfigProvider.ContainerConfig().MacAddress, expectedMacAddress)
+				h.AssertEq(t, phaseConfigProvider.Endpoint().MacAddress, expectedMacAddress)
 			})
 		})
 

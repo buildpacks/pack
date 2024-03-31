@@ -24,6 +24,7 @@ func NewDefaultPhaseFactory(lifecycleExec *LifecycleExecution) PhaseFactory {
 func (m *DefaultPhaseFactory) New(provider *PhaseConfigProvider) RunnerCleaner {
 	return &Phase{
 		ctrConf:             provider.ContainerConfig(),
+		endpoint:            provider.Endpoint(),
 		hostConf:            provider.HostConfig(),
 		name:                provider.Name(),
 		docker:              m.lifecycleExec.docker,

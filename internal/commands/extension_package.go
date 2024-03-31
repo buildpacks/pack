@@ -73,7 +73,7 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 			}
 
 			pkgMultiArchConfig := pubbldpkg.NewMultiArchPackage(exPackageCfg, relativeBaseDir)
-			var extPath = "."
+			var extPath string
 			if extPath, err = filepath.Abs("."); err != nil {
 				return errors.Wrap(err, "resolving extension path")
 			}
@@ -150,13 +150,13 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 
 				if err := packager.PackageMultiArchExtension(cmd.Context(), pkgExtOpts); err != nil {
 					if err := revertExtConfig(extConfigPath, extConfig); err != nil {
-						return fmt.Errorf("unable to revert changes of extention %s", style.Symbol(name))
+						return fmt.Errorf("unable to revert changes of extension %s", style.Symbol(name))
 					}
 					return err
 				}
 
 				if err := revertExtConfig(extConfigPath, extConfig); err != nil {
-					return fmt.Errorf("unable to revert changes of extention %s", style.Symbol(name))
+					return fmt.Errorf("unable to revert changes of extension %s", style.Symbol(name))
 				}
 			} else {
 				if len(extConfigs) == 1 {

@@ -164,54 +164,38 @@ func (c *MultiArchConfig) BuilderConfigs(getIndexManifest func(ref name.Referenc
 				return configs, err
 			}
 			configs = append(configs, cfg)
-		} else {
-			for _, distro := range target.Distributions {
-				if len(distro.Versions) == 0 {
-					configCopy := *c
-					cfg, err := configCopy.processTarget(target, distro, "", getIndexManifest)
-					if err != nil {
-						return configs, err
-					}
-					configs = append(configs, cfg)
-				} else {
-					for _, version := range distro.Versions {
-						configCopy := *c
-						cfg, err := configCopy.processTarget(target, distro, version, getIndexManifest)
-						if err != nil {
-							return configs, err
-						}
-						configs = append(configs, cfg)
-					}
+			continue
+		}
+		for _, distro := range target.Distributions {
+			if len(distro.Versions) == 0 {
+				configCopy := *c
+				cfg, err := configCopy.processTarget(target, distro, "", getIndexManifest)
+				if err != nil {
+					return configs, err
 				}
+				configs = append(configs, cfg)
+				continue
+			}
+			for _, version := range distro.Versions {
+				configCopy := *c
+				cfg, err := configCopy.processTarget(target, distro, version, getIndexManifest)
+				if err != nil {
+					return configs, err
+				}
+				configs = append(configs, cfg)
 			}
 		}
 	}
-
 	return configs, nil
 }
 
-func (c MultiArchConfig) processTarget(target dist.Target, distro dist.Distribution, version string, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (config Config, err error) {
-	config = Config{
-		Buildpacks: make(ModuleCollection, len(c.Config.Buildpacks)),
-		Extensions: make(ModuleCollection, len(c.Config.Extensions)),
-		Order: make(dist.Order, len(c.Config.Order)),
-		OrderExtensions: make(dist.Order, len(c.Config.OrderExtensions)),
-		WithTargets: make([]dist.Target, len(c.Config.WithTargets)),
-		Run: RunConfig{
-			Images: make([]RunImageConfig, len(c.Config.Run.Images)),
-		},
-		Stack: StackConfig{
-			RunImageMirrors: make([]string, len(c.Config.Stack.RunImageMirrors)),
-		},
-		Build: BuildConfig{
-			Env: make([]BuildConfigEnv, len(c.Config.Build.Env)),
-		},
-	}
+func (c *MultiArchConfig) processTarget(target dist.Target, distro dist.Distribution, version string, getIndexManifest func(ref name.Reference) (*v1.IndexManifest, error)) (config Config, err error) {
+	config = c.Config
 	processedTarget := buildpackage.ProcessTarget(target, distro, version)
 	for i, bp := range c.Config.Buildpacks {
 		if bp.URI != "" {
 			//TODO: Delete below line
-			fmt.Printf("MultiArchConfig processTarget BP from %s to %s \n", bp.URI, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/" + style.Symbol(target.Arch), "/" + style.Symbol(target.ArchVariant)))
+			fmt.Printf("MultiArchConfig processTarget BP from %s to %s \n", bp.URI, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/"+style.Symbol(target.Arch), "/"+style.Symbol(target.ArchVariant)))
 			if config.Buildpacks[i].URI, err = buildpackage.GetRelativeURI(bp.URI, c.relativeBaseDir, &processedTarget, getIndexManifest); err != nil {
 				return config, err
 			}
@@ -221,7 +205,7 @@ func (c MultiArchConfig) processTarget(target dist.Target, distro dist.Distribut
 	for i, ext := range c.Config.Extensions {
 		if ext.URI != "" {
 			//TODO: Delete below line
-			fmt.Printf("MultiArchConfig processTarget Ext from %s to %s \n", ext.URI, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/" + style.Symbol(target.Arch), "/" + style.Symbol(target.ArchVariant)))
+			fmt.Printf("MultiArchConfig processTarget Ext from %s to %s \n", ext.URI, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/"+style.Symbol(target.Arch), "/"+style.Symbol(target.ArchVariant)))
 			if config.Extensions[i].URI, err = buildpackage.GetRelativeURI(ext.URI, c.relativeBaseDir, &processedTarget, getIndexManifest); err != nil {
 				return config, err
 			}
@@ -230,7 +214,7 @@ func (c MultiArchConfig) processTarget(target dist.Target, distro dist.Distribut
 
 	if img := c.Config.Build.Image; img != "" {
 		//TODO: Delete below line
-		fmt.Printf("MultiArchConfig processTarget Build.Image from %s to %s \n", img, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/" + style.Symbol(target.Arch), "/" + style.Symbol(target.ArchVariant)))
+		fmt.Printf("MultiArchConfig processTarget Build.Image from %s to %s \n", img, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/"+style.Symbol(target.Arch), "/"+style.Symbol(target.ArchVariant)))
 		if config.Build.Image, err = buildpackage.ParseURItoString(img, processedTarget, getIndexManifest); err != nil {
 			return config, err
 		}
@@ -238,12 +222,12 @@ func (c MultiArchConfig) processTarget(target dist.Target, distro dist.Distribut
 
 	for i, runImg := range c.Config.Run.Images {
 		//TODO: Delete below line
-		fmt.Printf("MultiArchConfig processTarget Run.Images[%d] from %s to %s \n", i, runImg, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/" + style.Symbol(target.Arch), "/" + style.Symbol(target.ArchVariant)))
+		fmt.Printf("MultiArchConfig processTarget Run.Images[%d] from %s to %s \n", i, runImg, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/"+style.Symbol(target.Arch), "/"+style.Symbol(target.ArchVariant)))
 		config.Run.Images[i].Image, err = buildpackage.ParseURItoString(runImg.Image, processedTarget, getIndexManifest)
 		if err != nil {
 			for j, mirror := range runImg.Mirrors {
 				//TODO: Delete below line
-				fmt.Printf("MultiArchConfig processTarget Run.Images[%d].Mirrors[%d] from %s to %s \n",i, j, mirror, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/" + style.Symbol(target.Arch), "/" + style.Symbol(target.ArchVariant)))
+				fmt.Printf("MultiArchConfig processTarget Run.Images[%d].Mirrors[%d] from %s to %s \n", i, j, mirror, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/"+style.Symbol(target.Arch), "/"+style.Symbol(target.ArchVariant)))
 				if config.Run.Images[i].Mirrors[j], err = buildpackage.ParseURItoString(mirror, processedTarget, getIndexManifest); err == nil {
 					break
 				}
@@ -257,7 +241,7 @@ func (c MultiArchConfig) processTarget(target dist.Target, distro dist.Distribut
 
 	if img := c.Config.Stack.BuildImage; img != "" {
 		//TODO: Delete below line
-		fmt.Printf("MultiArchConfig processTarget stack.BuildImage from %s to %s \n", img, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/" + style.Symbol(target.Arch), "/" + style.Symbol(target.ArchVariant)))
+		fmt.Printf("MultiArchConfig processTarget stack.BuildImage from %s to %s \n", img, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/"+style.Symbol(target.Arch), "/"+style.Symbol(target.ArchVariant)))
 		if config.Stack.BuildImage, err = buildpackage.ParseURItoString(img, processedTarget, getIndexManifest); err != nil {
 			return config, err
 		}
@@ -265,11 +249,11 @@ func (c MultiArchConfig) processTarget(target dist.Target, distro dist.Distribut
 
 	if img := c.Config.Stack.RunImage; img != "" {
 		//TODO: Delete below line
-		fmt.Printf("MultiArchConfig processTarget stacks.RunImage from %s to %s \n", img, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/" + style.Symbol(target.Arch), "/" + style.Symbol(target.ArchVariant)))
+		fmt.Printf("MultiArchConfig processTarget stacks.RunImage from %s to %s \n", img, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/"+style.Symbol(target.Arch), "/"+style.Symbol(target.ArchVariant)))
 		if config.Stack.RunImage, err = buildpackage.ParseURItoString(img, processedTarget, getIndexManifest); err != nil {
 			for i, mirror := range config.Stack.RunImageMirrors {
 				//TODO: Delete below line
-				fmt.Printf("MultiArchConfig processTarget stacks.RunImage Mirror at %d from %s to %s \n", i, mirror, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/" + style.Symbol(target.Arch), "/" + style.Symbol(target.ArchVariant)))
+				fmt.Printf("MultiArchConfig processTarget stacks.RunImage Mirror at %d from %s to %s \n", i, mirror, fmt.Sprintf("%s%s%s", style.Symbol(target.OS), "/"+style.Symbol(target.Arch), "/"+style.Symbol(target.ArchVariant)))
 				if config.Stack.RunImageMirrors[i], err = buildpackage.ParseURItoString(mirror, processedTarget, getIndexManifest); err == nil {
 					break
 				}
