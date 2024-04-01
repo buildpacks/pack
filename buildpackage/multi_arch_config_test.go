@@ -1,16 +1,13 @@
 package buildpackage_test
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -108,11 +105,6 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 					URI: "urn:cnb:registry:paketo-buildpacks/node-engine@3.2.1",
 				},
 			},
-			// {
-			// 	BuildpackURI: dist.BuildpackURI{
-			// 		URI: "some-bp",
-			// 	},
-			// },
 			{
 				BuildpackURI: dist.BuildpackURI{
 					URI: "https://example.com/buildpack.tgz",
@@ -133,11 +125,6 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 					URI: "docker://cnbs/some-bp:some-tag",
 				},
 			},
-			// {
-			// 	BuildpackURI: dist.BuildpackURI{
-			// 		URI: "cnbs/sample-package@hello-universe",
-			// 	},
-			// },
 			{
 				ImageRef: dist.ImageRef{
 					// FIXME: not sure if this ImageName is valid
@@ -145,9 +132,6 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 				},
 			},
 		}
-		// extension = dist.BuildpackURI{
-		// 	URI: ".",
-		// }
 		platform      = dist.Platform{OS: "linux"}
 		packageConfig = buildpackage.Config{
 			Buildpack:    buildpackURICurrent,
@@ -194,25 +178,6 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(cfgs), expectedConfigsLen)
 			})
-			it("should return an error when has no access to workingDir", func() {
-				wd, err := os.Getwd()
-				h.AssertNil(t, err)
-
-				tmpDir, err := os.MkdirTemp("", "test_dir")
-				h.AssertNil(t, err)
-
-				h.AssertNil(t, os.Chdir(tmpDir))
-				h.AssertNil(t, os.RemoveAll(tmpDir))
-
-				cfg := buildpackage.NewMultiArchBuildpack(BuildPackConfig, "", false, false, nil)
-				h.AssertNotNil(t, cfg)
-
-				cfgs, err := cfg.MultiArchConfigs()
-				h.AssertNotNil(t, err)
-				h.AssertEq(t, len(cfgs), 0)
-
-				h.AssertNil(t, os.Chdir(wd))
-			})
 			it("shouldhave expected multiArch configs", func() {
 				cfg := buildpackage.NewMultiArchBuildpack(BuildPackConfig, "", false, false, nil)
 				h.AssertNotNil(t, cfg)
@@ -224,11 +189,70 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 				splitedTargets := splitTargets(cfg.Targets())
 				h.AssertEq(t, cfgs[0].BuildpackDescriptor.WithInfo, moduleInfo)
 				h.AssertEq(t, cfgs[0].BuildpackDescriptor.WithAPI, platformAPIVersion)
-				h.AssertEq(t, cfgs[0].WithTargets[0], splitedTargets[0])
+				h.AssertEq(t, cfgs[0].Targets()[0], splitedTargets[0])
 
 				h.AssertEq(t, cfgs[1].BuildpackDescriptor.WithInfo, moduleInfo)
 				h.AssertEq(t, cfgs[1].BuildpackDescriptor.WithAPI, platformAPIVersion)
-				h.AssertEq(t, cfgs[1].WithTargets[0], splitedTargets[1])
+				h.AssertEq(t, cfgs[1].Targets()[0], splitedTargets[1])
+			})
+		})
+	})
+	when("#NewMultiArchExtension", func() {
+		var (
+			platformAPIVersion = api.Platform.Latest()
+			moduleInfo         = dist.ModuleInfo{
+				ID:          "some/buildpack",
+				Name:        "SomeBuildpack",
+				Version:     "",
+				Description: "some description",
+			}
+			ExtensionConfig = dist.ExtensionDescriptor{
+				WithInfo:    moduleInfo,
+				WithAPI:     platformAPIVersion,
+				WithTargets: append(targets, target),
+			}
+		)
+		it("should return new #multiArchExtension pointer", func() {
+			cfg := buildpackage.NewMultiArchExtension(ExtensionConfig, "", targets)
+			h.AssertNotNil(t, cfg)
+		})
+		when("#multiArchExtension", func() {
+			it("should return config targets", func() {
+				cfg := buildpackage.NewMultiArchExtension(ExtensionConfig, "", nil)
+				h.AssertNotNil(t, cfg)
+				h.AssertEq(t, cfg.Targets(), append(targets, target))
+			})
+			it("should return cli targets", func() {
+				cfg := buildpackage.NewMultiArchExtension(ExtensionConfig, "", targets)
+				h.AssertNotNil(t, cfg)
+				h.AssertEq(t, cfg.Targets(), targets)
+			})
+			it("should return ExtensionConfigs", func() {
+				expectedConfigsLen := 9
+				cfg := buildpackage.NewMultiArchExtension(ExtensionConfig, "", nil)
+				h.AssertNotNil(t, cfg)
+
+				cfgs, err := cfg.MultiArchConfigs()
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(cfgs), expectedConfigsLen)
+			})
+			it("should have expected multiArch configs", func() {
+				cfg := buildpackage.NewMultiArchExtension(ExtensionConfig, "", nil)
+				h.AssertNotNil(t, cfg)
+
+				cfgs, err := cfg.MultiArchConfigs()
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(cfgs) > 1, true)
+
+				splitedTargets := splitTargets(cfg.Targets())
+				h.AssertEq(t, len(cfgs), len(splitedTargets))
+				h.AssertEq(t, cfgs[0].ExtensionDescriptor.WithInfo, moduleInfo)
+				h.AssertEq(t, cfgs[0].ExtensionDescriptor.WithAPI, platformAPIVersion)
+				h.AssertEq(t, cfgs[0].Targets()[0], splitedTargets[0])
+
+				h.AssertEq(t, cfgs[1].ExtensionDescriptor.WithInfo, moduleInfo)
+				h.AssertEq(t, cfgs[1].ExtensionDescriptor.WithAPI, platformAPIVersion)
+				h.AssertEq(t, cfgs[1].Targets()[0], splitedTargets[1])
 			})
 		})
 	})
@@ -268,46 +292,6 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 								Version: "22.04",
 							},
 						},
-						// {
-						// 	ModuleInfo: dist.ModuleInfo{
-						// 		ID: ".",
-						// 	},
-						// },
-						// {
-						// 	ModuleInfo: dist.ModuleInfo{
-						// 		ID: "urn:cnb:registry:paketo-buildpacks/node-engine@3.2.1",
-						// 	},
-						// },
-						// {
-						// 	ModuleInfo: dist.ModuleInfo{
-						// 		ID: "https://example.com/buildpack.tgz",
-						// 	},
-						// },
-						// {
-						// 	ModuleInfo: dist.ModuleInfo{
-						// 		ID: "docker://cnbs/some-bp",
-						// 	},
-						// },
-						// {
-						// 	ModuleInfo: dist.ModuleInfo{
-						// 		ID: "docker://cnbs/some-bp@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-						// 	},
-						// },
-						// {
-						// 	ModuleInfo: dist.ModuleInfo{
-						// 		ID: "docker://cnbs/some-bp:some-tag",
-						// 	},
-						// },
-						// {
-						// 	ModuleInfo: dist.ModuleInfo{
-						// 		ID: "cnbs/sample-package@hello-universe",
-						// 	},
-						// },
-						// {
-						// 	ModuleInfo: dist.ModuleInfo{
-						// 		ID: "../hello-world-windows",
-						// 	},
-						// },
 					},
 				},
 			}
@@ -389,11 +373,11 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 			configs, err := multiArchBP.MultiArchConfigs()
 			h.AssertNil(t, err)
 
-			expectedConfigs := splitTargets(append(targets, target))
-			h.AssertEq(t, len(configs), len(expectedConfigs))
+			expectedTargets := splitTargets(append(targets, target))
+			h.AssertEq(t, len(configs), len(expectedTargets))
 
-			h.AssertEq(t, configs[0].WithTargets[0], expectedConfigs[0])
-			h.AssertEq(t, configs[1].WithTargets[0], expectedConfigs[1])
+			h.AssertEq(t, configs[0].BuildpackDescriptor.WithTargets[0], expectedTargets[0])
+			h.AssertEq(t, configs[1].WithTargets[0], expectedTargets[1])
 
 			h.AssertEq(t, configs[0].BuildpackDescriptor.WithAPI, buildpackDescriptor.WithAPI)
 			h.AssertEq(t, configs[0].BuildpackDescriptor.WithInfo, buildpackDescriptor.WithInfo)
@@ -449,7 +433,7 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 				configs, err := multiArchBP.MultiArchConfigs()
 				h.AssertNil(t, err)
 
-				h.AssertNil(t, configs[0].CopyBuildpackToml(fakeIndexManifestBuilderFn(append(targets, target))))
+				h.AssertNil(t, configs[0].CopyBuildpackToml(h.FakeIndexManifestBuilderFn(append(targets, target))))
 
 				bp1Target := configs[0].Targets()[0]
 				// platformRootBP1Dir := buildpack.PlatformRootDirectory(bp1Target, bp1Target.Distributions[0].Name, bp1Target.Distributions[0].Versions[0])
@@ -474,12 +458,9 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 				}
 				h.AssertEq(t, configs[0].BuildpackDescriptor, expectedBP1Config)
 
-				h.AssertNil(t, configs[1].CopyBuildpackToml(fakeIndexManifestBuilderFn(append(targets, target))))
+				h.AssertNil(t, configs[1].CopyBuildpackToml(h.FakeIndexManifestBuilderFn(append(targets, target))))
 
 				bp2Target := configs[1].Targets()[0]
-				// platformRootBP2Dir := buildpack.PlatformRootDirectory(bp2Target, bp2Target.Distributions[0].Name, bp2Target.Distributions[0].Versions[0])
-				// BP2buildpackToml := filepath.Join(bpPath, platformRootBP2Dir, BuildpackTOMLStr)
-
 				_, err = os.Stat(configs[1].Path())
 				h.AssertNil(t, err)
 
@@ -515,8 +496,8 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 
 			config1, config2 := configs[0], configs[1]
 
-			h.AssertNil(t, config1.CopyBuildpackToml(fakeIndexManifestBuilderFn(targets)))
-			h.AssertNil(t, config2.CopyBuildpackToml(fakeIndexManifestBuilderFn(targets)))
+			h.AssertNil(t, config1.CopyBuildpackToml(h.FakeIndexManifestBuilderFn(targets)))
+			h.AssertNil(t, config2.CopyBuildpackToml(h.FakeIndexManifestBuilderFn(targets)))
 
 			_, err = os.Stat(config1.Path())
 			h.AssertNil(t, err)
@@ -542,6 +523,164 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 			h.AssertNotNil(t, err)
 		})
 	})
+	when("#MultiArchExtensionConfig", func() {
+		var (
+			bpPath     = "./someBPPath"
+			BPAPI      = api.Buildpack.Latest()
+			ModuleInfo = dist.ModuleInfo{
+				ID: "some/bp",
+			}
+			extensionDescriptor = dist.ExtensionDescriptor{
+				WithAPI:     BPAPI,
+				WithInfo:    ModuleInfo,
+				WithTargets: append(targets, target),
+			}
+		)
+		it("should return target.Spec.Path if specified", func() {
+			multiArchBP := buildpackage.NewMultiArchExtension(extensionDescriptor, bpPath, append(targets, target))
+			configs, err := multiArchBP.MultiArchConfigs()
+			h.AssertNil(t, err)
+
+			h.AssertEq(t, configs[0].Path(), "some-path/extension.toml")
+			h.AssertEq(t, configs[1].Path(), "some-path/extension.toml")
+		})
+		it("should return relativeDir when target.Spec.Path not specified", func() {
+			targets := append(targets, target)
+			for i, t := range targets {
+				t.Specs.Path = ""
+				targets[i] = t
+			}
+
+			multiArchBP := buildpackage.NewMultiArchExtension(extensionDescriptor, bpPath, targets)
+			configs, err := multiArchBP.MultiArchConfigs()
+			h.AssertNil(t, err)
+
+			h.AssertEq(t, configs[0].Path(), configs[0].RelativeBaseDir())
+			h.AssertEq(t, configs[1].Path(), configs[1].RelativeBaseDir())
+		})
+		it("should return BP Targets", func() {
+			multiArchBP := buildpackage.NewMultiArchExtension(extensionDescriptor, bpPath, nil)
+			h.AssertEq(t, multiArchBP.Targets(), append(targets, target))
+		})
+		it("should return Flag Targets", func() {
+			multiArchBP := buildpackage.NewMultiArchExtension(extensionDescriptor, bpPath, targets)
+			h.AssertEq(t, multiArchBP.Targets(), targets)
+		})
+		it("should return expected len of config's multi arch configs", func() {
+			multiArchBP := buildpackage.NewMultiArchExtension(extensionDescriptor, bpPath, nil)
+			configs, err := multiArchBP.MultiArchConfigs()
+			h.AssertNil(t, err)
+
+			expectedTargets := splitTargets(append(targets, target))
+			h.AssertEq(t, len(configs), len(expectedTargets))
+
+			h.AssertEq(t, configs[0].ExtensionDescriptor.WithTargets[0], expectedTargets[0])
+			h.AssertEq(t, configs[1].WithTargets[0], expectedTargets[1])
+
+			h.AssertEq(t, configs[0].ExtensionDescriptor.WithAPI, extensionDescriptor.WithAPI)
+			h.AssertEq(t, configs[0].ExtensionDescriptor.WithInfo, extensionDescriptor.WithInfo)
+		})
+		it("should return expected len of flag defined targets", func() {
+			multiArchBP := buildpackage.NewMultiArchExtension(extensionDescriptor, bpPath, targets)
+			configs, err := multiArchBP.MultiArchConfigs()
+			h.AssertNil(t, err)
+
+			expectedConfigs := splitTargets(targets)
+			h.AssertEq(t, len(configs), len(expectedConfigs))
+
+			h.AssertEq(t, configs[0].WithTargets[0], expectedConfigs[0])
+			h.AssertEq(t, configs[1].WithTargets[0], expectedConfigs[1])
+
+			h.AssertEq(t, configs[0].ExtensionDescriptor.WithAPI, extensionDescriptor.WithAPI)
+			h.AssertEq(t, configs[0].ExtensionDescriptor.WithInfo, extensionDescriptor.WithInfo)
+		})
+		when("#CopyExtensionToml", func() {
+			it("should copy extension.toml to expected path", func() {
+				multiArchBP := buildpackage.NewMultiArchExtension(extensionDescriptor, bpPath, append(targets, target))
+				configs, err := multiArchBP.MultiArchConfigs()
+				h.AssertNil(t, err)
+
+				h.AssertNil(t, configs[0].CopyExtensionToml(h.FakeIndexManifestBuilderFn(append(targets, target))))
+
+				bp1Target := configs[0].Targets()[0]
+				// platformRootBP1Dir := buildpack.PlatformRootDirectory(bp1Target, bp1Target.Distributions[0].Name, bp1Target.Distributions[0].Versions[0])
+				// BP1buildpackToml := filepath.Join(bpPath, platformRootBP1Dir, BuildpackTOMLStr)
+
+				_, err = os.Stat(configs[0].Path())
+				h.AssertNil(t, err)
+
+				config1 := &dist.ExtensionDescriptor{}
+				tomlMetaDataBP1, err := toml.DecodeFile(configs[0].Path(), config1)
+				h.AssertEq(t, len(tomlMetaDataBP1.Undecoded()), 0)
+				h.AssertEq(t, err, nil)
+
+				expectedBP1Config := dist.ExtensionDescriptor{
+					WithAPI:     BPAPI,
+					WithTargets: []dist.Target{bp1Target},
+					WithInfo:    configs[0].WithInfo,
+				}
+				h.AssertEq(t, configs[0].ExtensionDescriptor, expectedBP1Config)
+
+				h.AssertNil(t, configs[1].CopyExtensionToml(h.FakeIndexManifestBuilderFn(append(targets, target))))
+
+				bp2Target := configs[1].Targets()[0]
+				_, err = os.Stat(configs[1].Path())
+				h.AssertNil(t, err)
+
+				config2 := &dist.ExtensionDescriptor{}
+				tomlMetaDataBP2, err := toml.DecodeFile(configs[1].Path(), config2)
+				h.AssertEq(t, len(tomlMetaDataBP2.Undecoded()), 0)
+				h.AssertEq(t, err, nil)
+
+				expectedBP2Config := dist.ExtensionDescriptor{
+					WithAPI:     BPAPI,
+					WithTargets: []dist.Target{bp2Target},
+					WithInfo:    configs[1].WithInfo,
+				}
+				h.AssertEq(t, configs[1].ExtensionDescriptor, expectedBP2Config)
+				h.AssertNil(t, os.Remove(configs[0].Path()))
+			})
+		})
+		it("should cleanBuildpackToml", func() {
+			var targets []dist.Target
+			for _, t := range append(targets, target) {
+				t.Specs.Path = ""
+				targets = append(targets, t)
+			}
+
+			multiArchBP := buildpackage.NewMultiArchExtension(extensionDescriptor, bpPath, targets)
+			configs, err := multiArchBP.MultiArchConfigs()
+			h.AssertNil(t, err)
+
+			config1, config2 := configs[0], configs[1]
+
+			h.AssertNil(t, config1.CopyExtensionToml(h.FakeIndexManifestBuilderFn(targets)))
+			h.AssertNil(t, config2.CopyExtensionToml(h.FakeIndexManifestBuilderFn(targets)))
+
+			_, err = os.Stat(config1.Path())
+			h.AssertNil(t, err)
+
+			_, err = os.Stat(config2.Path())
+			h.AssertNil(t, err)
+
+			// should only remove config1
+			h.AssertNil(t, config1.CleanExtensionToml())
+
+			_, err = os.Stat(config1.Path())
+			h.AssertNotNil(t, err)
+
+			_, err = os.Stat(config2.Path())
+			h.AssertNil(t, err)
+
+			h.AssertNil(t, config2.CleanExtensionToml())
+
+			_, err = os.Stat(config1.Path())
+			h.AssertNotNil(t, err)
+
+			_, err = os.Stat(config2.Path())
+			h.AssertNotNil(t, err)
+		})
+	})
 	when("#MultiArchPackage", func() {
 		it("should copy package descriptor to expected location", func() {
 			tmpDir, err := os.MkdirTemp("", "someCPPKGDir")
@@ -554,7 +693,7 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 			h.AssertNotNil(t, cfg)
 
 			distro := target.Distributions[0]
-			h.AssertNil(t, cfg.CopyPackageToml(bpPath, target, distro.Name, distro.Versions[0], fakeIndexManifestBuilderFn([]dist.Target{target})))
+			h.AssertNil(t, cfg.CopyPackageToml(bpPath, target, distro.Name, distro.Versions[0], h.FakeIndexManifestBuilderFn([]dist.Target{target})))
 
 			platformRootDir := buildpack.PlatformRootDirectory(target, distro.Name, distro.Versions[0])
 
@@ -569,9 +708,6 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 				Buildpack: dist.BuildpackURI{
 					URI: "file://" + filepath.Join(path, platformRootDir),
 				},
-				// Extension: dist.BuildpackURI{
-				// 	URI: "file://" + filepath.Join(path, platformRootDir),
-				// },
 				Platform: dist.Platform{OS: "linux"},
 				Dependencies: []dist.ImageOrURI{
 					{
@@ -581,7 +717,7 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 					},
 					{
 						BuildpackURI: dist.BuildpackURI{
-							URI: buildpack.PlatformSafeName("https://example.com/buildpack", target) + ".tgz",
+							URI: "https://example.com/buildpack.tgz",
 						},
 					},
 				},
@@ -610,7 +746,7 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 			h.AssertNotNil(t, cfg)
 
 			distro := target.Distributions[0]
-			h.AssertNil(t, cfg.CopyPackageToml(bpPath, target, distro.Name, distro.Versions[0], fakeIndexManifestBuilderFn([]dist.Target{target})))
+			h.AssertNil(t, cfg.CopyPackageToml(bpPath, target, distro.Name, distro.Versions[0], h.FakeIndexManifestBuilderFn([]dist.Target{target})))
 
 			platformRootDir := buildpack.PlatformRootDirectory(target, distro.Name, distro.Versions[0])
 			packageToml := filepath.Join(bpPath, platformRootDir, "package.toml")
@@ -629,7 +765,7 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 			idxMfest *v1.IndexManifest
 		)
 		it.Before(func() {
-			fakeIndexManifestFn := fakeIndexManifestBuilderFn(append(targets, target))
+			fakeIndexManifestFn := h.FakeIndexManifestBuilderFn(append(targets, target))
 			fakeTag, err := name.NewTag("cnbs/samples", name.Insecure, name.WeakValidation)
 			h.AssertNil(t, err)
 
@@ -656,66 +792,17 @@ func testMultiArchBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S)
 
 func splitTargets(targets []dist.Target) (out []dist.Target) {
 	for _, t := range targets {
-		for _, distro := range t.Distributions {
-			for _, version := range distro.Versions {
-				out = append(out, dist.Target{
-					OS:          t.OS,
-					Arch:        t.Arch,
-					ArchVariant: t.ArchVariant,
-					Distributions: []dist.Distribution{
-						{
-							Name:     distro.Name,
-							Versions: []string{version},
-						},
-					},
-					Specs: t.Specs,
-				})
+		t.Range(func(target dist.Target, distroName, distroVersion string) error {
+			target.Distributions = []dist.Distribution{
+				{
+					Name:     distroName,
+					Versions: []string{distroVersion},
+				},
 			}
-		}
+			out = append(out, target)
+			return nil
+		})
 	}
 
 	return out
-}
-
-func fakeIndexManifestBuilderFn(targets []dist.Target) func(name.Reference) (*v1.IndexManifest, error) {
-	var manifests = make([]v1.Descriptor, 0)
-	for _, t := range targets {
-		targetStr := strings.Join([]string{
-			t.OS,
-			t.Arch,
-			t.ArchVariant,
-		}, "")
-		for _, distro := range t.Distributions {
-			for _, version := range distro.Versions {
-				hash, size, _ := v1.SHA256(bytes.NewBufferString(strings.Join([]string{targetStr, distro.Name, version}, "")))
-				manifests = append(manifests, v1.Descriptor{
-					MediaType:   types.OCIManifestSchema1,
-					Size:        size,
-					Digest:      hash,
-					URLs:        t.URLs(),
-					Annotations: t.Specs.Annotations,
-					Platform: &v1.Platform{
-						OS:           t.OS,
-						Architecture: t.Arch,
-						Variant:      t.ArchVariant,
-						OSVersion:    version,
-						OSFeatures:   t.Specs.OSFeatures,
-						Features:     t.Specs.Features,
-					},
-				})
-			}
-		}
-	}
-
-	fakeIndexManifestFn := func(ref name.Reference) (*v1.IndexManifest, error) {
-		annotations := map[string]string{"some-key": "some-version"}
-		return &v1.IndexManifest{
-			MediaType:     types.OCIImageIndex,
-			SchemaVersion: 1,
-			Manifests:     manifests,
-			Annotations:   annotations,
-		}, nil
-	}
-
-	return fakeIndexManifestFn
 }

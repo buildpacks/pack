@@ -76,7 +76,27 @@ type TargetSpecs struct {
 	Labels         map[string]string `json:"labels,omitempty" toml:"labels,omitempty"`
 	OSVersion      string            `json:"os.version,omitempty" toml:"os.version,omitempty"`
 	Path           string            `json:"path,omitempty" toml:"path,omitempty"`
-	BuildConfigEnv map[string]string `json:"build.envs,omitempty" toml:"build.envs,omitempty"`
+}
+
+func (t Target) Range(op func(target Target, distroName, distroVersion string) error) error {
+	emptyString := ""
+	if len(t.Distributions) == 0 {
+		return op(t, emptyString, emptyString)
+	}
+	for _, distro := range t.Distributions {
+		if len(distro.Versions) == 0 {
+			if err := op(t, distro.Name, emptyString); err != nil {
+				return err
+			}
+			continue
+		}
+		for _, version := range distro.Versions {
+			if err := op(t, distro.Name, version); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (t *Target) Platform() *v1.Platform {

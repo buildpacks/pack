@@ -5,11 +5,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/builder"
+	"github.com/buildpacks/pack/pkg/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -334,6 +336,173 @@ uri = "noop-buildpack.tgz"
 			h.AssertNotNil(t, warn)
 			h.AssertNil(t, err)
 			h.AssertMapContains[string, string](t, env, h.NewKeyValue[string, string]("key", "value"))
+		})
+	})
+	when("#ReadMultiArchConfig", func() {
+		var (
+			tmpDir            string
+			builderConfigPath string
+			err               error
+			builderConfig     builder.MultiArchConfig
+		)
+		it.Before(func() {
+			tmpDir, err = os.MkdirTemp("", "config-test")
+			h.AssertNil(t, err)
+			builderConfigPath = filepath.Join(tmpDir, "builder.toml")
+			builderConfig = builder.MultiArchConfig{
+				Config: builder.Config{
+					Buildpacks: builder.ModuleCollection{
+						{
+							ImageOrURI: dist.ImageOrURI{
+								BuildpackURI: dist.BuildpackURI{
+									URI: "busybox:1.36-musl",
+								},
+							},
+						},
+					},
+					WithTargets: []dist.Target{
+						{
+							OS:   "linux",
+							Arch: "amd64",
+						},
+						{
+							OS:          "linux",
+							Arch:        "arm",
+							ArchVariant: "v6",
+						},
+					},
+					Order: dist.Order{
+						dist.OrderEntry{
+							Group: []dist.ModuleRef{
+								{
+									ModuleInfo: dist.ModuleInfo{
+										Name:    "busybox",
+										Version: "1.36-musl",
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+		})
+		it.After(func() {
+			h.AssertNil(t, os.RemoveAll(tmpDir))
+		})
+		it("should return multi-arch config", func() {
+			file, err := os.OpenFile(builderConfigPath, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, os.ModePerm)
+			h.AssertNil(t, err)
+			h.AssertNil(t, toml.NewEncoder(file).Encode(&builderConfig))
+
+			config, warnings, err := builder.ReadMultiArchConfig(builderConfigPath, nil)
+			h.AssertNil(t, err)
+			h.AssertEq(t, len(warnings), 0)
+			h.AssertEq(t, config.Config, builderConfig.Config)
+		})
+		it("should return multi-arch config with flag targets", func() {
+			file, err := os.OpenFile(builderConfigPath, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, os.ModePerm)
+			h.AssertNil(t, err)
+			h.AssertNil(t, toml.NewEncoder(file).Encode(&builderConfig))
+
+			config, warnings, err := builder.ReadMultiArchConfig(builderConfigPath, []dist.Target{
+				{
+					OS:   "some-os",
+					Arch: "some-arch",
+				},
+			})
+			h.AssertNil(t, err)
+			h.AssertEq(t, len(warnings), 0)
+			h.AssertEq(t, config.Config, builderConfig.Config)
+			h.AssertNotEq(t, config.Targets(), builderConfig.Config.WithTargets)
+		})
+		it("should return an error", func() {
+			_, _, err := builder.ReadMultiArchConfig(builderConfigPath, nil)
+			h.AssertNotNil(t, err)
+		})
+		it("should return a warning when order is not specified", func() {
+			file, err := os.OpenFile(builderConfigPath, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, os.ModePerm)
+			h.AssertNil(t, err)
+
+			builderConfig := builderConfig
+			builderConfig.Order = nil
+
+			h.AssertNil(t, toml.NewEncoder(file).Encode(&builderConfig))
+
+			config, warnings, err := builder.ReadMultiArchConfig(builderConfigPath, nil)
+			h.AssertNil(t, err)
+			h.AssertEq(t, len(warnings), 1)
+			h.AssertEq(t, config.Config, builderConfig.Config)
+		})
+		when("#BuilderConfigs", func() {
+			var (
+				config   builder.MultiArchConfig
+				warnings []string
+			)
+			it.Before(func() {
+				builderConfig.Extensions = builder.ModuleCollection{
+					{
+						ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: "./some-uri"}},
+					},
+				}
+				builderConfig.Build.Image = "some/build:image"
+				builderConfig.Run.Images = append(builderConfig.Run.Images, builder.RunImageConfig{
+					Image:   "$ome/image+",
+					Mirrors: []string{"some/run-image:mirror"},
+				})
+				builderConfig.Stack = builder.StackConfig{
+					BuildImage:      "some/stack:build-image",
+					RunImage:        "$ome/run-image",
+					RunImageMirrors: []string{"some/stack:run-image1"},
+				}
+				file, err := os.OpenFile(builderConfigPath, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, os.ModePerm)
+				h.AssertNil(t, err)
+				h.AssertNil(t, toml.NewEncoder(file).Encode(&builderConfig))
+				config, warnings, err = builder.ReadMultiArchConfig(builderConfigPath, nil)
+				h.AssertEq(t, len(warnings), 0)
+				h.AssertEq(t, err, nil)
+			})
+			it.After(func() {
+				h.AssertNil(t, os.RemoveAll(tmpDir))
+			})
+			it("should return multiple configs", func() {
+				configs, err := config.BuilderConfigs(h.FakeIndexManifestBuilderFn(config.Targets()))
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(configs), len(config.Targets()))
+			})
+		})
+		when("#MultiArch", func() {
+			it("should return true when multi-target config provided", func() {
+				h.AssertTrue(t, builderConfig.MultiArch())
+			})
+			it("should return true when multi-distro config provided", func() {
+				builderConfig := builderConfig
+				builderConfig.WithTargets = []dist.Target{
+					{
+						Distributions: []dist.Distribution{
+							{
+								Name: "distro1",
+							}, {
+								Name: "distro2",
+							},
+						},
+					},
+				}
+				h.AssertTrue(t, builderConfig.MultiArch())
+			})
+			it("should return true when single distro multi-version config provided", func() {
+				builderConfig := builderConfig
+				builderConfig.WithTargets = []dist.Target{
+					{
+						Distributions: []dist.Distribution{
+							{
+								Name:     "distro1",
+								Versions: []string{"version1", "version2"},
+							},
+						},
+					},
+				}
+				h.AssertTrue(t, builderConfig.MultiArch())
+			})
 		})
 	})
 }

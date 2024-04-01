@@ -45,5 +45,5 @@ func (e *ExtensionDescriptor) Stacks() []Stack {
 }
 
 func (e *ExtensionDescriptor) Targets() []Target {
-	return nil
+	return e.WithTargets
 }

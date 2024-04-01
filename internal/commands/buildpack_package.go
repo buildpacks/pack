@@ -85,19 +85,16 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			bpPackageCfg := pubbldpkg.DefaultConfig()
 			relativeBaseDir := ""
 			if flags.PackageTomlPath != "" {
-				bpPackageCfg, err = packageConfigReader.Read(flags.PackageTomlPath)
-				if err != nil {
+				if bpPackageCfg, err = packageConfigReader.Read(flags.PackageTomlPath); err != nil {
 					return errors.Wrap(err, "reading config")
 				}
 
-				relativeBaseDir, err = filepath.Abs(filepath.Dir(flags.PackageTomlPath))
-				if err != nil {
+				if relativeBaseDir, err = filepath.Abs(filepath.Dir(flags.PackageTomlPath)); err != nil {
 					return errors.Wrap(err, "getting absolute path for config")
 				}
 			}
 
-			pkgMultiArchConfig := pubbldpkg.NewMultiArchPackage(bpPackageCfg, relativeBaseDir)
-			var bpPath string
+			bpPath, pkgMultiArchConfig := "", pubbldpkg.NewMultiArchPackage(bpPackageCfg, relativeBaseDir)
 			if flags.Path != "" {
 				if bpPath, err = filepath.Abs(flags.Path); err != nil {
 					return errors.Wrap(err, "resolving buildpack path")
@@ -128,8 +125,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			if !flags.Publish && len(bpConfigs) > 1 {
 				targets = []dist.Target{{OS: runtime.GOOS, Arch: runtime.GOARCH}}
 				bpMultiArchConfig = pubbldpkg.NewMultiArchBuildpack(bpConfig, bpPath, flags.Flatten, cmd.Flags().Changed("flatten"), targets)
-				bpConfigs, err = bpMultiArchConfig.MultiArchConfigs()
-				if err != nil {
+				if bpConfigs, err = bpMultiArchConfig.MultiArchConfigs(); err != nil {
 					return err
 				}
 			}
@@ -169,13 +165,6 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			}
 
 			if len(bpConfigs) > 1 {
-				// if _, err := os.Stat(filepath.Join(bpPath, "buildpack.toml")); err != nil {
-				// 	return fmt.Errorf("cannot open %s", bpPath)
-				// bpPath = filepath.Join(bpPath, "buildpack.toml")
-				// } else if f.IsDir() {
-				// bpPath = filepath.Join(f.Name(), "buildpack.toml")
-				// }
-
 				pkgBPOpts.RelativeBaseDir = bpConfigPath
 				pkgBPOpts.IndexOptions = pubbldpkg.IndexOptions{
 					BPConfigs: &bpConfigs,
@@ -183,19 +172,16 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 					Logger:    logger,
 				}
 
-				if err := packager.PackageMultiArchBuildpack(cmd.Context(), pkgBPOpts); err != nil {
-					if err := revertBPConfig(bpConfigPath, bpConfig); err != nil {
-						return fmt.Errorf("unable to revert changes of buildpack %s", style.Symbol(bpName))
-					}
-					return err
-				}
-
+				err = packager.PackageMultiArchBuildpack(cmd.Context(), pkgBPOpts)
 				if err := revertBPConfig(bpConfigPath, bpConfig); err != nil {
 					return fmt.Errorf("unable to revert changes of buildpack %s", style.Symbol(bpName))
 				}
+				if err != nil {
+					return err
+				}
 			} else {
 				if len(bpConfigs) == 1 {
-					pkgBPOpts.IndexOptions.Target = bpConfigs[0].WithTargets[0]
+					pkgBPOpts.IndexOptions.Target = bpConfigs[0].Targets()[0]
 				} else {
 					logger.Warnf("A new '--target' flag is available to set the platform for the buildpack package, using '%s' as default", bpPackageCfg.Platform.OS)
 				}

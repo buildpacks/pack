@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"sync"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -88,8 +87,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return NewExperimentError("Windows buildpackage support is currently experimental.")
 	}
 
-	err := c.validateOSPlatform(ctx, opts.Config.Platform.OS, opts.Publish, opts.Format)
-	if err != nil {
+	if err := c.validateOSPlatform(ctx, opts.Config.Platform.OS, opts.Publish, opts.Format); err != nil {
 		return err
 	}
 
@@ -143,8 +141,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 	case FormatFile:
 		return packageBuilder.SaveAsFile(opts.Name, opts.Version, opts.IndexOptions.Target, opts.IndexOptions.ImageIndex, opts.Labels)
 	case FormatImage:
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Version, opts.Publish, opts.IndexOptions.Target, opts.IndexOptions.ImageIndex, opts.Labels)
-		if err == nil {
+		if _, err = packageBuilder.SaveAsImage(opts.Name, opts.Version, opts.Publish, opts.IndexOptions.Target, opts.IndexOptions.ImageIndex, opts.Labels); err == nil {
 			version := opts.Version
 			if version == "" {
 				version = "latest"
@@ -205,7 +202,6 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 		return errors.Errorf("package configaration is undefined")
 	}
 
-	IndexManifestFn := c.GetIndexManifestFn()
 	bpCfg, err := pubbldpkg.NewConfigReader().ReadBuildpackDescriptor(opts.RelativeBaseDir)
 	if err != nil {
 		return fmt.Errorf("cannot read %s file: %s", style.Symbol("buildpack.toml"), style.Symbol(opts.RelativeBaseDir))
@@ -225,35 +221,34 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 	pkgConfig, bpConfigs := *opts.IndexOptions.PkgConfig, *opts.IndexOptions.BPConfigs
 	var (
 		errs errgroup.Group
-		wg   = &sync.WaitGroup{}
 	)
-	wg.Add(len(bpConfigs))
 
 	idx, err := loadImageIndex(c, repoName)
 	if err != nil {
 		return err
 	}
+
+	IndexManifestFn := c.GetIndexManifestFn()
 	packageMultiArchBuildpackFn := func(bpConfig pubbldpkg.MultiArchBuildpackConfig) error {
 		if err := bpConfig.CopyBuildpackToml(IndexManifestFn); err != nil {
 			return err
 		}
 		defer bpConfig.CleanBuildpackToml()
 
-		targets := bpConfig.Targets()
-		if bpConfig.BuildpackType() != pubbldpkg.Composite {
-			target := dist.Target{}
+		if targets := bpConfig.Targets(); bpConfig.BuildpackType() != pubbldpkg.Composite {
+			target, distro, version := dist.Target{}, dist.Distribution{}, ""
 			if len(targets) != 0 {
 				target = targets[0]
 			}
-			distro := dist.Distribution{}
+
 			if len(target.Distributions) != 0 {
 				distro = target.Distributions[0]
 			}
 
-			version := ""
 			if len(distro.Versions) != 0 {
 				version = distro.Versions[0]
 			}
+
 			if err := pkgConfig.CopyPackageToml(filepath.Dir(bpConfig.Path()), target, distro.Name, version, IndexManifestFn); err != nil {
 				return err
 			}
@@ -279,7 +274,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 			IndexOptions: pubbldpkg.IndexOptions{
 				ImageIndex: idx,
 				Logger:     opts.IndexOptions.Logger,
-				Target:     bpConfig.WithTargets[0],
+				Target:     bpConfig.Targets()[0],
 			},
 		})
 	}
@@ -287,11 +282,10 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 	for _, bpConfig := range bpConfigs {
 		c := bpConfig
 		errs.Go(func() error {
-			defer wg.Done()
 			return packageMultiArchBuildpackFn(c)
 		})
 	}
-	wg.Wait()
+
 	if err := errs.Wait(); err != nil {
 		return err
 	}
@@ -307,7 +301,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 	return idx.Push(imgutil.WithInsecure(true) /* imgutil.WithTags("latest") */)
 }
 
-func (c *Client) GetIndexManifestFn() func(ref name.Reference) (*v1.IndexManifest, error) {
+func (c *Client) GetIndexManifestFn() pubbldpkg.GetIndexManifestFn {
 	if len(c.cachedIndexManifests) == 0 {
 		c.cachedIndexManifests = make(map[name.Reference]*v1.IndexManifest)
 	}
@@ -335,8 +329,7 @@ func (c *Client) GetIndexManifestFn() func(ref name.Reference) (*v1.IndexManifes
 			return nil, errors.Errorf("unknown handler: %s", style.Symbol("ManifestHandler"))
 		}
 
-		mfest, err = ii.IndexManifest()
-		if err != nil {
+		if mfest, err = ii.IndexManifest(); err != nil {
 			return mfest, err
 		}
 

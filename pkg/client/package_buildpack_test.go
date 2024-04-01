@@ -86,6 +86,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			client.WithIndexFactory(mockIndexFactory),
 			client.WithFetcher(mockImageFetcher),
 			client.WithDockerClient(mockDockerClient),
+			client.WithExperimental(true),
 		)
 		h.AssertNil(t, err)
 	})

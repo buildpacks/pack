@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -17,6 +18,7 @@ import (
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -439,6 +441,105 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNotNil(t, err)
 					h.AssertError(t, err, "invalid argument \"name+value\" for \"-l, --label\" flag: name+value must be formatted as key=value")
 				})
+			})
+		})
+
+		when("--targets", func() {
+			var (
+				builderName      = "some/builder"
+				moduleCollection = builder.ModuleCollection{
+					{
+						ImageOrURI: dist.ImageOrURI{
+							BuildpackURI: dist.BuildpackURI{
+								URI: "some/bp",
+							},
+						},
+					},
+				}
+				config = builder.Config{
+					Buildpacks: moduleCollection,
+					Order: dist.Order{
+						dist.OrderEntry{
+							Group: []dist.ModuleRef{
+								{
+									ModuleInfo: dist.ModuleInfo{
+										Name: "some/bp",
+									},
+								},
+							},
+						},
+					},
+				}
+			)
+			it.Before(func() {
+				configFile, err := os.Create(builderConfigPath)
+				h.AssertNil(t, err)
+				h.AssertNil(t, toml.NewEncoder(configFile).Encode(config))
+			})
+			it("--publish not specified, should build with current platform as target", func() {
+				command.SetArgs([]string{
+					builderName,
+					"--config", builderConfigPath,
+					"--target", "linux/amd64",
+					"--target", "linux/arm/v6",
+				})
+				// expectedConfig := config
+				// expectedConfig.WithTargets = []dist.Target{
+				// 	{
+				// 		OS: runtime.GOOS,
+				// 		Arch: runtime.GOARCH,
+				// 	},
+				// }
+				mockClient.EXPECT().CreateBuilder(gomock.Any(), gomock.Any()).
+					Times(1).
+					Return(nil)
+				h.AssertNil(t, command.Execute())
+			})
+			it("should build multi arch", func() {
+				command.SetArgs([]string{
+					builderName,
+					"--config", builderConfigPath,
+					"--target", "linux/amd64",
+					"--target", "linux/arm/v6",
+					"--publish",
+				})
+				// expectedConfig := config
+				// expectedConfig.WithTargets = []dist.Target{
+				// 	{
+				// 		OS: "linux",
+				// 		Arch: "amd64",
+				// 	},
+				// 	{
+				// 		OS: "linux",
+				// 		Arch: "arm",
+				// 		ArchVariant: "v6",
+				// 	},
+				// }
+				mockClient.EXPECT().CreateMultiArchBuilder(gomock.Any(), gomock.Any()).
+					Times(1).
+					Return(nil)
+				h.AssertNil(t, command.Execute())
+			})
+			it("should build single arch", func() {
+				command.SetArgs([]string{
+					builderName,
+					"--config", builderConfigPath,
+					"--publish",
+				})
+				expectedConfig := config
+				expectedConfig.WithTargets = []dist.Target{
+					{
+						OS:   "linux",
+						Arch: "amd64",
+					},
+				}
+				configFile, err := os.Create(builderConfigPath)
+				h.AssertNil(t, err)
+				toml.NewEncoder(configFile).Encode(expectedConfig)
+				mockClient.EXPECT().CreateBuilder(gomock.Any(), gomock.Any()).
+					Times(1).
+					Return(nil)
+				h.AssertNil(t, command.Execute())
 			})
 		})
 	})

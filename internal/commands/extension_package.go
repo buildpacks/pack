@@ -58,22 +58,18 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 				return errors.Wrap(err, "parsing pull policy")
 			}
 
-			exPackageCfg := pubbldpkg.DefaultExtensionConfig()
-			relativeBaseDir := ""
+			relativeBaseDir, exPackageCfg := "", pubbldpkg.DefaultExtensionConfig()
 			if flags.PackageTomlPath != "" {
-				exPackageCfg, err = packageConfigReader.Read(flags.PackageTomlPath)
-				if err != nil {
+				if exPackageCfg, err = packageConfigReader.Read(flags.PackageTomlPath); err != nil {
 					return errors.Wrap(err, "reading config")
 				}
 
-				relativeBaseDir, err = filepath.Abs(filepath.Dir(flags.PackageTomlPath))
-				if err != nil {
+				if relativeBaseDir, err = filepath.Abs(filepath.Dir(flags.PackageTomlPath)); err != nil {
 					return errors.Wrap(err, "getting absolute path for config")
 				}
 			}
 
-			pkgMultiArchConfig := pubbldpkg.NewMultiArchPackage(exPackageCfg, relativeBaseDir)
-			var extPath string
+			extPath, pkgMultiArchConfig := "", pubbldpkg.NewMultiArchPackage(exPackageCfg, relativeBaseDir)
 			if extPath, err = filepath.Abs("."); err != nil {
 				return errors.Wrap(err, "resolving extension path")
 			}
@@ -107,8 +103,7 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 			if !flags.Publish && len(extConfigs) > 1 {
 				targets = []dist.Target{{OS: runtime.GOOS, Arch: runtime.GOARCH}}
 				extMultiArchConfig = pubbldpkg.NewMultiArchExtension(extConfig, extPath, targets)
-				extConfigs, err = extMultiArchConfig.MultiArchConfigs()
-				if err != nil {
+				if extConfigs, err = extMultiArchConfig.MultiArchConfigs(); err != nil {
 					return err
 				}
 			}
@@ -134,13 +129,6 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 			}
 
 			if len(extConfigs) > 1 {
-				// if _, err := os.Stat(filepath.Join(extPath, "extension.toml")); err != nil {
-				// 	return fmt.Errorf("cannot open %s", extPath)
-				// extPath = filepath.Join(extPath, "extension.toml")
-				// } else if f.IsDir() {
-				// extPath = filepath.Join(f.Name(), "extension.toml")
-				// }
-
 				pkgExtOpts.RelativeBaseDir = extConfigPath
 				pkgExtOpts.IndexOptions = pubbldpkg.IndexOptions{
 					ExtConfigs: &extConfigs,
@@ -148,19 +136,17 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 					Logger:     logger,
 				}
 
-				if err := packager.PackageMultiArchExtension(cmd.Context(), pkgExtOpts); err != nil {
-					if err := revertExtConfig(extConfigPath, extConfig); err != nil {
-						return fmt.Errorf("unable to revert changes of extension %s", style.Symbol(name))
-					}
-					return err
-				}
-
+				err = packager.PackageMultiArchExtension(cmd.Context(), pkgExtOpts)
 				if err := revertExtConfig(extConfigPath, extConfig); err != nil {
 					return fmt.Errorf("unable to revert changes of extension %s", style.Symbol(name))
 				}
+
+				if err != nil {
+					return err
+				}
 			} else {
 				if len(extConfigs) == 1 {
-					pkgExtOpts.IndexOptions.Target = extConfigs[0].WithTargets[0]
+					pkgExtOpts.IndexOptions.Target = extConfigs[0].Targets()[0]
 				} else {
 					logger.Warnf("A new '--target' flag is available to set the platform for the extension package, using '%s' as default", exPackageCfg.Platform.OS)
 				}

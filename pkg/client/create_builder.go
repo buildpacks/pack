@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -99,7 +100,6 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	}
 
 	underlyingImage := bldr.Image().UnderlyingImage()
-
 	if underlyingImage != nil {
 		digest, err := underlyingImage.Digest()
 		if err != nil {
@@ -147,27 +147,25 @@ func (c *Client) CreateMultiArchBuilder(ctx context.Context, opts CreateBuilderO
 		return err
 	}
 
-	// var (
-	// 	errs errgroup.Group
+	var (
+		errs errgroup.Group
 	// 	wg   = &sync.WaitGroup{}
-	// )
+	)
 	// wg.Add(len(configs))
 
 	ops := opts
 	ops.ImageIndex = idx
 	for _, config := range configs {
 		ops.Config.Config = config
-		// errs.Go(func() error {
-		if err := c.CreateBuilder(ctx, ops); err != nil {
-			return err
-		}
-		// })
+		errs.Go(func() error {
+			return c.CreateBuilder(ctx, ops)
+		})
 	}
 
 	// wg.Wait()
-	// if err := errs.Wait(); err != nil {
-	// 	return err
-	// }
+	if err := errs.Wait(); err != nil {
+		return err
+	}
 
 	if !opts.Publish {
 		return nil
@@ -177,7 +175,7 @@ func (c *Client) CreateMultiArchBuilder(ctx context.Context, opts CreateBuilderO
 		return err
 	}
 
-	return idx.Push(imgutil.WithInsecure(true) /* imgutil.WithTags("latest") */)
+	return idx.Push(imgutil.WithInsecure(true), imgutil.WithTags("latest"))
 }
 
 func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions) error {

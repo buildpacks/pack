@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"sync"
 
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -28,8 +27,7 @@ func (c *Client) PackageExtension(ctx context.Context, opts PackageBuildpackOpti
 		return NewExperimentError("Windows extensionpackage support is currently experimental.")
 	}
 
-	err := c.validateOSPlatform(ctx, opts.Config.Platform.OS, opts.Publish, opts.Format)
-	if err != nil {
+	if err := c.validateOSPlatform(ctx, opts.Config.Platform.OS, opts.Publish, opts.Format); err != nil {
 		return err
 	}
 
@@ -81,7 +79,6 @@ func (c *Client) PackageMultiArchExtension(ctx context.Context, opts PackageBuil
 		return errors.Errorf("package configaration is undefined")
 	}
 
-	IndexManifestFn := c.GetIndexManifestFn()
 	extCfg, err := pubbldpkg.NewConfigReader().ReadExtensionDescriptor(opts.RelativeBaseDir)
 	if err != nil {
 		return fmt.Errorf("cannot read %s file: %s", style.Symbol("extension.toml"), style.Symbol(opts.RelativeBaseDir))
@@ -99,33 +96,29 @@ func (c *Client) PackageMultiArchExtension(ctx context.Context, opts PackageBuil
 	}
 
 	pkgConfig, extConfigs := *opts.IndexOptions.PkgConfig, *opts.IndexOptions.ExtConfigs
-	var (
-		errs errgroup.Group
-		wg   = &sync.WaitGroup{}
-	)
-	wg.Add(len(extConfigs))
 
+	var errs errgroup.Group
 	idx, err := loadImageIndex(c, repoName)
 	if err != nil {
 		return err
 	}
+
+	IndexManifestFn := c.GetIndexManifestFn()
 	packageMultiArchExtensionFn := func(extConfig pubbldpkg.MultiArchExtensionConfig) error {
 		if err := extConfig.CopyExtensionToml(IndexManifestFn); err != nil {
 			return err
 		}
 		defer extConfig.CleanExtensionToml()
 
-		targets := extConfig.Targets()
-		target := dist.Target{}
+		targets, target, distro, version := extConfig.Targets(), dist.Target{}, dist.Distribution{}, ""
 		if len(targets) != 0 {
 			target = targets[0]
 		}
-		distro := dist.Distribution{}
+
 		if len(target.Distributions) != 0 {
 			distro = target.Distributions[0]
 		}
 
-		version := ""
 		if len(distro.Versions) != 0 {
 			version = distro.Versions[0]
 		}
@@ -146,7 +139,7 @@ func (c *Client) PackageMultiArchExtension(ctx context.Context, opts PackageBuil
 			IndexOptions: pubbldpkg.IndexOptions{
 				ImageIndex: idx,
 				Logger:     opts.IndexOptions.Logger,
-				Target:     extConfig.WithTargets[0],
+				Target:     extConfig.Targets()[0],
 			},
 		})
 	}
@@ -154,11 +147,9 @@ func (c *Client) PackageMultiArchExtension(ctx context.Context, opts PackageBuil
 	for _, extConfig := range extConfigs {
 		c := extConfig
 		errs.Go(func() error {
-			defer wg.Done()
 			return packageMultiArchExtensionFn(c)
 		})
 	}
-	wg.Wait()
 	if err := errs.Wait(); err != nil {
 		return err
 	}

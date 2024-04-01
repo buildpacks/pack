@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/BurntSushi/toml"
+	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
@@ -19,6 +20,7 @@ import (
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/fakes"
+	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
@@ -34,12 +36,45 @@ func TestPackageCommand(t *testing.T) {
 
 func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		logger *logging.LogWithWriters
-		outBuf bytes.Buffer
+		logger         *logging.LogWithWriters
+		outBuf         bytes.Buffer
+		mockController *gomock.Controller
+		mockClient     *testmocks.MockPackClient
+		command        *cobra.Command
+		cfg            config.Config
+		bpPackager     *fakes.FakeBuildpackPackager
+		bpConfigReader *fakes.FakePackageConfigReader
+		bpConfigFolder = os.TempDir()
+		bpConfigPath   = filepath.Join(bpConfigFolder, "buildpack.toml")
+		pkgConfigPath  = filepath.Join(bpConfigFolder, "package.toml")
+		pkgConfig      = pubbldpkg.DefaultConfig()
+		bpConfig       = dist.BuildpackDescriptor{
+			WithAPI: minimalLifecycleDescriptor.API.BuildpackVersion,
+			WithInfo: dist.ModuleInfo{
+				ID:      "some/bp",
+				Name:    "some/bp",
+				Version: "latest",
+			},
+		}
 	)
 
 	it.Before(func() {
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
+		mockController = gomock.NewController(t)
+		mockClient = testmocks.NewMockPackClient(mockController)
+		cfg = config.Config{}
+		bpPackager = &fakes.FakeBuildpackPackager{}
+		bpConfigReader = fakes.NewFakePackageConfigReader()
+		command = commands.BuildpackPackage(logger, cfg, bpPackager, bpConfigReader)
+
+		bpFile, err := os.Create(bpConfigPath)
+		h.AssertNil(t, err)
+
+		pkgConfigFile, err := os.Create(pkgConfigPath)
+		h.AssertNil(t, err)
+
+		h.AssertNil(t, toml.NewEncoder(bpFile).Encode(bpConfig))
+		h.AssertNil(t, toml.NewEncoder(pkgConfigFile).Encode(pkgConfig))
 	})
 
 	when("Package#Execute", func() {
@@ -311,6 +346,22 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, receivedOptions.Config.Buildpack.URI, bpPath)
 				})
 			})
+		})
+
+		when("--target", func() {
+			it("should package multi-arch bp", func() {
+				command.SetArgs([]string{
+					"some/image",
+					"--config", pkgConfigPath,
+					"--path", bpConfigFolder,
+					"--target", "linux/amd64",
+					"--target", "linux/arm/v6",
+				})
+				mockClient.EXPECT().PackageBuildpack(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				h.AssertNil(t, command.Execute())
+			})
+			it("should package single-arch bp when --publish is not specified", func() {})
+			it("should package single-arch bp", func() {})
 		})
 	})
 

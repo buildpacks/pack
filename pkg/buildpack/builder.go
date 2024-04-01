@@ -27,6 +27,7 @@ import (
 	"github.com/buildpacks/pack/pkg/logging"
 
 	"github.com/buildpacks/pack/internal/stack"
+	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/dist"
@@ -700,11 +701,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 		dist.AddToLayersMD(bpLayers, bp.Descriptor(), module.diffID)
 	}
 
-	if err := dist.SetLabel(image, dist.BuildpackLayersLabel, bpLayers); err != nil {
-		return err
-	}
-
-	return nil
+	return dist.SetLabel(image, dist.BuildpackLayersLabel, bpLayers)
 }
 
 func (b *PackageBuilder) finalizeExtensionImage(image WorkableImage, tmpDir string) error {
@@ -921,8 +918,7 @@ func (b *PackageBuilder) SaveAsImage(repoName, version string, publish bool, tar
 	}
 
 	for labelKey, labelValue := range labels {
-		err = image.SetLabel(labelKey, labelValue)
-		if err != nil {
+		if err = image.SetLabel(labelKey, labelValue); err != nil {
 			return nil, errors.Wrapf(err, "adding label %s=%s", labelKey, labelValue)
 		}
 	}
@@ -1043,19 +1039,8 @@ func mapContains(src, contains map[string]string) bool {
 }
 
 func sliceContains(src, contains []string) bool {
-	for _, c := range contains {
-		found := false
-		for _, srcString := range src {
-			if c == srcString {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-	return true
+	_, missing, _ := stringset.Compare(contains, src)
+	return len(missing) == 0
 }
 
 func updateLayoutImagePlatform(image *layoutImage, target dist.Target) (err error) {
@@ -1207,40 +1192,7 @@ func getImageDigest(repoName string, image v1.Image) (ref name.Reference, digest
 	}
 
 	return ref, ref.Context().Digest(hash.String()), nil
-
-	// switch k := image.Kind(); k {
-	// case pkgImg.LOCALLAYOUT:
-	// 	fallthrough
-	// case pkgImg.LOCAL:
-	// 	id, err := image.Identifier()
-	// 	if err != nil {
-	// 		return ref, digest, err
-	// 	}
-
-	// 	return ref, ref.Context().Digest("sha256:" + id.String()), nil
-	// case pkgImg.LAYOUT:
-	// 	fallthrough
-	// case pkgImg.REMOTE:
-	// 	id, err := image.Identifier()
-	// 	if err != nil {
-	// 		return ref, digest, err
-	// 	}
-	// 	digest, err = name.NewDigest(id.String(), name.Insecure, name.WeakValidation)
-	// 	return ref, digest, err
-	// default:
-	// 	// fmt.Errorf("unsupported image type: %s", k)
-	// 	return ref, digest, nil
-	// }
 }
-
-// func getAddtionalImageNames(name name.Reference, target dist.Target) (additionalNames []string) {
-// 	hash, err := v1.NewHash(name.Identifier())
-// 	if err == nil {
-// 		additionalNames = append(additionalNames, hash.DeepCopy().Hex)
-// 	}
-
-// 	return append(additionalNames, PlatformSafeName(name.Context().Name(), target))
-// }
 
 func validateBuildpacks(mainBP BuildModule, depBPs []BuildModule) error {
 	depsWithRefs := map[string][]dist.ModuleInfo{}
