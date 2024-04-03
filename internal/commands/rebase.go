@@ -49,6 +49,7 @@ func Rebase(logger logging.Logger, cfg config.Config, pack PackClient) *cobra.Co
 	cmd.Flags().BoolVar(&opts.Publish, "publish", false, "Publish the rebased application image directly to the container registry specified in <image-name>, instead of the daemon. The previous application image must also reside in the registry.")
 	cmd.Flags().StringVar(&opts.RunImage, "run-image", "", "Run image to use for rebasing")
 	cmd.Flags().StringVar(&policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
+	cmd.Flags().StringVar(&opts.PreviousImage, "previous-image", "", "Image to rebase. Set to a particular tag reference, digest reference, or (when performing a daemon build) image ID. Use this flag in combination with <image-name> to avoid replacing the original image.")
 	cmd.Flags().StringVar(&opts.ReportDestinationDir, "report-output-dir", "", "Path to export build report.toml.\nOmitting the flag yield no report file.")
 	cmd.Flags().BoolVar(&opts.Force, "force", false, "Perform rebase operation without target validation (only available for API >= 0.12)")
 	cmd.Flags().StringSliceVarP(&opts.InsecureRegistries, "insecure-registry", "", nil, "List of insecure registries")
