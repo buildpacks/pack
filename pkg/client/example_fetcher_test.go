@@ -53,3 +53,9 @@ func (f *fetcher) Fetch(_ context.Context, imageName string, _ image.FetchOption
 	fmt.Println("custom fetcher called")
 	return nil, errors.New("not implemented")
 }
+
+func (f *fetcher) CheckReadAccessValidator(options image.FetchOptions) image.CheckReadAccess {
+	return func(_ string) bool {
+		return true
+	}
+}

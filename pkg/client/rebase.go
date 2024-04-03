@@ -105,7 +105,6 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		runImageMD,
 		opts.AdditionalMirrors,
 		opts.Publish,
-		c.accessChecker,
 	)
 
 	if runImageName == "" {

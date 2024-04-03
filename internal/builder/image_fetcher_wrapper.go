@@ -13,6 +13,7 @@ type ImageFetcher interface {
 	// If daemon is true, it will look return a `local.Image`. Pull, applicable only when daemon is true, will
 	// attempt to pull a remote image first.
 	Fetch(ctx context.Context, name string, options image.FetchOptions) (imgutil.Image, error)
+	CheckReadAccessValidator(options image.FetchOptions) image.CheckReadAccess
 }
 
 type ImageFetcherWrapper struct {
@@ -31,4 +32,8 @@ func (w *ImageFetcherWrapper) Fetch(
 	options image.FetchOptions,
 ) (Inspectable, error) {
 	return w.fetcher.Fetch(ctx, name, options)
+}
+
+func (w *ImageFetcherWrapper) CheckReadAccessValidator(options image.FetchOptions) image.CheckReadAccess {
+	return w.fetcher.CheckReadAccessValidator(options)
 }

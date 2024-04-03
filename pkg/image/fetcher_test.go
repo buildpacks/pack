@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/buildpacks/imgutil"
-
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
@@ -42,7 +41,7 @@ func TestFetcher(t *testing.T) {
 	var err error
 	docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
-	spec.Run(t, "Fetcher", testFetcher, spec.Report(report.Terminal{}))
+	spec.Run(t, "Fetcher", testFetcher, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testFetcher(t *testing.T, when spec.G, it spec.S) {
@@ -57,7 +56,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		repo = "some-org/" + h.RandString(10)
 		repoName = registryConfig.RepoName(repo)
-		imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker)
+		imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose()), docker)
 
 		info, err := docker.Info(context.TODO())
 		h.AssertNil(t, err)
@@ -400,6 +399,49 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 					// only manifest and config was written
 					h.AssertBlobsLen(t, imagePath, 2)
+				})
+			})
+		})
+	})
+
+	when("#CheckReadAccessValidator", func() {
+		var daemon bool
+
+		when("Daemon is true", func() {
+			it.Before(func() {
+				daemon = true
+			})
+
+			it("read access is always valid", func() {
+				accessChecker := imageFetcher.CheckReadAccessValidator(image.FetchOptions{Daemon: daemon})
+				h.AssertTrue(t, accessChecker("pack.test/dummy"))
+			})
+		})
+
+		when("Daemon is false", func() {
+			it.Before(func() {
+				daemon = false
+			})
+
+			when("remote image doesn't exists", func() {
+				it("fails when checking dummy image", func() {
+					accessChecker := imageFetcher.CheckReadAccessValidator(image.FetchOptions{Daemon: daemon})
+					h.AssertFalse(t, accessChecker("pack.test/dummy"))
+					h.AssertContains(t, outBuf.String(), "CheckReadAccess failed for the run image pack.test/dummy")
+				})
+			})
+
+			when("remote image exists", func() {
+				it.Before(func() {
+					img, err := remote.NewImage(repoName, authn.DefaultKeychain)
+					h.AssertNil(t, err)
+					h.AssertNil(t, img.Save())
+				})
+
+				it("read access is valid", func() {
+					accessChecker := imageFetcher.CheckReadAccessValidator(image.FetchOptions{Daemon: daemon})
+					h.AssertTrue(t, accessChecker(repoName))
+					h.AssertContains(t, outBuf.String(), fmt.Sprintf("CheckReadAccess succeeded for the run image %s", repoName))
 				})
 			})
 		})

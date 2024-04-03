@@ -53,6 +53,9 @@ type DockerClient interface {
 	ImagePull(ctx context.Context, ref string, options types.ImagePullOptions) (io.ReadCloser, error)
 }
 
+// CheckReadAccess is a method for checking remote images for read access
+type CheckReadAccess func(repo string) bool
+
 type Fetcher struct {
 	docker          DockerClient
 	logger          logging.Logger
@@ -121,6 +124,27 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 	}
 
 	return f.fetchDaemonImage(name)
+}
+
+func (f *Fetcher) CheckReadAccessValidator(options FetchOptions) CheckReadAccess {
+	return func(repo string) bool {
+		if !options.Daemon && (options.LayoutOption == LayoutOption{}) {
+			// remote access checker
+			img, err := remote.NewImage(repo, f.keychain)
+			if err != nil {
+				return false
+			}
+			if ok, err := img.CheckReadAccess(); ok {
+				f.logger.Debugf("CheckReadAccess succeeded for the run image %s", repo)
+				return true
+			} else {
+				f.logger.Debugf("CheckReadAccess failed for the run image %s, error: %s", repo, err.Error())
+				return false
+			}
+		}
+		// no-op
+		return true
+	}
 }
 
 func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
