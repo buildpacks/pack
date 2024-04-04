@@ -281,7 +281,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			fakeBuilder, err = fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.3")}))
 			h.AssertNil(t, err)
 			logger = logging.NewLogWithWriters(&outBuf, &outBuf)
-			docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.44"))
+			docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.41"))
 			h.AssertNil(t, err)
 			fakePhaseFactory = fakes.NewFakePhaseFactory()
 		})
@@ -2583,7 +2583,7 @@ func (f *fakeImageFetcher) fetchRunImage(name string) error {
 }
 
 func newTestLifecycleExecErr(t *testing.T, logVerbose bool, tmpDir string, ops ...func(*build.LifecycleOptions)) (*build.LifecycleExecution, error) {
-	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.44"))
+	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.41"))
 	h.AssertNil(t, err)
 
 	var outBuf bytes.Buffer
