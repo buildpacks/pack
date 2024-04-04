@@ -3,7 +3,6 @@ package commands
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -50,7 +49,6 @@ type BuildFlags struct {
 	Workspace            string
 	GID                  int
 	UID                  int
-	MacAddress           string
 	PreviousImage        string
 	SBOMDestinationDir   string
 	ReportDestinationDir string
@@ -58,8 +56,6 @@ type BuildFlags struct {
 	PreBuildpacks        []string
 	PostBuildpacks       []string
 }
-
-var macAddressRegex = regexp.MustCompile(`^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
 
 // Build an image from source code
 func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cobra.Command {
@@ -189,7 +185,6 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				LifecycleImage:           lifecycleImage,
 				GroupID:                  gid,
 				UserID:                   uid,
-				MacAddress:               flags.MacAddress,
 				PreviousImage:            inputPreviousImage.Name(),
 				Interactive:              flags.Interactive,
 				SBOMDestinationDir:       flags.SBOMDestinationDir,
@@ -271,7 +266,6 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().StringVar(&buildFlags.Workspace, "workspace", "", "Location at which to mount the app dir in the build image")
 	cmd.Flags().IntVar(&buildFlags.GID, "gid", 0, `Override GID of user's group in the stack's build and run images. The provided value must be a positive number`)
 	cmd.Flags().IntVar(&buildFlags.UID, "uid", 0, `Override UID of user in the stack's build and run images. The provided value must be a positive number`)
-	cmd.Flags().StringVar(&buildFlags.MacAddress, "mac-address", "", "MAC address to set for the build container network configuration")
 	cmd.Flags().StringVar(&buildFlags.PreviousImage, "previous-image", "", "Set previous image to a particular tag reference, digest reference, or (when performing a daemon build) image ID")
 	cmd.Flags().StringVar(&buildFlags.SBOMDestinationDir, "sbom-output-dir", "", "Path to export SBoM contents.\nOmitting the flag will yield no SBoM content.")
 	cmd.Flags().StringVar(&buildFlags.ReportDestinationDir, "report-output-dir", "", "Path to export build report.toml.\nOmitting the flag yield no report file.")
@@ -310,10 +304,6 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, inputImageRef clie
 
 	if flags.UID < 0 {
 		return errors.New("uid flag must be in the range of 0-2147483647")
-	}
-
-	if flags.MacAddress != "" && !isValidMacAddress(flags.MacAddress) {
-		return errors.New("invalid MAC address provided")
 	}
 
 	if flags.Interactive && !cfg.Experimental {
@@ -389,8 +379,4 @@ func parseProjectToml(appPath, descriptorPath string, logger logging.Logger) (pr
 
 	descriptor, err := project.ReadProjectDescriptor(actualPath, logger)
 	return descriptor, actualPath, err
-}
-
-func isValidMacAddress(macAddress string) bool {
-	return macAddressRegex.MatchString(macAddress)
 }
