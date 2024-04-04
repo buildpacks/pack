@@ -2356,7 +2356,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							h.SkipIf(t, imageManager.HostOS() == "windows", "temporarily disabled on WCOW due to CI flakiness")
 						})
 
-						it.Focus("creates image on the registry", func() {
+						it("creates image on the registry", func() {
 							buildArgs := []string{
 								repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
