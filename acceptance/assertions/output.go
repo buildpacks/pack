@@ -242,3 +242,8 @@ func (o OutputAssertionManager) ReportsInvalidBuilderToml() {
 
 	o.assert.Contains(o.output, "invalid builder toml")
 }
+
+func (o OutputAssertionManager) ReportMacAddress(host, address string) {
+	o.testObject.Helper()
+	o.assert.Contains(o.output, fmt.Sprintf("Network Mode: '%s', MAC Address '%s'", host, address))
+}

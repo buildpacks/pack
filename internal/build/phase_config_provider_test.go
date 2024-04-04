@@ -82,9 +82,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
 
-				// TODO fix this
-				//nolint:staticcheck
-				h.AssertEq(t, phaseConfigProvider.ContainerConfig().MacAddress, expectedMacAddress)
+				h.AssertEq(t, phaseConfigProvider.NetworkConfig().EndpointsConfig[phaseConfigProvider.HostConfig().NetworkMode.NetworkName()].MacAddress, expectedMacAddress)
 			})
 		})
 
@@ -309,7 +307,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				var outBuf bytes.Buffer
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 
-				docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+				docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.41"))
 				h.AssertNil(t, err)
 
 				defaultBuilder, err := fakes.NewFakeBuilder()
@@ -346,7 +344,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					var outBuf bytes.Buffer
 					logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 
-					docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+					docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.41"))
 					h.AssertNil(t, err)
 
 					defaultBuilder, err := fakes.NewFakeBuilder()

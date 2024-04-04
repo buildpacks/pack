@@ -58,7 +58,7 @@ func TestAcceptance(t *testing.T) {
 
 	assert := h.NewAssertionManager(t)
 
-	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.41"))
 	assert.Nil(err)
 
 	imageManager = managers.NewImageManager(t, dockerCli)
@@ -2344,6 +2344,32 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 								h.AssertNil(t, err)
 								assertImage.HasCreateTime(repoName, expectedTime)
 							})
+						})
+					})
+
+					when("--mac-address", func() {
+						var randomMacAddress = "D5:C7:2F:43:F3:64"
+						var network = "host"
+
+						it.Before(func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.MacAddressFlag), "mac-address is supported after pack version 0.34.0")
+							h.SkipIf(t, imageManager.HostOS() == "windows", "temporarily disabled on WCOW due to CI flakiness")
+						})
+
+						it("creates image on the registry", func() {
+							buildArgs := []string{
+								repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--publish",
+								"--verbose",
+								"--network", network,
+								"--mac-address", randomMacAddress,
+							}
+
+							output := pack.RunSuccessfully("build", buildArgs...)
+							outputAssertionManager := assertions.NewOutputAssertionManager(t, output)
+							outputAssertionManager.ReportsSuccessfulImageBuild(repoName)
+							outputAssertionManager.ReportMacAddress(network, randomMacAddress)
 						})
 					})
 				})

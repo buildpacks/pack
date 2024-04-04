@@ -338,7 +338,7 @@ var dockerCliErr error
 
 func dockerCli(t *testing.T) client.CommonAPIClient {
 	dockerCliOnce.Do(func() {
-		dockerCliVal, dockerCliErr = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+		dockerCliVal, dockerCliErr = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.41"))
 	})
 	AssertNil(t, dockerCliErr)
 	return dockerCliVal

@@ -32,7 +32,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.41"))
 			h.AssertNil(t, err)
 		})
 
@@ -81,7 +81,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.41"))
 			h.AssertNil(t, err)
 		})
 
@@ -104,7 +104,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.41"))
 			h.AssertNil(t, err)
 			ctx = context.TODO()
 

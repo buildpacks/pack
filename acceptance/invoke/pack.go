@@ -237,6 +237,7 @@ const (
 	MetaBuildpackFolder
 	PlatformRetries
 	FlattenBuilderCreationV2
+	MacAddressFlag
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -269,6 +270,9 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	},
 	FlattenBuilderCreationV2: func(i *PackInvoker) bool {
 		return i.atLeast("v0.33.1")
+	},
+	MacAddressFlag: func(i *PackInvoker) bool {
+		return i.atLeast("v0.34.0")
 	},
 }
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 
 	pcontainer "github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/internal/style"
@@ -24,6 +25,7 @@ type PhaseConfigProviderOperation func(*PhaseConfigProvider)
 type PhaseConfigProvider struct {
 	ctrConf             *container.Config
 	hostConf            *container.HostConfig
+	netConfig           *network.NetworkingConfig
 	name                string
 	os                  string
 	containerOps        []ContainerOperation
@@ -37,6 +39,7 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 	provider := &PhaseConfigProvider{
 		ctrConf:     new(container.Config),
 		hostConf:    new(container.HostConfig),
+		netConfig:   new(network.NetworkingConfig),
 		name:        name,
 		os:          lifecycleExec.os,
 		infoWriter:  logging.GetWriterForLevel(lifecycleExec.logger, logging.InfoLevel),
@@ -45,13 +48,6 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 
 	provider.ctrConf.Image = lifecycleExec.opts.Builder.Name()
 	provider.ctrConf.Labels = map[string]string{"author": "pack"}
-
-	if lifecycleExec.opts.MacAddress != "" {
-		// TODO fix this
-		//nolint:staticcheck
-		provider.ctrConf.MacAddress = lifecycleExec.opts.MacAddress
-		lifecycleExec.logger.Debugf("MAC Address: %s", style.Symbol(lifecycleExec.opts.MacAddress))
-	}
 
 	if lifecycleExec.os == "windows" {
 		provider.hostConf.Isolation = container.IsolationProcess
@@ -70,6 +66,23 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 		op(provider)
 	}
 
+	if lifecycleExec.opts.MacAddress != "" {
+		if provider.hostConf.NetworkMode == "" {
+			provider.hostConf.NetworkMode = network.NetworkDefault
+		}
+		if provider.netConfig.EndpointsConfig == nil {
+			provider.netConfig.EndpointsConfig = make(map[string]*network.EndpointSettings)
+		}
+		netName := provider.hostConf.NetworkMode.NetworkName()
+		if _, ok := provider.netConfig.EndpointsConfig[netName]; ok {
+			provider.netConfig.EndpointsConfig[netName].MacAddress = lifecycleExec.opts.MacAddress
+		} else {
+			provider.netConfig.EndpointsConfig[netName] = &network.EndpointSettings{
+				MacAddress: lifecycleExec.opts.MacAddress,
+			}
+		}
+	}
+
 	provider.ctrConf.Entrypoint = []string{""} // override entrypoint in case it is set
 	provider.ctrConf.Cmd = append([]string{"/cnb/lifecycle/" + name}, provider.ctrConf.Cmd...)
 
@@ -83,7 +96,13 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 
 	lifecycleExec.logger.Debug("Host Settings:")
 	lifecycleExec.logger.Debugf("  Binds: %s", style.Symbol(strings.Join(provider.hostConf.Binds, " ")))
-	lifecycleExec.logger.Debugf("  Network Mode: %s", style.Symbol(string(provider.hostConf.NetworkMode)))
+	if provider.netConfig.EndpointsConfig != nil {
+		if v, ok := provider.netConfig.EndpointsConfig[provider.hostConf.NetworkMode.NetworkName()]; ok {
+			lifecycleExec.logger.Debugf("  Network Mode: %s, MAC Address %s", style.Symbol(string(provider.hostConf.NetworkMode)), style.Symbol(v.MacAddress))
+		}
+	} else {
+		lifecycleExec.logger.Debugf("  Network Mode: %s", style.Symbol(string(provider.hostConf.NetworkMode)))
+	}
 
 	if lifecycleExec.opts.Interactive {
 		provider.handler = lifecycleExec.opts.Termui.Handler()
@@ -106,6 +125,10 @@ func sanitized(origEnv []string) []string {
 
 func (p *PhaseConfigProvider) ContainerConfig() *container.Config {
 	return p.ctrConf
+}
+
+func (p *PhaseConfigProvider) NetworkConfig() *network.NetworkingConfig {
+	return p.netConfig
 }
 
 func (p *PhaseConfigProvider) ContainerOps() []ContainerOperation {
