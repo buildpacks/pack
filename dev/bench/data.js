@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1711571258576,
+  "lastUpdate": 1712273511014,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -5992,6 +5992,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 48749301622,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6a9e3d193abca7fff82ce2df10d181c63fbde832",
+          "message": "Merge pull request #2118 from buildpacks/revert/jjbustamante/issue-1779\n\nReverting the MAC - Address flag code (for now)",
+          "timestamp": "2024-04-04T18:30:06-05:00",
+          "tree_id": "134925ba90013e34c53bcc704957593502f73adf",
+          "url": "https://github.com/buildpacks/pack/commit/6a9e3d193abca7fff82ce2df10d181c63fbde832"
+        },
+        "date": 1712273510368,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4724284783,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1459247499,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 52016588841,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
