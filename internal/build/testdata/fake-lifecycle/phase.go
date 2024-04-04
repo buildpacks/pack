@@ -71,7 +71,7 @@ func testWrite(filename, contents string) {
 
 func testDaemon() {
 	fmt.Println("daemon test")
-	cli, err := dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion("1.38"))
+	cli, err := dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion("1.44"))
 	if err != nil {
 		fmt.Printf("failed to create new docker client: %s\n", err)
 		os.Exit(1)

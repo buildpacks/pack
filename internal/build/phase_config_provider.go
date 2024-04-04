@@ -81,7 +81,6 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 				MacAddress: lifecycleExec.opts.MacAddress,
 			}
 		}
-		lifecycleExec.logger.Debugf("MAC Address: %s", style.Symbol(lifecycleExec.opts.MacAddress))
 	}
 
 	provider.ctrConf.Entrypoint = []string{""} // override entrypoint in case it is set
@@ -97,7 +96,13 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 
 	lifecycleExec.logger.Debug("Host Settings:")
 	lifecycleExec.logger.Debugf("  Binds: %s", style.Symbol(strings.Join(provider.hostConf.Binds, " ")))
-	lifecycleExec.logger.Debugf("  Network Mode: %s", style.Symbol(string(provider.hostConf.NetworkMode)))
+	if provider.netConfig.EndpointsConfig != nil {
+		if v, ok := provider.netConfig.EndpointsConfig[provider.hostConf.NetworkMode.NetworkName()]; ok {
+			lifecycleExec.logger.Debugf("  Network Mode: %s, MAC Address %s", style.Symbol(string(provider.hostConf.NetworkMode)), style.Symbol(v.MacAddress))
+		}
+	} else {
+		lifecycleExec.logger.Debugf("  Network Mode: %s", style.Symbol(string(provider.hostConf.NetworkMode)))
+	}
 
 	if lifecycleExec.opts.Interactive {
 		provider.handler = lifecycleExec.opts.Termui.Handler()

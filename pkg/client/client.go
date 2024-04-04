@@ -194,7 +194,7 @@ func WithKeychain(keychain authn.Keychain) Option {
 	}
 }
 
-const DockerAPIVersion = "1.38"
+const DockerAPIVersion = "1.44"
 
 // NewClient allocates and returns a Client configured with the specified options.
 func NewClient(opts ...Option) (*Client, error) {

@@ -307,7 +307,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				var outBuf bytes.Buffer
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 
-				docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+				docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.44"))
 				h.AssertNil(t, err)
 
 				defaultBuilder, err := fakes.NewFakeBuilder()
@@ -344,7 +344,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					var outBuf bytes.Buffer
 					logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 
-					docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+					docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.44"))
 					h.AssertNil(t, err)
 
 					defaultBuilder, err := fakes.NewFakeBuilder()
