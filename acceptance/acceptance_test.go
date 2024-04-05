@@ -801,11 +801,11 @@ func testAcceptance(
 							bpSimpleLayersDiffID := "sha256:ade9da86859fa4ea50a513757f9b242bf1038667abf92dad3d018974a17f0ea7"
 							bpReadEnvDiffID := "sha256:db0797077ba8deff7054ab5578133b8f0206b6393de34b5bfd795cf50f6afdbd"
 							// extensions
-							assertImage.HasLabelWithData(builderName, "io.buildpacks.extension.layers", `{"read/env":{"read-env-version":{"api":"0.9","layerDiffID":"`+extReadEnvDiffID+`","name":"Read Env Extension"}},"simple/layers":{"simple-layers-version":{"api":"0.7","layerDiffID":"`+extSimpleLayersDiffID+`","name":"Simple Layers Extension"}}}`)
-							assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.order-extensions", `[{"group":[{"id":"read/env","version":"read-env-version"},{"id":"simple/layers","version":"simple-layers-version"}]}]`)
+							assertImage.HasLabelContaining(builderName, "io.buildpacks.extension.layers", `{"read/env":{"read-env-version":{"api":"0.9","layerDiffID":"`+extReadEnvDiffID+`","name":"Read Env Extension"}},"simple/layers":{"simple-layers-version":{"api":"0.7","layerDiffID":"`+extSimpleLayersDiffID+`","name":"Simple Layers Extension"}}}`)
+							assertImage.HasLabelContaining(builderName, "io.buildpacks.buildpack.order-extensions", `[{"group":[{"id":"read/env","version":"read-env-version"},{"id":"simple/layers","version":"simple-layers-version"}]}]`)
 							// buildpacks
-							assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.layers", `{"read/env":{"read-env-version":{"api":"0.7","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpReadEnvDiffID+`","name":"Read Env Buildpack"}},"simple/layers":{"simple-layers-version":{"api":"0.7","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpSimpleLayersDiffID+`","name":"Simple Layers Buildpack"}}}`)
-							assertImage.HasLabelWithData(builderName, "io.buildpacks.buildpack.order", `[{"group":[{"id":"read/env","version":"read-env-version","optional":true},{"id":"simple/layers","version":"simple-layers-version","optional":true}]}]`)
+							assertImage.HasLabelContaining(builderName, "io.buildpacks.buildpack.layers", `{"read/env":{"read-env-version":{"api":"0.7","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpReadEnvDiffID+`","name":"Read Env Buildpack"}},"simple/layers":{"simple-layers-version":{"api":"0.7","stacks":[{"id":"pack.test.stack"}],"layerDiffID":"`+bpSimpleLayersDiffID+`","name":"Simple Layers Buildpack"}}}`)
+							assertImage.HasLabelContaining(builderName, "io.buildpacks.buildpack.order", `[{"group":[{"id":"read/env","version":"read-env-version","optional":true},{"id":"simple/layers","version":"simple-layers-version","optional":true}]}]`)
 						}
 					})
 
@@ -1063,10 +1063,10 @@ func testAcceptance(
 						assertImage.HasBaseImage(repoName, runImage)
 
 						t.Log("sets the run image metadata")
-						assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"pack-test/run","mirrors":["%s"]`, runImageMirror))
+						assertImage.HasLabelContaining(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"pack-test/run","mirrors":["%s"]`, runImageMirror))
 
 						t.Log("sets the source metadata")
-						assertImage.HasLabelWithData(repoName, "io.buildpacks.project.metadata", (`{"source":{"type":"project","version":{"declared":"1.0.2"},"metadata":{"url":"https://github.com/buildpacks/pack"}}}`))
+						assertImage.HasLabelContaining(repoName, "io.buildpacks.project.metadata", (`{"source":{"type":"project","version":{"declared":"1.0.2"},"metadata":{"url":"https://github.com/buildpacks/pack"}}}`))
 
 						t.Log("registry is empty")
 						assertImage.NotExistsInRegistry(repo)
@@ -1086,10 +1086,10 @@ func testAcceptance(
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
 						assertOutput.ReportsSelectingRunImageMirrorFromLocalConfig(localRunImageMirror)
 						if pack.SupportsFeature(invoke.FixesRunImageMetadata) {
-							t.Log(fmt.Sprintf("image %s was NOT added into 'io.buildpacks.lifecycle.metadata' label", localRunImageMirror))
-							assertImage.HasLabelWithNoData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, localRunImageMirror))
+							t.Log(fmt.Sprintf("run-image mirror %s was NOT added into 'io.buildpacks.lifecycle.metadata' label", localRunImageMirror))
+							assertImage.HasLabelNotContaining(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, localRunImageMirror))
 							t.Log(fmt.Sprintf("run-image %s was added into 'io.buildpacks.lifecycle.metadata' label", runImage))
-							assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, runImage))
+							assertImage.HasLabelContaining(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, runImage))
 						}
 						cachedLaunchLayer := "simple/layers:cached-launch-layer"
 
@@ -1815,7 +1815,7 @@ func testAcceptance(
 								assertImage.HasBaseImage(repoName, runImageName)
 								if pack.SupportsFeature(invoke.FixesRunImageMetadata) {
 									t.Log(fmt.Sprintf("run-image %s was added into 'io.buildpacks.lifecycle.metadata' label", runImageName))
-									assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, runImageName))
+									assertImage.HasLabelContaining(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"image":"%s"`, runImageName))
 								}
 							})
 						})

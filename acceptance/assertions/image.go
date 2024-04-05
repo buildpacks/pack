@@ -60,7 +60,7 @@ func (a ImageAssertionManager) HasCreateTime(image string, expectedTime time.Tim
 	a.assert.TrueWithMessage(actualTime.Sub(expectedTime) < 5*time.Second && expectedTime.Sub(actualTime) < 5*time.Second, fmt.Sprintf("expected image create time %s to match expected time %s", actualTime, expectedTime))
 }
 
-func (a ImageAssertionManager) HasLabelWithData(image, label, data string) {
+func (a ImageAssertionManager) HasLabelContaining(image, label, data string) {
 	a.testObject.Helper()
 	inspect, err := a.imageManager.InspectLocal(image)
 	a.assert.Nil(err)
@@ -69,7 +69,7 @@ func (a ImageAssertionManager) HasLabelWithData(image, label, data string) {
 	a.assert.Contains(label, data)
 }
 
-func (a ImageAssertionManager) HasLabelWithNoData(image, label, data string) {
+func (a ImageAssertionManager) HasLabelNotContaining(image, label, data string) {
 	a.testObject.Helper()
 	inspect, err := a.imageManager.InspectLocal(image)
 	a.assert.Nil(err)

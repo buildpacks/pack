@@ -1860,7 +1860,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 				})
 
-				it("Overrides de RunImageMetadata", func() {
+				it("overrides the run image metadata (which becomes run.toml)", func() {
 					// RunImages() returns Stacks + RunImages metadata.
 					metadata := newBuilder.RunImages()
 					h.AssertTrue(t, len(metadata) == 2)
