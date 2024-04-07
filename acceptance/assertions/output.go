@@ -76,10 +76,7 @@ func (o OutputAssertionManager) ReportsSkippingRestore() {
 func (o OutputAssertionManager) ReportsRunImageStackNotMatchingBuilder(runImageStack, builderStack string) {
 	o.testObject.Helper()
 
-	o.assert.Contains(
-		o.output,
-		fmt.Sprintf("run-image stack id '%s' does not match builder stack '%s'", runImageStack, builderStack),
-	)
+	o.assert.Contains(o.output, "Warning: deprecated usage of stack")
 }
 
 func (o OutputAssertionManager) WithoutColors() {
