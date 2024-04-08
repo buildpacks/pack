@@ -73,83 +73,31 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 
 			it("selects that run image", func() {
 				runImgFlag := "flag/passed-run-image"
-				runImageName = subject.resolveRunImage(runImgFlag, defaultRegistry, "", stackInfo.RunImage, nil, publish)
+				runImageName = subject.resolveRunImage(runImgFlag, defaultRegistry, "", stackInfo.RunImage, nil, publish, image.FetchOptions{Daemon: !publish, PullPolicy: image.PullAlways})
 				assert.Equal(runImageName, runImgFlag)
 			})
 		})
 
-		when("publish is true", func() {
-			when("desirable run-image are accessible", func() {
-				it.Before(func() {
-					publish = true
-					mockFetcher := fetcherWithCheckReadAccess(t, publish, func(repo string) bool {
-						return true
-					})
-					subject, err = NewClient(WithLogger(logger), WithKeychain(keychain), WithFetcher(mockFetcher))
-					h.AssertNil(t, err)
-				})
-
-				it("defaults to run-image in registry publishing to", func() {
-					runImageName = subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo.RunImage, nil, publish)
-					assert.Equal(runImageName, gcrRunMirror)
-				})
-
-				it("prefers config defined run image mirror to stack defined run image mirror", func() {
-					configMirrors := map[string][]string{
-						runImageName: {defaultRegistry + "/unique-run-img"},
-					}
-					runImageName = subject.resolveRunImage("", defaultRegistry, "", stackInfo.RunImage, configMirrors, publish)
-					assert.NotEqual(runImageName, defaultMirror)
-					assert.Equal(runImageName, defaultRegistry+"/unique-run-img")
-				})
-
-				it("returns a config mirror if no match to target registry", func() {
-					configMirrors := map[string][]string{
-						runImageName: {defaultRegistry + "/unique-run-img"},
-					}
-					runImageName = subject.resolveRunImage("", "test.registry.io", "", stackInfo.RunImage, configMirrors, publish)
-					assert.NotEqual(runImageName, defaultMirror)
-					assert.Equal(runImageName, defaultRegistry+"/unique-run-img")
-				})
-			})
-
-			when("desirable run-images are not accessible", func() {
-				it.Before(func() {
-					publish = true
-					mockFetcher := fetcherWithCheckReadAccess(t, publish, func(repo string) bool {
-						if repo == gcrRunMirror || repo == stackInfo.RunImage.Image {
-							return false
-						}
-						return true
-					})
-					subject, err = NewClient(WithLogger(logger), WithKeychain(keychain), WithFetcher(mockFetcher))
-					h.AssertNil(t, err)
-				})
-
-				it("selects the first accessible run-image", func() {
-					runImageName = subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo.RunImage, nil, publish)
-					assert.Equal(runImageName, defaultMirror)
-				})
-			})
-		})
-
-		// If publish is false, we are using the local daemon, and want to match to the builder registry
-		when("publish is false", func() {
+		when("desirable run-image are accessible", func() {
 			it.Before(func() {
-				publish = false
+				publish = true
+				mockController := gomock.NewController(t)
+				mockFetcher := testmocks.NewMockImageFetcher(mockController)
+				mockFetcher.EXPECT().CheckReadAccessValidator(gomock.Any(), gomock.Any()).Return(true).AnyTimes()
+				subject, err = NewClient(WithLogger(logger), WithKeychain(keychain), WithFetcher(mockFetcher))
+				h.AssertNil(t, err)
 			})
 
 			it("defaults to run-image in registry publishing to", func() {
-				runImageName = subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo.RunImage, nil, publish)
-				assert.Equal(runImageName, defaultMirror)
-				assert.NotEqual(runImageName, gcrRunMirror)
+				runImageName = subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo.RunImage, nil, publish, image.FetchOptions{})
+				assert.Equal(runImageName, gcrRunMirror)
 			})
 
 			it("prefers config defined run image mirror to stack defined run image mirror", func() {
 				configMirrors := map[string][]string{
 					runImageName: {defaultRegistry + "/unique-run-img"},
 				}
-				runImageName = subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo.RunImage, configMirrors, publish)
+				runImageName = subject.resolveRunImage("", defaultRegistry, "", stackInfo.RunImage, configMirrors, publish, image.FetchOptions{})
 				assert.NotEqual(runImageName, defaultMirror)
 				assert.Equal(runImageName, defaultRegistry+"/unique-run-img")
 			})
@@ -158,33 +106,54 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 				configMirrors := map[string][]string{
 					runImageName: {defaultRegistry + "/unique-run-img"},
 				}
-				runImageName = subject.resolveRunImage("", defaultRegistry, "test.registry.io", stackInfo.RunImage, configMirrors, publish)
+				runImageName = subject.resolveRunImage("", "test.registry.io", "", stackInfo.RunImage, configMirrors, publish, image.FetchOptions{})
 				assert.NotEqual(runImageName, defaultMirror)
 				assert.Equal(runImageName, defaultRegistry+"/unique-run-img")
 			})
+		})
 
-			when("desirable run-image are empty", func() {
-				it.Before(func() {
-					stackInfo = builder.StackMetadata{
-						RunImage: builder.RunImageMetadata{
-							Image: "stack/run-image",
-						},
-					}
-				})
+		when("desirable run-images are not accessible", func() {
+			it.Before(func() {
+				publish = true
 
-				it("selects the builder run-image", func() {
-					// issue: https://github.com/buildpacks/pack/issues/2078
-					runImageName = subject.resolveRunImage("", "", "", stackInfo.RunImage, nil, publish)
-					assert.Equal(runImageName, "stack/run-image")
-				})
+				mockController := gomock.NewController(t)
+				mockFetcher := testmocks.NewMockImageFetcher(mockController)
+				mockFetcher.EXPECT().CheckReadAccessValidator(gcrRunMirror, gomock.Any()).Return(false)
+				mockFetcher.EXPECT().CheckReadAccessValidator(stackInfo.RunImage.Image, gomock.Any()).Return(false)
+				mockFetcher.EXPECT().CheckReadAccessValidator(defaultMirror, gomock.Any()).Return(true)
+
+				subject, err = NewClient(WithLogger(logger), WithKeychain(keychain), WithFetcher(mockFetcher))
+				h.AssertNil(t, err)
+			})
+
+			it("selects the first accessible run-image", func() {
+				runImageName = subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo.RunImage, nil, publish, image.FetchOptions{})
+				assert.Equal(runImageName, defaultMirror)
+			})
+		})
+
+		when("desirable run-image are empty", func() {
+			it.Before(func() {
+				publish = false
+				stackInfo = builder.StackMetadata{
+					RunImage: builder.RunImageMetadata{
+						Image: "stack/run-image",
+					},
+				}
+			})
+
+			it("selects the builder run-image", func() {
+				// issue: https://github.com/buildpacks/pack/issues/2078
+				runImageName = subject.resolveRunImage("", "", "", stackInfo.RunImage, nil, publish, image.FetchOptions{})
+				assert.Equal(runImageName, "stack/run-image")
 			})
 		})
 	})
 }
 
-func fetcherWithCheckReadAccess(t *testing.T, publish bool, checker image.CheckReadAccess) *testmocks.MockImageFetcher {
+func fetcherWithCheckReadAccess(t *testing.T, publish bool, value bool) *testmocks.MockImageFetcher {
 	mockController := gomock.NewController(t)
 	mockFetcher := testmocks.NewMockImageFetcher(mockController)
-	mockFetcher.EXPECT().CheckReadAccessValidator(image.FetchOptions{Daemon: !publish}).Return(checker)
+	mockFetcher.EXPECT().CheckReadAccessValidator(gomock.Any(), image.FetchOptions{Daemon: !publish}).Return(value).AnyTimes()
 	return mockFetcher
 }

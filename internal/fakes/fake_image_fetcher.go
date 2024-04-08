@@ -55,10 +55,8 @@ func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, options image
 	return ri, nil
 }
 
-func (f *FakeImageFetcher) CheckReadAccessValidator(_ image.FetchOptions) image.CheckReadAccess {
-	return func(_ string) bool {
-		return true
-	}
+func (f *FakeImageFetcher) CheckReadAccessValidator(_ string, _ image.FetchOptions) bool {
+	return true
 }
 
 func shouldPull(localFound, remoteFound bool, policy image.PullPolicy) bool {

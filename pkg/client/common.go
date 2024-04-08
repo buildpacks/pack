@@ -29,7 +29,7 @@ func (c *Client) parseTagReference(imageName string) (name.Reference, error) {
 	return ref, nil
 }
 
-func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, runImageMetadata builder.RunImageMetadata, additionalMirrors map[string][]string, publish bool) string {
+func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, runImageMetadata builder.RunImageMetadata, additionalMirrors map[string][]string, publish bool, options image.FetchOptions) string {
 	if runImage != "" {
 		c.logger.Debugf("Using provided run-image %s", style.Symbol(runImage))
 		return runImage
@@ -45,9 +45,8 @@ func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, run
 		runImageMetadata.Image,
 		runImageMetadata.Mirrors,
 		additionalMirrors[runImageMetadata.Image],
-		c.imageFetcher.CheckReadAccessValidator(image.FetchOptions{
-			Daemon: !publish,
-		}),
+		c.imageFetcher,
+		options,
 	)
 
 	switch {
@@ -111,8 +110,8 @@ func contains(slc []string, v string) bool {
 	return false
 }
 
-func getBestRunMirror(registry string, runImage string, mirrors []string, preferredMirrors []string, accessChecker image.CheckReadAccess) string {
-	runImageList := filterImageList(append(append(append([]string{}, preferredMirrors...), runImage), mirrors...), accessChecker)
+func getBestRunMirror(registry string, runImage string, mirrors []string, preferredMirrors []string, fetcher ImageFetcher, options image.FetchOptions) string {
+	runImageList := filterImageList(append(append(append([]string{}, preferredMirrors...), runImage), mirrors...), fetcher, options)
 	for _, img := range runImageList {
 		ref, err := name.ParseReference(img, name.WeakValidation)
 		if err != nil {
@@ -130,11 +129,11 @@ func getBestRunMirror(registry string, runImage string, mirrors []string, prefer
 	return runImage
 }
 
-func filterImageList(imageList []string, accessChecker image.CheckReadAccess) []string {
+func filterImageList(imageList []string, fetcher ImageFetcher, options image.FetchOptions) []string {
 	var accessibleImages []string
 
 	for i, img := range imageList {
-		if accessChecker(img) {
+		if fetcher.CheckReadAccessValidator(img, options) {
 			accessibleImages = append(accessibleImages, imageList[i])
 		}
 	}
