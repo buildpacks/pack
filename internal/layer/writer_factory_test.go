@@ -1,7 +1,7 @@
 package layer_test
 
 import (
-	"archive/tar"
+	"archive/tar" //nolint
 	"testing"
 
 	ilayer "github.com/buildpacks/imgutil/layer"

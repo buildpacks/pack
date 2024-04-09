@@ -67,7 +67,7 @@ func testParseTargets(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNotNil(t, err)
 		})
 		it("should parse targets as expected", func() {
-			output, err := target.ParseTargets([]string{"linux/arm/v6", "linux/amd64:ubuntu@22.04;debian@8.10@10.06"}, logging.NewLogWithWriters(&outBuf, &outBuf))
+			output, err := target.ParseTargets([]string{"linux/arm/v6", "linux/amd64:ubuntu@22.04;debian@8.10;debian@10.06"}, logging.NewLogWithWriters(&outBuf, &outBuf))
 			h.AssertNil(t, err)
 			h.AssertEq(t, output, []dist.Target{
 				{
@@ -80,12 +80,16 @@ func testParseTargets(t *testing.T, when spec.G, it spec.S) {
 					Arch: "amd64",
 					Distributions: []dist.Distribution{
 						{
-							Name:     "ubuntu",
-							Versions: []string{"22.04"},
+							Name:    "ubuntu",
+							Version: "22.04",
 						},
 						{
-							Name:     "debian",
-							Versions: []string{"8.10", "10.06"},
+							Name:    "debian",
+							Version: "8.10",
+						},
+						{
+							Name:    "debian",
+							Version: "10.06",
 						},
 					},
 				},
@@ -94,10 +98,10 @@ func testParseTargets(t *testing.T, when spec.G, it spec.S) {
 	})
 	when("target#ParseDistro", func() {
 		it("should parse distro as expected", func() {
-			output, err := target.ParseDistro("ubuntu@22.04@20.08", logging.NewLogWithWriters(&outBuf, &outBuf))
+			output, err := target.ParseDistro("ubuntu@22.04", logging.NewLogWithWriters(&outBuf, &outBuf))
 			h.AssertEq(t, output, dist.Distribution{
-				Name:     "ubuntu",
-				Versions: []string{"22.04", "20.08"},
+				Name:    "ubuntu",
+				Version: "22.04",
 			})
 			h.AssertNil(t, err)
 		})
@@ -112,15 +116,23 @@ func testParseTargets(t *testing.T, when spec.G, it spec.S) {
 	})
 	when("target#ParseDistros", func() {
 		it("should parse distros as expected", func() {
-			output, err := target.ParseDistros("ubuntu@22.04@20.08;debian@8.10@10.06", logging.NewLogWithWriters(&outBuf, &outBuf))
+			output, err := target.ParseDistros("ubuntu@22.04;ubuntu@20.08;debian@8.10;debian@10.06", logging.NewLogWithWriters(&outBuf, &outBuf))
 			h.AssertEq(t, output, []dist.Distribution{
 				{
-					Name:     "ubuntu",
-					Versions: []string{"22.04", "20.08"},
+					Name:    "ubuntu",
+					Version: "22.04",
 				},
 				{
-					Name:     "debian",
-					Versions: []string{"8.10", "10.06"},
+					Name:    "ubuntu",
+					Version: "20.08",
+				},
+				{
+					Name:    "debian",
+					Version: "8.10",
+				},
+				{
+					Name:    "debian",
+					Version: "10.06",
 				},
 			})
 			h.AssertNil(t, err)
