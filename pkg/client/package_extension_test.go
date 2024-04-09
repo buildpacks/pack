@@ -86,7 +86,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 						Extension: dist.BuildpackURI{URI: ""},
 					},
 					IndexOptions: pubbldpkg.IndexOptions{
-						Target: dist.Target{OS: "linux"},
+						Targets: []dist.Target{{OS: "linux"}},
 					},
 					Publish: true,
 				})
@@ -106,7 +106,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 						Extension: dist.BuildpackURI{URI: exURL},
 					},
 					IndexOptions: pubbldpkg.IndexOptions{
-						Target: dist.Target{OS: "linux"},
+						Targets: []dist.Target{{OS: "linux"}},
 					},
 					Publish: true,
 				})
@@ -127,7 +127,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 						Extension: dist.BuildpackURI{URI: exURL},
 					},
 					IndexOptions: pubbldpkg.IndexOptions{
-						Target: dist.Target{OS: "linux"},
+						Targets: []dist.Target{{OS: "linux"}},
 					},
 					Publish: true,
 				})
@@ -169,7 +169,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 							})},
 						},
 						IndexOptions: pubbldpkg.IndexOptions{
-							Target: dist.Target{OS: daemonOS},
+							Targets: []dist.Target{{OS: daemonOS}},
 						},
 						PullPolicy: image.PullNever,
 					}))
@@ -192,7 +192,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 					IndexOptions: pubbldpkg.IndexOptions{
-						Target: dist.Target{OS: "linux"},
+						Targets: []dist.Target{{OS: "linux"}},
 					},
 				})
 				h.AssertError(t, err, "Windows extensionpackage support is currently experimental.")
@@ -215,7 +215,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 					IndexOptions: pubbldpkg.IndexOptions{
-						Target: dist.Target{OS: "linux"},
+						Targets: []dist.Target{{OS: "linux"}},
 					},
 				})
 
@@ -259,7 +259,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 							})},
 						},
 						IndexOptions: pubbldpkg.IndexOptions{
-							Target: dist.Target{OS: imageOS},
+							Targets: []dist.Target{{OS: imageOS}},
 						},
 						PullPolicy: image.PullNever,
 					}))
@@ -283,7 +283,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 					})},
 				},
 				IndexOptions: pubbldpkg.IndexOptions{
-					Target: dist.Target{OS: "linux"},
+					Targets: []dist.Target{{OS: "linux"}},
 				},
 				Publish:    false,
 				PullPolicy: image.PullAlways,

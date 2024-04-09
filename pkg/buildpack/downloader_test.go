@@ -84,7 +84,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 				})},
 			},
 			IndexOptions: pubbldpkg.IndexOptions{
-				Target: dist.Target{OS: "linux"},
+				Targets: []dist.Target{{OS: "linux"}},
 			},
 			Publish: true,
 		}))

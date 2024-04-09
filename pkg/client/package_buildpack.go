@@ -137,11 +137,15 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		packageBuilder.AddDependencies(mainBP, deps)
 	}
 
+	if opts.IndexOptions.ImageIndex != nil && opts.Format == FormatFile {
+		return packageBuilder.SaveAsMultiArchFile(opts.Name, opts.Version, opts.IndexOptions.Targets, opts.IndexOptions.ImageIndex, opts.Labels)
+	}
+
 	switch opts.Format {
 	case FormatFile:
-		return packageBuilder.SaveAsFile(opts.Name, opts.Version, opts.IndexOptions.Target, opts.IndexOptions.ImageIndex, opts.Labels)
+		return packageBuilder.SaveAsFile(opts.Name, opts.Version, opts.IndexOptions.Targets[0], opts.IndexOptions.ImageIndex, opts.Labels)
 	case FormatImage:
-		if _, err = packageBuilder.SaveAsImage(opts.Name, opts.Version, opts.Publish, opts.IndexOptions.Target, opts.IndexOptions.ImageIndex, opts.Labels); err == nil {
+		if _, err = packageBuilder.SaveAsImage(opts.Name, opts.Version, opts.Publish, opts.IndexOptions.Targets[0], opts.IndexOptions.ImageIndex, opts.Labels); err == nil {
 			version := opts.Version
 			if version == "" {
 				version = "latest"
@@ -274,7 +278,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 			IndexOptions: pubbldpkg.IndexOptions{
 				ImageIndex: idx,
 				Logger:     opts.IndexOptions.Logger,
-				Target:     bpConfig.Targets()[0],
+				Targets:    bpConfig.Targets(),
 			},
 		})
 	}
@@ -298,7 +302,7 @@ func (c *Client) PackageMultiArchBuildpack(ctx context.Context, opts PackageBuil
 		return nil
 	}
 
-	return idx.Push(imgutil.WithInsecure(true) /* imgutil.WithTags("latest") */)
+	return idx.Push(imgutil.WithInsecure(true), imgutil.WithTags("latest"))
 }
 
 func (c *Client) GetIndexManifestFn() pubbldpkg.GetIndexManifestFn {

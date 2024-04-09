@@ -360,21 +360,53 @@ func (i *layoutImage) SetOSVersion(osVersion string) error {
 }
 
 func (i *layoutImage) SetFeatures(features []string) error {
+	if len(features) == 0 {
+		features = make([]string, 0)
+	}
+
+	if len(i.features) == 0 {
+		i.features = make([]string, 0)
+	}
+
 	i.features = append(i.features, features...)
 	return nil
 }
 
 func (i *layoutImage) SetOSFeatures(osFeatures []string) error {
+	if len(osFeatures) == 0 {
+		osFeatures = make([]string, 0)
+	}
+
+	if len(i.osFeatures) == 0 {
+		i.osFeatures = make([]string, 0)
+	}
+
 	i.osFeatures = append(i.osFeatures, osFeatures...)
 	return nil
 }
 
 func (i *layoutImage) SetURLs(urls []string) error {
+	if len(urls) == 0 {
+		urls = make([]string, 0)
+	}
+
+	if len(i.urls) == 0 {
+		i.urls = make([]string, 0)
+	}
+
 	i.urls = append(i.urls, urls...)
 	return nil
 }
 
 func (i *layoutImage) SetAnnotations(annos map[string]string) error {
+	if len(annos) == 0 {
+		annos = make(map[string]string, 0)
+	}
+
+	if len(i.annotations) == 0 {
+		i.annotations = make(map[string]string, 0)
+	}
+
 	for k, v := range annos {
 		i.annotations[k] = v
 	}
@@ -785,8 +817,7 @@ func (b *PackageBuilder) SaveAsFile(path, version string, target dist.Target, id
 	}
 
 	for labelKey, labelValue := range labels {
-		err = layoutImage.SetLabel(labelKey, labelValue)
-		if err != nil {
+		if err = layoutImage.SetLabel(labelKey, labelValue); err != nil {
 			return errors.Wrapf(err, "adding label %s=%s", labelKey, labelValue)
 		}
 	}
@@ -847,6 +878,103 @@ func (b *PackageBuilder) SaveAsFile(path, version string, target dist.Target, id
 		}
 
 		if err = idx.Save(); err != nil {
+			return err
+		}
+	}
+
+	outputFile, err := os.Create(path)
+	if err != nil {
+		return errors.Wrap(err, "creating output file")
+	}
+	defer outputFile.Close()
+
+	tw := tar.NewWriter(outputFile)
+	defer tw.Close()
+
+	return archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, false, nil)
+}
+
+func (b *PackageBuilder) SaveAsMultiArchFile(path, version string, targets []dist.Target, idx imgutil.ImageIndex, labels map[string]string) error {
+	if err := b.validate(); err != nil {
+		return err
+	}
+
+	tempDirName := ""
+	if b.buildpack != nil {
+		tempDirName = "package-buildpack"
+	} else if b.extension != nil {
+		tempDirName = "extension-buildpack"
+	}
+
+	tmpDir, err := os.MkdirTemp("", tempDirName)
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpDir)
+
+	layoutDir, err := os.MkdirTemp(tmpDir, "oci-layout")
+	if err != nil {
+		return errors.Wrap(err, "creating oci-layout temp dir")
+	}
+
+	p, err := layout.Write(layoutDir, empty.Index)
+	if err != nil {
+		return errors.Wrap(err, "writing index")
+	}
+
+	for _, target := range targets {
+		if err := target.Range(func(target dist.Target, distroName, distroVersion string) error {
+			target.Distributions = []dist.Distribution{{Name: distroName, Versions: []string{distroVersion}}}
+			platform := target.Platform()
+			platform.OSVersion = version
+			layoutImage, err := newLayoutImage(*platform)
+			if err != nil {
+				return errors.Wrap(err, "creating layout image")
+			}
+
+			for labelKey, labelValue := range labels {
+				if err = layoutImage.SetLabel(labelKey, labelValue); err != nil {
+					return errors.Wrapf(err, "adding label %s=%s", labelKey, labelValue)
+				}
+			}
+
+			if b.buildpack != nil {
+				if err := b.finalizeImage(layoutImage, tmpDir); err != nil {
+					return err
+				}
+			} else if b.extension != nil {
+				if err := b.finalizeExtensionImage(layoutImage, tmpDir); err != nil {
+					return err
+				}
+			}
+
+			if err := updateLayoutImagePlatform(layoutImage, target); err != nil {
+				return err
+			}
+
+			if err := layoutImage.Save(); err != nil {
+				return err
+			}
+
+			if err := p.AppendImage(layoutImage); err != nil {
+				return errors.Wrap(err, "writing layout")
+			}
+
+			_, digest, err := getImageDigest(path, layoutImage)
+			if err != nil {
+				return err
+			}
+
+			if idx == nil {
+				return nil
+			}
+
+			if err := idx.Add(digest, imgutil.WithLocalImage(layoutImage)); err != nil {
+				return err
+			}
+
+			return idx.Save()
+		}); err != nil {
 			return err
 		}
 	}
@@ -1049,16 +1177,14 @@ func updateLayoutImagePlatform(image *layoutImage, target dist.Target) (err erro
 		mfest  *v1.Manifest
 	)
 
-	config, err = image.ConfigFile()
-	if err != nil {
+	if config, err = image.ConfigFile(); err != nil {
 		return err
 	}
 	if config == nil {
 		return imgutil.ErrConfigFileUndefined
 	}
 
-	mfest, err = image.Manifest()
-	if err != nil {
+	if mfest, err = image.Manifest(); err != nil {
 		return err
 	}
 	if mfest == nil {
@@ -1144,16 +1270,14 @@ func updateImagePlatform(image imgutil.Image, target dist.Target) (err error) {
 		return updatePlatformPrimitives(image, platform, &v1.ConfigFile{}, &v1.Manifest{})
 	}
 
-	config, err = underlyingImage.ConfigFile()
-	if err != nil {
+	if config, err = underlyingImage.ConfigFile(); err != nil {
 		return err
 	}
 	if config == nil {
 		return imgutil.ErrConfigFileUndefined
 	}
 
-	mfest, err = image.UnderlyingImage().Manifest()
-	if err != nil {
+	if mfest, err = image.UnderlyingImage().Manifest(); err != nil {
 		return err
 	}
 	if mfest == nil {

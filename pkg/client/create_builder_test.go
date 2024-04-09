@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/docker/docker/api/types/system"
@@ -48,6 +49,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDownloader          *testmocks.MockBlobDownloader
 			mockBuildpackDownloader *testmocks.MockBuildpackDownloader
 			mockImageFactory        *testmocks.MockImageFactory
+			mockIndexFactory        *testmocks.MockIndexFactory
 			mockImageFetcher        *testmocks.MockImageFetcher
 			mockDockerClient        *testmocks.MockCommonAPIClient
 			fakeBuildImage          *fakes.Image
@@ -88,6 +90,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockController = gomock.NewController(t)
 			mockDownloader = testmocks.NewMockBlobDownloader(mockController)
 			mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
+			mockIndexFactory = testmocks.NewMockIndexFactory(mockController)
 			mockImageFactory = testmocks.NewMockImageFactory(mockController)
 			mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
 			mockBuildpackDownloader = testmocks.NewMockBuildpackDownloader(mockController)
@@ -509,6 +512,153 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					mockDownloader.EXPECT().Download(gomock.Any(), uri).Return(blob.NewBlob(filepath.Join("testdata", "empty-file")), nil).AnyTimes()
 
 					err = subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "invalid lifecycle")
+				})
+			})
+		})
+
+		when("creating the multi arch base builder", func() {
+			var err error
+			it.Before(func() {
+				subject, err = client.NewClient(
+					client.WithLogger(logger),
+					client.WithDownloader(mockDownloader),
+					client.WithImageFactory(mockImageFactory),
+					client.WithIndexFactory(mockIndexFactory),
+					client.WithFetcher(mockImageFetcher),
+					client.WithDockerClient(mockDockerClient),
+					client.WithBuildpackDownloader(mockBuildpackDownloader),
+					client.WithExperimental(true),
+				)
+				h.AssertNil(t, err)
+
+				opts.Publish = true
+				opts.Config.WithTargets = []dist.Target{
+					{
+						OS:          "linux",
+						Arch:        "arm",
+						ArchVariant: "v6",
+						Distributions: []dist.Distribution{
+							{
+								Name:     "ubuntu",
+								Versions: []string{"22.04"},
+							},
+							{
+								Name:     "debian",
+								Versions: []string{"10.0"},
+							},
+						},
+					},
+					{
+						OS:   "linux",
+						Arch: "amd64",
+						Distributions: []dist.Distribution{
+							{
+								Name:     "ubuntu",
+								Versions: []string{"22.04"},
+							},
+							{
+								Name:     "debian",
+								Versions: []string{"10.0"},
+							},
+						},
+						Specs: dist.TargetSpecs{
+							Features:    []string{"feature1", "feature2"},
+							OSFeatures:  []string{"osFeature1", "osFeature2"},
+							URLs:        []string{"url1", "url2"},
+							Annotations: map[string]string{"key1": "value1", "key2": "value2"},
+							OSVersion:   "latest",
+						},
+					},
+				}
+			})
+			when("build image not found", func() {
+				it("should fail", func() {
+					prepareFetcherWithRunImages()
+					mockIndexFactory.EXPECT().FetchIndex(gomock.Any(), gomock.Any()).Return(nil, errors.New("the given reference('index.docker.io/some/build-image:latest') either doesn't exist or not referencing IndexManifest"))
+
+					err := subject.CreateMultiArchBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "the given reference('index.docker.io/some/build-image:latest') either doesn't exist or not referencing IndexManifest")
+				})
+			})
+
+			when("build image isn't a valid image", func() {
+				it("should fail", func() {
+					// fakeImage := fakeBadImageStruct{}
+
+					prepareFetcherWithRunImages()
+					mockIndexFactory.EXPECT().LoadIndex(gomock.Any(), gomock.Any(), gomock.Any()).Return(gomock.Any().(imgutil.Image), nil)
+
+					err := subject.CreateMultiArchBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "failed to create builder: invalid build-image")
+				})
+			})
+
+			when("windows containers", func() {
+				when("experimental enabled", func() {
+					it("succeeds", func() {
+						opts.Config.Extensions = nil      // TODO: downloading extensions doesn't work yet; to be implemented in https://github.com/buildpacks/pack/issues/1489
+						opts.Config.OrderExtensions = nil // TODO: downloading extensions doesn't work yet; to be implemented in https://github.com/buildpacks/pack/issues/1489
+						packClientWithExperimental, err := client.NewClient(
+							client.WithLogger(logger),
+							client.WithDownloader(mockDownloader),
+							client.WithImageFactory(mockImageFactory),
+							client.WithFetcher(mockImageFetcher),
+							client.WithExperimental(true),
+						)
+						h.AssertNil(t, err)
+
+						prepareFetcherWithRunImages()
+
+						h.AssertNil(t, fakeBuildImage.SetOS("windows"))
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(fakeBuildImage, nil)
+
+						err = packClientWithExperimental.CreateMultiArchBuilder(context.TODO(), opts)
+						h.AssertNil(t, err)
+					})
+				})
+
+				when("experimental disabled", func() {
+					it("fails", func() {
+						prepareFetcherWithRunImages()
+
+						h.AssertNil(t, fakeBuildImage.SetOS("windows"))
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(fakeBuildImage, nil)
+
+						err := subject.CreateMultiArchBuilder(context.TODO(), opts)
+						h.AssertError(t, err, "failed to create builder: Windows containers support is currently experimental.")
+					})
+				})
+			})
+
+			when("error downloading lifecycle", func() {
+				it("should fail", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Lifecycle.URI = "fake"
+
+					uri, err := paths.FilePathToURI(opts.Config.Lifecycle.URI, opts.RelativeBaseDir)
+					h.AssertNil(t, err)
+
+					mockDownloader.EXPECT().Download(gomock.Any(), uri).Return(nil, errors.New("error here")).AnyTimes()
+
+					err = subject.CreateMultiArchBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "downloading lifecycle")
+				})
+			})
+
+			when("lifecycle isn't a valid lifecycle", func() {
+				it("should fail", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Lifecycle.URI = "fake"
+
+					uri, err := paths.FilePathToURI(opts.Config.Lifecycle.URI, opts.RelativeBaseDir)
+					h.AssertNil(t, err)
+
+					mockDownloader.EXPECT().Download(gomock.Any(), uri).Return(blob.NewBlob(filepath.Join("testdata", "empty-file")), nil).AnyTimes()
+
+					err = subject.CreateMultiArchBuilder(context.TODO(), opts)
 					h.AssertError(t, err, "invalid lifecycle")
 				})
 			})

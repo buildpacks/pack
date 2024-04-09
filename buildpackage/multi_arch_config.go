@@ -58,7 +58,7 @@ type IndexOptions struct {
 	PkgConfig       *MultiArchPackage
 	Logger          logging.Logger
 	RelativeBaseDir string
-	Target          dist.Target
+	Targets         []dist.Target
 	ImageIndex      imgutil.ImageIndex
 }
 

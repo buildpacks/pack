@@ -1107,6 +1107,84 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.IsGzipped(),
 			)
 		})
+
+		it("should mutate image", func() {
+			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+				WithAPI:    api.MustParse("0.2"),
+				WithInfo:   dist.ModuleInfo{ID: "bp.1.id", Version: "bp.1.version"},
+				WithStacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
+				WithOrder:  nil,
+			}, 0644)
+			h.AssertNil(t, err)
+
+			builder := buildpack.NewBuilder(mockImageFactory(""), mockIndexFactory)
+			builder.SetBuildpack(buildpack1)
+
+			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
+			h.AssertNil(t, builder.SaveAsFile(outputFile, version, dist.Target{
+				OS:          linux,
+				Arch:        "arm",
+				ArchVariant: "v6",
+				Distributions: []dist.Distribution{
+					{
+						Name:     "ubuntu",
+						Versions: []string{"22.04"},
+					},
+				},
+				Specs: dist.TargetSpecs{
+					Features:    []string{"feature1", "feature2"},
+					OSFeatures:  []string{"osFeature1", "osFeature2"},
+					URLs:        []string{"url1", "url2"},
+					Annotations: map[string]string{"key1": "value1", "key2": "value2"},
+					Labels:      make(map[string]string),
+				},
+			}, nil, make(map[string]string)))
+
+			withContents := func(fn func(data []byte)) h.TarEntryAssertion {
+				return func(t *testing.T, header *tar.Header, data []byte) {
+					fn(data)
+				}
+			}
+
+			h.AssertOnTarEntry(t, outputFile, "/index.json",
+				h.HasOwnerAndGroup(0, 0),
+				h.HasFileMode(0755),
+				withContents(func(data []byte) {
+					index := v1.Index{}
+					err := json.Unmarshal(data, &index)
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(index.Manifests), 1)
+
+					// manifest: application/vnd.docker.distribution.manifest.v2+json
+					h.AssertOnTarEntry(t, outputFile,
+						"/blobs/sha256/"+index.Manifests[0].Digest.Hex(),
+						h.HasOwnerAndGroup(0, 0),
+						h.IsJSON(),
+
+						withContents(func(data []byte) {
+							manifest := v1.Manifest{}
+							err := json.Unmarshal(data, &manifest)
+							h.AssertNil(t, err)
+
+							// config: application/vnd.docker.container.image.v1+json
+							h.AssertOnTarEntry(t, outputFile,
+								"/blobs/sha256/"+manifest.Config.Digest.Hex(),
+								h.HasOwnerAndGroup(0, 0),
+								h.IsJSON(),
+								// image os
+								h.ContentContains(`"os":"linux"`),
+								// image arch
+								h.ContentContains(`"arch":"arm"`),
+								// image variant
+								h.ContentContains(`"variant":"v6"`),
+								// image version
+								h.ContentContains(`"version":"bp.1.version"`),
+								// image osFeatures
+								h.ContentContains(`"os.features":["osFeature1", "osFeature2"]`),
+							)
+						}))
+				}))
+		})
 	})
 }
 

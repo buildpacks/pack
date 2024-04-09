@@ -146,7 +146,7 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 				}
 			} else {
 				if len(extConfigs) == 1 {
-					pkgExtOpts.IndexOptions.Target = extConfigs[0].Targets()[0]
+					pkgExtOpts.IndexOptions.Targets = extConfigs[0].Targets()
 				} else {
 					logger.Warnf("A new '--target' flag is available to set the platform for the extension package, using '%s' as default", exPackageCfg.Platform.OS)
 				}

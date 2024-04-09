@@ -55,11 +55,14 @@ func (c *Client) PackageExtension(ctx context.Context, opts PackageBuildpackOpti
 
 	packageBuilder.SetExtension(ex)
 
+	if opts.Format == FormatFile && opts.IndexOptions.ImageIndex != nil {
+		return packageBuilder.SaveAsMultiArchFile(opts.Name, opts.Version, opts.IndexOptions.Targets, opts.IndexOptions.ImageIndex, make(map[string]string))
+	}
 	switch opts.Format {
 	case FormatFile:
-		return packageBuilder.SaveAsFile(opts.Name, opts.Version, opts.IndexOptions.Target, opts.IndexOptions.ImageIndex, map[string]string{})
+		return packageBuilder.SaveAsFile(opts.Name, opts.Version, opts.IndexOptions.Targets[0], opts.IndexOptions.ImageIndex, map[string]string{})
 	case FormatImage:
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Version, opts.Publish, opts.IndexOptions.Target, opts.IndexOptions.ImageIndex, map[string]string{})
+		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Version, opts.Publish, opts.IndexOptions.Targets[0], opts.IndexOptions.ImageIndex, map[string]string{})
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))
@@ -139,7 +142,7 @@ func (c *Client) PackageMultiArchExtension(ctx context.Context, opts PackageBuil
 			IndexOptions: pubbldpkg.IndexOptions{
 				ImageIndex: idx,
 				Logger:     opts.IndexOptions.Logger,
-				Target:     extConfig.Targets()[0],
+				Targets:    extConfig.Targets(),
 			},
 		})
 	}

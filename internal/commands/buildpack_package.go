@@ -158,9 +158,9 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				Labels:          flags.Label,
 				Version:         bpConfig.WithInfo.Version,
 				IndexOptions: pubbldpkg.IndexOptions{
-					Target: dist.Target{
+					Targets: []dist.Target{{
 						OS: bpPackageCfg.Platform.OS,
-					},
+					}},
 				},
 			}
 
@@ -181,7 +181,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				}
 			} else {
 				if len(bpConfigs) == 1 {
-					pkgBPOpts.IndexOptions.Target = bpConfigs[0].Targets()[0]
+					pkgBPOpts.IndexOptions.Targets = bpConfigs[0].Targets()
 				} else {
 					logger.Warnf("A new '--target' flag is available to set the platform for the buildpack package, using '%s' as default", bpPackageCfg.Platform.OS)
 				}
