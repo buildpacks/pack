@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1712273511014,
+  "lastUpdate": 1712673246821,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -6034,6 +6034,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 52016588841,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "969ff6c0cb86b665841a28a2dafdb69005b34130",
+          "message": "Merge pull request #2022 from Pratham1812/alpha/patch\n\nUpdate run image metadata when --run-image is provided",
+          "timestamp": "2024-04-09T09:31:58-05:00",
+          "tree_id": "7f536e3e143049505a1df10a2bc0f38dca0b9096",
+          "url": "https://github.com/buildpacks/pack/commit/969ff6c0cb86b665841a28a2dafdb69005b34130"
+        },
+        "date": 1712673245542,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7825394022,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2626788723,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 59617851724,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
