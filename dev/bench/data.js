@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1712673246821,
+  "lastUpdate": 1712674510513,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -6076,6 +6076,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 59617851724,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5b8da4459154cfa45ccae6340487e57f22c61f04",
+          "message": "Merge pull request #2117 from buildpacks/enhancement/jjbustamante/issue-2113\n\nExposing the logic for processing the Docker Context to be public",
+          "timestamp": "2024-04-09T09:53:03-05:00",
+          "tree_id": "1411947e0ea65b752095cf579ea09b2f73121b71",
+          "url": "https://github.com/buildpacks/pack/commit/5b8da4459154cfa45ccae6340487e57f22c61f04"
+        },
+        "date": 1712674509758,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4863477182,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1320707639,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 51187938454,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
