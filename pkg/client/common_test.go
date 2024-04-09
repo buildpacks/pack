@@ -150,10 +150,3 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 }
-
-func fetcherWithCheckReadAccess(t *testing.T, publish bool, value bool) *testmocks.MockImageFetcher {
-	mockController := gomock.NewController(t)
-	mockFetcher := testmocks.NewMockImageFetcher(mockController)
-	mockFetcher.EXPECT().CheckReadAccessValidator(gomock.Any(), image.FetchOptions{Daemon: !publish}).Return(value).AnyTimes()
-	return mockFetcher
-}
