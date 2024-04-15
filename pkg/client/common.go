@@ -133,7 +133,7 @@ func filterImageList(imageList []string, fetcher ImageFetcher, options image.Fet
 	var accessibleImages []string
 
 	for i, img := range imageList {
-		if fetcher.CheckReadAccessValidator(img, options) {
+		if fetcher.CheckReadAccess(img, options) {
 			accessibleImages = append(accessibleImages, imageList[i])
 		}
 	}

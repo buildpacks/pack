@@ -123,18 +123,22 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 	return f.fetchDaemonImage(name)
 }
 
-func (f *Fetcher) CheckReadAccessValidator(repo string, options FetchOptions) bool {
-	if !options.Daemon {
+func (f *Fetcher) CheckReadAccess(repo string, options FetchOptions) bool {
+	if !options.Daemon || options.PullPolicy == PullAlways {
 		return f.checkRemoteReadAccess(repo)
 	}
 	if _, err := f.fetchDaemonImage(repo); err != nil {
-		// Image doesn't exist in the daemon
-		// 	Pull Never: should failed
-		// 	Pull Always or Pull If Not Present: need to check the registry
-		if options.PullPolicy == PullNever {
-			return false
+		if errors.Is(err, ErrNotFound) {
+			// Image doesn't exist in the daemon
+			// 	Pull Never: should failed
+			// 	Pull If Not Present: need to check the registry
+			if options.PullPolicy == PullNever {
+				return false
+			}
+			return f.checkRemoteReadAccess(repo)
 		}
-		return f.checkRemoteReadAccess(repo)
+		f.logger.Debugf("failed reading image from the daemon %s, error: %s", repo, err.Error())
+		return false
 	}
 	// no-op
 	return true
@@ -143,6 +147,7 @@ func (f *Fetcher) CheckReadAccessValidator(repo string, options FetchOptions) bo
 func (f *Fetcher) checkRemoteReadAccess(repo string) bool {
 	img, err := remote.NewImage(repo, f.keychain)
 	if err != nil {
+		f.logger.Debugf("failed accessing remote image %s, error: %s", repo, err.Error())
 		return false
 	}
 	if ok, err := img.CheckReadAccess(); ok {

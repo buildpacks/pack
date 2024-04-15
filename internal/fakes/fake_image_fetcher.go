@@ -55,7 +55,7 @@ func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, options image
 	return ri, nil
 }
 
-func (f *FakeImageFetcher) CheckReadAccessValidator(_ string, _ image.FetchOptions) bool {
+func (f *FakeImageFetcher) CheckReadAccess(_ string, _ image.FetchOptions) bool {
 	return true
 }
 

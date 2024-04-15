@@ -29,7 +29,7 @@ type Logger interface {
 
 type ImageFetcher interface {
 	Fetch(ctx context.Context, name string, options image.FetchOptions) (imgutil.Image, error)
-	CheckReadAccessValidator(repo string, options image.FetchOptions) bool
+	CheckReadAccess(repo string, options image.FetchOptions) bool
 }
 
 type Downloader interface {

@@ -53,13 +53,13 @@ type ImageFetcher interface {
 	// There is a single invalid configuration, PullNever and daemon = false, this will always fail.
 	Fetch(ctx context.Context, name string, options image.FetchOptions) (imgutil.Image, error)
 
-	// CheckReadAccessValidator verifies if an image is accessible with read permissions
+	// CheckReadAccess verifies if an image is accessible with read permissions
 	// When FetchOptions.Daemon is true and the image doesn't exist in the daemon,
 	// the behavior is dictated by the pullPolicy, which can have the following behavior
 	//   - PullNever: returns false
 	//   - PullAlways Or PullIfNotPResent: it will check read access for the remote image.
 	// When FetchOptions.Daemon is false it will check read access for the remote image.
-	CheckReadAccessValidator(repo string, options image.FetchOptions) bool
+	CheckReadAccess(repo string, options image.FetchOptions) bool
 }
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_blob_downloader.go github.com/buildpacks/pack/pkg/client BlobDownloader
