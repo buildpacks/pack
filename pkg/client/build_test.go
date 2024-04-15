@@ -3013,40 +3013,19 @@ api = "0.2"
 		when("there are extensions", func() {
 			withExtensionsLabel = true
 
-			when("experimental", func() {
-				when("false", func() {
-					it("errors", func() {
-						err := subject.Build(context.TODO(), BuildOptions{
-							Image:   "some/app",
-							Builder: defaultBuilderName,
-						})
-
-						h.AssertNotNil(t, err)
-					})
-				})
-
-				when("true", func() {
-					it.Before(func() {
-						subject.experimental = true
+			when("default configuration", func() {
+				it("succeeds", func() {
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: defaultBuilderName,
 					})
 
-					it("succeeds", func() {
-						err := subject.Build(context.TODO(), BuildOptions{
-							Image:   "some/app",
-							Builder: defaultBuilderName,
-						})
-
-						h.AssertNil(t, err)
-						h.AssertEq(t, fakeLifecycle.Opts.BuilderImage, defaultBuilderName)
-					})
+					h.AssertNil(t, err)
+					h.AssertEq(t, fakeLifecycle.Opts.BuilderImage, defaultBuilderName)
 				})
 			})
 
 			when("os", func() {
-				it.Before(func() {
-					subject.experimental = true
-				})
-
 				when("windows", func() {
 					it.Before(func() {
 						h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
@@ -3076,10 +3055,6 @@ api = "0.2"
 			})
 
 			when("pull policy", func() {
-				it.Before(func() {
-					subject.experimental = true
-				})
-
 				when("always", func() {
 					it("succeeds", func() {
 						err := subject.Build(context.TODO(), BuildOptions{

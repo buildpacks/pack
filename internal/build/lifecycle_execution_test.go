@@ -2024,8 +2024,10 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#ExtendBuild", func() {
+		var experimental bool
 		it.Before(func() {
-			err := lifecycle.ExtendBuild(context.Background(), fakeKanikoCache, fakePhaseFactory)
+			experimental = true
+			err := lifecycle.ExtendBuild(context.Background(), fakeKanikoCache, fakePhaseFactory, experimental)
 			h.AssertNil(t, err)
 
 			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -2063,11 +2065,31 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		it("configures the phase with root", func() {
 			h.AssertEq(t, configProvider.ContainerConfig().User, "root")
 		})
+
+		when("experimental is false", func() {
+			it.Before(func() {
+				experimental = false
+				err := lifecycle.ExtendBuild(context.Background(), fakeKanikoCache, fakePhaseFactory, experimental)
+				h.AssertNil(t, err)
+
+				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+				h.AssertNotEq(t, lastCallIndex, -1)
+
+				configProvider = fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+				h.AssertEq(t, configProvider.Name(), "extender")
+			})
+
+			it("CNB_EXPERIMENTAL_MODE=warn is not enable in the environment", func() {
+				h.AssertSliceNotContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
+			})
+		})
 	})
 
 	when("#ExtendRun", func() {
+		var experimental bool
 		it.Before(func() {
-			err := lifecycle.ExtendRun(context.Background(), fakeKanikoCache, fakePhaseFactory, "some-run-image")
+			experimental = true
+			err := lifecycle.ExtendRun(context.Background(), fakeKanikoCache, fakePhaseFactory, "some-run-image", experimental)
 			h.AssertNil(t, err)
 
 			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -2110,6 +2132,24 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		it("configures the phase with root", func() {
 			h.AssertEq(t, configProvider.ContainerConfig().User, "root")
+		})
+
+		when("experimental is false", func() {
+			it.Before(func() {
+				experimental = false
+				err := lifecycle.ExtendRun(context.Background(), fakeKanikoCache, fakePhaseFactory, "some-run-image", experimental)
+				h.AssertNil(t, err)
+
+				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+				h.AssertNotEq(t, lastCallIndex, -1)
+
+				configProvider = fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+				h.AssertEq(t, configProvider.Name(), "extender")
+			})
+
+			it("CNB_EXPERIMENTAL_MODE=warn is not enable in the environment", func() {
+				h.AssertSliceNotContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
+			})
 		})
 	})
 
