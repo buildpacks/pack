@@ -240,6 +240,13 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			}
 		}
 
+		l.logger.Info(style.Step("RESTORING"))
+		if l.opts.ClearCache && l.PlatformAPI().LessThan("0.10") {
+			l.logger.Info("Skipping 'restore' due to clearing cache")
+		} else if err := l.Restore(ctx, buildCache, kanikoCache, phaseFactory); err != nil {
+			return err
+		}
+
 		var (
 			ephemeralRunImage string
 			err               error
@@ -252,13 +259,6 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			if ephemeralRunImage, err = l.opts.FetchRunImageWithLifecycleLayer(currentRunImage); err != nil {
 				return err
 			}
-		}
-
-		l.logger.Info(style.Step("RESTORING"))
-		if l.opts.ClearCache && l.PlatformAPI().LessThan("0.10") {
-			l.logger.Info("Skipping 'restore' due to clearing cache")
-		} else if err := l.Restore(ctx, buildCache, kanikoCache, phaseFactory); err != nil {
-			return err
 		}
 
 		group, _ := errgroup.WithContext(context.TODO())
@@ -929,7 +929,7 @@ func (l *LifecycleExecution) runImageAfterExtensions() string {
 		l.logger.Warnf("found no run image in analyzed.toml file, assuming run image did not change...")
 		return l.opts.RunImage
 	}
-	return amd.RunImage.Image
+	return amd.RunImage.Reference
 }
 
 func (l *LifecycleExecution) runImageChanged() bool {
