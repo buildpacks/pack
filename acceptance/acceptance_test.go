@@ -836,6 +836,8 @@ func testAcceptance(
 
 						when("builder is untrusted", func() {
 							it("uses the 5 phases, and runs the extender (build)", func() {
+								origLifecycle := lifecycle.Image()
+
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
@@ -846,7 +848,7 @@ func testAcceptance(
 								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 								assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-								assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+								assertOutput.IncludesLifecycleImageTag(origLifecycle)
 								assertOutput.IncludesSeparatePhasesWithBuildExtension()
 
 								t.Log("inspecting image")
@@ -886,6 +888,8 @@ func testAcceptance(
 								})
 
 								it("uses the 5 phases, and runs the extender (run)", func() {
+									origLifecycle := lifecycle.Image()
+
 									output := pack.RunSuccessfully(
 										"build", repoName,
 										"-p", filepath.Join("testdata", "mock_app"),
@@ -897,7 +901,8 @@ func testAcceptance(
 									assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 									assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-									assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+
+									assertOutput.IncludesLifecycleImageTag(origLifecycle)
 									assertOutput.IncludesSeparatePhasesWithRunExtension()
 
 									t.Log("inspecting image")
@@ -977,6 +982,8 @@ func testAcceptance(
 
 					when("daemon", func() {
 						it("uses the 5 phases", func() {
+							origLifecycle := lifecycle.Image()
+
 							output := pack.RunSuccessfully(
 								"build", repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
@@ -986,13 +993,15 @@ func testAcceptance(
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 							assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-							assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+							assertOutput.IncludesLifecycleImageTag(origLifecycle)
 							assertOutput.IncludesSeparatePhases()
 						})
 					})
 
 					when("--publish", func() {
 						it("uses the 5 phases", func() {
+							origLifecycle := lifecycle.Image()
+
 							buildArgs := []string{
 								repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
@@ -1008,7 +1017,7 @@ func testAcceptance(
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 							assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-							assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+							assertOutput.IncludesLifecycleImageTag(origLifecycle)
 							assertOutput.IncludesSeparatePhases()
 						})
 					})

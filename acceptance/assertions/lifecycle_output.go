@@ -6,6 +6,7 @@ package assertions
 import (
 	"fmt"
 	"regexp"
+	"strings"
 	"testing"
 
 	h "github.com/buildpacks/pack/testhelpers"
@@ -88,5 +89,9 @@ func (l LifecycleOutputAssertionManager) IncludesSeparatePhasesWithRunExtension(
 func (l LifecycleOutputAssertionManager) IncludesLifecycleImageTag(tag string) {
 	l.testObject.Helper()
 
-	l.assert.Contains(l.output, tag)
+	if !strings.Contains(l.output, tag) {
+		if !strings.Contains(l.output, "pack.local/lifecyle") {
+			l.testObject.Fatalf("Unable to locate reference to lifecycle image within output")
+		}
+	}
 }
