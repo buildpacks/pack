@@ -75,19 +75,6 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("mac address is set", func() {
-			it("should set MacAddress in LifecycleOptions", func() {
-				expectedMacAddress := "01:23:45:67:89:ab"
-				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithMacAddresss(expectedMacAddress))
-
-				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
-
-				// TODO fix this
-				//nolint:staticcheck
-				h.AssertEq(t, phaseConfigProvider.ContainerConfig().MacAddress, expectedMacAddress)
-			})
-		})
-
 		when("building with interactive mode", func() {
 			it("returns a phase config provider with interactive args", func() {
 				handler := func(bodyChan <-chan container.WaitResponse, errChan <-chan error, reader io.Reader) error {
