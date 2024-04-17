@@ -22,7 +22,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/platform/files"
-	"github.com/docker/docker/api/types"
+	dockerTypes "github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/volume/mounts"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -464,7 +464,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	if err != nil {
 		return err
 	}
-	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
+	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), dockerTypes.RemoveOptions{Force: true})
 
 	if len(bldr.OrderExtensions()) > 0 || len(ephemeralBuilder.OrderExtensions()) > 0 {
 		if !c.experimental {
