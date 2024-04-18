@@ -205,9 +205,6 @@ type BuildOptions struct {
 	// Directory to output the report.toml metadata artifact
 	ReportDestinationDir string
 
-	// For storing the mac-address to later pass on docker config structure
-	MacAddress string
-
 	// Desired create time in the output image config
 	CreationTime *time.Time
 
@@ -464,7 +461,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		buildEnvs[k] = v
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, orderExtensions, fetchedExs, usingPlatformAPI.LessThan("0.12"))
+	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, orderExtensions, fetchedExs, usingPlatformAPI.LessThan("0.12"), opts.RunImage)
 	if err != nil {
 		return err
 	}
@@ -547,7 +544,6 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Workspace:                opts.Workspace,
 		GID:                      opts.GroupID,
 		UID:                      opts.UserID,
-		MacAddress:               opts.MacAddress,
 		PreviousImage:            opts.PreviousImage,
 		Interactive:              opts.Interactive,
 		Termui:                   termui.NewTermui(imageName, ephemeralBuilder, runImageName),
@@ -1333,9 +1329,10 @@ func (c *Client) createEphemeralBuilder(
 	orderExtensions dist.Order,
 	extensions []buildpack.BuildModule,
 	validateMixins bool,
+	runImage string,
 ) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
-	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
+	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)), builder.WithRunImage(runImage))
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
 	}
