@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1712674510513,
+  "lastUpdate": 1713451306721,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -6118,6 +6118,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 51187938454,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0533daf8e9b0c214e6f7ead6501223abc66896b3",
+          "message": "Merge pull request #2133 from buildpacks/deps/jjbustamante/update-to-go-1-22\n\nUpdating to go 1.22",
+          "timestamp": "2024-04-18T09:39:42-05:00",
+          "tree_id": "5adf0b5fa99667199eb1729ee727e994f9b44571",
+          "url": "https://github.com/buildpacks/pack/commit/0533daf8e9b0c214e6f7ead6501223abc66896b3"
+        },
+        "date": 1713451306179,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3828084055,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 983691663,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 51735785588,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
