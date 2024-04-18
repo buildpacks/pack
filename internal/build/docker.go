@@ -13,7 +13,7 @@ import (
 )
 
 type DockerClient interface {
-	ImageRemove(ctx context.Context, image string, options types.ImageRemoveOptions) ([]image.DeleteResponse, error)
+	ImageRemove(ctx context.Context, image string, options image.RemoveOptions) ([]image.DeleteResponse, error)
 	VolumeRemove(ctx context.Context, volumeID string, force bool) error
 	ContainerWait(ctx context.Context, container string, condition containertypes.WaitCondition) (<-chan containertypes.WaitResponse, <-chan error)
 	ContainerAttach(ctx context.Context, container string, options containertypes.AttachOptions) (types.HijackedResponse, error)
