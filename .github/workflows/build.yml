@@ -74,7 +74,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.22"
           check-latest: true
       - name: Set up go env for Unix
         if: runner.os != 'Windows'
@@ -176,6 +176,9 @@ jobs:
           - name: linux-s390x
             goarch: s390x
             goos: linux
+          - name: linux-ppc64le
+            goarch: ppc64le
+            goos: linux
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -183,7 +186,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.22"
           check-latest: true
       - name: Build
         run: |
@@ -238,6 +241,12 @@ jobs:
           chmod +x pack-linux-s390x/pack
           filename=pack-v${{ env.PACK_VERSION }}-linux-s390x.tgz
           tar -C pack-linux-s390x -vzcf $filename pack
+          shasum -a 256 $filename > $filename.sha256
+      - name: Package artifacts - linux-ppc64le
+        run: |
+          chmod +x pack-linux-ppc64le/pack
+          filename=pack-v${{ env.PACK_VERSION }}-linux-ppc64le.tgz
+          tar -C pack-linux-ppc64le -vzcf $filename pack
           shasum -a 256 $filename > $filename.sha256
       - name: Package artifacts - macos-arm64
         run: |
@@ -313,6 +322,11 @@ jobs:
 
             ```bash
             (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux-s390x.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
+            ##### PPC64LE
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux-ppc64le.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
             ```
 
             #### MacOS

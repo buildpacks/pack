@@ -1,4 +1,4 @@
-package docker_test
+package client_test
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/docker"
+	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -23,8 +23,9 @@ func TestProcessDockerContext(t *testing.T) {
 }
 
 const (
-	happyCase = "happy-cases"
-	errorCase = "error-cases"
+	rootFolder = "docker-context"
+	happyCase  = "happy-cases"
+	errorCase  = "error-cases"
 )
 
 func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
@@ -43,7 +44,7 @@ func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("docker context process is skipped", func() {
-			err := docker.ProcessDockerContext(logger)
+			err := client.ProcessDockerContext(logger)
 			h.AssertNil(t, err)
 			h.AssertContains(t, strings.TrimSpace(outBuf.String()), "'DOCKER_HOST=some-value' environment variable is being used")
 		})
@@ -61,7 +62,7 @@ func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("docker context process is skip", func() {
-					err := docker.ProcessDockerContext(logger)
+					err := client.ProcessDockerContext(logger)
 					h.AssertNil(t, err)
 					h.AssertContains(t, strings.TrimSpace(outBuf.String()), "docker context is default or empty, skipping it")
 				})
@@ -73,7 +74,7 @@ func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("throw an error", func() {
-					err := docker.ProcessDockerContext(logger)
+					err := client.ProcessDockerContext(logger)
 					h.AssertNotNil(t, err)
 					h.AssertError(t, err, "docker context 'some-bad-context' not found")
 				})
@@ -86,7 +87,7 @@ func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("docker endpoint host is being used", func() {
-						err := docker.ProcessDockerContext(logger)
+						err := client.ProcessDockerContext(logger)
 						h.AssertNil(t, err)
 						h.AssertContains(t, outBuf.String(), "using docker context 'desktop-linux' with endpoint = 'unix:///Users/user/.docker/run/docker.sock'")
 					})
@@ -98,7 +99,7 @@ func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("docker endpoint host is being used", func() {
-						err := docker.ProcessDockerContext(logger)
+						err := client.ProcessDockerContext(logger)
 						h.AssertNil(t, err)
 						h.AssertContains(t, outBuf.String(), "using docker context 'desktop-linux' with endpoint = 'unix:///Users/user/.docker/run/docker.sock'")
 					})
@@ -110,7 +111,7 @@ func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("throw an error", func() {
-						err := docker.ProcessDockerContext(logger)
+						err := client.ProcessDockerContext(logger)
 						h.AssertNotNil(t, err)
 						h.AssertError(t, err, "context 'desktop-linux' doesn't match metadata name 'bad-name'")
 					})
@@ -122,7 +123,7 @@ func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("writes a warn message into the log", func() {
-						err := docker.ProcessDockerContext(logger)
+						err := client.ProcessDockerContext(logger)
 						h.AssertNil(t, err)
 						h.AssertContains(t, outBuf.String(), "docker endpoint doesn't exist for context 'desktop-linux'")
 					})
@@ -134,7 +135,7 @@ func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("throw an error", func() {
-						err := docker.ProcessDockerContext(logger)
+						err := client.ProcessDockerContext(logger)
 						h.AssertNotNil(t, err)
 						h.AssertError(t, err, "reading metadata for current context 'desktop-linux'")
 					})
@@ -148,7 +149,7 @@ func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("throw an error", func() {
-				err := docker.ProcessDockerContext(logger)
+				err := client.ProcessDockerContext(logger)
 				h.AssertNotNil(t, err)
 				h.AssertError(t, err, "reading configuration file")
 			})
@@ -160,7 +161,7 @@ func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("docker context process is skip", func() {
-				err := docker.ProcessDockerContext(logger)
+				err := client.ProcessDockerContext(logger)
 				h.AssertNil(t, err)
 				h.AssertContains(t, strings.TrimSpace(outBuf.String()), "docker context is default or empty, skipping it")
 			})
@@ -172,7 +173,7 @@ func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("docker context process is skip", func() {
-				err := docker.ProcessDockerContext(logger)
+				err := client.ProcessDockerContext(logger)
 				h.AssertNil(t, err)
 				h.AssertContains(t, strings.TrimSpace(outBuf.String()), "docker context is default or empty, skipping it")
 			})
@@ -184,7 +185,7 @@ func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("docker context process is skip", func() {
-				err := docker.ProcessDockerContext(logger)
+				err := client.ProcessDockerContext(logger)
 				h.AssertNil(t, err)
 				h.AssertContains(t, strings.TrimSpace(outBuf.String()), "docker context is default or empty, skipping it")
 			})
@@ -194,7 +195,7 @@ func testProcessDockerContext(t *testing.T, when spec.G, it spec.S) {
 
 func setDockerConfig(t *testing.T, test, context string) {
 	t.Helper()
-	contextDir, err := filepath.Abs(filepath.Join("testdata", test, context))
+	contextDir, err := filepath.Abs(filepath.Join("testdata", rootFolder, test, context))
 	h.AssertNil(t, err)
 	err = os.Setenv("DOCKER_CONFIG", contextDir)
 	h.AssertNil(t, err)

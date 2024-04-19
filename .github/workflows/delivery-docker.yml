@@ -60,12 +60,12 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
-      - uses: buildpacks/github-actions/setup-tools@v5.5.1
+      - uses: buildpacks/github-actions/setup-tools@v5.5.4
       - name: Buildx Build/Publish
         run: |
           docker buildx build . \
             --tag ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }}${{ matrix.suffix }} \
-            --platform linux/amd64,linux/arm64,linux/s390x \
+            --platform linux/amd64,linux/arm64,linux/s390x,linux/ppc64le \
             --build-arg pack_version=${{ steps.version.outputs.result }} \
             --build-arg base_image=${{ matrix.base_image }} \
             --provenance=false \

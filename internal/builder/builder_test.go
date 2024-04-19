@@ -1846,6 +1846,32 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("#New", func() {
+			when("#WithRunImage", func() {
+				// Current runImage information in builder image:
+				// "stack": {"runImage": {"image": "prev/run", "mirrors": ["prev/mirror"]}}
+				var newBuilder *builder.Builder
+				newRunImage := "another/run"
+
+				it.Before(func() {
+					var err error
+					newBuilder, err = builder.New(builderImage, "newBuilder/image", builder.WithRunImage(newRunImage))
+					h.AssertNil(t, err)
+				})
+
+				it("overrides the run image metadata (which becomes run.toml)", func() {
+					// RunImages() returns Stacks + RunImages metadata.
+					metadata := newBuilder.RunImages()
+					h.AssertTrue(t, len(metadata) == 2)
+					for _, m := range metadata {
+						// Both images must be equal to the expected run-image
+						h.AssertEq(t, m.Image, newRunImage)
+						h.AssertEq(t, len(m.Mirrors), 0)
+					}
+				})
+			})
+		})
 	})
 
 	when("flatten", func() {

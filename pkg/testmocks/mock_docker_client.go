@@ -19,6 +19,7 @@ import (
 	network "github.com/docker/docker/api/types/network"
 	registry "github.com/docker/docker/api/types/registry"
 	swarm "github.com/docker/docker/api/types/swarm"
+	system "github.com/docker/docker/api/types/system"
 	volume "github.com/docker/docker/api/types/volume"
 	gomock "github.com/golang/mock/gomock"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
@@ -179,7 +180,7 @@ func (mr *MockCommonAPIClientMockRecorder) ConfigUpdate(arg0, arg1, arg2, arg3 i
 }
 
 // ContainerAttach mocks base method.
-func (m *MockCommonAPIClient) ContainerAttach(arg0 context.Context, arg1 string, arg2 types.ContainerAttachOptions) (types.HijackedResponse, error) {
+func (m *MockCommonAPIClient) ContainerAttach(arg0 context.Context, arg1 string, arg2 container.AttachOptions) (types.HijackedResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerAttach", arg0, arg1, arg2)
 	ret0, _ := ret[0].(types.HijackedResponse)
@@ -194,7 +195,7 @@ func (mr *MockCommonAPIClientMockRecorder) ContainerAttach(arg0, arg1, arg2 inte
 }
 
 // ContainerCommit mocks base method.
-func (m *MockCommonAPIClient) ContainerCommit(arg0 context.Context, arg1 string, arg2 types.ContainerCommitOptions) (types.IDResponse, error) {
+func (m *MockCommonAPIClient) ContainerCommit(arg0 context.Context, arg1 string, arg2 container.CommitOptions) (types.IDResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerCommit", arg0, arg1, arg2)
 	ret0, _ := ret[0].(types.IDResponse)
@@ -224,10 +225,10 @@ func (mr *MockCommonAPIClientMockRecorder) ContainerCreate(arg0, arg1, arg2, arg
 }
 
 // ContainerDiff mocks base method.
-func (m *MockCommonAPIClient) ContainerDiff(arg0 context.Context, arg1 string) ([]container.ContainerChangeResponseItem, error) {
+func (m *MockCommonAPIClient) ContainerDiff(arg0 context.Context, arg1 string) ([]container.FilesystemChange, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerDiff", arg0, arg1)
-	ret0, _ := ret[0].([]container.ContainerChangeResponseItem)
+	ret0, _ := ret[0].([]container.FilesystemChange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -284,7 +285,7 @@ func (mr *MockCommonAPIClientMockRecorder) ContainerExecInspect(arg0, arg1 inter
 }
 
 // ContainerExecResize mocks base method.
-func (m *MockCommonAPIClient) ContainerExecResize(arg0 context.Context, arg1 string, arg2 types.ResizeOptions) error {
+func (m *MockCommonAPIClient) ContainerExecResize(arg0 context.Context, arg1 string, arg2 container.ResizeOptions) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerExecResize", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -372,7 +373,7 @@ func (mr *MockCommonAPIClientMockRecorder) ContainerKill(arg0, arg1, arg2 interf
 }
 
 // ContainerList mocks base method.
-func (m *MockCommonAPIClient) ContainerList(arg0 context.Context, arg1 types.ContainerListOptions) ([]types.Container, error) {
+func (m *MockCommonAPIClient) ContainerList(arg0 context.Context, arg1 container.ListOptions) ([]types.Container, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerList", arg0, arg1)
 	ret0, _ := ret[0].([]types.Container)
@@ -387,7 +388,7 @@ func (mr *MockCommonAPIClientMockRecorder) ContainerList(arg0, arg1 interface{})
 }
 
 // ContainerLogs mocks base method.
-func (m *MockCommonAPIClient) ContainerLogs(arg0 context.Context, arg1 string, arg2 types.ContainerLogsOptions) (io.ReadCloser, error) {
+func (m *MockCommonAPIClient) ContainerLogs(arg0 context.Context, arg1 string, arg2 container.LogsOptions) (io.ReadCloser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerLogs", arg0, arg1, arg2)
 	ret0, _ := ret[0].(io.ReadCloser)
@@ -416,7 +417,7 @@ func (mr *MockCommonAPIClientMockRecorder) ContainerPause(arg0, arg1 interface{}
 }
 
 // ContainerRemove mocks base method.
-func (m *MockCommonAPIClient) ContainerRemove(arg0 context.Context, arg1 string, arg2 types.ContainerRemoveOptions) error {
+func (m *MockCommonAPIClient) ContainerRemove(arg0 context.Context, arg1 string, arg2 container.RemoveOptions) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerRemove", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -444,7 +445,7 @@ func (mr *MockCommonAPIClientMockRecorder) ContainerRename(arg0, arg1, arg2 inte
 }
 
 // ContainerResize mocks base method.
-func (m *MockCommonAPIClient) ContainerResize(arg0 context.Context, arg1 string, arg2 types.ResizeOptions) error {
+func (m *MockCommonAPIClient) ContainerResize(arg0 context.Context, arg1 string, arg2 container.ResizeOptions) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerResize", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -472,7 +473,7 @@ func (mr *MockCommonAPIClientMockRecorder) ContainerRestart(arg0, arg1, arg2 int
 }
 
 // ContainerStart mocks base method.
-func (m *MockCommonAPIClient) ContainerStart(arg0 context.Context, arg1 string, arg2 types.ContainerStartOptions) error {
+func (m *MockCommonAPIClient) ContainerStart(arg0 context.Context, arg1 string, arg2 container.StartOptions) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerStart", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -827,10 +828,10 @@ func (mr *MockCommonAPIClientMockRecorder) ImageInspectWithRaw(arg0, arg1 interf
 }
 
 // ImageList mocks base method.
-func (m *MockCommonAPIClient) ImageList(arg0 context.Context, arg1 types.ImageListOptions) ([]types.ImageSummary, error) {
+func (m *MockCommonAPIClient) ImageList(arg0 context.Context, arg1 types.ImageListOptions) ([]image.Summary, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ImageList", arg0, arg1)
-	ret0, _ := ret[0].([]types.ImageSummary)
+	ret0, _ := ret[0].([]image.Summary)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -887,10 +888,10 @@ func (mr *MockCommonAPIClientMockRecorder) ImagePush(arg0, arg1, arg2 interface{
 }
 
 // ImageRemove mocks base method.
-func (m *MockCommonAPIClient) ImageRemove(arg0 context.Context, arg1 string, arg2 types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
+func (m *MockCommonAPIClient) ImageRemove(arg0 context.Context, arg1 string, arg2 types.ImageRemoveOptions) ([]image.DeleteResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ImageRemove", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]types.ImageDeleteResponseItem)
+	ret0, _ := ret[0].([]image.DeleteResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -961,10 +962,10 @@ func (mr *MockCommonAPIClientMockRecorder) ImagesPrune(arg0, arg1 interface{}) *
 }
 
 // Info mocks base method.
-func (m *MockCommonAPIClient) Info(arg0 context.Context) (types.Info, error) {
+func (m *MockCommonAPIClient) Info(arg0 context.Context) (system.Info, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Info", arg0)
-	ret0, _ := ret[0].(types.Info)
+	ret0, _ := ret[0].(system.Info)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1338,7 +1339,7 @@ func (mr *MockCommonAPIClientMockRecorder) PluginUpgrade(arg0, arg1, arg2 interf
 }
 
 // RegistryLogin mocks base method.
-func (m *MockCommonAPIClient) RegistryLogin(arg0 context.Context, arg1 types.AuthConfig) (registry.AuthenticateOKBody, error) {
+func (m *MockCommonAPIClient) RegistryLogin(arg0 context.Context, arg1 registry.AuthConfig) (registry.AuthenticateOKBody, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RegistryLogin", arg0, arg1)
 	ret0, _ := ret[0].(registry.AuthenticateOKBody)
@@ -1442,10 +1443,10 @@ func (mr *MockCommonAPIClientMockRecorder) ServerVersion(arg0 interface{}) *gomo
 }
 
 // ServiceCreate mocks base method.
-func (m *MockCommonAPIClient) ServiceCreate(arg0 context.Context, arg1 swarm.ServiceSpec, arg2 types.ServiceCreateOptions) (types.ServiceCreateResponse, error) {
+func (m *MockCommonAPIClient) ServiceCreate(arg0 context.Context, arg1 swarm.ServiceSpec, arg2 types.ServiceCreateOptions) (swarm.ServiceCreateResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ServiceCreate", arg0, arg1, arg2)
-	ret0, _ := ret[0].(types.ServiceCreateResponse)
+	ret0, _ := ret[0].(swarm.ServiceCreateResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1488,7 +1489,7 @@ func (mr *MockCommonAPIClientMockRecorder) ServiceList(arg0, arg1 interface{}) *
 }
 
 // ServiceLogs mocks base method.
-func (m *MockCommonAPIClient) ServiceLogs(arg0 context.Context, arg1 string, arg2 types.ContainerLogsOptions) (io.ReadCloser, error) {
+func (m *MockCommonAPIClient) ServiceLogs(arg0 context.Context, arg1 string, arg2 container.LogsOptions) (io.ReadCloser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ServiceLogs", arg0, arg1, arg2)
 	ret0, _ := ret[0].(io.ReadCloser)
@@ -1517,10 +1518,10 @@ func (mr *MockCommonAPIClientMockRecorder) ServiceRemove(arg0, arg1 interface{})
 }
 
 // ServiceUpdate mocks base method.
-func (m *MockCommonAPIClient) ServiceUpdate(arg0 context.Context, arg1 string, arg2 swarm.Version, arg3 swarm.ServiceSpec, arg4 types.ServiceUpdateOptions) (types.ServiceUpdateResponse, error) {
+func (m *MockCommonAPIClient) ServiceUpdate(arg0 context.Context, arg1 string, arg2 swarm.Version, arg3 swarm.ServiceSpec, arg4 types.ServiceUpdateOptions) (swarm.ServiceUpdateResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ServiceUpdate", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(types.ServiceUpdateResponse)
+	ret0, _ := ret[0].(swarm.ServiceUpdateResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1664,7 +1665,7 @@ func (mr *MockCommonAPIClientMockRecorder) TaskList(arg0, arg1 interface{}) *gom
 }
 
 // TaskLogs mocks base method.
-func (m *MockCommonAPIClient) TaskLogs(arg0 context.Context, arg1 string, arg2 types.ContainerLogsOptions) (io.ReadCloser, error) {
+func (m *MockCommonAPIClient) TaskLogs(arg0 context.Context, arg1 string, arg2 container.LogsOptions) (io.ReadCloser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TaskLogs", arg0, arg1, arg2)
 	ret0, _ := ret[0].(io.ReadCloser)
@@ -1725,7 +1726,7 @@ func (mr *MockCommonAPIClientMockRecorder) VolumeInspectWithRaw(arg0, arg1 inter
 }
 
 // VolumeList mocks base method.
-func (m *MockCommonAPIClient) VolumeList(arg0 context.Context, arg1 filters.Args) (volume.ListResponse, error) {
+func (m *MockCommonAPIClient) VolumeList(arg0 context.Context, arg1 volume.ListOptions) (volume.ListResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VolumeList", arg0, arg1)
 	ret0, _ := ret[0].(volume.ListResponse)

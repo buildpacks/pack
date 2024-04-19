@@ -104,6 +104,14 @@ type BuilderOption func(*options) error
 type options struct {
 	toFlatten buildpack.FlattenModuleInfos
 	labels    map[string]string
+	runImage  string
+}
+
+func WithRunImage(name string) BuilderOption {
+	return func(o *options) error {
+		o.runImage = name
+		return nil
+	}
 }
 
 // FromImage constructs a builder from a builder image
@@ -138,6 +146,13 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 	layerWriterFactory, err := layer.NewWriterFactory(imageOS)
 	if err != nil {
 		return nil, err
+	}
+
+	if opts.runImage != "" {
+		// Do we need to look for available mirrors? for now the mirrors are gone if you override the run-image
+		// create an issue if you want to preserve the mirrors
+		metadata.RunImages = []RunImageMetadata{{Image: opts.runImage}}
+		metadata.Stack.RunImage = RunImageMetadata{Image: opts.runImage}
 	}
 
 	for labelKey, labelValue := range opts.labels {
