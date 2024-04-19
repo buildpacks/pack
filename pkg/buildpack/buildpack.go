@@ -71,11 +71,15 @@ func FromBlob(descriptor Descriptor, blob Blob) BuildModule {
 // FromBuildpackRootBlob constructs a buildpack from a blob. It is assumed that the buildpack contents reside at the
 // root of the blob. The constructed buildpack contents will be structured as per the distribution spec (currently
 // a tar with contents under '/cnb/buildpacks/{ID}/{version}/*').
-func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
+func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory, logger Logger) (BuildModule, error) {
 	descriptor := dist.BuildpackDescriptor{}
 	descriptor.WithAPI = api.MustParse(dist.AssumedBuildpackAPIVersion)
-	if err := readDescriptor(KindBuildpack, &descriptor, blob); err != nil {
+	var undecodedKeys []string
+	if err := readDescriptor(KindBuildpack, &descriptor, blob, undecodedKeys); err != nil {
 		return nil, err
+	}
+	if len(undecodedKeys) > 0 {
+		logger.Warnf("Ignoring unexpected key(s) in buildpack descriptor: %s", strings.Join(undecodedKeys, ","))
 	}
 	if err := detectPlatformSpecificValues(&descriptor, blob); err != nil {
 		return nil, err
@@ -89,11 +93,15 @@ func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 // FromExtensionRootBlob constructs an extension from a blob. It is assumed that the extension contents reside at the
 // root of the blob. The constructed extension contents will be structured as per the distribution spec (currently
 // a tar with contents under '/cnb/extensions/{ID}/{version}/*').
-func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
+func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory, logger Logger) (BuildModule, error) {
 	descriptor := dist.ExtensionDescriptor{}
 	descriptor.WithAPI = api.MustParse(dist.AssumedBuildpackAPIVersion)
-	if err := readDescriptor(KindExtension, &descriptor, blob); err != nil {
+	var undecodedKeys []string
+	if err := readDescriptor(KindExtension, &descriptor, blob, undecodedKeys); err != nil {
 		return nil, err
+	}
+	if len(undecodedKeys) > 0 {
+		logger.Warnf("Ignoring unexpected key(s) in extension descriptor: %s", strings.Join(undecodedKeys, ","))
 	}
 	if err := validateExtensionDescriptor(descriptor); err != nil {
 		return nil, err
@@ -101,7 +109,7 @@ func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 	return buildpackFrom(&descriptor, blob, layerWriterFactory)
 }
 
-func readDescriptor(kind string, descriptor interface{}, blob Blob) error {
+func readDescriptor(kind string, descriptor interface{}, blob Blob, undecoded []string) error {
 	rc, err := blob.Open()
 	if err != nil {
 		return errors.Wrapf(err, "open %s", kind)
@@ -115,9 +123,14 @@ func readDescriptor(kind string, descriptor interface{}, blob Blob) error {
 		return errors.Wrapf(err, "reading %s", descriptorFile)
 	}
 
-	_, err = toml.Decode(string(buf), descriptor)
+	md, err := toml.Decode(string(buf), descriptor)
 	if err != nil {
 		return errors.Wrapf(err, "decoding %s", descriptorFile)
+	}
+
+	undecodedKeys := md.Undecoded()
+	for _, k := range undecodedKeys {
+		undecoded = append(undecoded, k.String())
 	}
 
 	return nil
