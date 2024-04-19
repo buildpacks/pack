@@ -80,6 +80,12 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return errors.Wrapf(err, "getting app architecture")
 	}
 
+	top, err := appImage.TopLayer()
+	if err != nil {
+		return errors.Wrapf(err, "getting top layer")
+	}
+	c.logger.Infof("Top layer before rebasing %s", top)
+
 	var md files.LayersMetadataCompat
 	if ok, err := dist.GetLabel(appImage, platform.LifecycleMetadataLabel, &md); err != nil {
 		return err
@@ -134,6 +140,12 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	}
 
 	c.logger.Infof("Rebased Image: %s", style.Symbol(appImageIdentifier.String()))
+
+	top, err = appImage.TopLayer()
+	if err != nil {
+		return errors.Wrapf(err, "getting top layer")
+	}
+	c.logger.Infof("Top layer after rebasing %s", top)
 
 	if opts.ReportDestinationDir != "" {
 		reportPath := filepath.Join(opts.ReportDestinationDir, "report.toml")

@@ -2938,7 +2938,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						it("uses provided run image", func() {
 							args := []string{repoName, "--publish", "--run-image", runAfter}
 							if pack.SupportsFeature(invoke.ForceRebase) {
-								args = append(args, "--force")
+								args = append(args, "--force", "--verbose")
 							}
 							output := pack.RunSuccessfully("rebase", args...)
 
