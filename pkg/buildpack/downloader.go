@@ -141,7 +141,7 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 			return nil, nil, errors.Wrapf(err, "downloading %s from %s", kind, style.Symbol(moduleURI))
 		}
 
-		mainBP, depBPs, err = decomposeBlob(blob, kind, opts.ImageOS)
+		mainBP, depBPs, err = decomposeBlob(blob, kind, opts.ImageOS, c.logger)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from %s", style.Symbol(moduleURI))
 		}
@@ -153,7 +153,7 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 
 // decomposeBlob decomposes a buildpack or extension blob into the main module (order buildpack or extension) and
 // (for buildpack blobs) its dependent buildpacks.
-func decomposeBlob(blob blob.Blob, kind string, imageOS string) (mainModule BuildModule, depModules []BuildModule, err error) {
+func decomposeBlob(blob blob.Blob, kind string, imageOS string, logger Logger) (mainModule BuildModule, depModules []BuildModule, err error) {
 	isOCILayout, err := IsOCILayoutBlob(blob)
 	if err != nil {
 		return mainModule, depModules, errors.Wrapf(err, "inspecting %s blob", kind)
@@ -171,9 +171,9 @@ func decomposeBlob(blob blob.Blob, kind string, imageOS string) (mainModule Buil
 		}
 
 		if kind == KindExtension {
-			mainModule, err = FromExtensionRootBlob(blob, layerWriterFactory)
+			mainModule, err = FromExtensionRootBlob(blob, layerWriterFactory, logger)
 		} else {
-			mainModule, err = FromBuildpackRootBlob(blob, layerWriterFactory)
+			mainModule, err = FromBuildpackRootBlob(blob, layerWriterFactory, logger)
 		}
 		if err != nil {
 			return mainModule, depModules, errors.Wrapf(err, "reading %s", kind)

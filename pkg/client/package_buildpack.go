@@ -98,7 +98,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return err
 	}
 
-	bp, err := buildpack.FromBuildpackRootBlob(mainBlob, writerFactory)
+	bp, err := buildpack.FromBuildpackRootBlob(mainBlob, writerFactory, c.logger)
 	if err != nil {
 		return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bpURI))
 	}
