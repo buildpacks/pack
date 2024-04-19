@@ -61,6 +61,7 @@ func testParseTargets(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNotEq(t, outBuf.String(), "")
 		})
 	})
+
 	when("target#ParseTargets", func() {
 		it("should throw an error when atleast one target throws error", func() {
 			_, err := target.ParseTargets([]string{"linux/arm/v6", ":distro@version"}, logging.NewLogWithWriters(&outBuf, &outBuf))
@@ -96,6 +97,7 @@ func testParseTargets(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
 	when("target#ParseDistro", func() {
 		it("should parse distro as expected", func() {
 			output, err := target.ParseDistro("ubuntu@22.04", logging.NewLogWithWriters(&outBuf, &outBuf))
@@ -105,15 +107,21 @@ func testParseTargets(t *testing.T, when spec.G, it spec.S) {
 			})
 			h.AssertNil(t, err)
 		})
-		it("should return an error", func() {
+		it("should return an error when name is missing", func() {
 			_, err := target.ParseDistro("@22.04@20.08", logging.NewLogWithWriters(&outBuf, &outBuf))
 			h.AssertNotNil(t, err)
+		})
+		it("should return an error when there are two versions", func() {
+			_, err := target.ParseDistro("some-distro@22.04@20.08", logging.NewLogWithWriters(&outBuf, &outBuf))
+			h.AssertNotNil(t, err)
+			h.AssertError(t, err, "invalid distro")
 		})
 		it("should warn when distro version is not specified", func() {
 			target.ParseDistro("ubuntu", logging.NewLogWithWriters(&outBuf, &outBuf))
 			h.AssertNotEq(t, outBuf.String(), "")
 		})
 	})
+
 	when("target#ParseDistros", func() {
 		it("should parse distros as expected", func() {
 			output, err := target.ParseDistros("ubuntu@22.04;ubuntu@20.08;debian@8.10;debian@10.06", logging.NewLogWithWriters(&outBuf, &outBuf))
