@@ -1,6 +1,7 @@
 package buildpack_test
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -494,6 +496,40 @@ version = "1.2.3"
 					"/cnb/buildpacks/bp.one/1.2.3/original-file-2",
 					h.AreEquivalentHardLinks(),
 				)
+			})
+		})
+
+		when("there are wrong things in the file", func() {
+			it("warns", func() {
+				outBuf := bytes.Buffer{}
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
+				_, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+					openFn: func() io.ReadCloser {
+						tarBuilder := archive.TarBuilder{}
+						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+api = "0.3"
+
+[buildpack]
+id = "bp.one"
+version = "1.2.3"
+homepage = "http://geocities.com/cool-bp"
+
+[[targets]]
+os = "some-os"
+arch = "some-arch"
+variant = "some-arch-variant"
+[[targets.distributions]]
+name = "some-distro-name"
+version = "some-distro-version"
+[[targets.distros]]
+name = "some-distro-name"
+versions = ["some-distro-version"]
+`))
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
+					},
+				}, archive.DefaultTarWriterFactory(), logger)
+				h.AssertNil(t, err)
+				h.AssertContains(t, outBuf.String(), "Warning: Ignoring unexpected key(s) in descriptor for buildpack bp.one: targets.distributions,targets.distributions.name,targets.distributions.version,targets.distros.versions")
 			})
 		})
 	})

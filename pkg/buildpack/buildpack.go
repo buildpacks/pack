@@ -74,12 +74,12 @@ func FromBlob(descriptor Descriptor, blob Blob) BuildModule {
 func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory, logger Logger) (BuildModule, error) {
 	descriptor := dist.BuildpackDescriptor{}
 	descriptor.WithAPI = api.MustParse(dist.AssumedBuildpackAPIVersion)
-	var undecodedKeys []string
-	if err := readDescriptor(KindBuildpack, &descriptor, blob, undecodedKeys); err != nil {
+	undecodedKeys, err := readDescriptor(KindBuildpack, &descriptor, blob)
+	if err != nil {
 		return nil, err
 	}
 	if len(undecodedKeys) > 0 {
-		logger.Warnf("Ignoring unexpected key(s) in buildpack descriptor: %s", strings.Join(undecodedKeys, ","))
+		logger.Warnf("Ignoring unexpected key(s) in descriptor for buildpack %s: %s", descriptor.EscapedID(), strings.Join(undecodedKeys, ","))
 	}
 	if err := detectPlatformSpecificValues(&descriptor, blob); err != nil {
 		return nil, err
@@ -96,12 +96,12 @@ func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory, logger Logger) (BuildModule, error) {
 	descriptor := dist.ExtensionDescriptor{}
 	descriptor.WithAPI = api.MustParse(dist.AssumedBuildpackAPIVersion)
-	var undecodedKeys []string
-	if err := readDescriptor(KindExtension, &descriptor, blob, undecodedKeys); err != nil {
+	undecodedKeys, err := readDescriptor(KindExtension, &descriptor, blob)
+	if err != nil {
 		return nil, err
 	}
 	if len(undecodedKeys) > 0 {
-		logger.Warnf("Ignoring unexpected key(s) in extension descriptor: %s", strings.Join(undecodedKeys, ","))
+		logger.Warnf("Ignoring unexpected key(s) in descriptor for extension %s: %s", descriptor.EscapedID(), strings.Join(undecodedKeys, ","))
 	}
 	if err := validateExtensionDescriptor(descriptor); err != nil {
 		return nil, err
@@ -109,10 +109,10 @@ func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 	return buildpackFrom(&descriptor, blob, layerWriterFactory)
 }
 
-func readDescriptor(kind string, descriptor interface{}, blob Blob, undecoded []string) error {
+func readDescriptor(kind string, descriptor interface{}, blob Blob) (undecodedKeys []string, err error) {
 	rc, err := blob.Open()
 	if err != nil {
-		return errors.Wrapf(err, "open %s", kind)
+		return undecodedKeys, errors.Wrapf(err, "open %s", kind)
 	}
 	defer rc.Close()
 
@@ -120,20 +120,20 @@ func readDescriptor(kind string, descriptor interface{}, blob Blob, undecoded []
 
 	_, buf, err := archive.ReadTarEntry(rc, descriptorFile)
 	if err != nil {
-		return errors.Wrapf(err, "reading %s", descriptorFile)
+		return undecodedKeys, errors.Wrapf(err, "reading %s", descriptorFile)
 	}
 
 	md, err := toml.Decode(string(buf), descriptor)
 	if err != nil {
-		return errors.Wrapf(err, "decoding %s", descriptorFile)
+		return undecodedKeys, errors.Wrapf(err, "decoding %s", descriptorFile)
 	}
 
-	undecodedKeys := md.Undecoded()
-	for _, k := range undecodedKeys {
-		undecoded = append(undecoded, k.String())
+	undecoded := md.Undecoded()
+	for _, k := range undecoded {
+		undecodedKeys = append(undecodedKeys, k.String())
 	}
 
-	return nil
+	return undecodedKeys, nil
 }
 
 func detectPlatformSpecificValues(descriptor *dist.BuildpackDescriptor, blob Blob) error {
