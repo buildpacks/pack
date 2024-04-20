@@ -2,14 +2,14 @@ package lifecycle
 
 import (
 	"github.com/buildpacks/pack/internal/build"
-	"github.com/buildpacks/pack/internal/buildkit/lifecycle/state"
+	"github.com/buildpacks/pack/internal/buildkit/state"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
 func NewLifecycleExecution(logger logging.Logger, state state.State, targets []dist.Target, tmpDir string, opts build.LifecycleOptions) (*LifecycleExecution, error) {
-	supportedPlatformAPIs := append(
+	supportedPlatformAPIs := append( 
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Deprecated,
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Supported...,
 	)

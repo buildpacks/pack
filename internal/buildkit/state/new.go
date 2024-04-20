@@ -8,6 +8,7 @@ import (
 	"github.com/moby/buildkit/util/system"
 )
 
+// NewState creates an empty [State] with system specific default PATH env set
 func NewState(os string) (_ *State, err error) {
 	config := &v1.ConfigFile{
 		RootFS: v1.RootFS{

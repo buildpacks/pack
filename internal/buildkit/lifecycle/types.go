@@ -4,7 +4,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 
 	"github.com/buildpacks/pack/internal/build"
-	"github.com/buildpacks/pack/internal/buildkit/lifecycle/state"
+	"github.com/buildpacks/pack/internal/buildkit/state"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 )

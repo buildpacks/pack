@@ -27,12 +27,12 @@ func (l *LifecycleExecution) Detect(ctx context.Context) error {
 func (l *LifecycleExecution) detect(ctx context.Context, target dist.Target) (err error) {
 	var (
 		stateOps = make([]llb.StateOption, 0)
-		runOps   = make([]llb.RunOption, 0)
+		// runOps   = make([]llb.RunOption, 0)
 	)
 
 	flags := []string{"-app", mountpaths.MountPathsForOS(target.OS, l.opts.Workspace).AppDir()}
 	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
-		stateOps = append(stateOps, llb.AddEnv(cnb.CNB_EXPERIMENTAL_MODE, cnb.WARN))
+		stateOps = append(stateOps, llb.AddEnv(cnb.CnbExperimentalMode, cnb.WARN))
 	}
 	// TODO: Add CustomName for llb.State
 	// llb.WithCustomName("Detect")
