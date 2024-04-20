@@ -9,7 +9,7 @@ import (
 )
 
 func NewLifecycleExecution(logger logging.Logger, state state.State, targets []dist.Target, tmpDir string, opts build.LifecycleOptions) (*LifecycleExecution, error) {
-	supportedPlatformAPIs := append( 
+	supportedPlatformAPIs := append(
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Deprecated,
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Supported...,
 	)

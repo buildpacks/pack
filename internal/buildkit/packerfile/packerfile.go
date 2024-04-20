@@ -1,9 +1,9 @@
-package dockerfile
+package packerfile
 
-import "github.com/buildpacks/pack/internal/buildkit/dockerfile/options"
+import "github.com/buildpacks/pack/internal/buildkit/packerfile/options"
 
-// Dockerfile is an interface with a set of instructions that are supported by a [Dockerfile]
-type Dockerfile interface {
+// Packerfile is an interface that performs set of instructions. Inspired from [Dockerfile] syntax
+type Packerfile interface {
 	ADDCommand(string, options.ADDOptions) error                          // Add local or remote files and directories.
 	ARGCommand(options.ARGOptions) error                                  // Use build-time variables.
 	CMDCommand(cmd []string, ops options.CMDOptions) error                // Specify default commands. There can only be one CMD instruction in a Dockerfile. If you list more than one CMD, only the last one takes effect.
