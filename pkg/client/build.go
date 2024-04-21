@@ -802,22 +802,22 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	return bldr, nil
 }
 
-func (c *Client) validateRunImage(context context.Context, name string, opts image.FetchOptions, expectedStack string) (builderImage imgutil.Image, warnings []string, err error) {
+func (c *Client) validateRunImage(context context.Context, name string, opts image.FetchOptions, expectedStack string) (runImage imgutil.Image, warnings []string, err error) {
 	if name == "" {
 		return nil, nil, errors.New("run image must be specified")
 	}
-	img, err := c.imageFetcher.Fetch(context, name, opts)
+	runImage, err = c.imageFetcher.Fetch(context, name, opts)
 	if err != nil {
 		return nil, nil, err
 	}
-	stackID, err := img.Label("io.buildpacks.stack.id")
+	stackID, err := runImage.Label("io.buildpacks.stack.id")
 	if err != nil {
 		return nil, nil, err
 	}
 	if stackID != expectedStack {
 		warnings = append(warnings, "deprecated usage of stack")
 	}
-	return builderImage, warnings, nil
+	return runImage, warnings, nil
 }
 
 func (c *Client) validateMixins(additionalBuildpacks []buildpack.BuildModule, bldr *builder.Builder, runImageName string, runMixins []string) error {
