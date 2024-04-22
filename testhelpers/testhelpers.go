@@ -381,6 +381,10 @@ func CreateImage(t *testing.T, dockerCli client.CommonAPIClient, repoName, docke
 	defer resp.Body.Close()
 	err = checkResponse(resp.Body)
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
+
+	inspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), repoName)
+	AssertNil(t, err)
+	t.Logf("XXX Inspect on %s: %+v", repoName, inspect)
 }
 
 func CreateImageFromDir(t *testing.T, dockerCli client.CommonAPIClient, repoName string, dir string) {

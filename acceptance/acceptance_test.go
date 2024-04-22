@@ -2935,14 +2935,15 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							imageManager.CleanupImages(runAfter)
 						})
 
-						it("uses provided run image", func() {
-							args := []string{repoName, "--publish", "--run-image", runAfter}
+						it.Focus("uses provided run image", func() {
+							args := []string{repoName, "--verbose", "--publish", "--run-image", runAfter}
 							if pack.SupportsFeature(invoke.ForceRebase) {
 								args = append(args, "--force")
 							}
 							output := pack.RunSuccessfully("rebase", args...)
 
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulRebase(repoName)
+							fmt.Println(output)
 							assertImage.CanBePulledFromRegistry(repoName)
 							assertImage.RunsWithOutput(
 								repoName,

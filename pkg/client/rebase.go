@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
+	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/phase"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/lifecycle/platform/files"
@@ -80,6 +81,16 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return errors.Wrapf(err, "getting app architecture")
 	}
 
+	if appImage.UnderlyingImage() != nil {
+		manifest, err := appImage.UnderlyingImage().RawManifest()
+		if err != nil {
+			return errors.Wrapf(err, "getting top layer")
+		}
+		c.logger.Infof("manifest before rebasing %s", string(manifest))
+	} else {
+		c.logger.Infof("underlying image for %s is nil", repoName)
+	}
+
 	var md files.LayersMetadataCompat
 	if ok, err := dist.GetLabel(appImage, platform.LifecycleMetadataLabel, &md); err != nil {
 		return err
@@ -112,6 +123,9 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return errors.New("run image must be specified")
 	}
 
+	c.logger.Info("XXX - App image history before rebasing")
+	c.logHistory(appImage)
+
 	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, image.FetchOptions{
 		Daemon:     !opts.Publish,
 		PullPolicy: opts.PullPolicy,
@@ -120,6 +134,9 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	if err != nil {
 		return err
 	}
+
+	c.logger.Info("XXX - New base image history")
+	c.logHistory(baseImage)
 
 	c.logger.Infof("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
 	rebaser := &phase.Rebaser{Logger: c.logger, PlatformAPI: build.SupportedPlatformAPIVersions.Latest(), Force: opts.Force}
@@ -135,6 +152,19 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 
 	c.logger.Infof("Rebased Image: %s", style.Symbol(appImageIdentifier.String()))
 
+	if appImage.UnderlyingImage() != nil {
+		manifest, err := appImage.UnderlyingImage().RawManifest()
+		if err != nil {
+			return errors.Wrapf(err, "getting top layer")
+		}
+		c.logger.Infof("manifest after rebasing %s", string(manifest))
+	} else {
+		c.logger.Infof("underlying image after for %s is nil", repoName)
+	}
+
+	c.logger.Info("XXX - App image history after rebasing")
+	c.logHistory(appImage)
+
 	if opts.ReportDestinationDir != "" {
 		reportPath := filepath.Join(opts.ReportDestinationDir, "report.toml")
 		reportFile, err := os.OpenFile(reportPath, os.O_RDWR|os.O_CREATE, 0644)
@@ -149,6 +179,18 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 			c.logger.Warnf("unable to write rebase report to %s", reportPath)
 			return err
 		}
+	}
+	return nil
+}
+
+func (c *Client) logHistory(baseImage imgutil.Image) error {
+	histories, err := baseImage.History()
+	if err != nil {
+		return err
+	}
+	c.logger.Infof("XXX %v Histories for image %s", len(histories), baseImage.Name())
+	for _, h := range histories {
+		c.logger.Infof("%s, is empty %v", h.Comment, h.EmptyLayer)
 	}
 	return nil
 }
