@@ -19,6 +19,7 @@ import (
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
+	fetcher_mock "github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -355,11 +356,13 @@ func packageCommand(ops ...packageCommandOption) *cobra.Command {
 		configPath:          "/path/to/some/file",
 	}
 
+	imagePullPolicyHandler := fetcher_mock.NewMockPullPolicyManager(config.logger)
+
 	for _, op := range ops {
 		op(config)
 	}
 
-	cmd := commands.BuildpackPackage(config.logger, config.clientConfig, config.buildpackPackager, config.packageConfigReader)
+	cmd := commands.BuildpackPackage(config.logger, config.clientConfig, config.buildpackPackager, config.packageConfigReader, imagePullPolicyHandler)
 	cmd.SetArgs([]string{config.imageName, "--config", config.configPath, "-p", config.path})
 
 	return cmd

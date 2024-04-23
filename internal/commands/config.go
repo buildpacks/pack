@@ -6,10 +6,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
-func NewConfigCommand(logger logging.Logger, cfg config.Config, cfgPath string, client PackClient) *cobra.Command {
+func NewConfigCommand(logger logging.Logger, cfg config.Config, cfgPath string, client PackClient, imagePullPolicyHandler image.ImagePullPolicyHandler) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Interact with your local pack config file",
@@ -18,7 +19,8 @@ func NewConfigCommand(logger logging.Logger, cfg config.Config, cfgPath string, 
 
 	cmd.AddCommand(ConfigDefaultBuilder(logger, cfg, cfgPath, client))
 	cmd.AddCommand(ConfigExperimental(logger, cfg, cfgPath))
-	cmd.AddCommand(ConfigPullPolicy(logger, cfg, cfgPath))
+	cmd.AddCommand(ConfigPullPolicy(logger, cfg, cfgPath, imagePullPolicyHandler))
+	cmd.AddCommand(ConfigPruneInterval(logger, cfg, cfgPath, imagePullPolicyHandler))
 	cmd.AddCommand(ConfigRegistries(logger, cfg, cfgPath))
 	cmd.AddCommand(ConfigRunImagesMirrors(logger, cfg, cfgPath))
 	cmd.AddCommand(ConfigTrustedBuilder(logger, cfg, cfgPath))

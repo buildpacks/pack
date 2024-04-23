@@ -26,6 +26,7 @@ import (
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 	projectTypes "github.com/buildpacks/pack/pkg/project/types"
+	fetcher_mock "github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -38,12 +39,13 @@ func TestBuildCommand(t *testing.T) {
 
 func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		command        *cobra.Command
-		logger         *logging.LogWithWriters
-		outBuf         bytes.Buffer
-		mockController *gomock.Controller
-		mockClient     *testmocks.MockPackClient
-		cfg            config.Config
+		command                *cobra.Command
+		logger                 *logging.LogWithWriters
+		outBuf                 bytes.Buffer
+		mockController         *gomock.Controller
+		mockClient             *testmocks.MockPackClient
+		cfg                    config.Config
+		imagePullPolicyHandler image.ImagePullPolicyHandler
 	)
 
 	it.Before(func() {
@@ -51,8 +53,9 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 		cfg = config.Config{}
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
+		imagePullPolicyHandler = fetcher_mock.NewMockPullPolicyManager(logger)
 
-		command = commands.Build(logger, cfg, mockClient)
+		command = commands.Build(logger, cfg, mockClient, imagePullPolicyHandler)
 	})
 
 	when("#BuildCommand", func() {
@@ -97,7 +100,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 						Return(nil)
 
 					cfg := config.Config{TrustedBuilders: []config.TrustedBuilder{{Name: "my-builder"}}}
-					command = commands.Build(logger, cfg, mockClient)
+					command = commands.Build(logger, cfg, mockClient, imagePullPolicyHandler)
 				})
 				it("sets the trust builder option", func() {
 					logger.WantVerbose(true)
@@ -167,7 +170,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					Return(nil)
 
 				cfg := config.Config{PullPolicy: "if-not-present"}
-				command := commands.Build(logger, cfg, mockClient)
+				command := commands.Build(logger, cfg, mockClient, imagePullPolicyHandler)
 
 				logger.WantVerbose(true)
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--pull-policy", "never"})
@@ -193,7 +196,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 						Return(nil)
 
 					cfg := config.Config{PullPolicy: "never"}
-					command := commands.Build(logger, cfg, mockClient)
+					command := commands.Build(logger, cfg, mockClient, imagePullPolicyHandler)
 
 					logger.WantVerbose(true)
 					command.SetArgs([]string{"image", "--builder", "my-builder"})
@@ -455,7 +458,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 						Return(nil)
 
 					cfg := config.Config{LifecycleImage: "some-lifecycle-image"}
-					command := commands.Build(logger, cfg, mockClient)
+					command := commands.Build(logger, cfg, mockClient, imagePullPolicyHandler)
 
 					logger.WantVerbose(true)
 					command.SetArgs([]string{"image", "--builder", "my-builder"})
@@ -895,7 +898,7 @@ builder = "my-builder"
 				Experimental:        true,
 				LayoutRepositoryDir: layoutDir,
 			}
-			command = commands.Build(logger, cfg, mockClient)
+			command = commands.Build(logger, cfg, mockClient, imagePullPolicyHandler)
 		})
 
 		when("path to save the image is provided", func() {

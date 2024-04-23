@@ -12,6 +12,7 @@ import (
 	imagewriter "github.com/buildpacks/pack/internal/inspectimage/writer"
 	"github.com/buildpacks/pack/internal/term"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -33,7 +34,9 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 		return nil, err
 	}
 
-	packClient, err := initClient(logger, cfg)
+	imagePullPolicyHandler := image.NewPullPolicyManager(logger)
+
+	packClient, err := initClient(logger, cfg, imagePullPolicyHandler)
 	if err != nil {
 		return nil, err
 	}
@@ -75,14 +78,14 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	commands.AddHelpFlag(rootCmd, "pack")
 
-	rootCmd.AddCommand(commands.Build(logger, cfg, packClient))
-	rootCmd.AddCommand(commands.NewBuilderCommand(logger, cfg, packClient))
-	rootCmd.AddCommand(commands.NewBuildpackCommand(logger, cfg, packClient, buildpackage.NewConfigReader()))
-	rootCmd.AddCommand(commands.NewExtensionCommand(logger, cfg, packClient, buildpackage.NewConfigReader()))
-	rootCmd.AddCommand(commands.NewConfigCommand(logger, cfg, cfgPath, packClient))
+	rootCmd.AddCommand(commands.Build(logger, cfg, packClient, imagePullPolicyHandler))
+	rootCmd.AddCommand(commands.NewBuilderCommand(logger, cfg, packClient, imagePullPolicyHandler))
+	rootCmd.AddCommand(commands.NewBuildpackCommand(logger, cfg, packClient, buildpackage.NewConfigReader(), imagePullPolicyHandler))
+	rootCmd.AddCommand(commands.NewExtensionCommand(logger, cfg, packClient, buildpackage.NewConfigReader(), imagePullPolicyHandler))
+	rootCmd.AddCommand(commands.NewConfigCommand(logger, cfg, cfgPath, packClient, imagePullPolicyHandler))
 	rootCmd.AddCommand(commands.InspectImage(logger, imagewriter.NewFactory(), cfg, packClient))
 	rootCmd.AddCommand(commands.NewStackCommand(logger))
-	rootCmd.AddCommand(commands.Rebase(logger, cfg, packClient))
+	rootCmd.AddCommand(commands.Rebase(logger, cfg, packClient, imagePullPolicyHandler))
 	rootCmd.AddCommand(commands.NewSBOMCommand(logger, cfg, packClient))
 
 	rootCmd.AddCommand(commands.InspectBuildpack(logger, cfg, packClient))
@@ -94,8 +97,8 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.TrustBuilder(logger, cfg, cfgPath))
 	rootCmd.AddCommand(commands.UntrustBuilder(logger, cfg, cfgPath))
 	rootCmd.AddCommand(commands.ListTrustedBuilders(logger, cfg))
-	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, packClient))
-	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, packClient, buildpackage.NewConfigReader()))
+	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, packClient, imagePullPolicyHandler))
+	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, packClient, buildpackage.NewConfigReader(), imagePullPolicyHandler))
 
 	if cfg.Experimental {
 		rootCmd.AddCommand(commands.AddBuildpackRegistry(logger, cfg, cfgPath))
@@ -136,7 +139,7 @@ func initConfig() (config.Config, string, error) {
 	return cfg, path, nil
 }
 
-func initClient(logger logging.Logger, cfg config.Config) (*client.Client, error) {
+func initClient(logger logging.Logger, cfg config.Config, imagePullPolicyHandler image.ImagePullPolicyHandler) (*client.Client, error) {
 	if err := client.ProcessDockerContext(logger); err != nil {
 		return nil, err
 	}
@@ -145,5 +148,5 @@ func initClient(logger logging.Logger, cfg config.Config) (*client.Client, error
 	if err != nil {
 		return nil, err
 	}
-	return client.NewClient(client.WithLogger(logger), client.WithExperimental(cfg.Experimental), client.WithRegistryMirrors(cfg.RegistryMirrors), client.WithDockerClient(dc))
+	return client.NewClient(client.WithLogger(logger), client.WithExperimental(cfg.Experimental), client.WithRegistryMirrors(cfg.RegistryMirrors), client.WithDockerClient(dc), client.WithImagePullChecker(imagePullPolicyHandler))
 }

@@ -1,0 +1,13 @@
+{
+    "interval": {
+        "pulling_interval": "1d",
+        "pruning_interval": "5d",
+        "last_prune": "2024-03-13T11:31:58+05:30"
+    },
+    "image": {
+        "ImageIDtoTIME": {
+            "gcr.io/buildpacks/builder:v1": "2024-03-13T11:32:00+05:30",
+            "gcr.io/buildpacks/gcp/run:v1": "2024-03-13T11:32:03+05:30"
+        }
+    }
+}

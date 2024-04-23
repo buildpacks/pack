@@ -29,7 +29,7 @@ type ExtensionPackager interface {
 }
 
 // ExtensionPackage packages (a) extension(s) into OCI format, based on a package config
-func ExtensionPackage(logger logging.Logger, cfg config.Config, packager ExtensionPackager, packageConfigReader PackageConfigReader) *cobra.Command {
+func ExtensionPackage(logger logging.Logger, cfg config.Config, packager ExtensionPackager, packageConfigReader PackageConfigReader, imagePullPolicyHandler image.ImagePullPolicyHandler) *cobra.Command {
 	var flags ExtensionPackageFlags
 	cmd := &cobra.Command{
 		Use:   "package <name> --config <config-path>",
@@ -45,7 +45,7 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 				stringPolicy = cfg.PullPolicy
 			}
 
-			pullPolicy, err := image.ParsePullPolicy(stringPolicy)
+			pullPolicy, err := imagePullPolicyHandler.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrap(err, "parsing pull policy")
 			}

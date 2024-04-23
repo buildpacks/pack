@@ -17,7 +17,7 @@ import (
 
 // Deprecated: Use 'builder create' instead.
 // CreateBuilder creates a builder image, based on a builder config
-func CreateBuilder(logger logging.Logger, cfg config.Config, pack PackClient) *cobra.Command {
+func CreateBuilder(logger logging.Logger, cfg config.Config, pack PackClient, imagePullPolicyHandler image.ImagePullPolicyHandler) *cobra.Command {
 	var flags BuilderCreateFlags
 
 	cmd := &cobra.Command{
@@ -43,7 +43,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			pullPolicy, err := image.ParsePullPolicy(stringPolicy)
+			pullPolicy, err := imagePullPolicyHandler.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}

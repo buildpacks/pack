@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/golang/mock/gomock"
 
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
@@ -21,11 +23,17 @@ import (
 
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
+	"github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
 var docker client.CommonAPIClient
+var logger logging.Logger
 var registryConfig *h.TestRegistryConfig
+var imageJSON *image.ImageJSON
+var mockController *gomock.Controller
+
+var mockImagePullPolicyHandler = testmocks.NewMockImagePullPolicyHandler(mockController)
 
 func TestFetcher(t *testing.T) {
 	color.Disable(true)
@@ -57,7 +65,8 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		repo = "some-org/" + h.RandString(10)
 		repoName = registryConfig.RepoName(repo)
-		imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
+		imageFetcher = image.NewFetcher(logger, docker, mockImagePullPolicyHandler)
 
 		info, err := docker.Info(context.TODO())
 		h.AssertNil(t, err)
@@ -168,7 +177,10 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						var outCons *color.Console
 						outCons, output = h.MockWriterAndOutput()
 						logger = logging.NewLogWithWriters(outCons, outCons)
-						imageFetcher = image.NewFetcher(logger, docker)
+						mockImagePullPolicyHandler.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
+							return true, nil
+						}
+						imageFetcher = image.NewFetcher(logger, docker, mockImagePullPolicyHandler)
 					})
 
 					it.After(func() {
@@ -339,6 +351,303 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					it("passes the platform argument to the daemon", func() {
 						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfNotPresent, Platform: "some-unsupported-platform"})
 						h.AssertError(t, err, "unknown operating system or architecture")
+					})
+				})
+			})
+
+			when("PullWithInterval, PullHourly, PullDaily, PullWeekly", func() {
+				when("there is a remote image", func() {
+					var (
+						label          = "label"
+						remoteImgLabel string
+					)
+
+					it.Before(func() {
+						// Instantiate a pull-able local image
+						// as opposed to a remote image so that the image
+						// is created with the OS of the docker daemon
+						remoteImg, err := local.NewImage(repoName, docker)
+						h.AssertNil(t, err)
+						defer h.DockerRmi(docker, repoName)
+
+						h.AssertNil(t, remoteImg.SetLabel(label, "1"))
+						h.AssertNil(t, remoteImg.Save())
+
+						h.AssertNil(t, h.PushImage(docker, remoteImg.Name(), registryConfig))
+
+						remoteImgLabel, err = remoteImg.Label(label)
+						h.AssertNil(t, err)
+					})
+
+					it.After(func() {
+						h.DockerRmi(docker, repoName)
+					})
+
+					when("there is no local image and CheckImagePullInterval returns true", func() {
+						it.Before(func() {
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
+								return true, nil
+							}
+							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullPolicyHandler)
+						})
+
+						it.After(func() {
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = nil
+						})
+
+						it("pulls the remote image and returns it", func() {
+							fetchedImg, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullWeekly})
+							h.AssertNil(t, err)
+
+							fetchedImgLabel, err := fetchedImg.Label(label)
+							h.AssertNil(t, err)
+							h.AssertEq(t, fetchedImgLabel, remoteImgLabel)
+						})
+					})
+
+					when("there is no local image and CheckImagePullInterval returns false", func() {
+						it.Before(func() {
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
+								return false, nil
+							}
+
+							imageJSON = &image.ImageJSON{
+								Interval: &image.Interval{
+									PullingInterval: "7d",
+									PruningInterval: "7d",
+									LastPrune:       "2023-01-01T00:00:00Z",
+								},
+								Image: &image.ImageData{
+									ImageIDtoTIME: map[string]string{
+										repoName: "2023-01-01T00:00:00Z",
+									},
+								},
+							}
+
+							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullPolicyHandler)
+
+							mockImagePullPolicyHandler.MockRead = func(path string) (*image.ImageJSON, error) {
+								return imageJSON, nil
+							}
+						})
+
+						it.After(func() {
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = nil
+							mockImagePullPolicyHandler.MockRead = nil
+						})
+
+						it("returns an error and deletes the image record", func() {
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullWeekly})
+							h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
+							imageJSON, err = mockImagePullPolicyHandler.Read("")
+							h.AssertNil(t, err)
+							_, exists := imageJSON.Image.ImageIDtoTIME[repoName]
+							h.AssertEq(t, exists, false)
+						})
+					})
+
+					when("there is a local image and CheckImagePullInterval returns true", func() {
+						it.Before(func() {
+							img, err := local.NewImage(repoName, docker)
+							h.AssertNil(t, err)
+
+							h.AssertNil(t, img.Save())
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
+								return true, nil
+							}
+
+							imageJSON = &image.ImageJSON{
+								Interval: &image.Interval{
+									PullingInterval: "7d",
+									PruningInterval: "7d",
+									LastPrune:       "2023-01-01T00:00:00Z",
+								},
+								Image: &image.ImageData{
+									ImageIDtoTIME: map[string]string{
+										repoName: "2023-01-01T00:00:00Z",
+									},
+								},
+							}
+
+							mockImagePullPolicyHandler.MockRead = func(path string) (*image.ImageJSON, error) {
+								return imageJSON, nil
+							}
+
+							mockImagePullPolicyHandler.MockUpdateImagePullRecord = func(path string, imageID string, timestamp string) error {
+								imageJSON, _ = mockImagePullPolicyHandler.Read("")
+								imageJSON.Image.ImageIDtoTIME[repoName] = timestamp
+								return nil
+							}
+
+							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullPolicyHandler)
+						})
+
+						it.After(func() {
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = nil
+							mockImagePullPolicyHandler.MockRead = nil
+							mockImagePullPolicyHandler.MockUpdateImagePullRecord = nil
+							h.DockerRmi(docker, repoName)
+						})
+
+						it("pulls the remote image and returns it", func() {
+							beforeFetch, _ := time.Parse(time.RFC3339, imageJSON.Image.ImageIDtoTIME[repoName])
+							fmt.Printf("before fetch: %v\n", imageJSON.Image.ImageIDtoTIME[repoName])
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullWeekly})
+							h.AssertNil(t, err)
+
+							imageJSON, _ = mockImagePullPolicyHandler.Read("")
+
+							afterFetch, _ := time.Parse(time.RFC3339, imageJSON.Image.ImageIDtoTIME[repoName])
+							fmt.Printf("after fetch: %v\n", imageJSON.Image.ImageIDtoTIME[repoName])
+							diff := beforeFetch.Before(afterFetch)
+							h.AssertEq(t, diff, true)
+						})
+					})
+
+					when("there is a local image and CheckImagePullInterval returns false", func() {
+						it.Before(func() {
+							localImg, err := local.NewImage(repoName, docker)
+							h.AssertNil(t, err)
+							h.AssertNil(t, localImg.SetLabel(label, "2"))
+
+							h.AssertNil(t, localImg.Save())
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
+								return true, nil
+							}
+							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullPolicyHandler)
+						})
+
+						it.After(func() {
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = nil
+							h.DockerRmi(docker, repoName)
+						})
+
+						it("returns the local image", func() {
+							fetchedImg, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfNotPresent})
+							h.AssertNil(t, err)
+
+							fetchedImgLabel, err := fetchedImg.Label(label)
+							h.AssertNil(t, err)
+							h.AssertEq(t, fetchedImgLabel, "2")
+						})
+					})
+				})
+
+				when("there is no remote image", func() {
+					var label string
+
+					when("there is no local image and CheckImagePullInterval returns true", func() {
+						it.Before(func() {
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
+								return true, nil
+							}
+							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullPolicyHandler)
+						})
+
+						it.After(func() {
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = nil
+						})
+
+						it("try to pull the remote image and returns error", func() {
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullWeekly})
+							h.AssertNotNil(t, err)
+						})
+					})
+
+					when("there is no local image and CheckImagePullInterval returns false", func() {
+						it.Before(func() {
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
+								return false, nil
+							}
+
+							imageJSON = &image.ImageJSON{
+								Interval: &image.Interval{
+									PullingInterval: "7d",
+									PruningInterval: "7d",
+									LastPrune:       "2023-01-01T00:00:00Z",
+								},
+								Image: &image.ImageData{
+									ImageIDtoTIME: map[string]string{
+										repoName: "2023-01-01T00:00:00Z",
+									},
+								},
+							}
+
+							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullPolicyHandler)
+							mockImagePullPolicyHandler.MockRead = func(path string) (*image.ImageJSON, error) {
+								return imageJSON, nil
+							}
+						})
+
+						it.After(func() {
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = nil
+							mockImagePullPolicyHandler.MockRead = nil
+						})
+
+						it("returns an error and deletes the image record", func() {
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullWeekly})
+							h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
+							imageJSON, err = mockImagePullPolicyHandler.Read("")
+							h.AssertNil(t, err)
+							_, exists := imageJSON.Image.ImageIDtoTIME[repoName]
+							h.AssertEq(t, exists, false)
+						})
+					})
+
+					when("there is a local image and CheckImagePullInterval returns true", func() {
+						it.Before(func() {
+							localImg, err := local.NewImage(repoName, docker)
+							h.AssertNil(t, err)
+							h.AssertNil(t, localImg.SetLabel(label, "2"))
+
+							h.AssertNil(t, localImg.Save())
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
+								return true, nil
+							}
+							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullPolicyHandler)
+						})
+
+						it.After(func() {
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = nil
+							h.DockerRmi(docker, repoName)
+						})
+
+						it("try to pull the remote image and returns local image", func() {
+							fetchedImg, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfNotPresent})
+							h.AssertNil(t, err)
+
+							fetchedImgLabel, err := fetchedImg.Label(label)
+							h.AssertNil(t, err)
+							h.AssertEq(t, fetchedImgLabel, "2")
+						})
+					})
+
+					when("there is a local image and CheckImagePullInterval returns false", func() {
+						it.Before(func() {
+							localImg, err := local.NewImage(repoName, docker)
+							h.AssertNil(t, err)
+							h.AssertNil(t, localImg.SetLabel(label, "2"))
+
+							h.AssertNil(t, localImg.Save())
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = func(imageID string, path string) (bool, error) {
+								return true, nil
+							}
+							imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker, mockImagePullPolicyHandler)
+						})
+
+						it.After(func() {
+							mockImagePullPolicyHandler.MockCheckImagePullInterval = nil
+							h.DockerRmi(docker, repoName)
+						})
+
+						it("returns the local image", func() {
+							fetchedImg, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfNotPresent})
+							h.AssertNil(t, err)
+
+							fetchedImgLabel, err := fetchedImg.Label(label)
+							h.AssertNil(t, err)
+							h.AssertEq(t, fetchedImgLabel, "2")
+						})
 					})
 				})
 			})

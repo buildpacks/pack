@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/layout/sparse"
@@ -35,6 +36,24 @@ type LayoutOption struct {
 	Sparse bool
 }
 
+type ImagePullPolicyHandler interface {
+	ParsePullPolicy(policy string) (PullPolicy, error)
+	CheckImagePullInterval(imageID string, path string, pullPolicy PullPolicy) (bool, error)
+	PruneOldImages(docker DockerClient) error
+	UpdateImagePullRecord(path string, imageID string, timestamp string) error
+	GetDuration(p PullPolicy) time.Duration
+	Read(path string) (*ImageJSON, error)
+	Write(imageJSON *ImageJSON, path string) error
+}
+
+func intervalPolicy(options FetchOptions) bool {
+	return options.PullPolicy == PullHourly || options.PullPolicy == PullDaily || options.PullPolicy == PullWeekly
+}
+
+func NewPullPolicyManager(logger logging.Logger) ImagePullPolicyHandler {
+	return &ImagePullPolicyManager{Logger: logger}
+}
+
 // WithRegistryMirrors supply your own mirrors for registry.
 func WithRegistryMirrors(registryMirrors map[string]string) FetcherOption {
 	return func(c *Fetcher) {
@@ -54,10 +73,11 @@ type DockerClient interface {
 }
 
 type Fetcher struct {
-	docker          DockerClient
-	logger          logging.Logger
-	registryMirrors map[string]string
-	keychain        authn.Keychain
+	docker           DockerClient
+	logger           logging.Logger
+	registryMirrors  map[string]string
+	keychain         authn.Keychain
+	imagePullChecker ImagePullPolicyHandler
 }
 
 type FetchOptions struct {
@@ -67,11 +87,12 @@ type FetchOptions struct {
 	LayoutOption LayoutOption
 }
 
-func NewFetcher(logger logging.Logger, docker DockerClient, opts ...FetcherOption) *Fetcher {
+func NewFetcher(logger logging.Logger, docker DockerClient, imagePullChecker ImagePullPolicyHandler, opts ...FetcherOption) *Fetcher {
 	fetcher := &Fetcher{
-		logger:   logger,
-		docker:   docker,
-		keychain: authn.DefaultKeychain,
+		logger:           logger,
+		docker:           docker,
+		keychain:         authn.DefaultKeychain,
+		imagePullChecker: imagePullChecker,
 	}
 
 	for _, opt := range opts {
@@ -97,6 +118,11 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		return f.fetchRemoteImage(name)
 	}
 
+	imageJSONpath, err := DefaultImageJSONPath()
+	if err != nil {
+		return nil, err
+	}
+
 	switch options.PullPolicy {
 	case PullNever:
 		img, err := f.fetchDaemonImage(name)
@@ -105,6 +131,28 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		img, err := f.fetchDaemonImage(name)
 		if err == nil || !errors.Is(err, ErrNotFound) {
 			return img, err
+		}
+	case PullDaily, PullHourly, PullWeekly:
+		pull, err := f.imagePullChecker.CheckImagePullInterval(name, imageJSONpath, options.PullPolicy)
+		if err != nil {
+			f.logger.Warnf("failed to check pulling interval for image %s, %s", name, err)
+		}
+		if !pull {
+			img, err := f.fetchDaemonImage(name)
+			if errors.Is(err, ErrNotFound) {
+				imageJSON, _ := f.imagePullChecker.Read(imageJSONpath)
+				delete(imageJSON.Image.ImageIDtoTIME, name)
+
+				if err := f.imagePullChecker.Write(imageJSON, imageJSONpath); err != nil {
+					f.logger.Errorf("failed to write updated image.json %s", err)
+				}
+			}
+			return img, err
+		}
+
+		err = f.imagePullChecker.PruneOldImages(f.docker)
+		if err != nil {
+			f.logger.Warnf("Failed to prune images, %s", err)
 		}
 	}
 
@@ -120,7 +168,19 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		return nil, err
 	}
 
-	return f.fetchDaemonImage(name)
+	image, err := f.fetchDaemonImage(name)
+	if err != nil {
+		return nil, err
+	}
+
+	if intervalPolicy(options) {
+		// Update image pull record in the JSON file
+		if err := f.imagePullChecker.UpdateImagePullRecord(imageJSONpath, name, time.Now().Format(time.RFC3339)); err != nil {
+			return nil, err
+		}
+	}
+
+	return image, nil
 }
 
 func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
@@ -245,4 +305,47 @@ func (w *colorizedWriter) Write(p []byte) (n int, err error) {
 		msg = strings.ReplaceAll(msg, pattern, colorize(pattern))
 	}
 	return w.writer.Write([]byte(msg))
+}
+
+func (i *ImagePullPolicyManager) UpdateImagePullRecord(path string, imageID string, timestamp string) error {
+	imageJSON, err := i.Read(path)
+	if err != nil {
+		return err
+	}
+
+	if imageJSON.Image.ImageIDtoTIME == nil {
+		imageJSON.Image.ImageIDtoTIME = make(map[string]string)
+	}
+	imageJSON.Image.ImageIDtoTIME[imageID] = timestamp
+
+	err = i.Write(imageJSON, path)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (i *ImagePullPolicyManager) CheckImagePullInterval(imageID string, path string, pullPolicy PullPolicy) (bool, error) {
+	imageJSON, err := i.Read(path)
+	if err != nil {
+		return false, err
+	}
+
+	timestamp, ok := imageJSON.Image.ImageIDtoTIME[imageID]
+	if !ok {
+		// If the image ID is not present, return true
+		return true, nil
+	}
+
+	imageTimestamp, err := time.Parse(time.RFC3339, timestamp)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to parse image timestamp from JSON")
+	}
+
+	duration := i.GetDuration(pullPolicy)
+
+	timeThreshold := time.Now().Add(-duration)
+
+	return imageTimestamp.Before(timeThreshold), nil
 }
