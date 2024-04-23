@@ -139,7 +139,7 @@ func initConfig() (config.Config, string, error) {
 	return cfg, path, nil
 }
 
-func initClient(logger logging.Logger, cfg config.Config) (*client.Client, error) {
+func initClient(logger logging.Logger, cfg config.Config, imagePullPolicyHandler image.ImagePullPolicyHandler) (*client.Client, error) {
 	if err := client.ProcessDockerContext(logger); err != nil {
 		return nil, err
 	}

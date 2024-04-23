@@ -2,12 +2,8 @@ package image
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -21,18 +17,16 @@ import (
 // PullPolicy defines a policy for how to manage images
 type PullPolicy int
 
-var interval string
+const (
+	PRUNE_TIME = 7 * 24 * 60 * time.Minute
+	HOURLY     = 1 * 60 * time.Minute
+	DAILY      = 1 * 24 * 60 * time.Minute
+	WEEKLY     = 7 * 24 * 60 * time.Minute
+)
 
 type ImagePullPolicyManager struct {
 	Logger logging.Logger
 }
-
-var (
-	hourly        = "1h"
-	daily         = "1d"
-	weekly        = "7d"
-	intervalRegex = regexp.MustCompile(`^(\d+d)?(\d+h)?(\d+m)?$`)
-)
 
 const (
 	// Always pull images, even if they are present
@@ -47,14 +41,10 @@ const (
 	PullNever
 	// PullIfNotPresent pulls images if they aren't present
 	PullIfNotPresent
-	// PullWithInterval pulls images with specified intervals
-	PullWithInterval
 )
 
 type Interval struct {
-	PullingInterval string `json:"pulling_interval"`
-	PruningInterval string `json:"pruning_interval"`
-	LastPrune       string `json:"last_prune"`
+	LastPrune string `json:"last_prune"`
 }
 
 type ImageData struct {
@@ -79,42 +69,7 @@ var nameMap = map[string]PullPolicy{"always": PullAlways, "hourly": PullHourly, 
 // ParsePullPolicy from string with support for interval formats
 func (i *ImagePullPolicyManager) ParsePullPolicy(policy string) (PullPolicy, error) {
 	if val, ok := nameMap[policy]; ok {
-		if val == PullHourly {
-			err := i.UpdateImageJSONDuration(hourly)
-			if err != nil {
-				return PullAlways, err
-			}
-		}
-		if val == PullDaily {
-			err := i.UpdateImageJSONDuration(daily)
-			if err != nil {
-				return PullAlways, err
-			}
-		}
-		if val == PullWeekly {
-			err := i.UpdateImageJSONDuration(weekly)
-			if err != nil {
-				return PullAlways, err
-			}
-		}
-
 		return val, nil
-	}
-
-	if strings.HasPrefix(policy, "interval=") {
-		interval = policy
-		intervalStr := strings.TrimPrefix(policy, "interval=")
-		matches := intervalRegex.FindStringSubmatch(intervalStr)
-		if len(matches) == 0 {
-			return PullAlways, errors.Errorf("invalid interval format: %s", intervalStr)
-		}
-
-		err := i.UpdateImageJSONDuration(intervalStr)
-		if err != nil {
-			return PullAlways, err
-		}
-
-		return PullWithInterval, nil
 	}
 
 	return PullAlways, errors.Errorf("invalid pull policy %s", policy)
@@ -134,58 +89,22 @@ func (p PullPolicy) String() string {
 		return "never"
 	case PullIfNotPresent:
 		return "if-not-present"
-	case PullWithInterval:
-		return fmt.Sprintf("%v", interval)
 	}
 
 	return ""
 }
 
-func (i *ImagePullPolicyManager) UpdateImageJSONDuration(intervalStr string) error {
-	path, err := DefaultImageJSONPath()
-	if err != nil {
-		return err
+func (i *ImagePullPolicyManager) GetDuration(p PullPolicy) time.Duration {
+	switch p {
+	case PullHourly:
+		return HOURLY
+	case PullDaily:
+		return DAILY
+	case PullWeekly:
+		return WEEKLY
 	}
 
-	imageJSON, err := i.Read(path)
-	if err != nil {
-		return err
-	}
-
-	imageJSON.Interval.PullingInterval = intervalStr
-
-	return i.Write(imageJSON, path)
-}
-
-func parseDurationString(durationStr string) (time.Duration, error) {
-	var totalMinutes int
-	for i := 0; i < len(durationStr); {
-		endIndex := i + 1
-		for endIndex < len(durationStr) && durationStr[endIndex] >= '0' && durationStr[endIndex] <= '9' {
-			endIndex++
-		}
-
-		value, err := strconv.Atoi(durationStr[i:endIndex])
-		if err != nil {
-			return 0, errors.Wrapf(err, "invalid interval format: %s", durationStr)
-		}
-		unit := durationStr[endIndex]
-
-		switch unit {
-		case 'd':
-			totalMinutes += value * 24 * 60
-		case 'h':
-			totalMinutes += value * 60
-		case 'm':
-			totalMinutes += value
-		default:
-			return 0, errors.Errorf("invalid interval uniit: %s", string(unit))
-		}
-
-		i = endIndex + 1
-	}
-
-	return time.Duration(totalMinutes) * time.Minute, nil
+	return 0
 }
 
 func (i *ImagePullPolicyManager) PruneOldImages(docker DockerClient) error {
@@ -204,24 +123,13 @@ func (i *ImagePullPolicyManager) PruneOldImages(docker DockerClient) error {
 			return errors.Wrap(err, "failed to parse last prune timestamp from JSON")
 		}
 
-		pruningInterval, err := parseDurationString(imageJSON.Interval.PruningInterval)
-		if err != nil {
-			return errors.Wrap(err, "failed to parse pruning interval from JSON")
-		}
-
-		if time.Since(lastPruneTime) < pruningInterval {
+		if time.Since(lastPruneTime) < PRUNE_TIME {
 			// not enough time has passed since the last prune
 			return nil
 		}
 	}
 
-	// prune images older than the pruning interval
-	pruningDuration, err := parseDurationString(imageJSON.Interval.PruningInterval)
-	if err != nil {
-		return errors.Wrap(err, "failed to parse pruning interval from JSON")
-	}
-
-	pruningThreshold := time.Now().Add(-pruningDuration)
+	pruningThreshold := time.Now().Add(-PRUNE_TIME)
 
 	for imageID, timestamp := range imageJSON.Image.ImageIDtoTIME {
 		imageTimestamp, err := time.Parse(time.RFC3339, timestamp)
@@ -256,9 +164,7 @@ func (i *ImagePullPolicyManager) Read(path string) (*ImageJSON, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return &ImageJSON{
 			Interval: &Interval{
-				PullingInterval: "7d",
-				PruningInterval: "7d",
-				LastPrune:       "",
+				LastPrune: "",
 			},
 			Image: &ImageData{},
 		}, nil

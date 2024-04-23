@@ -38,16 +38,16 @@ type LayoutOption struct {
 
 type ImagePullPolicyHandler interface {
 	ParsePullPolicy(policy string) (PullPolicy, error)
-	CheckImagePullInterval(imageID string, path string) (bool, error)
+	CheckImagePullInterval(imageID string, path string, pullPolicy PullPolicy) (bool, error)
 	PruneOldImages(docker DockerClient) error
 	UpdateImagePullRecord(path string, imageID string, timestamp string) error
-	UpdateImageJSONDuration(intervalStr string) error
+	GetDuration(p PullPolicy) time.Duration
 	Read(path string) (*ImageJSON, error)
 	Write(imageJSON *ImageJSON, path string) error
 }
 
 func intervalPolicy(options FetchOptions) bool {
-	return options.PullPolicy == PullWithInterval || options.PullPolicy == PullHourly || options.PullPolicy == PullDaily || options.PullPolicy == PullWeekly
+	return options.PullPolicy == PullHourly || options.PullPolicy == PullDaily || options.PullPolicy == PullWeekly
 }
 
 func NewPullPolicyManager(logger logging.Logger) ImagePullPolicyHandler {
@@ -132,8 +132,8 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		if err == nil || !errors.Is(err, ErrNotFound) {
 			return img, err
 		}
-	case PullWithInterval, PullDaily, PullHourly, PullWeekly:
-		pull, err := f.imagePullChecker.CheckImagePullInterval(name, imageJSONpath)
+	case PullDaily, PullHourly, PullWeekly:
+		pull, err := f.imagePullChecker.CheckImagePullInterval(name, imageJSONpath, options.PullPolicy)
 		if err != nil {
 			f.logger.Warnf("failed to check pulling interval for image %s, %s", name, err)
 		}
@@ -326,7 +326,7 @@ func (i *ImagePullPolicyManager) UpdateImagePullRecord(path string, imageID stri
 	return nil
 }
 
-func (i *ImagePullPolicyManager) CheckImagePullInterval(imageID string, path string) (bool, error) {
+func (i *ImagePullPolicyManager) CheckImagePullInterval(imageID string, path string, pullPolicy PullPolicy) (bool, error) {
 	imageJSON, err := i.Read(path)
 	if err != nil {
 		return false, err
@@ -343,12 +343,7 @@ func (i *ImagePullPolicyManager) CheckImagePullInterval(imageID string, path str
 		return false, errors.Wrap(err, "failed to parse image timestamp from JSON")
 	}
 
-	durationStr := imageJSON.Interval.PullingInterval
-
-	duration, err := parseDurationString(durationStr)
-	if err != nil {
-		return false, errors.Wrap(err, "failed to parse duration from JSON")
-	}
+	duration := i.GetDuration(pullPolicy)
 
 	timeThreshold := time.Now().Add(-duration)
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/golang/mock/gomock"
 
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
@@ -30,7 +31,9 @@ var docker client.CommonAPIClient
 var logger logging.Logger
 var registryConfig *h.TestRegistryConfig
 var imageJSON *image.ImageJSON
-var mockImagePullPolicyHandler = testmocks.NewMockPullPolicyManager(logger)
+var mockController *gomock.Controller
+
+var mockImagePullPolicyHandler = testmocks.NewMockImagePullPolicyHandler(mockController)
 
 func TestFetcher(t *testing.T) {
 	color.Disable(true)

@@ -27,7 +27,7 @@ func testPullPolicy(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			logger = logging.NewLogWithWriters(&outBuf, &outBuf)
-			imagePullChecker = fetcher_mock.NewMockPullPolicyManager(logger)
+			imagePullChecker = fetcher_mock.NewMockPullPolicyManager(mockController)
 		})
 
 		it("returns PullNever for never", func() {
