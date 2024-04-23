@@ -4,5 +4,5 @@ package options
 
 // LABEL Options used by [Dockerfile LABEL] instrution.
 type LABELOptions struct {
-	ARGOptions
+	ARG
 }

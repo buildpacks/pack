@@ -2,13 +2,13 @@ package lifecycle
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/moby/buildkit/client/llb"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/pack/internal/buildkit/cnb"
 	mountpaths "github.com/buildpacks/pack/internal/buildkit/mount_paths"
+	"github.com/buildpacks/pack/internal/buildkit/packerfile/options"
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
@@ -41,20 +41,21 @@ func (l *LifecycleExecution) detect(ctx context.Context, target dist.Target) (er
 	l.state.WithNetwork(l.opts.Network)
 	// TODO: should we add [build.EnsureVolumeAccess]? currently buildkit doesn't fully support windows.
 	// It doesn't mean [llb] too doesn't support!
-	l.state.WithFlags(flags...)
+	l.state.AddArgs(flags...)
+	l.state.AddVolumes(l.opts.Volumes...)
+	l.state.AddFlags(flags...)
+
+	mounter := mountpaths.MountPathsForOS(l.state.OS, l.opts.Workspace)
+	l.state.Add(l.opts.AppPath, mounter.AppDir(), options.ADD{
+		// the lifecycle ops not providing ops to see what buildpacks to exclude
+		//  Exclude: descriptor.Build.Exclude,
+		// Lets link AppPath
+		Link: true,
+	})
 	// Should we use CopyOutToMaybe like
 	// ```go
 	// 	CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.tmpDir)))
 	// ```
 	// I think we can use same [l.state.State] across all phases and access those files!
-
-	// commit state with latest v1.ConfigFile always before running Container
-	cfgBytes, err := json.Marshal(l.state.ConfigFile)
-	if err != nil {
-		return err
-	}
-
-	tmpState, err := l.state.State.WithImageConfig(cfgBytes)
-	l.state.State = &tmpState
 	return err
 }

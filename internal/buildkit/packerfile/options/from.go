@@ -9,7 +9,7 @@ import (
 
 // The FROM instruction initializes a new build stage and sets the base image for subsequent instructions.
 // As such, a valid Dockerfile must start with a FROM instruction.
-type FROMOptions struct {
+type FROM struct {
 	Platform v1.Platform
 	Ref      name.Reference
 }

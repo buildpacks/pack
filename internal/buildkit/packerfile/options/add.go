@@ -5,7 +5,7 @@ import v1 "github.com/google/go-containerregistry/pkg/v1"
 // NOTE: All the Options provided here might not work!
 
 // AddOptions are a set of Options supported by [Dockerfile] ADD command
-type ADDOptions struct {
+type ADD struct {
 	// When <src> is the HTTP or SSH address of a remote Git repository,
 	// BuildKit adds the contents of the Git repository to the image excluding the .git directory by default.
 	//
@@ -24,5 +24,5 @@ type ADDOptions struct {
 	Link bool
 
 	// The --exclude flag lets you specify a path expression for files to be excluded.
-	Exclude string
+	Exclude []string
 }

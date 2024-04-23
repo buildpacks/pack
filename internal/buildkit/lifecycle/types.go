@@ -9,6 +9,13 @@ import (
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
+const (
+	defaultProcessType = "web"
+	overrideGID        = 0
+	overrideUID        = 0
+	sourceDateEpochEnv = "SOURCE_DATE_EPOCH"
+)
+
 type LifecycleExecution struct {
 	logger       logging.Logger
 	state        state.State

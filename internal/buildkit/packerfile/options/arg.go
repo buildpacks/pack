@@ -1,5 +1,7 @@
 package options
 
+import "github.com/buildpacks/pack/internal/buildkit/packerfile/options/types"
+
 // NOTE: All the Options provided here might not work!
 
 // NOTE: The [ARGOptions] is embedded in [ENVOptions] and [LABELOptions]!
@@ -8,7 +10,4 @@ package options
 // The ARG instruction defines a variable that users can pass at build-time to the builder
 //
 //	with the [pack build] command using the [--env <varname>=<value>] flag.
-type ARGOptions struct {
-	Key   string
-	Value string
-}
+type ARG types.KeyValue[string]

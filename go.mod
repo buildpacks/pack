@@ -20,6 +20,7 @@ require (
 	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
 	github.com/heroku/color v0.0.6
 	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
+	github.com/moby/buildkit v0.12.5
 	github.com/onsi/gomega v1.32.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0
@@ -112,7 +113,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/moby/buildkit v0.12.5 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect
 	github.com/moby/sys/user v0.1.0 // indirect
