@@ -4,6 +4,8 @@ import (
 	"math/rand"
 	"path/filepath"
 
+	"github.com/buildpacks/lifecycle/api"
+
 	"github.com/buildpacks/pack/internal/buildkit/state"
 	"github.com/buildpacks/pack/internal/paths"
 )
@@ -35,4 +37,21 @@ func withLayoutOperation(state *state.State) {
 
 func prependArg(arg string, args []string) []string {
 	return append([]string{arg}, args...)
+}
+
+func addTags(flags, additionalTags []string) []string {
+	for _, tag := range additionalTags {
+		flags = append(flags, "-tag", tag)
+	}
+	return flags
+}
+
+func determineDefaultProcessType(platformAPI *api.Version, providedValue string) string {
+	shouldSetForceDefault := platformAPI.Compare(api.MustParse("0.4")) >= 0 &&
+		platformAPI.Compare(api.MustParse("0.6")) < 0
+	if providedValue == "" && shouldSetForceDefault {
+		return defaultProcessType
+	}
+
+	return providedValue
 }
