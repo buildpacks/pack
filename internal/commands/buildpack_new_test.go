@@ -97,14 +97,14 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 						Arch:        "arm",
 						ArchVariant: "v6",
 						Distributions: []dist.Distribution{{
-							Name:     "ubuntu",
-							Versions: []string{"14.04", "16.04"},
+							Name:    "ubuntu",
+							Version: "14.04",
 						}},
 					}},
 				}).Return(nil).MaxTimes(1)
 
 				path := filepath.Join(tmpDir, "targets")
-				command.SetArgs([]string{"--path", path, "example/targets", "--targets", "linux/arm/v6:ubuntu@14.04@16.04"})
+				command.SetArgs([]string{"--path", path, "example/targets", "--targets", "linux/arm/v6:ubuntu@14.04"})
 
 				err := command.Execute()
 				h.AssertNil(t, err)
@@ -120,8 +120,11 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 						Arch:        "arm",
 						ArchVariant: "v6",
 						Distributions: []dist.Distribution{{
-							Name:     "ubuntu",
-							Versions: []string{"14.04", "16.04"},
+							Name:    "ubuntu",
+							Version: "14.04",
+						}, {
+							Name:    "ubuntu",
+							Version: "16.04",
 						}},
 					}},
 				}).Return(nil).MaxTimes(1)
@@ -133,7 +136,7 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNotNil(t, err)
 			})
 			when("it should", func() {
-				it("support format [os][/arch][/variant]:[name@version@version2];[some-name@version@version2]", func() {
+				it("support format [os][/arch][/variant]:[name@version];[some-name@version]", func() {
 					mockClient.EXPECT().NewBuildpack(gomock.Any(), client.NewBuildpackOptions{
 						API:     "0.8",
 						ID:      "example/targets",
@@ -146,12 +149,12 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 								ArchVariant: "v6",
 								Distributions: []dist.Distribution{
 									{
-										Name:     "ubuntu",
-										Versions: []string{"14.04", "16.04"},
+										Name:    "ubuntu",
+										Version: "14.04",
 									},
 									{
-										Name:     "debian",
-										Versions: []string{"8.10", "10.9"},
+										Name:    "debian",
+										Version: "8.10",
 									},
 								},
 							},
@@ -160,8 +163,8 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 								Arch: "amd64",
 								Distributions: []dist.Distribution{
 									{
-										Name:     "windows-nano",
-										Versions: []string{"10.0.19041.1415"},
+										Name:    "windows-nano",
+										Version: "10.0.19041.1415",
 									},
 								},
 							},
@@ -169,7 +172,7 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 					}).Return(nil).MaxTimes(1)
 
 					path := filepath.Join(tmpDir, "targets")
-					command.SetArgs([]string{"--path", path, "example/targets", "--targets", "linux/arm/v6:ubuntu@14.04@16.04;debian@8.10@10.9", "-t", "windows/amd64:windows-nano@10.0.19041.1415"})
+					command.SetArgs([]string{"--path", path, "example/targets", "--targets", "linux/arm/v6:ubuntu@14.04;debian@8.10", "-t", "windows/amd64:windows-nano@10.0.19041.1415"})
 
 					err := command.Execute()
 					h.AssertNil(t, err)
