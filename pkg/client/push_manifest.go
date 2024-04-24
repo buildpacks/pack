@@ -2,33 +2,44 @@ package client
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/buildpacks/imgutil/local"
-	"github.com/buildpacks/imgutil/remote"
-	"github.com/pkg/errors"
+	"github.com/buildpacks/imgutil"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
 type PushManifestOptions struct {
-	Index string
-	Path  string
+	Format          string
+	Insecure, Purge bool
 }
 
-func (c *Client) PushManifest(ctx context.Context, opts PushManifestOptions) error {
-	indexManifest, err := local.GetIndexManifest(opts.Index, opts.Path)
+// PushManifest implements commands.PackClient.
+func (c *Client) PushManifest(ctx context.Context, index string, opts PushManifestOptions) (err error) {
+	idx, err := c.indexFactory.LoadIndex(index)
 	if err != nil {
-		return errors.Wrapf(err, "Get local index manifest '%s' from path '%s'", opts.Index, opts.Path)
+		return
 	}
 
-	idx, err := remote.NewIndex(opts.Index, c.keychain, remote.WithManifest(indexManifest))
-	if err != nil {
-		return errors.Wrapf(err, "Create remote index from '%s' local index manifest", opts.Index)
+	if err = idx.Push(parseFalgsForImgUtil(opts)...); err != nil {
+		return err
 	}
 
-	// Store index
-	err = idx.Save()
-	if err != nil {
-		return errors.Wrapf(err, "Storing index '%s' in registry. Check if all the referenced manifests are in the same repository in registry", opts.Index)
+	if !opts.Purge {
+		fmt.Printf("successfully pushed index: '%s'\n", index)
+		return nil
 	}
 
-	return nil
+	return idx.Delete()
+}
+
+func parseFalgsForImgUtil(opts PushManifestOptions) (idxOptions []imgutil.IndexPushOption) {
+	idxOptions = append(idxOptions, imgutil.WithInsecure(opts.Insecure))
+	switch opts.Format {
+	case "oci":
+		return append(idxOptions, imgutil.WithFormat(types.OCIImageIndex))
+	case "v2s2":
+		return append(idxOptions, imgutil.WithFormat(types.DockerManifestList))
+	default:
+		return idxOptions
+	}
 }

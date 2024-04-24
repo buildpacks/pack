@@ -2,33 +2,25 @@ package client
 
 import (
 	"context"
-
-	"github.com/buildpacks/imgutil/local"
-	"github.com/pkg/errors"
-
-	"github.com/buildpacks/pack/internal/style"
+	"fmt"
 )
 
-type DeleteManifestOptions struct {
-	Index string
-	Path  string
-}
+// DeleteManifest implements commands.PackClient.
+func (c *Client) DeleteManifest(ctx context.Context, names []string) (errs []error) {
+	for _, name := range names {
+		imgIndex, err := c.indexFactory.LoadIndex(name)
+		if err != nil {
+			errs = append(errs, err)
+		}
 
-func (c *Client) DeleteManifest(ctx context.Context, opts DeleteManifestOptions) error {
-	indexManifest, err := local.GetIndexManifest(opts.Index, opts.Path)
-	if err != nil {
-		return errors.Wrapf(err, "Get local index manifest '%s' from path '%s'", opts.Index, opts.Path)
+		if err := imgIndex.Delete(); err != nil {
+			errs = append(errs, err)
+		}
 	}
 
-	idx, err := local.NewIndex(opts.Index, opts.Path, local.WithManifest(indexManifest))
-	if err != nil {
-		return errors.Wrapf(err, "Create local index from '%s' local index manifest", opts.Index)
+	if len(errs) == 0 {
+		fmt.Printf("successfully deleted indexes \n")
 	}
 
-	err = idx.Delete()
-	if err != nil {
-		return errors.Wrapf(err, "Failed to remove index '%s' from local storage\n", style.Symbol(opts.Index))
-	}
-
-	return nil
+	return errs
 }

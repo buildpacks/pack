@@ -1,40 +1,22 @@
 package commands
 
 import (
-	"path/filepath"
-
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
+// ManifestInspect shows the manifest information stored in local storage
 func ManifestInspect(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "inspect <manifest-list>",
-		Short:   "Inspect a local manifest list",
-		Args:    cobra.MatchAll(cobra.ExactArgs(1)),
+		Args:    cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Short:   "Display a manifest list or image index.",
 		Example: `pack manifest inspect cnbs/sample-builder:multiarch`,
-		Long:    "manifest inspect shows the manifest information stored in local storage",
+		Long: `manifest inspect shows the manifest information stored in local storage.
+		The inspect command will help users to view how their local manifest list looks like`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			indexName := args[0]
-
-			packHome, err := config.PackHome()
-			if err != nil {
-				return err
-			}
-
-			manifestDir := filepath.Join(packHome, "manifests")
-
-			if err := pack.InspectManifest(cmd.Context(), client.InspectManifestOptions{
-				Index: indexName,
-				Path:  manifestDir,
-			}); err != nil {
-				return err
-			}
-
-			return nil
+			return pack.InspectManifest(cmd.Context(), args[0])
 		}),
 	}
 

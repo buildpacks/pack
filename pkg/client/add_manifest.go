@@ -2,40 +2,72 @@ package client
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/buildpacks/imgutil/local"
-	"github.com/pkg/errors"
+	"github.com/buildpacks/imgutil"
+	"github.com/google/go-containerregistry/pkg/name"
 )
 
-type AddManifestOptions struct {
-	Index    string
-	Path     string
-	Manifest string
-	All      bool
+type ManifestAddOptions struct {
+	OS, OSVersion, OSArch, OSVariant string
+	OSFeatures, Features             []string
+	Annotations                      map[string]string
+	All                              bool
 }
 
-func (c *Client) AddManifest(ctx context.Context, opts AddManifestOptions) error {
-	indexManifest, err := local.GetIndexManifest(opts.Index, opts.Path)
+// AddManifest implements commands.PackClient.
+func (c *Client) AddManifest(ctx context.Context, ii string, image string, opts ManifestAddOptions) (err error) {
+	idx, err := c.indexFactory.LoadIndex(ii)
 	if err != nil {
-		return errors.Wrapf(err, "Get local index manifest '%s' from path '%s'", opts.Index, opts.Path)
+		return err
 	}
 
-	idx, err := local.NewIndex(opts.Index, opts.Path, local.WithManifest(indexManifest))
-	if err != nil {
-		return errors.Wrapf(err, "Create local index from '%s' local index manifest", opts.Index)
+	var ops = make([]imgutil.IndexAddOption, 0)
+	if opts.All {
+		ops = append(ops, imgutil.WithAll(opts.All))
 	}
 
-	// Append manifest to local index
-	err = idx.Add(opts.Manifest)
-	if err != nil {
-		return errors.Wrapf(err, "Appending '%s' manifest to index '%s'", opts.Manifest, opts.Index)
+	if opts.OS != "" {
+		ops = append(ops, imgutil.WithOS(opts.OS))
 	}
 
-	// Store index in local storage
-	err = idx.Save()
-	if err != nil {
-		return errors.Wrapf(err, "Save local index '%s' at '%s' path", opts.Index, opts.Path)
+	if opts.OSArch != "" {
+		ops = append(ops, imgutil.WithArchitecture(opts.OSArch))
 	}
 
+	if opts.OSVariant != "" {
+		ops = append(ops, imgutil.WithVariant(opts.OSVariant))
+	}
+
+	if opts.OSVersion != "" {
+		ops = append(ops, imgutil.WithOSVersion(opts.OSVersion))
+	}
+
+	if len(opts.Features) != 0 {
+		ops = append(ops, imgutil.WithFeatures(opts.Features))
+	}
+
+	if len(opts.OSFeatures) != 0 {
+		ops = append(ops, imgutil.WithOSFeatures(opts.OSFeatures))
+	}
+
+	if len(opts.Annotations) != 0 {
+		ops = append(ops, imgutil.WithAnnotations(opts.Annotations))
+	}
+
+	ref, err := name.ParseReference(image, name.Insecure, name.WeakValidation)
+	if err != nil {
+		return err
+	}
+
+	if err = idx.Add(ref, ops...); err != nil {
+		return err
+	}
+
+	if err = idx.Save(); err != nil {
+		return err
+	}
+
+	fmt.Printf("successfully added to index: '%s'\n", image)
 	return nil
 }

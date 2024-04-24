@@ -141,4 +141,4 @@ require (
 
 go 1.22
 
-replace github.com/buildpacks/imgutil => github.com/drac98/imgutil v1.4.0
+replace github.com/buildpacks/imgutil => github.com/WYGIN/buildpacks-imgutil v0.0.0-20240304130223-abfcabf596ce

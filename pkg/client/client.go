@@ -16,10 +16,13 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/index"
+	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	dockerClient "github.com/docker/docker/client"
@@ -34,6 +37,10 @@ import (
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
+)
+
+const (
+	xdgRuntimePath = "XDG_RUNTIME_DIR"
 )
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_docker_client.go github.com/docker/docker/client CommonAPIClient
@@ -72,8 +79,18 @@ type ImageFactory interface {
 	NewImage(repoName string, local bool, imageOS string) (imgutil.Image, error)
 }
 
+//go:generate mockgen -package testmocks -destination ../testmocks/mock_index_factory.go github.com/buildpacks/pack/pkg/client IndexFactory
+
+// IndexFactory is an interface representing the ability to create a ImageIndex/ManifestList.
 type IndexFactory interface {
-	NewIndex(CreateManifestOptions) (imgutil.ImageIndex, error)
+	// create ManifestList locally
+	CreateIndex(repoName string, opts ...index.Option) (imgutil.ImageIndex, error)
+	// load ManifestList from local storage with the given name
+	LoadIndex(reponame string, opts ...index.Option) (imgutil.ImageIndex, error)
+	// Fetch ManifestList from Registry with the given name
+	FetchIndex(name string, opts ...index.Option) (imgutil.ImageIndex, error)
+	// FindIndex will find Index locally then on remote
+	FindIndex(name string, opts ...index.Option) (imgutil.ImageIndex, error)
 }
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_buildpack_downloader.go github.com/buildpacks/pack/pkg/client BuildpackDownloader
@@ -127,6 +144,13 @@ func WithLogger(l logging.Logger) Option {
 func WithImageFactory(f ImageFactory) Option {
 	return func(c *Client) {
 		c.imageFactory = f
+	}
+}
+
+// WithIndexFactory supply your own index factory
+func WithIndexFactory(f IndexFactory) Option {
+	return func(c *Client) {
+		c.indexFactory = f
 	}
 }
 
@@ -241,15 +265,15 @@ func NewClient(opts ...Option) (*Client, error) {
 
 	if client.imageFactory == nil {
 		client.imageFactory = &imageFactory{
-			dockerClient: client.docker,
-			keychain:     client.keychain,
+			keychain: client.keychain,
 		}
 	}
 
 	if client.indexFactory == nil {
 		client.indexFactory = &indexFactory{
-			dockerClient: client.docker,
-			keychain:     client.keychain,
+			keychain:       client.keychain,
+			xdgRuntimePath: os.Getenv("XDG_RUNTIME_DIR"),
+		}
 	}
 
 	if client.accessChecker == nil {
@@ -306,20 +330,67 @@ func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (i
 }
 
 type indexFactory struct {
-	dockerClient local.DockerClient
-	keychain     authn.Keychain
+	keychain       authn.Keychain
+	xdgRuntimePath string
 }
 
-func (f *indexFactory) NewIndex(opts CreateManifestOptions) (imgutil.ImageIndex, error) {
-	if opts.Publish {
-		return remote.NewIndex(
-			opts.ManifestName,
-			f.keychain,
-			remote.WithIndexMediaTypes(opts.MediaType))
+func (f *indexFactory) LoadIndex(repoName string, opts ...index.Option) (img imgutil.ImageIndex, err error) {
+	if opts, err = withOptions(opts, f.keychain); err != nil {
+		return nil, err
 	}
 
-	return local.NewIndex(
-		opts.ManifestName,
-		opts.ManifestDir,
-		local.WithIndexMediaTypes(opts.MediaType))
+	if img, err = local.NewIndex(repoName, opts...); err == nil {
+		return img, err
+	}
+
+	if img, err = layout.NewIndex(repoName, opts...); err == nil {
+		return img, err
+	}
+
+	return nil, errors.Wrap(err, errors.Errorf("Image: '%s' not found", repoName).Error())
+}
+
+func (f *indexFactory) FetchIndex(name string, opts ...index.Option) (idx imgutil.ImageIndex, err error) {
+	if opts, err = withOptions(opts, f.keychain); err != nil {
+		return nil, err
+	}
+
+	if idx, err = remote.NewIndex(name, opts...); err != nil {
+		return idx, fmt.Errorf("ImageIndex in not available at registry")
+	}
+
+	return idx, err
+}
+
+func (f *indexFactory) FindIndex(repoName string, opts ...index.Option) (idx imgutil.ImageIndex, err error) {
+	if opts, err = withOptions(opts, f.keychain); err != nil {
+		return nil, err
+	}
+
+	if idx, err = f.LoadIndex(repoName, opts...); err == nil {
+		return idx, err
+	}
+
+	return f.FetchIndex(repoName, opts...)
+}
+
+func (f *indexFactory) CreateIndex(repoName string, opts ...index.Option) (idx imgutil.ImageIndex, err error) {
+	if opts, err = withOptions(opts, f.keychain); err != nil {
+		return nil, err
+	}
+
+	return index.NewIndex(repoName, opts...)
+}
+
+func withOptions(ops []index.Option, keychain authn.Keychain) ([]index.Option, error) {
+	ops = append(ops, index.WithKeychain(keychain))
+	if xdgPath, ok := os.LookupEnv(xdgRuntimePath); ok {
+		return append(ops, index.WithXDGRuntimePath(xdgPath)), nil
+	}
+
+	home, err := iconfig.PackHome()
+	if err != nil {
+		return ops, err
+	}
+	return append(ops, index.WithXDGRuntimePath(filepath.Join(home, "manifests"))), nil
 }

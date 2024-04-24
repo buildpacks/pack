@@ -26,11 +26,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
 	"github.com/onsi/gomega/ghttp"
-	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	cfg "github.com/buildpacks/pack/internal/config"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
@@ -3365,13 +3363,4 @@ func setAPIs(t *testing.T, image *fakes.Image, buildpackAPIs []string, platformA
 	builderMDLabelBytes, err := json.Marshal(&builderMD)
 	h.AssertNil(t, err)
 	h.AssertNil(t, image.SetLabel(builderMDLabelName, string(builderMDLabelBytes)))
-}
-
-type executeFailsLifecycle struct { //nolint
-	Opts build.LifecycleOptions
-}
-
-func (f *executeFailsLifecycle) Execute(_ context.Context, opts build.LifecycleOptions) error { //nolint
-	f.Opts = opts
-	return errors.New("")
 }

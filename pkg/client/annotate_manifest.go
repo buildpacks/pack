@@ -2,41 +2,79 @@ package client
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/buildpacks/imgutil/local"
-	"github.com/pkg/errors"
+	ggcrName "github.com/google/go-containerregistry/pkg/name"
 )
 
-type AnnotateManifestOptions struct {
-	Index        string
-	Path         string
-	Manifest     string
-	Architecture string
-	OS           string
-	Variant      string
+type ManifestAnnotateOptions struct {
+	OS, OSVersion, OSArch, OSVariant string
+	OSFeatures, Features, URLs       []string
+	Annotations                      map[string]string
 }
 
-func (c *Client) AnnotateManifest(ctx context.Context, opts AnnotateManifestOptions) error {
-	indexManifest, err := local.GetIndexManifest(opts.Index, opts.Path)
+// AnnotateManifest implements commands.PackClient.
+func (c *Client) AnnotateManifest(ctx context.Context, name string, image string, opts ManifestAnnotateOptions) error {
+	idx, err := c.indexFactory.LoadIndex(name)
 	if err != nil {
-		return errors.Wrapf(err, "Get local index manifest '%s' from path '%s'", opts.Index, opts.Path)
+		return err
 	}
 
-	idx, err := local.NewIndex(opts.Index, opts.Path, local.WithManifest(indexManifest))
+	digest, err := ggcrName.NewDigest(image, ggcrName.Insecure, ggcrName.WeakValidation)
 	if err != nil {
-		return errors.Wrapf(err, "Create local index from '%s' local index manifest", opts.Index)
+		return err
 	}
 
-	err = idx.AnnotateManifest(
-		opts.Manifest,
-		local.AnnotateFields{
-			Architecture: opts.Architecture,
-			OS:           opts.OS,
-			Variant:      opts.Variant,
-		})
-	if err != nil {
-		return errors.Wrapf(err, "Annotate manifet '%s' of index '%s", opts.Manifest, opts.Index)
+	if opts.OS != "" {
+		if err := idx.SetOS(digest, opts.OS); err != nil {
+			return err
+		}
+	}
+	if opts.OSVersion != "" {
+		if err := idx.SetOSVersion(digest, opts.OSVersion); err != nil {
+			return err
+		}
+	}
+	if len(opts.OSFeatures) != 0 {
+		if err := idx.SetOSFeatures(digest, opts.OSFeatures); err != nil {
+			return err
+		}
+	}
+	if opts.OSArch != "" {
+		if err := idx.SetArchitecture(digest, opts.OSArch); err != nil {
+			return err
+		}
+	}
+	if opts.OSVariant != "" {
+		if err := idx.SetVariant(digest, opts.OSVariant); err != nil {
+			return err
+		}
+	}
+	if len(opts.Features) != 0 {
+		if err := idx.SetFeatures(digest, opts.Features); err != nil {
+			return err
+		}
+	}
+	if len(opts.OSFeatures) != 0 {
+		if err := idx.SetOSFeatures(digest, opts.OSFeatures); err != nil {
+			return err
+		}
+	}
+	if len(opts.URLs) != 0 {
+		if err := idx.SetURLs(digest, opts.URLs); err != nil {
+			return err
+		}
+	}
+	if len(opts.Annotations) != 0 {
+		if err := idx.SetAnnotations(digest, opts.Annotations); err != nil {
+			return err
+		}
 	}
 
+	if err = idx.Save(); err != nil {
+		return err
+	}
+
+	fmt.Printf("successfully annotated image '%s' in index '%s'\n", image, name)
 	return nil
 }

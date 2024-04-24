@@ -40,6 +40,8 @@ github.com/Microsoft/hcsshim v0.11.4 h1:68vKo2VN8DE9AdN4tnkWnmdhqdbpUFM8OF3Airm7
 github.com/Microsoft/hcsshim v0.11.4/go.mod h1:smjE4dvqPX9Zldna+t5FG3rnoHhaB7QYxPRqGcpAD9w=
 github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 h1:kkhsdkhsCvIsutKu5zLMgWtgh9YxGCNAw8Ad8hjwfYg=
 github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371/go.mod h1:EjAoLdwvbIOoOQr3ihjnSoLZRtE8azugULFRteWMNc0=
+github.com/WYGIN/buildpacks-imgutil v0.0.0-20240304130223-abfcabf596ce h1:7ntd8izCev/sa05xJPxpWBK0Db0o+LX57yiX6ZCR5D0=
+github.com/WYGIN/buildpacks-imgutil v0.0.0-20240304130223-abfcabf596ce/go.mod h1:7zUmt4wkVJNuXCZhQndEd3kvVGmWLVyzRFIQXTaeXlU=
 github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7lmo=
 github.com/agext/levenshtein v1.2.3/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
@@ -91,10 +93,10 @@ github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
-github.com/buildpacks/imgutil v0.0.0-20240206215312-f8d38e1de03d h1:b/tiReZf9jorbpaOwVw9MX3n99w7Ta4u+SVV7yy6XCE=
-github.com/buildpacks/imgutil v0.0.0-20240206215312-f8d38e1de03d/go.mod h1:7zUmt4wkVJNuXCZhQndEd3kvVGmWLVyzRFIQXTaeXlU=
-github.com/buildpacks/lifecycle v0.19.3 h1:T6dwX+/Nq7Q41Pb2zVu54MLrJPt93KEMNj4dHkXINbA=
-github.com/buildpacks/lifecycle v0.19.3/go.mod h1:BoLvGP1fjOqab59dariHDhVh5uIQuQ7yoIfj0orvL8M=
+github.com/buildpacks/lifecycle v0.18.5 h1:lfoUX8jYCUZ2/Tr2AopaRjinqDivkNkcTChzysQTo00=
+github.com/buildpacks/lifecycle v0.18.5/go.mod h1:Kvuu9IWABPLXc6yHCMtbdmgrGEi7QEiVzi5GGtcAkW0=
+github.com/buildpacks/imgutil v0.0.0-20240118145509-e94a1b7de8a9 h1:kxe31xfMWJAIAzDfGQ3lL0j8QSSRfEHyLg7dRWIHA8I=
+github.com/buildpacks/imgutil v0.0.0-20240118145509-e94a1b7de8a9/go.mod h1:PsazEB9yz+NG/cgm0Z1oQ0Xq6rD/U7eNMt5Su41afYY=
 github.com/bwesterb/go-ristretto v1.2.3/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7NFEuV9ekS419A0=
 github.com/cenkalti/backoff/v4 v4.2.1 h1:y4OZtCnogmCPw98Zjyt5a6+QwPLGkiQsYW5oUqylYbM=
 github.com/cenkalti/backoff/v4 v4.2.1/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
@@ -139,8 +141,6 @@ github.com/docker/go-metrics v0.0.1 h1:AgB/0SvBxihN0X8OR4SjsblXkbMvalQ8cjmtKQ2rQ
 github.com/docker/go-metrics v0.0.1/go.mod h1:cG1hvH2utMXtqgqqYE9plW6lDxS3/5ayHzueweSI3Vw=
 github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4=
 github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
-github.com/drac98/imgutil v1.4.0 h1:b8dtuhmfyYrWfjxRyg92MofmVt/bKgq3izY7Sc7NsMY=
-github.com/drac98/imgutil v1.4.0/go.mod h1:mBG5M3GJW5nknCEOOqtmMHyPYnSpw/5GEiciuYU/COw=
 github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 h1:UhxFibDNY/bfvqU5CAUmr9zpesgbU6SWc8/B4mflAE4=
 github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7/go.mod h1:cyGadeNEkKy96OOhEzfZl+yxihPEzKnqJwvfuSUqbZE=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
