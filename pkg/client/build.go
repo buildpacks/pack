@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -22,8 +21,8 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/docker/cli/cli/compose/loader"
 	types "github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/volume/mounts"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
@@ -1379,17 +1378,8 @@ func randString(n int) string {
 }
 
 func processVolumes(imgOS string, volumes []string) (processed []string, warnings []string, err error) {
-	var parser mounts.Parser
-	switch "windows" {
-	case imgOS:
-		parser = mounts.NewWindowsParser()
-	case runtime.GOOS:
-		parser = mounts.NewLCOWParser()
-	default:
-		parser = mounts.NewLinuxParser()
-	}
 	for _, v := range volumes {
-		volume, err := parser.ParseMountRaw(v, "")
+		volume, err := loader.ParseVolume(v)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "platform volume %q has invalid format", v)
 		}
@@ -1399,22 +1389,17 @@ func processVolumes(imgOS string, volumes []string) (processed []string, warning
 			sensitiveDirs = []string{`c:/cnb`, `c:\cnb`, `c:/layers`, `c:\layers`}
 		}
 		for _, p := range sensitiveDirs {
-			if strings.HasPrefix(strings.ToLower(volume.Spec.Target), p) {
-				warnings = append(warnings, fmt.Sprintf("Mounting to a sensitive directory %s", style.Symbol(volume.Spec.Target)))
+			if strings.HasPrefix(strings.ToLower(volume.Target), p) {
+				warnings = append(warnings, fmt.Sprintf("Mounting to a sensitive directory %s", style.Symbol(volume.Target)))
 			}
+			mode := "ro"
+			if !volume.ReadOnly {
+				mode = "rw"
+			}
+			processed = append(processed, fmt.Sprintf("%s:%s:%s", volume.Source, volume.Target, mode))
 		}
-
-		processed = append(processed, fmt.Sprintf("%s:%s:%s", volume.Spec.Source, volume.Spec.Target, processMode(volume.Mode)))
 	}
 	return processed, warnings, nil
-}
-
-func processMode(mode string) string {
-	if mode == "" {
-		return "ro"
-	}
-
-	return mode
 }
 
 func (c *Client) logImageNameAndSha(ctx context.Context, publish bool, imageRef name.Reference) error {
