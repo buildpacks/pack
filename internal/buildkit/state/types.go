@@ -7,11 +7,25 @@ import (
 )
 
 type State struct {
-	*llb.State
-	*v1.ConfigFile
+	state               llb.State
+	config              *v1.ConfigFile
 	version             string
 	buildArgs           map[string]string
 	cmdSet, ignoreCache bool
 	platform            *ocispecs.Platform
-	cmdIndex            int
+	cmdIndex, cmdTotal  int
+	multiArch, shelx    bool
+	// From ... AS stageName
+	stageName string
+}
+
+type CopyOptions struct {
+	dest           string
+	targetPlatform ocispecs.Platform
+	exclude        []string
+	source         llb.State
+	AddCommand     bool
+	chmod, chown   string
+	link, parents  bool
+	ignoreCache    bool
 }

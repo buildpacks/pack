@@ -27,7 +27,7 @@ func NewState(os string) (_ *State, err error) {
 
 	state, err := llb.Scratch().WithImageConfig(cfgBytes)
 	return &State{
-		State:      &state,
-		ConfigFile: config,
+		state:  state,
+		config: config,
 	}, err
 }

@@ -2,12 +2,8 @@ package lifecycle
 
 import (
 	"math/rand"
-	"path/filepath"
 
 	"github.com/buildpacks/lifecycle/api"
-
-	"github.com/buildpacks/pack/internal/buildkit/state"
-	"github.com/buildpacks/pack/internal/paths"
 )
 
 func randString(n int) string {
@@ -29,11 +25,11 @@ func (l *LifecycleExecution) withLogLevel(args ...string) []string {
 	return args
 }
 
-func withLayoutOperation(state *state.State) {
-	layoutDir := filepath.Join(paths.RootDir, "layout-repo")
-	newState := state.AddEnv("CNB_USE_LAYOUT", "true").AddEnv("CNB_LAYOUT_DIR", layoutDir).AddEnv("CNB_EXPERIMENTAL_MODE", "warn")
-	state = &newState
-}
+// func withLayoutOperation(state *state.State) {
+// 	layoutDir := filepath.Join(paths.RootDir, "layout-repo")
+// 	newState := state.AddEnv("CNB_USE_LAYOUT", "true").AddEnv("CNB_LAYOUT_DIR", layoutDir).AddEnv("CNB_EXPERIMENTAL_MODE", "warn")
+// 	state = &newState
+// }
 
 func prependArg(arg string, args []string) []string {
 	return append([]string{arg}, args...)
