@@ -265,7 +265,8 @@ func NewClient(opts ...Option) (*Client, error) {
 
 	if client.imageFactory == nil {
 		client.imageFactory = &imageFactory{
-			keychain: client.keychain,
+			dockerClient: client.docker,
+			keychain:     client.keychain,
 		}
 	}
 
