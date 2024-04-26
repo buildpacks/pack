@@ -34,39 +34,51 @@ func testDeleteManifest(t *testing.T, when spec.G, it spec.S) {
 		tmpDir           string
 	)
 
-	when("#Add", func() {
-		it.Before(func() {
-			logger = logging.NewLogWithWriters(&out, &out, logging.WithVerbose())
-			mockController = gomock.NewController(t)
-			mockIndexFactory = testmocks.NewMockIndexFactory(mockController)
+	it.Before(func() {
+		logger = logging.NewLogWithWriters(&out, &out, logging.WithVerbose())
+		mockController = gomock.NewController(t)
+		mockIndexFactory = testmocks.NewMockIndexFactory(mockController)
 
-			subject, err = NewClient(
-				WithLogger(logger),
-				WithIndexFactory(mockIndexFactory),
-				WithExperimental(true),
-				WithKeychain(authn.DefaultKeychain),
-			)
-			h.AssertSameInstance(t, mockIndexFactory, subject.indexFactory)
-			h.AssertNil(t, err)
+		tmpDir, err = os.MkdirTemp("", "remove-manifest-test")
+		h.AssertNil(t, err)
+		os.Setenv("XDG_RUNTIME_DIR", tmpDir)
+
+		subject, err = NewClient(
+			WithLogger(logger),
+			WithIndexFactory(mockIndexFactory),
+			WithExperimental(true),
+			WithKeychain(authn.DefaultKeychain),
+		)
+		h.AssertSameInstance(t, mockIndexFactory, subject.indexFactory)
+		h.AssertNil(t, err)
+	})
+	it.After(func() {
+		mockController.Finish()
+		h.AssertNil(t, os.RemoveAll(tmpDir))
+	})
+
+	when("#DeleteManifest", func() {
+		when("index doesn't exists", func() {
+			it.Before(func() {
+				prepareIndexWithoutLocallyExists(*mockIndexFactory)
+			})
+			it("should return an error when index is already deleted", func() {
+				errs := subject.DeleteManifest(context.TODO(), []string{"pack/none-existent-index"})
+				h.AssertNotEq(t, len(errs), 0)
+			})
 		})
-		it.After(func() {
-			mockController.Finish()
-			h.AssertNil(t, os.RemoveAll(tmpDir))
-		})
-		it("should delete local index", func() {
-			prepareLoadIndex(t, "pack/index", *mockIndexFactory)
 
-			errs := subject.DeleteManifest(context.TODO(), []string{"some-index"})
-			h.AssertEq(t, len(errs), 0)
-		})
-		it("should return an error when index is already deleted", func() {
-			prepareLoadIndex(t, "pack/index", *mockIndexFactory)
+		when("index exists", func() {
+			var index *mockImageIndex
+			it.Before(func() {
+				index = newMockImageIndex(t, "some-index", *mockIndexFactory)
+			})
 
-			errs := subject.DeleteManifest(context.TODO(), []string{"some-index"})
-			h.AssertEq(t, len(errs), 0)
-
-			errs = subject.DeleteManifest(context.TODO(), []string{"some-index"})
-			h.AssertNotEq(t, len(errs), 0)
+			it("should delete local index", func() {
+				errs := subject.DeleteManifest(context.TODO(), []string{"some-index"})
+				h.AssertEq(t, len(errs), 0)
+				h.AssertTrue(t, index.DeleteDirCalled)
+			})
 		})
 	})
 }

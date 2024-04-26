@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 )
 
 // DeleteManifest implements commands.PackClient.
@@ -11,6 +10,7 @@ func (c *Client) DeleteManifest(ctx context.Context, names []string) (errs []err
 		imgIndex, err := c.indexFactory.LoadIndex(name)
 		if err != nil {
 			errs = append(errs, err)
+			continue
 		}
 
 		if err := imgIndex.DeleteDir(); err != nil {
@@ -19,8 +19,7 @@ func (c *Client) DeleteManifest(ctx context.Context, names []string) (errs []err
 	}
 
 	if len(errs) == 0 {
-		fmt.Printf("successfully deleted indexes \n")
+		c.logger.Info("successfully deleted indexes \n")
 	}
-
 	return errs
 }

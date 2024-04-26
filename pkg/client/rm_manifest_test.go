@@ -36,52 +36,49 @@ func testRemoveManifest(t *testing.T, when spec.G, it spec.S) {
 		tmpDir           string
 	)
 
-	when("#Add", func() {
-		it.Before(func() {
-			logger = logging.NewLogWithWriters(&out, &out, logging.WithVerbose())
-			mockController = gomock.NewController(t)
-			mockIndexFactory = testmocks.NewMockIndexFactory(mockController)
+	it.Before(func() {
+		logger = logging.NewLogWithWriters(&out, &out, logging.WithVerbose())
+		mockController = gomock.NewController(t)
+		mockIndexFactory = testmocks.NewMockIndexFactory(mockController)
 
-			subject, err = NewClient(
-				WithLogger(logger),
-				WithIndexFactory(mockIndexFactory),
-				WithExperimental(true),
-				WithKeychain(authn.DefaultKeychain),
-			)
-			h.AssertSameInstance(t, mockIndexFactory, subject.indexFactory)
-			h.AssertNil(t, err)
-		})
-		it.After(func() {
-			mockController.Finish()
-			h.AssertNil(t, os.RemoveAll(tmpDir))
-		})
-		it("should remove local index", func() {
-			idx := prepareLoadIndex(t, "pack/index", *mockIndexFactory)
-			imgIdx, ok := idx.(*imgutil.CNBIndex)
-			h.AssertEq(t, ok, true)
+		tmpDir, err = os.MkdirTemp("", "rm-manifest-test")
+		h.AssertNil(t, err)
+		os.Setenv("XDG_RUNTIME_DIR", tmpDir)
 
-			mfest, err := imgIdx.IndexManifest()
-			h.AssertNil(t, err)
+		subject, err = NewClient(
+			WithLogger(logger),
+			WithIndexFactory(mockIndexFactory),
+			WithExperimental(true),
+			WithKeychain(authn.DefaultKeychain),
+		)
+		h.AssertSameInstance(t, mockIndexFactory, subject.indexFactory)
+		h.AssertNil(t, err)
+	})
+	it.After(func() {
+		mockController.Finish()
+		h.AssertNil(t, os.RemoveAll(tmpDir))
+	})
 
-			digest, err := name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
-			h.AssertNil(t, err)
+	when("#RemoveManifest", func() {
+		when("index exists", func() {
+			var digest name.Digest
+			var idx imgutil.ImageIndex
 
-			errs := subject.RemoveManifest(context.TODO(), "some-index", []string{digest.Name()})
-			h.AssertEq(t, len(errs), 0)
-		})
-		it("should remove image", func() {
-			idx := prepareLoadIndex(t, "pack/index", *mockIndexFactory)
-			imgIdx, ok := idx.(*imgutil.CNBIndex)
-			h.AssertEq(t, ok, true)
+			it.Before(func() {
+				idx = prepareLoadIndex(t, "some/repo", *mockIndexFactory)
+				imgIdx, ok := idx.(*imgutil.CNBIndex)
+				h.AssertEq(t, ok, true)
 
-			mfest, err := imgIdx.IndexManifest()
-			h.AssertNil(t, err)
+				mfest, err := imgIdx.IndexManifest()
+				h.AssertNil(t, err)
 
-			digest, err := name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
-			h.AssertNil(t, err)
-
-			errs := subject.RemoveManifest(context.TODO(), "some-index", []string{digest.Name()})
-			h.AssertEq(t, len(errs), 0)
+				digest, err = name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
+				h.AssertNil(t, err)
+			})
+			it("should remove local index", func() {
+				errs := subject.RemoveManifest(context.TODO(), "some/repo", []string{digest.Name()})
+				h.AssertEq(t, len(errs), 0)
+			})
 		})
 	})
 }

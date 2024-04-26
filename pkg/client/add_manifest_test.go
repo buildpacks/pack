@@ -176,6 +176,9 @@ func randomCNBIndex(t *testing.T, repoName string) *imgutil.CNBIndex {
 	h.AssertNil(t, err)
 	options := &imgutil.IndexOptions{
 		BaseIndex: ridx,
+		LayoutIndexOptions: imgutil.LayoutIndexOptions{
+			XdgPath: os.Getenv("XDG_RUNTIME_DIR"),
+		},
 	}
 	idx, err := imgutil.NewCNBIndex(repoName, *options)
 	h.AssertNil(t, err)
@@ -195,9 +198,9 @@ func prepareLoadIndex(t *testing.T, repoName string, mockIndexFactory testmocks.
 
 func prepareLoadIndexWithErrorOnSave(t *testing.T, repoName string, mockIndexFactory testmocks.MockIndexFactory) imgutil.ImageIndex {
 	cnbIdx := randomCNBIndex(t, repoName)
-	idx := &testIndex{
+	idx := &mockImageIndex{
 		CNBIndex:    *cnbIdx,
-		errorOnSave: true,
+		ErrorOnSave: true,
 	}
 	mockIndexFactory.
 		EXPECT().
@@ -217,14 +220,26 @@ func (t *testImage) UnderlyingImage() v1.Image {
 	return t.underlyingImage
 }
 
-type testIndex struct {
+type mockImageIndex struct {
 	imgutil.CNBIndex
-	errorOnSave bool
+	ErrorOnSave     bool
+	PushCalled      bool
+	DeleteDirCalled bool
 }
 
-func (i *testIndex) SaveDir() error {
-	if i.errorOnSave {
+func (i *mockImageIndex) SaveDir() error {
+	if i.ErrorOnSave {
 		return errors.New("something failed writing the index on disk")
 	}
 	return i.CNBIndex.SaveDir()
+}
+
+func (i *mockImageIndex) Push(_ ...imgutil.IndexOption) error {
+	i.PushCalled = true
+	return nil
+}
+
+func (i *mockImageIndex) DeleteDir() error {
+	i.DeleteDirCalled = true
+	return nil
 }

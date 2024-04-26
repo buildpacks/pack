@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/buildpacks/imgutil"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/heroku/color"
@@ -55,10 +54,10 @@ func testPushManifest(t *testing.T, when spec.G, it spec.S) {
 
 	when("#PushManifest", func() {
 		when("index exists locally", func() {
-			var index *testPushIndex
+			var index *mockImageIndex
 
 			it.Before(func() {
-				index = prepareLoadIndexWithMockPush(t, "some-index", *mockIndexFactory)
+				index = newMockImageIndex(t, "some-index", *mockIndexFactory)
 			})
 			it("should push index to registry", func() {
 				err = subject.PushManifest(PushManifestOptions{
@@ -91,9 +90,9 @@ func prepareLoadIndexWithError(mockIndexFactory testmocks.MockIndexFactory) {
 		Return(nil, errors.New("ErrNoImageOrIndexFoundWithGivenDigest"))
 }
 
-func prepareLoadIndexWithMockPush(t *testing.T, repoName string, mockIndexFactory testmocks.MockIndexFactory) *testPushIndex {
+func newMockImageIndex(t *testing.T, repoName string, mockIndexFactory testmocks.MockIndexFactory) *mockImageIndex {
 	cnbIdx := randomCNBIndex(t, repoName)
-	idx := &testPushIndex{
+	idx := &mockImageIndex{
 		CNBIndex: *cnbIdx,
 	}
 	mockIndexFactory.
@@ -103,14 +102,4 @@ func prepareLoadIndexWithMockPush(t *testing.T, repoName string, mockIndexFactor
 		AnyTimes()
 
 	return idx
-}
-
-type testPushIndex struct {
-	imgutil.CNBIndex
-	PushCalled bool
-}
-
-func (i *testPushIndex) Push(_ ...imgutil.IndexOption) error {
-	i.PushCalled = true
-	return nil
 }
