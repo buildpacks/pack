@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1713563565536,
+  "lastUpdate": 1714173989727,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -6244,6 +6244,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 55568856798,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d7c6f0e73eed32e991531cd4e2858f9f5e1f1a99",
+          "message": "Merge pull request #2092 from buildpacks/bugfix/jjbustamante/issue-2078\n\nAdding a nop-op when trying to check access for run-image against the daemon",
+          "timestamp": "2024-04-26T18:24:43-05:00",
+          "tree_id": "4e8c94ee5158e01c009072c6fffb84e6a6b6e527",
+          "url": "https://github.com/buildpacks/pack/commit/d7c6f0e73eed32e991531cd4e2858f9f5e1f1a99"
+        },
+        "date": 1714173988995,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5309660518,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1397180192,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 53942610079,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
