@@ -55,9 +55,9 @@ type ImageFetcher interface {
 
 	// CheckReadAccess verifies if an image is accessible with read permissions
 	// When FetchOptions.Daemon is true and the image doesn't exist in the daemon,
-	// the behavior is dictated by the pullPolicy, which can have the following behavior
+	// the behavior is dictated by the pull policy, which can have the following behavior
 	//   - PullNever: returns false
-	//   - PullAlways Or PullIfNotPResent: it will check read access for the remote image.
+	//   - PullAlways Or PullIfNotPresent: it will check read access for the remote image.
 	// When FetchOptions.Daemon is false it will check read access for the remote image.
 	CheckReadAccess(repo string, options image.FetchOptions) bool
 }

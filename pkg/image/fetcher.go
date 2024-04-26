@@ -130,17 +130,16 @@ func (f *Fetcher) CheckReadAccess(repo string, options FetchOptions) bool {
 	if _, err := f.fetchDaemonImage(repo); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			// Image doesn't exist in the daemon
-			// 	Pull Never: should failed
+			// 	Pull Never: should fail
 			// 	Pull If Not Present: need to check the registry
 			if options.PullPolicy == PullNever {
 				return false
 			}
 			return f.checkRemoteReadAccess(repo)
 		}
-		f.logger.Debugf("failed reading image from the daemon %s, error: %s", repo, err.Error())
+		f.logger.Debugf("failed reading image '%s' from the daemon, error: %s", repo, err.Error())
 		return false
 	}
-	// no-op
 	return true
 }
 

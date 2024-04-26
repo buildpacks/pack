@@ -426,14 +426,14 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 				when("PullNever", func() {
 					it("read access must be false", func() {
 						h.AssertFalse(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullNever}))
-						h.AssertContains(t, outBuf.String(), "failed reading image from the daemon")
+						h.AssertContains(t, outBuf.String(), "failed reading image 'pack.test/dummy' from the daemon")
 					})
 				})
 
 				when("PullIfNotPresent", func() {
 					it("read access must be false", func() {
 						h.AssertFalse(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullIfNotPresent}))
-						h.AssertContains(t, outBuf.String(), "failed reading image from the daemon")
+						h.AssertContains(t, outBuf.String(), "failed reading image 'pack.test/dummy' from the daemon")
 					})
 				})
 			})
