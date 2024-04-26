@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/registry"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -28,7 +29,7 @@ func (c *Client) parseTagReference(imageName string) (name.Reference, error) {
 	return ref, nil
 }
 
-func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, runImageMetadata builder.RunImageMetadata, additionalMirrors map[string][]string, publish bool, accessChecker AccessChecker) string {
+func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, runImageMetadata builder.RunImageMetadata, additionalMirrors map[string][]string, publish bool, options image.FetchOptions) string {
 	if runImage != "" {
 		c.logger.Debugf("Using provided run-image %s", style.Symbol(runImage))
 		return runImage
@@ -44,7 +45,8 @@ func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, run
 		runImageMetadata.Image,
 		runImageMetadata.Mirrors,
 		additionalMirrors[runImageMetadata.Image],
-		accessChecker,
+		c.imageFetcher,
+		options,
 	)
 
 	switch {
@@ -108,8 +110,8 @@ func contains(slc []string, v string) bool {
 	return false
 }
 
-func getBestRunMirror(registry string, runImage string, mirrors []string, preferredMirrors []string, accessChecker AccessChecker) string {
-	runImageList := filterImageList(append(append(append([]string{}, preferredMirrors...), runImage), mirrors...), accessChecker)
+func getBestRunMirror(registry string, runImage string, mirrors []string, preferredMirrors []string, fetcher ImageFetcher, options image.FetchOptions) string {
+	runImageList := filterImageList(append(append(append([]string{}, preferredMirrors...), runImage), mirrors...), fetcher, options)
 	for _, img := range runImageList {
 		ref, err := name.ParseReference(img, name.WeakValidation)
 		if err != nil {
@@ -127,11 +129,11 @@ func getBestRunMirror(registry string, runImage string, mirrors []string, prefer
 	return runImage
 }
 
-func filterImageList(imageList []string, accessChecker AccessChecker) []string {
+func filterImageList(imageList []string, fetcher ImageFetcher, options image.FetchOptions) []string {
 	var accessibleImages []string
 
 	for i, img := range imageList {
-		if accessChecker.Check(img) {
+		if fetcher.CheckReadAccess(img, options) {
 			accessibleImages = append(accessibleImages, imageList[i])
 		}
 	}

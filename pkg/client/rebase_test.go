@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -28,7 +29,6 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 	when("#Rebase", func() {
 		var (
 			fakeImageFetcher   *ifakes.FakeImageFetcher
-			fakeAccessChecker  *ifakes.FakeAccessChecker
 			subject            *Client
 			fakeAppImage       *fakes.Image
 			fakeRunImage       *fakes.Image
@@ -38,7 +38,6 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			fakeImageFetcher = ifakes.NewFakeImageFetcher()
-			fakeAccessChecker = ifakes.NewFakeAccessChecker()
 
 			fakeAppImage = fakes.NewImage("some/app", "", &fakeIdentifier{name: "app-image"})
 			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata",
@@ -54,11 +53,14 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, fakeRunImageMirror.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.jammy"))
 			fakeImageFetcher.LocalImages["example.com/some/run"] = fakeRunImageMirror
 
+			keychain, err := auth.DefaultKeychain("pack-test/dummy")
+			h.AssertNil(t, err)
+
 			fakeLogger := logging.NewLogWithWriters(&out, &out)
 			subject = &Client{
-				logger:        fakeLogger,
-				imageFetcher:  fakeImageFetcher,
-				accessChecker: fakeAccessChecker,
+				logger:       fakeLogger,
+				imageFetcher: fakeImageFetcher,
+				keychain:     keychain,
 			}
 		})
 
