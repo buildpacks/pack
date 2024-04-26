@@ -98,6 +98,13 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 			Mirrors: md.Stack.RunImage.Mirrors,
 		}
 	}
+
+	fetchOptions := image.FetchOptions{
+		Daemon:     !opts.Publish,
+		PullPolicy: opts.PullPolicy,
+		Platform:   fmt.Sprintf("%s/%s", appOS, appArch),
+	}
+
 	runImageName := c.resolveRunImage(
 		opts.RunImage,
 		imageRef.Context().RegistryStr(),
@@ -105,18 +112,14 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		runImageMD,
 		opts.AdditionalMirrors,
 		opts.Publish,
-		c.accessChecker,
+		fetchOptions,
 	)
 
 	if runImageName == "" {
 		return errors.New("run image must be specified")
 	}
 
-	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, image.FetchOptions{
-		Daemon:     !opts.Publish,
-		PullPolicy: opts.PullPolicy,
-		Platform:   fmt.Sprintf("%s/%s", appOS, appArch),
-	})
+	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, fetchOptions)
 	if err != nil {
 		return err
 	}

@@ -55,6 +55,10 @@ func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, options image
 	return ri, nil
 }
 
+func (f *FakeImageFetcher) CheckReadAccess(_ string, _ image.FetchOptions) bool {
+	return true
+}
+
 func shouldPull(localFound, remoteFound bool, policy image.PullPolicy) bool {
 	if remoteFound && !localFound && policy == image.PullIfNotPresent {
 		return true

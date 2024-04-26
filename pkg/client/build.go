@@ -340,13 +340,13 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
 
-	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish, c.accessChecker)
-
 	fetchOptions := image.FetchOptions{
 		Daemon:     !opts.Publish,
 		PullPolicy: opts.PullPolicy,
 		Platform:   fmt.Sprintf("%s/%s", builderOS, builderArch),
 	}
+	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish, fetchOptions)
+
 	if opts.Layout() {
 		targetRunImagePath, err := layout.ParseRefToPath(runImageName)
 		if err != nil {
