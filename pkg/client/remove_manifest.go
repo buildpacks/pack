@@ -13,7 +13,7 @@ func (c *Client) DeleteManifest(ctx context.Context, names []string) (errs []err
 			errs = append(errs, err)
 		}
 
-		if err := imgIndex.Delete(); err != nil {
+		if err := imgIndex.DeleteDir(); err != nil {
 			errs = append(errs, err)
 		}
 	}

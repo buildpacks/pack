@@ -37,31 +37,31 @@ func (m *MockPackClient) EXPECT() *MockPackClientMockRecorder {
 }
 
 // AddManifest mocks base method.
-func (m *MockPackClient) AddManifest(arg0 context.Context, arg1, arg2 string, arg3 client.ManifestAddOptions) error {
+func (m *MockPackClient) AddManifest(arg0 context.Context, arg1 client.ManifestAddOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddManifest", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "AddManifest", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddManifest indicates an expected call of AddManifest.
-func (mr *MockPackClientMockRecorder) AddManifest(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockPackClientMockRecorder) AddManifest(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddManifest", reflect.TypeOf((*MockPackClient)(nil).AddManifest), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddManifest", reflect.TypeOf((*MockPackClient)(nil).AddManifest), arg0, arg1)
 }
 
 // AnnotateManifest mocks base method.
-func (m *MockPackClient) AnnotateManifest(arg0 context.Context, arg1, arg2 string, arg3 client.ManifestAnnotateOptions) error {
+func (m *MockPackClient) AnnotateManifest(arg0 context.Context, arg1 client.ManifestAnnotateOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AnnotateManifest", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "AnnotateManifest", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AnnotateManifest indicates an expected call of AnnotateManifest.
-func (mr *MockPackClientMockRecorder) AnnotateManifest(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockPackClientMockRecorder) AnnotateManifest(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AnnotateManifest", reflect.TypeOf((*MockPackClient)(nil).AnnotateManifest), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AnnotateManifest", reflect.TypeOf((*MockPackClient)(nil).AnnotateManifest), arg0, arg1)
 }
 
 // Build mocks base method.
@@ -93,17 +93,17 @@ func (mr *MockPackClientMockRecorder) CreateBuilder(arg0, arg1 interface{}) *gom
 }
 
 // CreateManifest mocks base method.
-func (m *MockPackClient) CreateManifest(arg0 context.Context, arg1 string, arg2 []string, arg3 client.CreateManifestOptions) error {
+func (m *MockPackClient) CreateManifest(arg0 context.Context, arg1 client.CreateManifestOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateManifest", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "CreateManifest", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateManifest indicates an expected call of CreateManifest.
-func (mr *MockPackClientMockRecorder) CreateManifest(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockPackClientMockRecorder) CreateManifest(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateManifest", reflect.TypeOf((*MockPackClient)(nil).CreateManifest), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateManifest", reflect.TypeOf((*MockPackClient)(nil).CreateManifest), arg0, arg1)
 }
 
 // DeleteManifest mocks base method.
@@ -132,20 +132,6 @@ func (m *MockPackClient) DownloadSBOM(arg0 string, arg1 client.DownloadSBOMOptio
 func (mr *MockPackClientMockRecorder) DownloadSBOM(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DownloadSBOM", reflect.TypeOf((*MockPackClient)(nil).DownloadSBOM), arg0, arg1)
-}
-
-// ExistsManifest mocks base method.
-func (m *MockPackClient) ExistsManifest(arg0 context.Context, arg1 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExistsManifest", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// ExistsManifest indicates an expected call of ExistsManifest.
-func (mr *MockPackClientMockRecorder) ExistsManifest(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsManifest", reflect.TypeOf((*MockPackClient)(nil).ExistsManifest), arg0, arg1)
 }
 
 // InspectBuilder mocks base method.
@@ -214,17 +200,17 @@ func (mr *MockPackClientMockRecorder) InspectImage(arg0, arg1 interface{}) *gomo
 }
 
 // InspectManifest mocks base method.
-func (m *MockPackClient) InspectManifest(arg0 context.Context, arg1 string) error {
+func (m *MockPackClient) InspectManifest(arg0 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InspectManifest", arg0, arg1)
+	ret := m.ctrl.Call(m, "InspectManifest", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // InspectManifest indicates an expected call of InspectManifest.
-func (mr *MockPackClientMockRecorder) InspectManifest(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockPackClientMockRecorder) InspectManifest(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InspectManifest", reflect.TypeOf((*MockPackClient)(nil).InspectManifest), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InspectManifest", reflect.TypeOf((*MockPackClient)(nil).InspectManifest), arg0)
 }
 
 // NewBuildpack mocks base method.
@@ -284,17 +270,17 @@ func (mr *MockPackClientMockRecorder) PullBuildpack(arg0, arg1 interface{}) *gom
 }
 
 // PushManifest mocks base method.
-func (m *MockPackClient) PushManifest(arg0 context.Context, arg1 string, arg2 client.PushManifestOptions) error {
+func (m *MockPackClient) PushManifest(arg0 client.PushManifestOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PushManifest", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "PushManifest", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // PushManifest indicates an expected call of PushManifest.
-func (mr *MockPackClientMockRecorder) PushManifest(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockPackClientMockRecorder) PushManifest(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PushManifest", reflect.TypeOf((*MockPackClient)(nil).PushManifest), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PushManifest", reflect.TypeOf((*MockPackClient)(nil).PushManifest), arg0)
 }
 
 // Rebase mocks base method.

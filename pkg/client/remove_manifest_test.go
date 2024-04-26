@@ -54,13 +54,13 @@ func testDeleteManifest(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, os.RemoveAll(tmpDir))
 		})
 		it("should delete local index", func() {
-			prepareLoadIndex(t, *mockIndexFactory)
+			prepareLoadIndex(t, "pack/index", *mockIndexFactory)
 
 			errs := subject.DeleteManifest(context.TODO(), []string{"some-index"})
 			h.AssertEq(t, len(errs), 0)
 		})
 		it("should return an error when index is already deleted", func() {
-			prepareLoadIndex(t, *mockIndexFactory)
+			prepareLoadIndex(t, "pack/index", *mockIndexFactory)
 
 			errs := subject.DeleteManifest(context.TODO(), []string{"some-index"})
 			h.AssertEq(t, len(errs), 0)

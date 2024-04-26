@@ -1,20 +1,27 @@
 package client
 
 import (
-	"context"
-	"fmt"
+	"github.com/buildpacks/imgutil"
+	"github.com/pkg/errors"
 )
 
 // InspectManifest implements commands.PackClient.
-func (c *Client) InspectManifest(ctx context.Context, name string) (err error) {
-	idx, err := c.indexFactory.FindIndex(name)
+func (c *Client) InspectManifest(indexRepoName string) error {
+	var (
+		index    imgutil.ImageIndex
+		indexStr string
+		err      error
+	)
+
+	index, err = c.indexFactory.FindIndex(indexRepoName)
 	if err != nil {
 		return err
 	}
 
-	if mfest, err := idx.Inspect(); err == nil {
-		fmt.Println(mfest)
+	if indexStr, err = index.Inspect(); err != nil {
+		return errors.Wrapf(err, "'%s' printing the index", indexRepoName)
 	}
 
-	return err
+	c.logger.Info(indexStr)
+	return nil
 }

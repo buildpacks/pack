@@ -45,10 +45,6 @@ func testManifestCreateCommand(t *testing.T, when spec.G, it spec.S) {
 		command.SetArgs([]string{
 			"some-index",
 			"busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0",
-			"--os",
-			"linux",
-			"--arch",
-			"arm",
 			"--format",
 			"v2s2",
 			"--insecure",
@@ -56,14 +52,6 @@ func testManifestCreateCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 		h.AssertNil(t, command.Execute())
 		h.AssertEq(t, outBuf.String(), "")
-	})
-	it("should return an error when platform's os and arch not defined", func() {
-		prepareCreateManifest(t, mockClient)
-
-		command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--os", "linux"})
-		err := command.Execute()
-		h.AssertEq(t, err.Error(), "'os' or 'arch' is undefined")
-		h.AssertEq(t, outBuf.String(), "ERROR: 'os' or 'arch' is undefined\n")
 	})
 	it("should have help flag", func() {
 		prepareCreateManifest(t, mockClient)
@@ -78,8 +66,6 @@ func prepareCreateManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
 		CreateManifest(
-			gomock.Any(),
-			gomock.Any(),
 			gomock.Any(),
 			gomock.Any(),
 		).

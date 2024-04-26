@@ -6,14 +6,13 @@ import (
 	"os"
 	"testing"
 
+	"github.com/buildpacks/imgutil"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-
-	"github.com/buildpacks/imgutil/fakes"
 
 	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/buildpacks/pack/pkg/testmocks"
@@ -57,8 +56,8 @@ func testRemoveManifest(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, os.RemoveAll(tmpDir))
 		})
 		it("should remove local index", func() {
-			idx := prepareLoadIndex(t, *mockIndexFactory)
-			imgIdx, ok := idx.(*fakes.Index)
+			idx := prepareLoadIndex(t, "pack/index", *mockIndexFactory)
+			imgIdx, ok := idx.(*imgutil.CNBIndex)
 			h.AssertEq(t, ok, true)
 
 			mfest, err := imgIdx.IndexManifest()
@@ -71,8 +70,8 @@ func testRemoveManifest(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, len(errs), 0)
 		})
 		it("should remove image", func() {
-			idx := prepareLoadIndex(t, *mockIndexFactory)
-			imgIdx, ok := idx.(*fakes.Index)
+			idx := prepareLoadIndex(t, "pack/index", *mockIndexFactory)
+			imgIdx, ok := idx.(*imgutil.CNBIndex)
 			h.AssertEq(t, ok, true)
 
 			mfest, err := imgIdx.IndexManifest()

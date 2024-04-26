@@ -4,70 +4,41 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/buildpacks/imgutil"
 	"github.com/google/go-containerregistry/pkg/name"
+
+	"github.com/buildpacks/pack/pkg/image"
 )
 
 type ManifestAddOptions struct {
-	OS, OSVersion, OSArch, OSVariant string
-	OSFeatures, Features             []string
-	Annotations                      map[string]string
-	All                              bool
+	// Image index we want to update
+	IndexRepoName string
+
+	// Name of image we wish to add into the image index
+	RepoName string
 }
 
 // AddManifest implements commands.PackClient.
-func (c *Client) AddManifest(ctx context.Context, ii string, image string, opts ManifestAddOptions) (err error) {
-	idx, err := c.indexFactory.LoadIndex(ii)
+func (c *Client) AddManifest(ctx context.Context, opts ManifestAddOptions) (err error) {
+	idx, err := c.indexFactory.LoadIndex(opts.IndexRepoName)
 	if err != nil {
 		return err
 	}
 
-	var ops = make([]imgutil.IndexAddOption, 0)
-	if opts.All {
-		ops = append(ops, imgutil.WithAll(opts.All))
+	imageRef, err := name.ParseReference(opts.RepoName, name.WeakValidation)
+	if err != nil {
+		return fmt.Errorf("'%s' is not a valid manifest reference: %s", opts.RepoName, err)
 	}
 
-	if opts.OS != "" {
-		ops = append(ops, imgutil.WithOS(opts.OS))
-	}
-
-	if opts.OSArch != "" {
-		ops = append(ops, imgutil.WithArchitecture(opts.OSArch))
-	}
-
-	if opts.OSVariant != "" {
-		ops = append(ops, imgutil.WithVariant(opts.OSVariant))
-	}
-
-	if opts.OSVersion != "" {
-		ops = append(ops, imgutil.WithOSVersion(opts.OSVersion))
-	}
-
-	if len(opts.Features) != 0 {
-		ops = append(ops, imgutil.WithFeatures(opts.Features))
-	}
-
-	if len(opts.OSFeatures) != 0 {
-		ops = append(ops, imgutil.WithOSFeatures(opts.OSFeatures))
-	}
-
-	if len(opts.Annotations) != 0 {
-		ops = append(ops, imgutil.WithAnnotations(opts.Annotations))
-	}
-
-	ref, err := name.ParseReference(image, name.Insecure, name.WeakValidation)
+	imageToAdd, err := c.imageFetcher.Fetch(ctx, imageRef.Name(), image.FetchOptions{Daemon: false})
 	if err != nil {
 		return err
 	}
 
-	if err = idx.Add(ref, ops...); err != nil {
-		return err
+	idx.AddManifest(imageToAdd.UnderlyingImage())
+	if err = idx.SaveDir(); err != nil {
+		return fmt.Errorf("'%s' could not be saved in the local storage: %s", opts.RepoName, err)
 	}
 
-	if err = idx.Save(); err != nil {
-		return err
-	}
-
-	fmt.Printf("successfully added to index: '%s'\n", image)
+	c.logger.Infof("successfully added to index: '%s'\n", opts.RepoName)
 	return nil
 }

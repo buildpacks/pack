@@ -2,18 +2,14 @@ package client
 
 import (
 	"bytes"
-	"context"
-	"errors"
-	"os"
 	"testing"
 
 	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/imgutil/fakes"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/types"
+	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/heroku/color"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -37,61 +33,65 @@ func testInspectManifest(t *testing.T, when spec.G, it spec.S) {
 		logger           logging.Logger
 		subject          *Client
 		err              error
-		tmpDir           string
 	)
 
-	when("#Add", func() {
-		it.Before(func() {
-			logger = logging.NewLogWithWriters(&stdout, &stderr, logging.WithVerbose())
-			mockController = gomock.NewController(t)
-			mockIndexFactory = testmocks.NewMockIndexFactory(mockController)
+	it.Before(func() {
+		logger = logging.NewLogWithWriters(&stdout, &stderr, logging.WithVerbose())
+		mockController = gomock.NewController(t)
+		mockIndexFactory = testmocks.NewMockIndexFactory(mockController)
 
-			subject, err = NewClient(
-				WithLogger(logger),
-				WithIndexFactory(mockIndexFactory),
-				WithExperimental(true),
-				WithKeychain(authn.DefaultKeychain),
-			)
-			h.AssertSameInstance(t, mockIndexFactory, subject.indexFactory)
-			h.AssertSameInstance(t, subject.logger, logger)
-			h.AssertNil(t, err)
-		})
-		it.After(func() {
-			mockController.Finish()
-			h.AssertNil(t, os.RemoveAll(tmpDir))
-		})
-		it("should return an error when index not found", func() {
-			prepareFindIndexWithError(*mockIndexFactory)
+		subject, err = NewClient(
+			WithLogger(logger),
+			WithIndexFactory(mockIndexFactory),
+			WithExperimental(true),
+			WithKeychain(authn.DefaultKeychain),
+		)
+		h.AssertSameInstance(t, mockIndexFactory, subject.indexFactory)
+		h.AssertSameInstance(t, subject.logger, logger)
+		h.AssertNil(t, err)
+	})
+	it.After(func() {
+		mockController.Finish()
+	})
 
-			err := subject.InspectManifest(
-				context.TODO(),
-				"some/name",
-			)
-			h.AssertEq(t, err.Error(), "index not found")
-		})
-		it("should return formatted IndexManifest", func() {
-			prepareFindIndex(t, *mockIndexFactory)
+	when("#InspectManifest", func() {
+		when("index doesn't exits", func() {
+			it.Before(func() {
+				mockIndexFactory.
+					EXPECT().
+					FindIndex(gomock.Any(), gomock.Any()).
+					AnyTimes().
+					Return(nil, errors.New("index not found"))
+			})
 
-			err := subject.InspectManifest(
-				context.TODO(),
-				"some/name",
-			)
-			h.AssertNil(t, err)
-			h.AssertEq(t, stderr.String(), "")
+			it("should return an error when index not found", func() {
+				err = subject.InspectManifest("some/name")
+				h.AssertEq(t, err.Error(), "index not found")
+			})
+		})
+
+		when("index exists", func() {
+			it.Before(func() {
+				setUpIndex(t, "some/name", *mockIndexFactory)
+			})
+
+			it("should return formatted IndexManifest", func() {
+				err = subject.InspectManifest("some/name")
+				h.AssertNil(t, err)
+				h.AssertEq(t, stderr.String(), "")
+			})
 		})
 	})
 }
 
-func prepareFindIndexWithError(mockIndexFactory testmocks.MockIndexFactory) {
-	mockIndexFactory.
-		EXPECT().
-		FindIndex(gomock.Any(), gomock.Any()).
-		AnyTimes().
-		Return(nil, errors.New("index not found"))
-}
+func setUpIndex(t *testing.T, indexRepoName string, mockIndexFactory testmocks.MockIndexFactory) imgutil.ImageIndex {
+	ridx, err := random.Index(1024, 1, 2)
+	h.AssertNil(t, err)
 
-func prepareFindIndex(t *testing.T, mockIndexFactory testmocks.MockIndexFactory) imgutil.ImageIndex {
-	idx, err := fakes.NewIndex(types.OCIImageIndex, 1024, 1, 1, v1.Descriptor{})
+	options := &imgutil.IndexOptions{
+		BaseIndex: ridx,
+	}
+	idx, err := imgutil.NewCNBIndex(indexRepoName, *options)
 	h.AssertNil(t, err)
 
 	mockIndexFactory.

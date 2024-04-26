@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"errors"
+
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/pkg/logging"
@@ -16,7 +18,10 @@ func ManifestInspect(logger logging.Logger, pack PackClient) *cobra.Command {
 		Long: `manifest inspect shows the manifest information stored in local storage.
 		The inspect command will help users to view how their local manifest list looks like`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			return pack.InspectManifest(cmd.Context(), args[0])
+			if args[0] == "" {
+				errors.New("'<manifest-list>' is required")
+			}
+			return pack.InspectManifest(args[0])
 		}),
 	}
 

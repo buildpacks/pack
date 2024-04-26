@@ -20,7 +20,7 @@ func TestManifestAddCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 
-	spec.Run(t, "Commands", testManifestAddCommand, spec.Random(), spec.Report(report.Terminal{}))
+	spec.Run(t, "Commands", testManifestAddCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testManifestAddCommand(t *testing.T, when spec.G, it spec.S) {
@@ -36,95 +36,44 @@ func testManifestAddCommand(t *testing.T, when spec.G, it spec.S) {
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
-
 		command = commands.ManifestAdd(logger, mockClient)
 	})
-	it("should add image with current platform specs", func() {
-		prepareAddManifest(t, mockClient)
 
-		command.SetArgs([]string{"some-index", "busybox:1.36-musl"})
-		err := command.Execute()
-		h.AssertNil(t, err)
-		h.AssertEq(t, outBuf.String(), "")
-	})
-	it("should add images with given platform", func() {
-		prepareAddManifest(t, mockClient)
-
-		command.SetArgs([]string{
-			"some-index",
-			"busybox:1.36-musl",
-			"--os",
-			"linux",
-			"--arch",
-			"arm",
-			"--variant",
-			"v6",
-			"--os-version",
-			"22.04",
+	when("args are valid", func() {
+		it.Before(func() {
+			prepareAddManifest(t, mockClient)
 		})
-		err := command.Execute()
-		h.AssertNil(t, err)
-		h.AssertEq(t, outBuf.String(), "")
-	})
-	it("should add return an error when platform's os and arch not defined", func() {
-		prepareAddManifest(t, mockClient)
 
-		command.SetArgs([]string{"some-index", "busybox:1.36-musl", "--os", "linux"})
-		err := command.Execute()
-		h.AssertEq(t, err.Error(), "'os' or 'arch' is undefined")
-		h.AssertEq(t, outBuf.String(), "ERROR: 'os' or 'arch' is undefined\n")
-	})
-	it("should add all images", func() {
-		prepareAddManifest(t, mockClient)
+		it("should add image with current platform specs", func() {
+			command.SetArgs([]string{"some-index", "busybox:1.36-musl"})
+			err := command.Execute()
+			h.AssertNil(t, err)
+			h.AssertEq(t, outBuf.String(), "")
+		})
 
-		command.SetArgs([]string{"some-index", "busybox:1.36-musl", "--all"})
-		err := command.Execute()
-		h.AssertNil(t, err)
-		h.AssertEq(t, outBuf.String(), "")
-	})
-	it("should return an error when features defined invalidly", func() {
-		prepareAddManifest(t, mockClient)
+		it("should have help flag", func() {
+			prepareAnnotateManifest(t, mockClient)
 
-		command.SetArgs([]string{"some-index", "busybox:1.36-musl", "--features"})
-		err := command.Execute()
-		h.AssertEq(t, err.Error(), "flag needs an argument: --features")
+			command.SetArgs([]string{"--help"})
+			h.AssertNilE(t, command.Execute())
+			h.AssertEq(t, outBuf.String(), "")
+		})
 	})
-	it("should return an error when osFeatures defined invalidly", func() {
-		prepareAddManifest(t, mockClient)
 
-		command.SetArgs([]string{"some-index", "busybox:1.36-musl", "--os-features"})
-		err := command.Execute()
-		h.AssertEq(t, err.Error(), "flag needs an argument: --os-features")
-	})
-	it("should return an error when invalid arg passed", func() {
-		prepareAddManifest(t, mockClient)
-
-		command.SetArgs([]string{"some-index", "busybox:1.36-musl", "--urls"})
-		err := command.Execute()
-		h.AssertEq(t, err.Error(), "unknown flag: --urls")
-	})
-	it("should return an error when annotations defined invalidly", func() {
-		prepareAddManifest(t, mockClient)
-
-		command.SetArgs([]string{"some-index", "busybox:1.36-musl", "--annotations", "some-key"})
-		err := command.Execute()
-		h.AssertEq(t, err.Error(), `invalid argument "some-key" for "--annotations" flag: some-key must be formatted as key=value`)
-	})
-	it("should have help flag", func() {
-		prepareAddManifest(t, mockClient)
-
-		command.SetArgs([]string{"--help"})
-		h.AssertNilE(t, command.Execute())
-		h.AssertEq(t, outBuf.String(), "")
+	when("args are invalid", func() {
+		it("error when missing mandatory arguments", func() {
+			command.SetArgs([]string{"some-index"})
+			err := command.Execute()
+			h.AssertNotNil(t, err)
+			h.AssertError(t, err, "accepts 2 arg(s), received 1")
+		})
 	})
 }
 
-func prepareAddManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
+func prepareAddManifest(_ *testing.T, mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
 		AddManifest(
-			gomock.Any(),
-			gomock.Any(),
 			gomock.Any(),
 			gomock.Any(),
 		).

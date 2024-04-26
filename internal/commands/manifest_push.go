@@ -25,10 +25,11 @@ func ManifestPush(logger logging.Logger, pack PackClient) *cobra.Command {
 		Long: `manifest push pushes a manifest list (Image index) to a registry.
 		Once a manifest list is ready to be published into the registry, the push command can be used`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			return pack.PushManifest(cmd.Context(), args[0], client.PushManifestOptions{
-				Format:   flags.format,
-				Insecure: flags.insecure,
-				Purge:    flags.purge,
+			return pack.PushManifest(client.PushManifestOptions{
+				IndexRepoName: args[0],
+				Format:        flags.format,
+				Insecure:      flags.insecure,
+				Purge:         flags.purge,
 			})
 		}),
 	}

@@ -11,13 +11,13 @@ import (
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/types"
+	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -26,6 +26,8 @@ import (
 func TestAddManifest(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
+
+	// TODO I think we can make this test to run in parallel
 	spec.Run(t, "build", testAddManifest, spec.Report(report.Terminal{}))
 }
 
@@ -33,6 +35,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 	var (
 		mockController   *gomock.Controller
 		mockIndexFactory *testmocks.MockIndexFactory
+		fakeImageFetcher *ifakes.FakeImageFetcher
 		out              bytes.Buffer
 		logger           logging.Logger
 		subject          *Client
@@ -40,197 +43,126 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 		tmpDir           string
 	)
 
-	when("#Add", func() {
-		it.Before(func() {
-			logger = logging.NewLogWithWriters(&out, &out, logging.WithVerbose())
-			mockController = gomock.NewController(t)
-			mockIndexFactory = testmocks.NewMockIndexFactory(mockController)
+	it.Before(func() {
+		fakeImageFetcher = ifakes.NewFakeImageFetcher()
+		logger = logging.NewLogWithWriters(&out, &out, logging.WithVerbose())
+		mockController = gomock.NewController(t)
+		mockIndexFactory = testmocks.NewMockIndexFactory(mockController)
 
-			subject, err = NewClient(
-				WithLogger(logger),
-				WithIndexFactory(mockIndexFactory),
-				WithExperimental(true),
-				WithKeychain(authn.DefaultKeychain),
-			)
-			h.AssertSameInstance(t, mockIndexFactory, subject.indexFactory)
-			h.AssertNil(t, err)
+		tmpDir, err = os.MkdirTemp("", "add-manifest-test")
+		h.AssertNil(t, err)
+		os.Setenv("XDG_RUNTIME_DIR", tmpDir)
+
+		subject, err = NewClient(
+			WithLogger(logger),
+			WithFetcher(fakeImageFetcher),
+			WithIndexFactory(mockIndexFactory),
+			WithExperimental(true),
+			WithKeychain(authn.DefaultKeychain),
+		)
+		h.AssertSameInstance(t, mockIndexFactory, subject.indexFactory)
+		h.AssertNil(t, err)
+
+		// Create a remote image to be fetched when adding to the image index
+		fakeImage := setUpRemoteImageForIndex(t, nil)
+		fakeImageFetcher.RemoteImages["index.docker.io/pack/image:latest"] = fakeImage
+
+	})
+	it.After(func() {
+		mockController.Finish()
+		h.AssertNil(t, os.RemoveAll(tmpDir))
+	})
+
+	when("#AddManifest", func() {
+		when("index doesn't exists", func() {
+			it.Before(func() {
+				prepareIndexWithoutLocallyExists(*mockIndexFactory)
+			})
+
+			it("should return an error", func() {
+				err = subject.AddManifest(
+					context.TODO(),
+					ManifestAddOptions{
+						IndexRepoName: "pack/none-existent-index",
+						RepoName:      "pack/image",
+					},
+				)
+				h.AssertError(t, err, "index not found locally")
+			})
 		})
-		it.After(func() {
-			mockController.Finish()
-			h.AssertNil(t, os.RemoveAll(tmpDir))
-		})
-		it("should return an error if index doesn't exists locally", func() {
-			prepareIndexWithoutLocallyExists(*mockIndexFactory)
-			err = subject.AddManifest(
-				context.TODO(),
-				"pack/index",
-				"pack/image",
-				ManifestAddOptions{},
-			)
 
-			h.AssertEq(t, err.Error(), "index not found locally")
-		})
-		it("should add the given image", func() {
-			digest, err := name.NewDigest("pack/image@sha256:15c46ced65c6abed6a27472a7904b04273e9a8091a5627badd6ff016ab073171")
-			h.AssertNil(t, err)
+		when("index exists", func() {
+			when("no errors on save", func() {
+				it.Before(func() {
+					prepareLoadIndex(t, "pack/index", *mockIndexFactory)
+				})
 
-			idx := prepareLoadIndex(t, *mockIndexFactory)
-			err = subject.AddManifest(
-				context.TODO(),
-				"pack/index",
-				digest.Name(),
-				ManifestAddOptions{},
-			)
-			h.AssertNil(t, err)
+				it("adds the given image", func() {
+					err = subject.AddManifest(
+						context.TODO(),
+						ManifestAddOptions{
+							IndexRepoName: "pack/index",
+							RepoName:      "pack/image",
+						},
+					)
+					h.AssertNil(t, err)
+					h.AssertContains(t, out.String(), "successfully added to index: 'pack/image'")
+				})
 
-			_, err = idx.OS(digest)
-			h.AssertNil(t, err)
-		})
-		it("should add index with OS and Arch specific", func() {
-			digest, err := name.NewDigest("pack/image@sha256:15c46ced65c6abed6a27472a7904b04273e9a8091a5627badd6ff016ab073171")
-			h.AssertNil(t, err)
+				it("error when invalid manifest reference name is used", func() {
+					err = subject.AddManifest(
+						context.TODO(),
+						ManifestAddOptions{
+							IndexRepoName: "pack/index",
+							RepoName:      "pack@@image",
+						},
+					)
+					h.AssertNotNil(t, err)
+					h.AssertError(t, err, "is not a valid manifest reference")
+				})
 
-			idx := prepareLoadIndex(
-				t,
-				*mockIndexFactory,
-			)
+				it("error when manifest reference doesn't exist in a registry", func() {
+					err = subject.AddManifest(
+						context.TODO(),
+						ManifestAddOptions{
+							IndexRepoName: "pack/index",
+							RepoName:      "pack/image-not-found",
+						},
+					)
+					h.AssertNotNil(t, err)
+					h.AssertError(t, err, "does not exist in registry")
+				})
+			})
 
-			err = subject.AddManifest(
-				context.TODO(),
-				"pack/index",
-				digest.Name(),
-				ManifestAddOptions{
-					OS:     "some-os",
-					OSArch: "some-arch",
-				},
-			)
-			h.AssertNil(t, err)
+			when("errors on save", func() {
+				it.Before(func() {
+					prepareLoadIndexWithErrorOnSave(t, "pack/index-error-on-saved", *mockIndexFactory)
+				})
 
-			os, err := idx.OS(digest)
-			h.AssertNil(t, err)
-			h.AssertEq(t, os, "some-os")
-
-			arch, err := idx.Architecture(digest)
-			h.AssertNil(t, err)
-			h.AssertEq(t, arch, "some-arch")
-		})
-		it("should add with variant", func() {
-			digest, err := name.NewDigest("pack/image@sha256:15c46ced65c6abed6a27472a7904b04273e9a8091a5627badd6ff016ab073171")
-			h.AssertNil(t, err)
-
-			idx := prepareLoadIndex(
-				t,
-				*mockIndexFactory,
-			)
-
-			err = subject.AddManifest(
-				context.TODO(),
-				"pack/index",
-				digest.Name(),
-				ManifestAddOptions{
-					OSVariant: "some-variant",
-				},
-			)
-			h.AssertNil(t, err)
-
-			variant, err := idx.Variant(digest)
-			h.AssertNil(t, err)
-			h.AssertEq(t, variant, "some-variant")
-		})
-		it("should add with osVersion", func() {
-			digest, err := name.NewDigest("pack/image@sha256:15c46ced65c6abed6a27472a7904b04273e9a8091a5627badd6ff016ab073171")
-			h.AssertNil(t, err)
-
-			idx := prepareLoadIndex(
-				t,
-				*mockIndexFactory,
-			)
-
-			err = subject.AddManifest(
-				context.TODO(),
-				"pack/index",
-				digest.Name(),
-				ManifestAddOptions{
-					OSVersion: "some-os-version",
-				},
-			)
-			h.AssertNil(t, err)
-
-			osVersion, err := idx.OSVersion(digest)
-			h.AssertNil(t, err)
-			h.AssertEq(t, osVersion, "some-os-version")
-		})
-		it("should add with features", func() {
-			digest, err := name.NewDigest("pack/image@sha256:15c46ced65c6abed6a27472a7904b04273e9a8091a5627badd6ff016ab073171")
-			h.AssertNil(t, err)
-
-			idx := prepareLoadIndex(
-				t,
-				*mockIndexFactory,
-			)
-
-			err = subject.AddManifest(
-				context.TODO(),
-				"pack/index",
-				digest.Name(),
-				ManifestAddOptions{
-					Features: []string{"some-features"},
-				},
-			)
-			h.AssertNil(t, err)
-
-			features, err := idx.Features(digest)
-			h.AssertNil(t, err)
-			h.AssertEq(t, features, []string{"some-features"})
-		})
-		it("should add with osFeatures", func() {
-			digest, err := name.NewDigest("pack/image@sha256:15c46ced65c6abed6a27472a7904b04273e9a8091a5627badd6ff016ab073171")
-			h.AssertNil(t, err)
-
-			idx := prepareLoadIndex(
-				t,
-				*mockIndexFactory,
-			)
-
-			err = subject.AddManifest(
-				context.TODO(),
-				"pack/index",
-				digest.Name(),
-				ManifestAddOptions{
-					Features: []string{"some-os-features"},
-				},
-			)
-			h.AssertNil(t, err)
-
-			osFeatures, err := idx.Features(digest)
-			h.AssertNil(t, err)
-			h.AssertEq(t, osFeatures, []string{"some-os-features"})
-		})
-		it("should add with annotations", func() {
-			digestStr := "pack/image@sha256:15c46ced65c6abed6a27472a7904b04273e9a8091a5627badd6ff016ab073171"
-			digest, err := name.NewDigest(digestStr)
-			h.AssertNil(t, err)
-
-			idx := prepareLoadIndex(
-				t,
-				*mockIndexFactory,
-			)
-
-			err = subject.AddManifest(
-				context.TODO(),
-				"pack/index",
-				digestStr,
-				ManifestAddOptions{
-					Annotations: map[string]string{"some-key": "some-value"},
-				},
-			)
-			h.AssertNil(t, err)
-
-			annos, err := idx.Annotations(digest)
-			h.AssertNil(t, err)
-			h.AssertEq(t, annos, map[string]string{"some-key": "some-value"})
+				it("error when manifest couldn't be saved locally", func() {
+					err = subject.AddManifest(
+						context.TODO(),
+						ManifestAddOptions{
+							IndexRepoName: "pack/index-error-on-saved",
+							RepoName:      "pack/image",
+						},
+					)
+					h.AssertNotNil(t, err)
+					h.AssertError(t, err, "could not be saved in the local storage")
+				})
+			})
 		})
 	})
+}
+
+func setUpRemoteImageForIndex(t *testing.T, identifier imgutil.Identifier) *testImage {
+	fakeCNBImage := fakes.NewImage("pack/image", "", identifier)
+	underlyingImage, err := random.Image(1024, 1)
+	h.AssertNil(t, err)
+	return &testImage{
+		Image:           fakeCNBImage,
+		underlyingImage: underlyingImage,
+	}
 }
 
 func prepareIndexWithoutLocallyExists(mockIndexFactory testmocks.MockIndexFactory) {
@@ -240,15 +172,60 @@ func prepareIndexWithoutLocallyExists(mockIndexFactory testmocks.MockIndexFactor
 		Return(nil, errors.New("index not found locally"))
 }
 
-func prepareLoadIndex(t *testing.T, mockIndexFactory testmocks.MockIndexFactory) imgutil.ImageIndex {
-	idx, err := fakes.NewIndex(types.OCIImageIndex, 1024, 1, 1, v1.Descriptor{})
+func randomCNBIndex(t *testing.T, repoName string) *imgutil.CNBIndex {
+	ridx, err := random.Index(1024, 1, 2)
 	h.AssertNil(t, err)
+	options := &imgutil.IndexOptions{
+		BaseIndex: ridx,
+	}
+	idx, err := imgutil.NewCNBIndex(repoName, *options)
+	h.AssertNil(t, err)
+	return idx
+}
 
+func prepareLoadIndex(t *testing.T, repoName string, mockIndexFactory testmocks.MockIndexFactory) imgutil.ImageIndex {
+	idx := randomCNBIndex(t, repoName)
 	mockIndexFactory.
 		EXPECT().
-		LoadIndex(gomock.Any(), gomock.Any()).
+		LoadIndex(gomock.Eq(repoName), gomock.Any()).
 		Return(idx, nil).
 		AnyTimes()
 
 	return idx
+}
+
+func prepareLoadIndexWithErrorOnSave(t *testing.T, repoName string, mockIndexFactory testmocks.MockIndexFactory) imgutil.ImageIndex {
+	cnbIdx := randomCNBIndex(t, repoName)
+	idx := &testIndex{
+		CNBIndex:    *cnbIdx,
+		errorOnSave: true,
+	}
+	mockIndexFactory.
+		EXPECT().
+		LoadIndex(gomock.Eq(repoName), gomock.Any()).
+		Return(idx, nil).
+		AnyTimes()
+
+	return idx
+}
+
+type testImage struct {
+	*fakes.Image
+	underlyingImage v1.Image
+}
+
+func (t *testImage) UnderlyingImage() v1.Image {
+	return t.underlyingImage
+}
+
+type testIndex struct {
+	imgutil.CNBIndex
+	errorOnSave bool
+}
+
+func (i *testIndex) SaveDir() error {
+	if i.errorOnSave {
+		return errors.New("something failed writing the index on disk")
+	}
+	return i.CNBIndex.SaveDir()
 }

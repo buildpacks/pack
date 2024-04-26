@@ -68,24 +68,20 @@ func testManifestPushCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func preparePushManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
+func preparePushManifest(_ *testing.T, mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
 		PushManifest(
-			gomock.Any(),
-			gomock.Any(),
 			gomock.Any(),
 		).
 		AnyTimes().
 		Return(nil)
 }
 
-func preparePushManifestWithError(t *testing.T, mockClient *testmocks.MockPackClient) {
+func preparePushManifestWithError(_ *testing.T, mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
 		PushManifest(
-			gomock.Any(),
-			gomock.Any(),
 			gomock.Any(),
 		).
 		AnyTimes().

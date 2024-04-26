@@ -1,45 +1,58 @@
 package client
 
 import (
-	"context"
-	"fmt"
-
-	"github.com/buildpacks/imgutil"
-	"github.com/google/go-containerregistry/pkg/v1/types"
+	"github.com/pkg/errors"
 )
 
 type PushManifestOptions struct {
-	Format          string
-	Insecure, Purge bool
+	// Image index we want to update
+	IndexRepoName string
+
+	// Index media-type
+	Format string
+
+	// true if we want to publish to an insecure registry
+	Insecure bool
+
+	// true if we want the index to be deleted from local storage after pushing it
+	Purge bool
 }
 
 // PushManifest implements commands.PackClient.
-func (c *Client) PushManifest(ctx context.Context, index string, opts PushManifestOptions) (err error) {
-	idx, err := c.indexFactory.LoadIndex(index)
+func (c *Client) PushManifest(opts PushManifestOptions) (err error) {
+	idx, err := c.indexFactory.LoadIndex(opts.IndexRepoName)
 	if err != nil {
 		return
 	}
 
-	if err = idx.Push(parseFalgsForImgUtil(opts)...); err != nil {
-		return err
+	// TODO pass through the options
+	if err = idx.Push(); err != nil {
+		return errors.Wrapf(err, "pushing index '%s'", opts.IndexRepoName)
 	}
 
 	if !opts.Purge {
-		fmt.Printf("successfully pushed index: '%s'\n", index)
+		c.logger.Infof("successfully pushed index: '%s'\n", opts.IndexRepoName)
 		return nil
 	}
 
-	return idx.Delete()
+	return idx.DeleteDir()
 }
 
-func parseFalgsForImgUtil(opts PushManifestOptions) (idxOptions []imgutil.IndexPushOption) {
-	idxOptions = append(idxOptions, imgutil.WithInsecure(opts.Insecure))
+/*
+func parseFalgsForImgUtil(opts PushManifestOptions) (idxOptions []imgutil.IndexOption) {
+	idxOptions = append(idxOptions, imgutil.WithInsecure())
+
+	if opts.Purge {
+		idxOptions = append(idxOptions, imgutil.WithPurge(true))
+	}
+
 	switch opts.Format {
 	case "oci":
-		return append(idxOptions, imgutil.WithFormat(types.OCIImageIndex))
+		return append(idxOptions, imgutil.WithMediaType(types.OCIImageIndex))
 	case "v2s2":
-		return append(idxOptions, imgutil.WithFormat(types.DockerManifestList))
+		return append(idxOptions, imgutil.WithMediaType(types.DockerManifestList))
 	default:
 		return idxOptions
 	}
 }
+*/

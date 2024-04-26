@@ -47,13 +47,7 @@ func testManifestInspectCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 		h.AssertNil(t, command.Execute())
 	})
-	it("should return an error when index not passed", func() {
-		prepareInspectManifest(t, mockClient)
 
-		command.SetArgs([]string(nil))
-		err := command.Execute()
-		h.AssertNotNil(t, err)
-	})
 	it("should have help flag", func() {
 		prepareInspectManifest(t, mockClient)
 
@@ -66,10 +60,7 @@ func testManifestInspectCommand(t *testing.T, when spec.G, it spec.S) {
 func prepareInspectManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
-		InspectManifest(
-			gomock.Any(),
-			gomock.Any(),
-		).
+		InspectManifest(gomock.Any()).
 		AnyTimes().
 		Return(nil)
 }

@@ -8,7 +8,6 @@ import (
 	reflect "reflect"
 
 	imgutil "github.com/buildpacks/imgutil"
-	index "github.com/buildpacks/imgutil/index"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -36,7 +35,7 @@ func (m *MockIndexFactory) EXPECT() *MockIndexFactoryMockRecorder {
 }
 
 // CreateIndex mocks base method.
-func (m *MockIndexFactory) CreateIndex(arg0 string, arg1 ...index.Option) (imgutil.ImageIndex, error) {
+func (m *MockIndexFactory) CreateIndex(arg0 string, arg1 ...imgutil.IndexOption) (imgutil.ImageIndex, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0}
 	for _, a := range arg1 {
@@ -55,8 +54,22 @@ func (mr *MockIndexFactoryMockRecorder) CreateIndex(arg0 interface{}, arg1 ...in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIndex", reflect.TypeOf((*MockIndexFactory)(nil).CreateIndex), varargs...)
 }
 
+// Exists mocks base method.
+func (m *MockIndexFactory) Exists(arg0 string) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Exists", arg0)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// Exists indicates an expected call of Exists.
+func (mr *MockIndexFactoryMockRecorder) Exists(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exists", reflect.TypeOf((*MockIndexFactory)(nil).Exists), arg0)
+}
+
 // FetchIndex mocks base method.
-func (m *MockIndexFactory) FetchIndex(arg0 string, arg1 ...index.Option) (imgutil.ImageIndex, error) {
+func (m *MockIndexFactory) FetchIndex(arg0 string, arg1 ...imgutil.IndexOption) (imgutil.ImageIndex, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0}
 	for _, a := range arg1 {
@@ -76,7 +89,7 @@ func (mr *MockIndexFactoryMockRecorder) FetchIndex(arg0 interface{}, arg1 ...int
 }
 
 // FindIndex mocks base method.
-func (m *MockIndexFactory) FindIndex(arg0 string, arg1 ...index.Option) (imgutil.ImageIndex, error) {
+func (m *MockIndexFactory) FindIndex(arg0 string, arg1 ...imgutil.IndexOption) (imgutil.ImageIndex, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0}
 	for _, a := range arg1 {
@@ -96,7 +109,7 @@ func (mr *MockIndexFactoryMockRecorder) FindIndex(arg0 interface{}, arg1 ...inte
 }
 
 // LoadIndex mocks base method.
-func (m *MockIndexFactory) LoadIndex(arg0 string, arg1 ...index.Option) (imgutil.ImageIndex, error) {
+func (m *MockIndexFactory) LoadIndex(arg0 string, arg1 ...imgutil.IndexOption) (imgutil.ImageIndex, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0}
 	for _, a := range arg1 {

@@ -39,75 +39,52 @@ func testManifestAnnotateCommand(t *testing.T, when spec.G, it spec.S) {
 
 		command = commands.ManifestAnnotate(logger, mockClient)
 	})
-	it("should annotate images with given flags", func() {
-		prepareAnnotateManifest(t, mockClient)
 
-		command.SetArgs([]string{
-			"some-index",
-			"busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0",
-			"--os",
-			"linux",
-			"--arch",
-			"arm",
-			"--variant",
-			"v6",
-			"--os-version",
-			"22.04",
+	when("args are valid", func() {
+		it.Before(func() {
+			prepareAnnotateManifest(t, mockClient)
 		})
-		h.AssertNil(t, command.Execute())
-		h.AssertEq(t, outBuf.String(), "")
-	})
-	it("should return an error when platform's os and arch not defined", func() {
-		prepareAnnotateManifest(t, mockClient)
 
-		command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--os", "linux"})
-		err := command.Execute()
-		h.AssertEq(t, err.Error(), "'os' or 'arch' is undefined")
-		h.AssertEq(t, outBuf.String(), "ERROR: 'os' or 'arch' is undefined\n")
-	})
-	it("should return an error when features defined invalidly", func() {
-		prepareAnnotateManifest(t, mockClient)
+		it("should annotate images with given flags", func() {
+			command.SetArgs([]string{
+				"some-index",
+				"busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0",
+				"--os",
+				"linux",
+				"--arch",
+				"arm",
+				"--variant",
+				"v6",
+			})
+			h.AssertNilE(t, command.Execute())
+		})
 
-		command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--features"})
-		err := command.Execute()
-		h.AssertEq(t, err.Error(), "flag needs an argument: --features")
+		it("should have help flag", func() {
+			command.SetArgs([]string{"--help"})
+			h.AssertNilE(t, command.Execute())
+		})
 	})
-	it("should return an error when osFeatures defined invalidly", func() {
-		prepareAnnotateManifest(t, mockClient)
 
-		command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--os-features"})
-		err := command.Execute()
-		h.AssertEq(t, err.Error(), "flag needs an argument: --os-features")
-	})
-	it("should return an error when urls defined invalidly", func() {
-		prepareAnnotateManifest(t, mockClient)
+	when("args are invalid", func() {
+		it("error when missing mandatory arguments", func() {
+			command.SetArgs([]string{"some-index"})
+			err := command.Execute()
+			h.AssertNotNil(t, err)
+			h.AssertError(t, err, "accepts 2 arg(s), received 1")
+		})
 
-		command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--urls"})
-		err := command.Execute()
-		h.AssertEq(t, err.Error(), "flag needs an argument: --urls")
-	})
-	it("should return an error when annotations defined invalidly", func() {
-		prepareAnnotateManifest(t, mockClient)
-
-		command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--annotations", "some-key"})
-		err := command.Execute()
-		h.AssertEq(t, err.Error(), `invalid argument "some-key" for "--annotations" flag: some-key must be formatted as key=value`)
-	})
-	it("should have help flag", func() {
-		prepareAnnotateManifest(t, mockClient)
-
-		command.SetArgs([]string{"--help"})
-		h.AssertNilE(t, command.Execute())
-		h.AssertEq(t, outBuf.String(), "")
+		it("should return an error when annotations defined invalidly", func() {
+			command.SetArgs([]string{"some-index", "busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0", "--annotations", "some-key"})
+			err := command.Execute()
+			h.AssertEq(t, err.Error(), `invalid argument "some-key" for "--annotations" flag: some-key must be formatted as key=value`)
+		})
 	})
 }
 
-func prepareAnnotateManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
+func prepareAnnotateManifest(_ *testing.T, mockClient *testmocks.MockPackClient) {
 	mockClient.
 		EXPECT().
 		AnnotateManifest(
-			gomock.Any(),
-			gomock.Any(),
 			gomock.Any(),
 			gomock.Any(),
 		).
