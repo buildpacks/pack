@@ -19,7 +19,7 @@ func ManifestInspect(logger logging.Logger, pack PackClient) *cobra.Command {
 		The inspect command will help users to view how their local manifest list looks like`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if args[0] == "" {
-				errors.New("'<manifest-list>' is required")
+				return errors.New("'<manifest-list>' is required")
 			}
 			return pack.InspectManifest(args[0])
 		}),

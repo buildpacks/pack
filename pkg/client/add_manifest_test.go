@@ -66,7 +66,6 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 		// Create a remote image to be fetched when adding to the image index
 		fakeImage := setUpRemoteImageForIndex(t, nil)
 		fakeImageFetcher.RemoteImages["index.docker.io/pack/image:latest"] = fakeImage
-
 	})
 	it.After(func() {
 		mockController.Finish()

@@ -9,7 +9,6 @@ import (
 
 // ManifestAdd modifies a manifest list (Image index) and add a new image to the list of manifests.
 func ManifestAdd(logger logging.Logger, pack PackClient) *cobra.Command {
-
 	cmd := &cobra.Command{
 		Use:   "add [OPTIONS] <manifest-list> <manifest> [flags]",
 		Args:  cobra.MatchAll(cobra.ExactArgs(2), cobra.OnlyValidArgs),

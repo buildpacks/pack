@@ -25,7 +25,6 @@ func ManifestAnnotate(logger logging.Logger, pack PackClient) *cobra.Command {
 								cnbs/sample-package:hello-universe --arch amd64`,
 		Long: `manifest annotate modifies a manifest list (Image index) and update the platform information for an image included in the manifest list.`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) (err error) {
-
 			return pack.AnnotateManifest(cmd.Context(), client.ManifestAnnotateOptions{
 				IndexRepoName: args[0],
 				RepoName:      args[1],
