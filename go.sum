@@ -222,8 +222,8 @@ github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95/go.mod h1:QiyDdbZLa
 github.com/heroku/color v0.0.6 h1:UTFFMrmMLFcL3OweqP1lAdp8i1y/9oHqkeHjQ/b/Ny0=
 github.com/heroku/color v0.0.6/go.mod h1:ZBvOcx7cTF2QKOv4LbmoBtNl5uB17qWxGuzZrsi1wLU=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
-github.com/husni-faiz/imgutil v0.0.0-20240424232532-cbecaa88347b h1:qNx9ZGQ3N6pascREpfIDxkV95IOY2nCVmFOIYKmAV5I=
-github.com/husni-faiz/imgutil v0.0.0-20240424232532-cbecaa88347b/go.mod h1:n2R6VRuWsAX3cyHCp/u0Z4WJcixny0gYg075J39owrk=
+github.com/husni-faiz/imgutil v0.0.0-20240426182921-f79d933eb4e1 h1:B+i0nziQ6k42hkAr0bgua/zdWqm4R6dZuw3V2Wvrex4=
+github.com/husni-faiz/imgutil v0.0.0-20240426182921-f79d933eb4e1/go.mod h1:n2R6VRuWsAX3cyHCp/u0Z4WJcixny0gYg075J39owrk=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 h1:BQSFePA1RWJOlocH6Fxy8MmwDt+yVQYULKfN0RoTN8A=
