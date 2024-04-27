@@ -100,6 +100,9 @@ func parseKeyValue(env string) (string, string) {
 
 // Fork from: https://github.com/moby/buildkit/blob/9c8832ff46cc805f37537f0540aa4ac99be568d3/frontend/dockerfile/dockerfile2llb/convert.go#L1149
 func dispatchCopy(s *State, srcPaths []string, destPath string, cfg CopyOptions) error {
+	if s.platform == nil {
+		s.platform = &ocispecs.Platform{}
+	}
 	dest, err := pathRelativeToWorkingDir(s.state, destPath, *s.platform)
 	if err != nil {
 		return err
@@ -320,4 +323,12 @@ func platformFromEnv(env []string) *ocispecs.Platform {
 		return nil
 	}
 	return &p
+}
+
+func RootUser(os string) string {
+	if os == "windows" {
+		return "ContainerAdministrator"
+	}
+
+	return "root"
 }

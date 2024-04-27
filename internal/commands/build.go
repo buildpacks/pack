@@ -5,9 +5,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/buildpacks/pack/pkg/cache"
+	"github.com/buildpacks/pack/pkg/dist"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/internal/target"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -55,6 +58,7 @@ type BuildFlags struct {
 	DateTime             string
 	PreBuildpacks        []string
 	PostBuildpacks       []string
+	Targets              []string
 }
 
 // Build an image from source code
@@ -78,6 +82,11 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			}
 
 			inputPreviousImage := client.ParseInputImageReference(flags.PreviousImage)
+
+			targets, err := target.ParseTargets(flags.Targets, logger)
+			if err != nil {
+				return err
+			}
 
 			descriptor, actualDescriptorPath, err := parseProjectToml(flags.AppPath, flags.DescriptorPath, logger)
 			if err != nil {
@@ -154,7 +163,8 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if err != nil {
 				return errors.Wrapf(err, "parsing creation time %s", flags.DateTime)
 			}
-			if err := packClient.Build(cmd.Context(), client.BuildOptions{
+
+			buildOps := client.BuildOptions{
 				AppPath:           flags.AppPath,
 				Builder:           builder,
 				Registry:          flags.Registry,
@@ -198,8 +208,23 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 					PreviousInputImage: inputPreviousImage,
 					LayoutRepoDir:      cfg.LayoutRepositoryDir,
 				},
-			}); err != nil {
-				return errors.Wrap(err, "failed to build")
+				Targets: targets,
+			}
+
+			var targetsLen atomic.Int64
+			targets[0].Range(cmd.Context(), func(target dist.Target) error {
+				targetsLen.Add(1)
+				return nil
+			})
+
+			if len(targets) > 0 || targetsLen.Load() > 1 {
+				if err := packClient.BuildWithBuildkit(cmd.Context(), buildOps); err != nil {
+					return errors.Wrap(err, "failed to build")
+				}
+			} else {
+				if err := packClient.Build(cmd.Context(), buildOps); err != nil {
+					return errors.Wrap(err, "failed to build")
+				}
 			}
 			logger.Infof("Successfully built image %s", style.Symbol(inputImageName.Name()))
 			return nil
@@ -271,7 +296,14 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().StringVar(&buildFlags.ReportDestinationDir, "report-output-dir", "", "Path to export build report.toml.\nOmitting the flag yield no report file.")
 	cmd.Flags().BoolVar(&buildFlags.Interactive, "interactive", false, "Launch a terminal UI to depict the build process")
 	cmd.Flags().BoolVar(&buildFlags.Sparse, "sparse", false, "Use this flag to avoid saving on disk the run-image layers when the application image is exported to OCI layout format")
+	cmd.Flags().StringSliceVar(&buildFlags.Targets, "target", nil,
+		`Targets are the platforms list to build. one can provide target platforms in format [os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]
+	- Base case for two different architectures :  '--target "linux/amd64" --target "linux/arm64"'
+	- case for distribution version: '--target "windows/amd64:windows-nano@10.0.19041.1415"'
+	- case for different architecture with distributed versions : '--target "linux/arm/v6:ubuntu@14.04"  --target "linux/arm/v6:ubuntu@16.04"'
+	`)
 	if !cfg.Experimental {
+		cmd.Flags().MarkHidden("target")
 		cmd.Flags().MarkHidden("interactive")
 		cmd.Flags().MarkHidden("sparse")
 	}
