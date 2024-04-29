@@ -251,13 +251,15 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			ephemeralRunImage string
 			err               error
 		)
-		runImageReferenceToPull := l.runImageIdentifierAfterExtensions()
 		if l.runImageChanged() || l.hasExtensionsForRun() {
-			if runImageReferenceToPull == "" { // sanity check
-				return nil
-			}
-			if ephemeralRunImage, err = l.opts.FetchRunImageWithLifecycleLayer(runImageReferenceToPull); err != nil {
-				return err
+			if ephemeralRunImage, err = l.opts.FetchRunImageWithLifecycleLayer(l.runImageIdentifierAfterExtensions()); err != nil {
+				// If the run image was switched by extensions, the run image reference as written by the __restorer__ will be a digest reference
+				// that is pullable from a registry.
+				// However, if the run image is only extended (not switched), the run image reference as written by the __analyzer__ may be an image identifier
+				// (in the daemon case), and will not be pullable.
+				if ephemeralRunImage, err = l.opts.FetchRunImageWithLifecycleLayer(l.runImageNameAfterExtensions()); err != nil {
+					return err
+				}
 			}
 		}
 
