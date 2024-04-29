@@ -151,6 +151,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		}
 		if extensionsRunImage != "" {
 			amd.RunImage.Image = extensionsRunImage
+			amd.RunImage.Reference = extensionsRunImage
 		}
 		f, err := os.Create(filepath.Join(tmpDir, "analyzed.toml"))
 		h.AssertNil(t, err)
