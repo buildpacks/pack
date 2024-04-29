@@ -251,12 +251,12 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			ephemeralRunImage string
 			err               error
 		)
-		currentRunImage := l.runImageAfterExtensions()
+		runImageReferenceToPull := l.runImageIdentifierAfterExtensions()
 		if l.runImageChanged() || l.hasExtensionsForRun() {
-			if currentRunImage == "" { // sanity check
+			if runImageReferenceToPull == "" { // sanity check
 				return nil
 			}
-			if ephemeralRunImage, err = l.opts.FetchRunImageWithLifecycleLayer(currentRunImage); err != nil {
+			if ephemeralRunImage, err = l.opts.FetchRunImageWithLifecycleLayer(runImageReferenceToPull); err != nil {
 				return err
 			}
 		}
@@ -490,7 +490,7 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 			registryImages = append(registryImages, l.opts.BuilderImage)
 		}
 		if l.runImageChanged() || l.hasExtensionsForRun() {
-			registryImages = append(registryImages, l.runImageAfterExtensions())
+			registryImages = append(registryImages, l.runImageNameAfterExtensions())
 		}
 		if l.hasExtensionsForBuild() || l.hasExtensionsForRun() {
 			kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir()))
@@ -915,25 +915,42 @@ func (l *LifecycleExecution) hasExtensionsForRun() bool {
 	return amd.RunImage.Extend
 }
 
-func (l *LifecycleExecution) runImageAfterExtensions() string {
+func (l *LifecycleExecution) runImageIdentifierAfterExtensions() string {
 	if !l.hasExtensions() {
 		return l.opts.RunImage
 	}
 	var amd files.Analyzed
 	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
-		l.logger.Warnf("failed to parse analyzed.toml file, assuming run image did not change: %s", err)
+		l.logger.Warnf("failed to parse analyzed.toml file, assuming run image identifier did not change: %s", err)
 		return l.opts.RunImage
 	}
-	if amd.RunImage == nil || amd.RunImage.Image == "" {
+	if amd.RunImage == nil || amd.RunImage.Reference == "" {
 		// this shouldn't be reachable
-		l.logger.Warnf("found no run image in analyzed.toml file, assuming run image did not change...")
+		l.logger.Warnf("found no run image in analyzed.toml file, assuming run image identifier did not change...")
 		return l.opts.RunImage
 	}
 	return amd.RunImage.Reference
 }
 
+func (l *LifecycleExecution) runImageNameAfterExtensions() string {
+	if !l.hasExtensions() {
+		return l.opts.RunImage
+	}
+	var amd files.Analyzed
+	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
+		l.logger.Warnf("failed to parse analyzed.toml file, assuming run image name did not change: %s", err)
+		return l.opts.RunImage
+	}
+	if amd.RunImage == nil || amd.RunImage.Image == "" {
+		// this shouldn't be reachable
+		l.logger.Warnf("found no run image in analyzed.toml file, assuming run image name did not change...")
+		return l.opts.RunImage
+	}
+	return amd.RunImage.Image
+}
+
 func (l *LifecycleExecution) runImageChanged() bool {
-	currentRunImage := l.runImageAfterExtensions()
+	currentRunImage := l.runImageNameAfterExtensions()
 	return currentRunImage != "" && currentRunImage != l.opts.RunImage
 }
 
