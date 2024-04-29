@@ -848,7 +848,7 @@ func testAcceptance(
 								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 								assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-								assertOutput.IncludesLifecycleImageTag(origLifecycle)
+								assertOutput.IncludesTagOrEphemeralLifecycle(origLifecycle)
 								assertOutput.IncludesSeparatePhasesWithBuildExtension()
 
 								t.Log("inspecting image")
@@ -902,7 +902,7 @@ func testAcceptance(
 
 									assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
 
-									assertOutput.IncludesLifecycleImageTag(origLifecycle)
+									assertOutput.IncludesTagOrEphemeralLifecycle(origLifecycle)
 									assertOutput.IncludesSeparatePhasesWithRunExtension()
 
 									t.Log("inspecting image")
@@ -993,7 +993,7 @@ func testAcceptance(
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 							assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-							assertOutput.IncludesLifecycleImageTag(origLifecycle)
+							assertOutput.IncludesTagOrEphemeralLifecycle(origLifecycle)
 							assertOutput.IncludesSeparatePhases()
 						})
 					})
@@ -1017,7 +1017,7 @@ func testAcceptance(
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 							assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-							assertOutput.IncludesLifecycleImageTag(origLifecycle)
+							assertOutput.IncludesTagOrEphemeralLifecycle(origLifecycle)
 							assertOutput.IncludesSeparatePhases()
 						})
 					})

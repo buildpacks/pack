@@ -86,7 +86,7 @@ func (l LifecycleOutputAssertionManager) IncludesSeparatePhasesWithRunExtension(
 	l.assert.ContainsAll(l.output, "[detector]", "[analyzer]", "[extender (run)]", "[exporter]")
 }
 
-func (l LifecycleOutputAssertionManager) IncludesLifecycleImageTag(tag string) {
+func (l LifecycleOutputAssertionManager) IncludesTagOrEphemeralLifecycle(tag string) {
 	l.testObject.Helper()
 
 	if !strings.Contains(l.output, tag) {

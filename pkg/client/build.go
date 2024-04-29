@@ -670,6 +670,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				layerOffset = 2
 			}
 
+			if (len(manifestContent[0].layers) - layerOffset) < 0 {
+				return "", errors.New("Lifecycle image did not contain expected layer count")
+			}
+
 			return manifestContents[0].Layers[len(manifestContents[0].Layers)-layerOffset], nil
 		}()
 		if err != nil {
