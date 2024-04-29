@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
+	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -20,7 +22,7 @@ func TestManifestCreateCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 
-	spec.Run(t, "Commands", testManifestCreateCommand, spec.Random(), spec.Report(report.Terminal{}))
+	spec.Run(t, "Commands", testManifestCreateCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testManifestCreateCommand(t *testing.T, when spec.G, it spec.S) {
@@ -39,36 +41,70 @@ func testManifestCreateCommand(t *testing.T, when spec.G, it spec.S) {
 
 		command = commands.ManifestCreate(logger, mockClient)
 	})
-	it("should annotate images with given flags", func() {
-		prepareCreateManifest(t, mockClient)
 
-		command.SetArgs([]string{
-			"some-index",
-			"busybox@sha256:6457d53fb065d6f250e1504b9bc42d5b6c65941d57532c072d929dd0628977d0",
-			"--format",
-			"v2s2",
-			"--insecure",
-			"--publish",
+	when("valid arguments", func() {
+		it.Before(func() {
+			mockClient.
+				EXPECT().
+				CreateManifest(gomock.Any(),
+					client.CreateManifestOptions{
+						IndexRepoName: "some-index",
+						RepoNames:     []string{"some-manifest"},
+						Format:        types.DockerManifestList,
+						Insecure:      true,
+						Publish:       true,
+					},
+				).
+				AnyTimes().
+				Return(nil)
 		})
-		h.AssertNil(t, command.Execute())
-		h.AssertEq(t, outBuf.String(), "")
-	})
-	it("should have help flag", func() {
-		prepareCreateManifest(t, mockClient)
 
-		command.SetArgs([]string{"--help"})
-		h.AssertNilE(t, command.Execute())
-		h.AssertEq(t, outBuf.String(), "")
+		it("should annotate images with given flags", func() {
+			command.SetArgs([]string{
+				"some-index", "some-manifest",
+				"--format", "docker",
+				"--insecure", "--publish",
+			})
+			h.AssertNil(t, command.Execute())
+			h.AssertEq(t, outBuf.String(), "")
+		})
 	})
-}
 
-func prepareCreateManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
-	mockClient.
-		EXPECT().
-		CreateManifest(
-			gomock.Any(),
-			gomock.Any(),
-		).
-		AnyTimes().
-		Return(nil)
+	when("invalid arguments", func() {
+		when("invalid media type", func() {
+			var format string
+			it.Before(func() {
+				format = "invalid"
+				mockClient.
+					EXPECT().
+					CreateManifest(gomock.Any(), gomock.Any()).
+					AnyTimes().
+					Return(nil)
+			})
+
+			it("error a message", func() {
+				command.SetArgs([]string{
+					"some-index", "some-manifest",
+					"--format", format,
+				})
+				h.AssertNotNil(t, command.Execute())
+			})
+		})
+	})
+
+	when("help is invoke", func() {
+		it.Before(func() {
+			mockClient.
+				EXPECT().
+				CreateManifest(gomock.Any(), gomock.Any()).
+				AnyTimes().
+				Return(nil)
+		})
+
+		it("should have help flag", func() {
+			command.SetArgs([]string{"--help"})
+			h.AssertNilE(t, command.Execute())
+			h.AssertEq(t, outBuf.String(), "")
+		})
+	})
 }

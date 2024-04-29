@@ -9,15 +9,14 @@ import (
 func NewManifestCommand(logger logging.Logger, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "manifest",
-		Short: "Interact with OCI image index",
-		Long: `The image index is a higher-level manifest which points to specific image manifests, ideal for one or more platforms, see: https://github.com/opencontainers/image-spec/ for more details
+		Short: "Interact with OCI image indexes",
+		Long: `An image index is a higher-level manifest which points to specific image manifests and is ideal for one or more platforms; see: https://github.com/opencontainers/image-spec/ for more details
 
-'pack manifest' commands provides a set of tooling to create, update, delete or push images indexes to a remote registry,
-'pack' will save a local copy (local storage) of the image index at '$PACK_HOME/manifests', also the environment variable 
-'XDG_RUNTIME_DIR' can be set to override the location, allowing to perform operations like 'pack manifest annotate' to 
-update attributes in the index before pushing it to a registry.
+'pack manifest' commands provide tooling to create, update, or delete images indexes or push them to a remote registry.
+'pack' will save a local copy of the image index at '$PACK_HOME/manifests'; the environment variable 'XDG_RUNTIME_DIR' 
+can be set to override the location, allowing manifests to be edited locally before being pushed to a registry.
 
-This commands are experimental and the original RFC can be found at https://github.com/buildpacks/rfcs/blob/main/text/0124-pack-manifest-list-commands.md`,
+These commands are experimental. For more information, consult the RFC which can be found at https://github.com/buildpacks/rfcs/blob/main/text/0124-pack-manifest-list-commands.md`,
 		RunE: nil,
 	}
 

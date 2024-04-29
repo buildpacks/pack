@@ -3,10 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-
-	"github.com/google/go-containerregistry/pkg/name"
-
-	"github.com/buildpacks/pack/pkg/image"
 )
 
 type ManifestAddOptions struct {
@@ -24,17 +20,10 @@ func (c *Client) AddManifest(ctx context.Context, opts ManifestAddOptions) (err 
 		return err
 	}
 
-	imageRef, err := name.ParseReference(opts.RepoName, name.WeakValidation)
-	if err != nil {
-		return fmt.Errorf("'%s' is not a valid manifest reference: %s", opts.RepoName, err)
-	}
-
-	imageToAdd, err := c.imageFetcher.Fetch(ctx, imageRef.Name(), image.FetchOptions{Daemon: false})
-	if err != nil {
+	if err = c.addManifestToIndex(ctx, opts.IndexRepoName, opts.RepoName, idx); err != nil {
 		return err
 	}
 
-	idx.AddManifest(imageToAdd.UnderlyingImage())
 	if err = idx.SaveDir(); err != nil {
 		return fmt.Errorf("'%s' could not be saved in the local storage: %s", opts.RepoName, err)
 	}

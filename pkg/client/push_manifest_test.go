@@ -54,12 +54,13 @@ func testPushManifest(t *testing.T, when spec.G, it spec.S) {
 
 	when("#PushManifest", func() {
 		when("index exists locally", func() {
-			var index *mockImageIndex
+			var index *h.MockImageIndex
 
 			it.Before(func() {
-				index = newMockImageIndex(t, "some-index", *mockIndexFactory)
+				index = h.NewMockImageIndex(t, "some-index", 1, 2)
+				mockIndexFactory.EXPECT().LoadIndex(gomock.Eq("some-index"), gomock.Any()).Return(index, nil)
 			})
-			it("should push index to registry", func() {
+			it("push the index to the registry", func() {
 				err = subject.PushManifest(PushManifestOptions{
 					IndexRepoName: "some-index",
 				})
@@ -70,10 +71,10 @@ func testPushManifest(t *testing.T, when spec.G, it spec.S) {
 
 		when("index doesn't exist locally", func() {
 			it.Before(func() {
-				prepareLoadIndexWithError(*mockIndexFactory)
+				mockIndexFactory.EXPECT().LoadIndex(gomock.Any(), gomock.Any()).Return(nil, errors.New("ErrNoImageOrIndexFoundWithGivenDigest"))
 			})
 
-			it("should not have local image index", func() {
+			it("error a message", func() {
 				err = subject.PushManifest(PushManifestOptions{
 					IndexRepoName: "some-index",
 				})
@@ -81,25 +82,4 @@ func testPushManifest(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-}
-
-func prepareLoadIndexWithError(mockIndexFactory testmocks.MockIndexFactory) {
-	mockIndexFactory.
-		EXPECT().
-		LoadIndex(gomock.Any(), gomock.Any()).
-		Return(nil, errors.New("ErrNoImageOrIndexFoundWithGivenDigest"))
-}
-
-func newMockImageIndex(t *testing.T, repoName string, mockIndexFactory testmocks.MockIndexFactory) *mockImageIndex {
-	cnbIdx := randomCNBIndex(t, repoName)
-	idx := &mockImageIndex{
-		CNBIndex: *cnbIdx,
-	}
-	mockIndexFactory.
-		EXPECT().
-		LoadIndex(gomock.Eq(repoName), gomock.Any()).
-		Return(idx, nil).
-		AnyTimes()
-
-	return idx
 }

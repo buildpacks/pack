@@ -11,7 +11,7 @@ type PushManifestOptions struct {
 	IndexRepoName string
 
 	// Index media-type
-	Format string
+	Format types.MediaType
 
 	// true if we want to publish to an insecure registry
 	Insecure bool
@@ -50,12 +50,5 @@ func parseOptions(opts PushManifestOptions) (idxOptions []imgutil.IndexOption) {
 		idxOptions = append(idxOptions, imgutil.WithPurge(true))
 	}
 
-	switch opts.Format {
-	case "oci":
-		return append(idxOptions, imgutil.WithMediaType(types.OCIImageIndex))
-	case "v2s2":
-		return append(idxOptions, imgutil.WithMediaType(types.DockerManifestList))
-	default:
-		return idxOptions
-	}
+	return append(idxOptions, imgutil.WithMediaType(opts.Format))
 }

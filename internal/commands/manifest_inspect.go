@@ -8,15 +8,13 @@ import (
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
-// ManifestInspect shows the manifest information stored in local storage
+// ManifestInspect shows the manifest information stored locally
 func ManifestInspect(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "inspect <manifest-list>",
 		Args:    cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
-		Short:   "Display a manifest list or image index.",
-		Example: `pack manifest inspect cnbs/sample-builder:multiarch`,
-		Long: `manifest inspect shows the manifest information stored in local storage.
-		The inspect command will help users to view how their local manifest list looks like`,
+		Short:   "Display information about a manifest list.",
+		Example: `pack manifest inspect my-image-index`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if args[0] == "" {
 				return errors.New("'<manifest-list>' is required")

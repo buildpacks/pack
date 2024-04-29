@@ -5,11 +5,10 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/imgutil"
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/internal/style"
 )
 
 type CreateManifestOptions struct {
@@ -20,7 +19,7 @@ type CreateManifestOptions struct {
 	RepoNames []string
 
 	// Media type of the index
-	Format string
+	Format types.MediaType
 
 	// true if we want to publish to an insecure registry
 	Insecure bool
@@ -43,25 +42,16 @@ func (c *Client) CreateManifest(ctx context.Context, opts CreateManifestOptions)
 	}
 
 	for _, repoName := range opts.RepoNames {
-		// TODO same code to add_manifest.go externalize it!
-		imageRef, err := name.ParseReference(repoName, name.WeakValidation)
-		if err != nil {
-			return fmt.Errorf("'%s' is not a valid manifest reference: %s", repoName, err)
-		}
-
-		imageToAdd, err := c.imageFetcher.Fetch(ctx, imageRef.Name(), image.FetchOptions{Daemon: false})
-		if err != nil {
+		if err = c.addManifestToIndex(ctx, opts.IndexRepoName, repoName, index); err != nil {
 			return err
 		}
-
-		index.AddManifest(imageToAdd.UnderlyingImage())
 	}
 
 	if err = index.SaveDir(); err != nil {
-		return fmt.Errorf("'%s' could not be saved in the local storage: %s", opts.IndexRepoName, err)
+		return fmt.Errorf("'%s' could not be saved in the local storage: %s", style.Symbol(opts.IndexRepoName), err)
 	}
 
-	c.logger.Infof("successfully created index: '%s'\n", opts.IndexRepoName)
+	c.logger.Infof("successfully created index: '%s'\n", style.Symbol(opts.IndexRepoName))
 	if !opts.Publish {
 		return nil
 	}
@@ -70,25 +60,18 @@ func (c *Client) CreateManifest(ctx context.Context, opts CreateManifestOptions)
 		return err
 	}
 
-	c.logger.Infof("successfully pushed '%s' to registry \n", opts.IndexRepoName)
+	c.logger.Infof("successfully pushed '%s' to registry \n", style.Symbol(opts.IndexRepoName))
 	return nil
 }
 
 func parseOptsToIndexOptions(opts CreateManifestOptions) (idxOpts []imgutil.IndexOption) {
-	var format types.MediaType
-	switch opts.Format {
-	case "oci":
-		format = types.OCIImageIndex
-	default:
-		format = types.DockerManifestList
-	}
 	if opts.Insecure {
 		return []imgutil.IndexOption{
-			imgutil.WithMediaType(format),
+			imgutil.WithMediaType(opts.Format),
 			imgutil.WithInsecure(),
 		}
 	}
 	return []imgutil.IndexOption{
-		imgutil.WithMediaType(format),
+		imgutil.WithMediaType(opts.Format),
 	}
 }

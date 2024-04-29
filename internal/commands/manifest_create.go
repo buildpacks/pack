@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"strings"
+
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/pkg/client"
@@ -13,25 +15,28 @@ type ManifestCreateFlags struct {
 	insecure, publish bool
 }
 
-// ManifestCreate creates an image-index/image-list for a multi-arch image
+// ManifestCreate creates an image index for a multi-arch image
 func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 	var flags ManifestCreateFlags
 
 	cmd := &cobra.Command{
-		Use:   "create <manifest-list> <manifest> [<manifest> ... ] [flags]",
-		Args:  cobra.MatchAll(cobra.MinimumNArgs(2), cobra.OnlyValidArgs),
-		Short: "Create a manifest list or image index.",
-		Example: `pack manifest create cnbs/sample-package:hello-multiarch-universe \
-		cnbs/sample-package:hello-universe \
-		cnbs/sample-package:hello-universe-windows`,
-		Long: `Generate manifest list for a multi-arch image which will be stored locally for manipulating images within index`,
+		Use:     "create <manifest-list> <manifest> [<manifest> ... ] [flags]",
+		Args:    cobra.MatchAll(cobra.MinimumNArgs(2), cobra.OnlyValidArgs),
+		Short:   "Create a new manifest list.",
+		Example: `pack manifest create my-image-index my-image:some-arch my-image:some-other-arch`,
+		Long:    `Create a new manifest list (e.g., for multi-arch images) which will be stored locally for manipulating images within the index`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+			format, err := parseFormatFlag(strings.ToLower(flags.format))
+			if err != nil {
+				return err
+			}
+
 			return pack.CreateManifest(
 				cmd.Context(),
 				client.CreateManifestOptions{
 					IndexRepoName: args[0],
 					RepoNames:     args[1:],
-					Format:        flags.format,
+					Format:        format,
 					Insecure:      flags.insecure,
 					Publish:       flags.publish,
 				},
@@ -41,8 +46,8 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 
 	cmdFlags := cmd.Flags()
 
-	cmdFlags.StringVarP(&flags.format, "format", "f", "v2s2", "Format to save image index as ('OCI' or 'V2S2')")
-	cmdFlags.BoolVar(&flags.insecure, "insecure", false, "Allow publishing to insecure registry")
+	cmdFlags.StringVarP(&flags.format, "format", "f", "oci", "Media type to use when saving the image index. Accepted values are: oci, docker")
+	cmdFlags.BoolVar(&flags.insecure, "insecure", false, "When pushing the index to a registry, do not use TLS encryption or certificate verification")
 	cmdFlags.BoolVar(&flags.publish, "publish", false, "Publish to registry")
 
 	AddHelpFlag(cmd, "create")

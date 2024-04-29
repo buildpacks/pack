@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/buildpacks/imgutil"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/v1/random"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-
-	"github.com/buildpacks/imgutil"
 
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -65,26 +65,129 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#CreateManifest", func() {
+		var indexRepoName string
 		when("index doesn't exists", func() {
-			when("remote manifest exists", func() {
+			var indexLocalPath string
+
+			when("remote manifest is provided", func() {
 				it.Before(func() {
 					fakeImage := setUpRemoteImageForIndex(t, nil)
 					fakeImageFetcher.RemoteImages["index.docker.io/library/busybox:1.36-musl"] = fakeImage
-
-					prepareMockImageFactoryForValidCreateIndex(t, mockIndexFactory)
 				})
 
+				when("publish is false", func() {
+					it.Before(func() {
+						// We want to actually create an index, so no need to mock the index factory
+						subject, err = NewClient(
+							WithLogger(logger),
+							WithFetcher(fakeImageFetcher),
+							WithExperimental(true),
+							WithKeychain(authn.DefaultKeychain),
+						)
+					})
+
+					when("no errors on save", func() {
+						it.Before(func() {
+							indexRepoName = newIndexRepoName()
+							indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+						})
+
+						it("creates the index adding the manifest", func() {
+							err = subject.CreateManifest(
+								context.TODO(),
+								CreateManifestOptions{
+									IndexRepoName: indexRepoName,
+									RepoNames:     []string{"busybox:1.36-musl"},
+									Format:        types.OCIImageIndex,
+								},
+							)
+							h.AssertNil(t, err)
+							index := h.ReadIndexManifest(t, indexLocalPath)
+							h.AssertEq(t, len(index.Manifests), 1)
+							h.AssertEq(t, index.MediaType, types.OCIImageIndex)
+						})
+					})
+				})
+
+				when("publish is true", func() {
+					var index *h.MockImageIndex
+
+					when("no errors on save", func() {
+						it.Before(func() {
+							indexRepoName = newIndexRepoName()
+							indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+
+							// index stub return to check if push operation was called
+							index = h.NewMockImageIndex(t, indexRepoName, 0, 0)
+
+							// We need to mock the index factory to inject a stub index to be pushed.
+							mockIndexFactory.EXPECT().Exists(gomock.Eq(indexRepoName)).Return(false)
+							mockIndexFactory.EXPECT().CreateIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(index, nil)
+						})
+
+						it("creates the index adding the manifest and push it to the registry", func() {
+							err = subject.CreateManifest(
+								context.TODO(),
+								CreateManifestOptions{
+									IndexRepoName: indexRepoName,
+									RepoNames:     []string{"busybox:1.36-musl"},
+									Format:        types.OCIImageIndex,
+									Publish:       true,
+								},
+							)
+							h.AssertNil(t, err)
+
+							indexOnDisk := h.ReadIndexManifest(t, indexLocalPath)
+							h.AssertEq(t, len(indexOnDisk.Manifests), 1)
+							h.AssertEq(t, indexOnDisk.MediaType, types.OCIImageIndex)
+
+							h.AssertTrue(t, index.PushCalled)
+						})
+					})
+				})
+			})
+
+			when("no manifest is provided", func() {
 				when("no errors on save", func() {
-					it("creates the index with the given manifest", func() {
+					it.Before(func() {
+						// We want to actually create an index, so no need to mock the index factory
+						subject, err = NewClient(
+							WithLogger(logger),
+							WithFetcher(fakeImageFetcher),
+							WithExperimental(true),
+							WithKeychain(authn.DefaultKeychain),
+						)
+
+						indexRepoName = newIndexRepoName()
+						indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+					})
+
+					it("creates an empty index with OCI media-type", func() {
 						err = subject.CreateManifest(
 							context.TODO(),
 							CreateManifestOptions{
-								IndexRepoName: "pack/imgutil",
-								RepoNames:     []string{"busybox:1.36-musl"},
-								Insecure:      true,
+								IndexRepoName: indexRepoName,
+								Format:        types.OCIImageIndex,
 							},
 						)
 						h.AssertNil(t, err)
+						index := h.ReadIndexManifest(t, indexLocalPath)
+						h.AssertEq(t, len(index.Manifests), 0)
+						h.AssertEq(t, index.MediaType, types.OCIImageIndex)
+					})
+
+					it("creates an empty index with Docker media-type", func() {
+						err = subject.CreateManifest(
+							context.TODO(),
+							CreateManifestOptions{
+								IndexRepoName: indexRepoName,
+								Format:        types.DockerManifestList,
+							},
+						)
+						h.AssertNil(t, err)
+						index := h.ReadIndexManifest(t, indexLocalPath)
+						h.AssertEq(t, len(index.Manifests), 0)
+						h.AssertEq(t, index.MediaType, types.DockerManifestList)
 					})
 				})
 			})
@@ -92,17 +195,17 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 
 		when("index exists", func() {
 			it.Before(func() {
-				mockIndexFactory.EXPECT().
-					Exists(gomock.Any()).AnyTimes().Return(true)
+				indexRepoName = newIndexRepoName()
+
+				// mock the index factory to simulate the index exists
+				mockIndexFactory.EXPECT().Exists(gomock.Eq(indexRepoName)).AnyTimes().Return(true)
 			})
 
-			it("return an error when index exists already", func() {
+			it("return an error when index already exists", func() {
 				err = subject.CreateManifest(
 					context.TODO(),
 					CreateManifestOptions{
-						IndexRepoName: "pack/imgutil",
-						RepoNames:     []string{"busybox:1.36-musl"},
-						Insecure:      true,
+						IndexRepoName: indexRepoName,
 					},
 				)
 				h.AssertEq(t, err.Error(), "exits in your local storage, use 'pack manifest remove' if you want to delete it")
@@ -111,21 +214,6 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func prepareMockImageFactoryForValidCreateIndex(t *testing.T, mockIndexFactory *testmocks.MockIndexFactory) {
-	ridx, err := random.Index(1024, 1, 2)
-	h.AssertNil(t, err)
-
-	options := &imgutil.IndexOptions{
-		BaseIndex: ridx,
-	}
-	idx, err := imgutil.NewCNBIndex("foo", *options)
-	h.AssertNil(t, err)
-
-	mockIndexFactory.EXPECT().
-		Exists(gomock.Any()).AnyTimes().Return(false)
-
-	mockIndexFactory.EXPECT().
-		CreateIndex(gomock.Any(), gomock.Any()).
-		AnyTimes().
-		Return(idx, err)
+func newIndexRepoName() string {
+	return "test-create-index-" + h.RandString(10)
 }

@@ -69,9 +69,10 @@ func testDeleteManifest(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("index exists", func() {
-			var index *mockImageIndex
+			var index *h.MockImageIndex
 			it.Before(func() {
-				index = newMockImageIndex(t, "some-index", *mockIndexFactory)
+				index = h.NewMockImageIndex(t, "some-index", 1, 2)
+				mockIndexFactory.EXPECT().LoadIndex(gomock.Eq("some-index"), gomock.Any()).Return(index, nil)
 			})
 
 			it("should delete local index", func() {

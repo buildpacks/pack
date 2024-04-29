@@ -46,7 +46,7 @@ func testManifestPushCommand(t *testing.T, when spec.G, it spec.S) {
 		command.SetArgs([]string{
 			"some-index",
 			"-f",
-			"v2s2",
+			"docker",
 			"--purge",
 			"--insecure",
 		})

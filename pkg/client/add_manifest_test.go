@@ -171,22 +171,8 @@ func prepareIndexWithoutLocallyExists(mockIndexFactory testmocks.MockIndexFactor
 		Return(nil, errors.New("index not found locally"))
 }
 
-func randomCNBIndex(t *testing.T, repoName string) *imgutil.CNBIndex {
-	ridx, err := random.Index(1024, 1, 2)
-	h.AssertNil(t, err)
-	options := &imgutil.IndexOptions{
-		BaseIndex: ridx,
-		LayoutIndexOptions: imgutil.LayoutIndexOptions{
-			XdgPath: os.Getenv("XDG_RUNTIME_DIR"),
-		},
-	}
-	idx, err := imgutil.NewCNBIndex(repoName, *options)
-	h.AssertNil(t, err)
-	return idx
-}
-
 func prepareLoadIndex(t *testing.T, repoName string, mockIndexFactory testmocks.MockIndexFactory) imgutil.ImageIndex {
-	idx := randomCNBIndex(t, repoName)
+	idx := h.RandomCNBIndex(t, repoName, 1, 2)
 	mockIndexFactory.
 		EXPECT().
 		LoadIndex(gomock.Eq(repoName), gomock.Any()).
@@ -197,8 +183,8 @@ func prepareLoadIndex(t *testing.T, repoName string, mockIndexFactory testmocks.
 }
 
 func prepareLoadIndexWithErrorOnSave(t *testing.T, repoName string, mockIndexFactory testmocks.MockIndexFactory) imgutil.ImageIndex {
-	cnbIdx := randomCNBIndex(t, repoName)
-	idx := &mockImageIndex{
+	cnbIdx := h.RandomCNBIndex(t, repoName, 1, 2)
+	idx := &h.MockImageIndex{
 		CNBIndex:    *cnbIdx,
 		ErrorOnSave: true,
 	}
@@ -218,28 +204,4 @@ type testImage struct {
 
 func (t *testImage) UnderlyingImage() v1.Image {
 	return t.underlyingImage
-}
-
-type mockImageIndex struct {
-	imgutil.CNBIndex
-	ErrorOnSave     bool
-	PushCalled      bool
-	DeleteDirCalled bool
-}
-
-func (i *mockImageIndex) SaveDir() error {
-	if i.ErrorOnSave {
-		return errors.New("something failed writing the index on disk")
-	}
-	return i.CNBIndex.SaveDir()
-}
-
-func (i *mockImageIndex) Push(_ ...imgutil.IndexOption) error {
-	i.PushCalled = true
-	return nil
-}
-
-func (i *mockImageIndex) DeleteDir() error {
-	i.DeleteDirCalled = true
-	return nil
 }
