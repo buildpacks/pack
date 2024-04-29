@@ -136,11 +136,17 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		// construct fixtures for extensions
 		if extensionsForBuild {
-			// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
-			err = os.MkdirAll(filepath.Join(tmpDir, "build"), 0755)
-			h.AssertNil(t, err)
-			_, err = os.Create(filepath.Join(tmpDir, "build", "some-dockerfile"))
-			h.AssertNil(t, err)
+			if platformAPI.LessThan("0.13") {
+				// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
+				err = os.MkdirAll(filepath.Join(tmpDir, "build", "some-buildpack-id"), 0755)
+				h.AssertNil(t, err)
+			} else {
+				// the directory is <layers>/generated/some-buildpack-id inside the build container, but `CopyOutTo` only copies the directory
+				err = os.MkdirAll(filepath.Join(tmpDir, "some-buildpack-id"), 0755)
+				h.AssertNil(t, err)
+				_, err = os.Create(filepath.Join(tmpDir, "some-buildpack-id", "Dockerfile.build"))
+				h.AssertNil(t, err)
+			}
 		}
 		amd := files.Analyzed{RunImage: &files.RunImage{
 			Extend: false,
@@ -579,7 +585,32 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
 
 				when("for build", func() {
-					when("present <layers>/generated/build", func() {
+					when("present in <layers>/generated/<buildpack-id>", func() {
+						extensionsForBuild = true
+
+						when("platform >= 0.13", func() {
+							platformAPI = api.MustParse("0.13")
+
+							it("runs the extender (build)", func() {
+								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+									return fakePhaseFactory
+								})
+								h.AssertNil(t, err)
+
+								h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+
+								var found bool
+								for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+									if entry.Name() == "extender" {
+										found = true
+									}
+								}
+								h.AssertEq(t, found, true)
+							})
+						})
+					})
+
+					when("present in <layers>/generated/build", func() {
 						extensionsForBuild = true
 
 						when("platform < 0.10", func() {
@@ -603,7 +634,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							})
 						})
 
-						when("platform >= 0.10", func() {
+						when("platform 0.10 to 0.12", func() {
 							platformAPI = api.MustParse("0.10")
 
 							it("runs the extender (build)", func() {

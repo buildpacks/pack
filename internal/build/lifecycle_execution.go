@@ -892,10 +892,21 @@ func (l *LifecycleExecution) hasExtensionsForBuild() bool {
 	}
 	// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
 	fis, err := os.ReadDir(filepath.Join(l.tmpDir, "build"))
+	if err == nil && len(fis) > 0 {
+		return true
+	}
+	// on newer platforms, we need to find a file such as <layers>/generated/<buildpack-id>/Dockerfile.build
+	fis, err = os.ReadDir(l.tmpDir)
 	if err != nil {
+		l.logger.Warnf("failed to read generated directory, assuming no build image extensions: %s", err)
 		return false
 	}
-	return len(fis) > 0
+	for _, fi := range fis {
+		if _, err := os.Stat(filepath.Join(l.tmpDir, fi.Name(), "Dockerfile.build")); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (l *LifecycleExecution) hasExtensionsForRun() bool {
