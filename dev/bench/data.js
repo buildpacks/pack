@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1714173989727,
+  "lastUpdate": 1714403198384,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -6286,6 +6286,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 53942610079,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "32563a6547d413748301a85129efd682ad2d5b91",
+          "message": "Merge pull request #2139 from buildpacks/dependabot/go_modules/go-dependencies-42388c4fc2\n\nbuild(deps): bump the go-dependencies group across 1 directory with 9 updates",
+          "timestamp": "2024-04-29T10:04:32-05:00",
+          "tree_id": "618e86403c601b29b215f42c67c18a11246b3aeb",
+          "url": "https://github.com/buildpacks/pack/commit/32563a6547d413748301a85129efd682ad2d5b91"
+        },
+        "date": 1714403197818,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3930144321,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1017424311,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 50763114745,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
