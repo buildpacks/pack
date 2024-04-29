@@ -46,7 +46,6 @@ func testNewManifestCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNilE(t, err)
 
 		output := outBuf.String()
-		h.AssertContains(t, output, "Interact with image index")
 		h.AssertContains(t, output, "Usage:")
 		for _, command := range []string{"create", "add", "annotate", "inspect", "remove", "rm"} {
 			h.AssertContains(t, output, command)

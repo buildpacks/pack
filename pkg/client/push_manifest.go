@@ -1,6 +1,8 @@
 package client
 
 import (
+	"github.com/buildpacks/imgutil"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
 )
 
@@ -20,13 +22,14 @@ type PushManifestOptions struct {
 
 // PushManifest implements commands.PackClient.
 func (c *Client) PushManifest(opts PushManifestOptions) (err error) {
+	ops := parseOptions(opts)
+
 	idx, err := c.indexFactory.LoadIndex(opts.IndexRepoName)
 	if err != nil {
 		return
 	}
 
-	// TODO pass through the options
-	if err = idx.Push(); err != nil {
+	if err = idx.Push(ops...); err != nil {
 		return errors.Wrapf(err, "pushing index '%s'", opts.IndexRepoName)
 	}
 
@@ -38,9 +41,10 @@ func (c *Client) PushManifest(opts PushManifestOptions) (err error) {
 	return idx.DeleteDir()
 }
 
-/*
-func parseFalgsForImgUtil(opts PushManifestOptions) (idxOptions []imgutil.IndexOption) {
-	idxOptions = append(idxOptions, imgutil.WithInsecure())
+func parseOptions(opts PushManifestOptions) (idxOptions []imgutil.IndexOption) {
+	if opts.Insecure {
+		idxOptions = append(idxOptions, imgutil.WithInsecure())
+	}
 
 	if opts.Purge {
 		idxOptions = append(idxOptions, imgutil.WithPurge(true))
@@ -55,4 +59,3 @@ func parseFalgsForImgUtil(opts PushManifestOptions) (idxOptions []imgutil.IndexO
 		return idxOptions
 	}
 }
-*/
