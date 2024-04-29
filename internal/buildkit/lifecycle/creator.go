@@ -14,6 +14,7 @@ import (
 	"github.com/moby/buildkit/client"
 	gatewayClient "github.com/moby/buildkit/frontend/gateway/client"
 	"github.com/moby/buildkit/solver/pb"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/buildpacks/pack/internal/buildkit/builder"
 	"github.com/buildpacks/pack/internal/buildkit/cnb"
@@ -21,6 +22,7 @@ import (
 	"github.com/buildpacks/pack/internal/buildkit/packerfile/options"
 	"github.com/buildpacks/pack/internal/buildkit/state"
 	"github.com/buildpacks/pack/internal/paths"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client) error {
@@ -156,7 +158,19 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client) error
 			CacheOpt:  &pb.CacheOpt{Sharing: pb.CacheSharingOpt_SHARED},
 		})
 	}
-	b := builder.New(l.state, mounts, gatewayCacheImport)
+	var platforms = make([]v1.Platform, 0)
+	for _, target := range l.targets {
+		target.Range(ctx, func(t dist.Target) error {
+			platforms = append(platforms, v1.Platform{
+				OS:           t.OS,
+				Architecture: t.Arch,
+				Variant:      t.ArchVariant,
+				// TODO: add more fields
+			})
+			return nil
+		})
+	}
+	b := builder.New(l.opts.Image.Name(), l.state, nil, platforms, mounts, gatewayCacheImport)
 	// I don't think we need to export DinD image!
 	// Instead of using volumes for caching let's use CacheImports and CacheExports.
 	//
