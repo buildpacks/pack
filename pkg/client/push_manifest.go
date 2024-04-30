@@ -25,6 +25,9 @@ type PushManifestOptions struct {
 
 // PushManifest implements commands.PackClient.
 func (c *Client) PushManifest(opts PushManifestOptions) (err error) {
+	if opts.Format == "" {
+		opts.Format = types.OCIImageIndex
+	}
 	ops := parseOptions(opts)
 
 	idx, err := c.indexFactory.LoadIndex(opts.IndexRepoName)
