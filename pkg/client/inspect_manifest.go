@@ -1,8 +1,9 @@
 package client
 
 import (
+	"fmt"
+
 	"github.com/buildpacks/imgutil"
-	"github.com/pkg/errors"
 )
 
 // InspectManifest implements commands.PackClient.
@@ -19,7 +20,7 @@ func (c *Client) InspectManifest(indexRepoName string) error {
 	}
 
 	if indexStr, err = index.Inspect(); err != nil {
-		return errors.Wrapf(err, "'%s' printing the index", indexRepoName)
+		return fmt.Errorf("failed to inspect manifest list '%s': %w", indexRepoName, err)
 	}
 
 	c.logger.Info(indexStr)

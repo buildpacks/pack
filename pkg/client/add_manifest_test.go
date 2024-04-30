@@ -7,12 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/imgutil/fakes"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -27,8 +23,7 @@ func TestAddManifest(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 
-	// TODO I think we can make this test to run in parallel
-	spec.Run(t, "build", testAddManifest, spec.Report(report.Terminal{}))
+	spec.Run(t, "build", testAddManifest, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testAddManifest(t *testing.T, when spec.G, it spec.S) {
@@ -64,7 +59,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 
 		// Create a remote image to be fetched when adding to the image index
-		fakeImage := setUpRemoteImageForIndex(t, nil)
+		fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, nil)
 		fakeImageFetcher.RemoteImages["index.docker.io/pack/image:latest"] = fakeImage
 	})
 	it.After(func() {
@@ -75,7 +70,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 	when("#AddManifest", func() {
 		when("index doesn't exists", func() {
 			it.Before(func() {
-				prepareIndexWithoutLocallyExists(*mockIndexFactory)
+				mockIndexFactory.EXPECT().LoadIndex(gomock.Any(), gomock.Any()).Return(nil, errors.New("index not found locally"))
 			})
 
 			it("should return an error", func() {
@@ -91,16 +86,22 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("index exists", func() {
+			var indexRepoName string
+			it.Before(func() {
+				indexRepoName = h.NewRandomIndexRepoName()
+			})
+
 			when("no errors on save", func() {
 				it.Before(func() {
-					prepareLoadIndex(t, "pack/index", *mockIndexFactory)
+					idx := h.RandomCNBIndex(t, indexRepoName, 1, 2)
+					mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
 				})
 
 				it("adds the given image", func() {
 					err = subject.AddManifest(
 						context.TODO(),
 						ManifestAddOptions{
-							IndexRepoName: "pack/index",
+							IndexRepoName: indexRepoName,
 							RepoName:      "pack/image",
 						},
 					)
@@ -112,7 +113,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 					err = subject.AddManifest(
 						context.TODO(),
 						ManifestAddOptions{
-							IndexRepoName: "pack/index",
+							IndexRepoName: indexRepoName,
 							RepoName:      "pack@@image",
 						},
 					)
@@ -124,7 +125,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 					err = subject.AddManifest(
 						context.TODO(),
 						ManifestAddOptions{
-							IndexRepoName: "pack/index",
+							IndexRepoName: indexRepoName,
 							RepoName:      "pack/image-not-found",
 						},
 					)
@@ -135,14 +136,20 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 
 			when("errors on save", func() {
 				it.Before(func() {
-					prepareLoadIndexWithErrorOnSave(t, "pack/index-error-on-saved", *mockIndexFactory)
+					cnbIdx := h.NewMockImageIndex(t, indexRepoName, 1, 2)
+					cnbIdx.ErrorOnSave = true
+					mockIndexFactory.
+						EXPECT().
+						LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).
+						Return(cnbIdx, nil).
+						AnyTimes()
 				})
 
 				it("error when manifest couldn't be saved locally", func() {
 					err = subject.AddManifest(
 						context.TODO(),
 						ManifestAddOptions{
-							IndexRepoName: "pack/index-error-on-saved",
+							IndexRepoName: indexRepoName,
 							RepoName:      "pack/image",
 						},
 					)
@@ -152,56 +159,4 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-}
-
-func setUpRemoteImageForIndex(t *testing.T, identifier imgutil.Identifier) *testImage {
-	fakeCNBImage := fakes.NewImage("pack/image", "", identifier)
-	underlyingImage, err := random.Image(1024, 1)
-	h.AssertNil(t, err)
-	return &testImage{
-		Image:           fakeCNBImage,
-		underlyingImage: underlyingImage,
-	}
-}
-
-func prepareIndexWithoutLocallyExists(mockIndexFactory testmocks.MockIndexFactory) {
-	mockIndexFactory.
-		EXPECT().
-		LoadIndex(gomock.Any(), gomock.Any()).
-		Return(nil, errors.New("index not found locally"))
-}
-
-func prepareLoadIndex(t *testing.T, repoName string, mockIndexFactory testmocks.MockIndexFactory) imgutil.ImageIndex {
-	idx := h.RandomCNBIndex(t, repoName, 1, 2)
-	mockIndexFactory.
-		EXPECT().
-		LoadIndex(gomock.Eq(repoName), gomock.Any()).
-		Return(idx, nil).
-		AnyTimes()
-
-	return idx
-}
-
-func prepareLoadIndexWithErrorOnSave(t *testing.T, repoName string, mockIndexFactory testmocks.MockIndexFactory) imgutil.ImageIndex {
-	cnbIdx := h.RandomCNBIndex(t, repoName, 1, 2)
-	idx := &h.MockImageIndex{
-		CNBIndex:    *cnbIdx,
-		ErrorOnSave: true,
-	}
-	mockIndexFactory.
-		EXPECT().
-		LoadIndex(gomock.Eq(repoName), gomock.Any()).
-		Return(idx, nil).
-		AnyTimes()
-
-	return idx
-}
-
-type testImage struct {
-	*fakes.Image
-	underlyingImage v1.Image
-}
-
-func (t *testImage) UnderlyingImage() v1.Image {
-	return t.underlyingImage
 }

@@ -144,4 +144,4 @@ require (
 
 go 1.22
 
-replace github.com/buildpacks/imgutil => github.com/husni-faiz/imgutil v0.0.0-20240429172311-d4a3c74baf28
+replace github.com/buildpacks/imgutil => github.com/husni-faiz/imgutil v0.0.0-20240430180646-2e42a193c20c

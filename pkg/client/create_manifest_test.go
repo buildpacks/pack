@@ -71,7 +71,7 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 
 			when("remote manifest is provided", func() {
 				it.Before(func() {
-					fakeImage := setUpRemoteImageForIndex(t, nil)
+					fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, nil)
 					fakeImageFetcher.RemoteImages["index.docker.io/library/busybox:1.36-musl"] = fakeImage
 				})
 
@@ -88,7 +88,7 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 
 					when("no errors on save", func() {
 						it.Before(func() {
-							indexRepoName = newIndexRepoName()
+							indexRepoName = h.NewRandomIndexRepoName()
 							indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
 						})
 
@@ -114,7 +114,7 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 
 					when("no errors on save", func() {
 						it.Before(func() {
-							indexRepoName = newIndexRepoName()
+							indexRepoName = h.NewRandomIndexRepoName()
 							indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
 
 							// index stub return to check if push operation was called
@@ -137,11 +137,10 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 							)
 							h.AssertNil(t, err)
 
-							indexOnDisk := h.ReadIndexManifest(t, indexLocalPath)
-							h.AssertEq(t, len(indexOnDisk.Manifests), 1)
-							h.AssertEq(t, indexOnDisk.MediaType, types.OCIImageIndex)
-
+							// index is not saved locally and push it to the registry
+							h.AssertPathDoesNotExists(t, indexLocalPath)
 							h.AssertTrue(t, index.PushCalled)
+							h.AssertTrue(t, index.PurgeOption)
 						})
 					})
 				})
@@ -158,7 +157,7 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 							WithKeychain(authn.DefaultKeychain),
 						)
 
-						indexRepoName = newIndexRepoName()
+						indexRepoName = h.NewRandomIndexRepoName()
 						indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
 					})
 
@@ -195,7 +194,7 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 
 		when("index exists", func() {
 			it.Before(func() {
-				indexRepoName = newIndexRepoName()
+				indexRepoName = h.NewRandomIndexRepoName()
 
 				// mock the index factory to simulate the index exists
 				mockIndexFactory.EXPECT().Exists(gomock.Eq(indexRepoName)).AnyTimes().Return(true)
@@ -208,12 +207,8 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 						IndexRepoName: indexRepoName,
 					},
 				)
-				h.AssertEq(t, err.Error(), "exits in your local storage, use 'pack manifest remove' if you want to delete it")
+				h.AssertError(t, err, "already exists in local storage; use 'pack manifest remove' to remove it before creating a new manifest list with the same name")
 			})
 		})
 	})
-}
-
-func newIndexRepoName() string {
-	return "test-create-index-" + h.RandString(10)
 }

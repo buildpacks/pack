@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -20,7 +21,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-const digestStr = "sha256:d4707523ce6e12afdbe9a3be5ad69027150a834870ca0933baf7516dd1fe0f56"
+const invalidDigest = "sha256:d4707523ce6e12afdbe9a3be5ad69027150a834870ca0933baf7516dd1fe0f56"
 
 func TestAnnotateManifest(t *testing.T) {
 	color.Disable(true)
@@ -67,9 +68,14 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#AnnotateManifest", func() {
+		var (
+			digest        name.Digest
+			idx           imgutil.ImageIndex
+			indexRepoName string
+		)
 		when("index doesn't exists", func() {
 			it.Before(func() {
-				prepareIndexWithoutLocallyExists(*mockIndexFactory)
+				mockIndexFactory.EXPECT().LoadIndex(gomock.Any(), gomock.Any()).Return(nil, errors.New("index not found locally"))
 			})
 
 			it("should return an error", func() {
@@ -86,21 +92,11 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 
 		when("index exists", func() {
 			when("no errors on save", func() {
-				var digest name.Digest
-				var idx imgutil.ImageIndex
-
 				it.Before(func() {
-					idx = prepareLoadIndex(t, "some/repo", *mockIndexFactory)
-					imgIdx, ok := idx.(*imgutil.CNBIndex)
-					h.AssertEq(t, ok, true)
-
-					mfest, err := imgIdx.IndexManifest()
-					h.AssertNil(t, err)
-
-					digest, err = name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
-					h.AssertNil(t, err)
-
-					fakeImage := setUpRemoteImageForIndex(t, digest)
+					indexRepoName = h.NewRandomIndexRepoName()
+					idx, digest = h.RandomCNBIndexAndDigest(t, indexRepoName, 1, 2)
+					mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
+					fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, digest)
 					fakeImageFetcher.RemoteImages[digest.Name()] = fakeImage
 				})
 
@@ -108,7 +104,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 					err = subject.AnnotateManifest(
 						context.TODO(),
 						ManifestAnnotateOptions{
-							IndexRepoName: "some/repo",
+							IndexRepoName: indexRepoName,
 							RepoName:      digest.Name(),
 							OS:            "some-os",
 						},
@@ -124,7 +120,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 					err = subject.AnnotateManifest(
 						context.TODO(),
 						ManifestAnnotateOptions{
-							IndexRepoName: "some/repo",
+							IndexRepoName: indexRepoName,
 							RepoName:      digest.Name(),
 							OSArch:        "some-arch",
 						},
@@ -140,7 +136,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 					err = subject.AnnotateManifest(
 						context.TODO(),
 						ManifestAnnotateOptions{
-							IndexRepoName: "some/repo",
+							IndexRepoName: indexRepoName,
 							RepoName:      digest.Name(),
 							OSVariant:     "some-variant",
 						},
@@ -156,7 +152,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 					err = subject.AnnotateManifest(
 						context.TODO(),
 						ManifestAnnotateOptions{
-							IndexRepoName: "some/repo",
+							IndexRepoName: indexRepoName,
 							RepoName:      digest.Name(),
 							Annotations:   map[string]string{"some-key": "some-value"},
 						},
@@ -179,7 +175,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 					err = subject.AnnotateManifest(
 						context.TODO(),
 						ManifestAnnotateOptions{
-							IndexRepoName: "some/repo",
+							IndexRepoName: indexRepoName,
 							RepoName:      digest.Name(),
 							OS:            fakeOS,
 							OSArch:        fakeArch,
@@ -222,61 +218,43 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("return an error", func() {
-			it("has no Index locally by given Name", func() {
-				prepareIndexWithoutLocallyExists(*mockIndexFactory)
-				err = subject.AnnotateManifest(
-					context.TODO(),
-					ManifestAnnotateOptions{
-						IndexRepoName: "some/repo",
-						RepoName:      "",
-					},
-				)
-				h.AssertEq(t, err.Error(), "index not found locally")
-			})
-			it("has no image with given digest for OS", func() {
-				prepareLoadIndex(t, "some/repo", *mockIndexFactory)
+			var nonExistentDigest string
 
-				err = subject.AnnotateManifest(
-					context.TODO(),
-					ManifestAnnotateOptions{
-						IndexRepoName: "some/repo",
-						RepoName:      "busybox@" + digestStr,
-						OS:            "some-os",
-					},
-				)
-				h.AssertNotNil(t, err)
+			it.Before(func() {
+				indexRepoName = h.NewRandomIndexRepoName()
+				idx = h.RandomCNBIndex(t, indexRepoName, 1, 2)
+				nonExistentDigest = "busybox@" + invalidDigest
+				mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
 			})
+
 			it("has no image with given digest for Arch", func() {
-				prepareLoadIndex(t, "some/repo", *mockIndexFactory)
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					ManifestAnnotateOptions{
-						IndexRepoName: "some/repo",
-						RepoName:      "busybox@" + digestStr,
+						IndexRepoName: indexRepoName,
+						RepoName:      nonExistentDigest,
 						OSArch:        "some-arch",
 					},
 				)
 				h.AssertNotNil(t, err)
 			})
 			it("has no image with given digest for Variant", func() {
-				prepareLoadIndex(t, "some/repo", *mockIndexFactory)
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					ManifestAnnotateOptions{
-						IndexRepoName: "some/repo",
-						RepoName:      "busybox@" + digestStr,
+						IndexRepoName: indexRepoName,
+						RepoName:      nonExistentDigest,
 						OSVariant:     "some-variant",
 					},
 				)
 				h.AssertNotNil(t, err)
 			})
 			it("has no image with given digest for Annotations", func() {
-				prepareLoadIndex(t, "some/repo", *mockIndexFactory)
 				err = subject.AnnotateManifest(
 					context.TODO(),
 					ManifestAnnotateOptions{
-						IndexRepoName: "some/repo",
-						RepoName:      "busybox@" + digestStr,
+						IndexRepoName: indexRepoName,
+						RepoName:      nonExistentDigest,
 						Annotations:   map[string]string{"some-key": "some-value"},
 					},
 				)

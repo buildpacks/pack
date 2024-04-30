@@ -9,6 +9,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/heroku/color"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -60,7 +61,7 @@ func testDeleteManifest(t *testing.T, when spec.G, it spec.S) {
 	when("#DeleteManifest", func() {
 		when("index doesn't exists", func() {
 			it.Before(func() {
-				prepareIndexWithoutLocallyExists(*mockIndexFactory)
+				mockIndexFactory.EXPECT().LoadIndex(gomock.Any(), gomock.Any()).Return(nil, errors.New("index not found locally"))
 			})
 			it("should return an error when index is already deleted", func() {
 				errs := subject.DeleteManifest(context.TODO(), []string{"pack/none-existent-index"})

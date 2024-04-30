@@ -3,32 +3,23 @@ package testhelpers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/fakes"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
-func AssertRemoteImageIndex(t *testing.T, repoName string, mediaType types.MediaType, expectedNumberOfManifests int) {
-	t.Helper()
-
-	remoteIndex := FetchImageIndexDescriptor(t, repoName)
-	AssertNotNil(t, remoteIndex)
-	remoteIndexMediaType, err := remoteIndex.MediaType()
-	AssertNil(t, err)
-	AssertEq(t, remoteIndexMediaType, mediaType)
-	remoteIndexManifest, err := remoteIndex.IndexManifest()
-	AssertNil(t, err)
-	AssertNotNil(t, remoteIndexManifest)
-	AssertEq(t, len(remoteIndexManifest.Manifests), expectedNumberOfManifests)
+func NewRandomIndexRepoName() string {
+	return "test-index-" + RandString(10)
 }
 
 func AssertPathExists(t *testing.T, path string) {
@@ -38,6 +29,14 @@ func AssertPathExists(t *testing.T, path string) {
 		t.Errorf("Expected %q to exist", path)
 	} else if err != nil {
 		t.Fatalf("Error stating %q: %v", path, err)
+	}
+}
+
+func AssertPathDoesNotExists(t *testing.T, path string) {
+	t.Helper()
+	_, err := os.Stat(path)
+	if err == nil {
+		t.Errorf("Expected %q to not exists", path)
 	}
 }
 
@@ -89,11 +88,27 @@ func RandomCNBIndex(t *testing.T, repoName string, layers, count int64) *imgutil
 	return idx
 }
 
+func RandomCNBIndexAndDigest(t *testing.T, repoName string, layers, count int64) (idx imgutil.ImageIndex, digest name.Digest) {
+	idx = RandomCNBIndex(t, repoName, layers, count)
+
+	imgIdx, ok := idx.(*imgutil.CNBIndex)
+	AssertEq(t, ok, true)
+
+	mfest, err := imgIdx.IndexManifest()
+	AssertNil(t, err)
+
+	digest, err = name.NewDigest(fmt.Sprintf("%s@%s", repoName, mfest.Manifests[0].Digest.String()))
+	AssertNil(t, err)
+
+	return idx, digest
+}
+
 // MockImageIndex wraps a real CNBIndex to record if some key methods are invoke
 type MockImageIndex struct {
 	imgutil.CNBIndex
 	ErrorOnSave     bool
 	PushCalled      bool
+	PurgeOption     bool
 	DeleteDirCalled bool
 }
 
@@ -113,12 +128,39 @@ func (i *MockImageIndex) SaveDir() error {
 	return i.CNBIndex.SaveDir()
 }
 
-func (i *MockImageIndex) Push(_ ...imgutil.IndexOption) error {
+func (i *MockImageIndex) Push(ops ...imgutil.IndexOption) error {
+	var pushOps = &imgutil.IndexOptions{}
+	for _, op := range ops {
+		if err := op(pushOps); err != nil {
+			return err
+		}
+	}
+
 	i.PushCalled = true
+	i.PurgeOption = pushOps.Purge
 	return nil
 }
 
 func (i *MockImageIndex) DeleteDir() error {
 	i.DeleteDirCalled = true
 	return nil
+}
+
+func NewFakeWithRandomUnderlyingV1Image(t *testing.T, identifier imgutil.Identifier) *FakeWithRandomUnderlyingImage {
+	fakeCNBImage := fakes.NewImage("pack/image", "", identifier)
+	underlyingImage, err := random.Image(1024, 1)
+	AssertNil(t, err)
+	return &FakeWithRandomUnderlyingImage{
+		Image:           fakeCNBImage,
+		underlyingImage: underlyingImage,
+	}
+}
+
+type FakeWithRandomUnderlyingImage struct {
+	*fakes.Image
+	underlyingImage v1.Image
+}
+
+func (t *FakeWithRandomUnderlyingImage) UnderlyingImage() v1.Image {
+	return t.underlyingImage
 }

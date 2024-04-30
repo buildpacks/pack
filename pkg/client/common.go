@@ -16,10 +16,10 @@ import (
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
-func (c *Client) addManifestToIndex(ctx context.Context, indexRepoName, repoName string, index imgutil.ImageIndex) error {
+func (c *Client) addManifestToIndex(ctx context.Context, repoName string, index imgutil.ImageIndex) error {
 	imageRef, err := name.ParseReference(repoName, name.WeakValidation)
 	if err != nil {
-		return fmt.Errorf("'%s' is not a valid manifest reference: %s", style.Symbol(indexRepoName), err)
+		return fmt.Errorf("'%s' is not a valid manifest reference: %s", style.Symbol(repoName), err)
 	}
 
 	imageToAdd, err := c.imageFetcher.Fetch(ctx, imageRef.Name(), image.FetchOptions{Daemon: false})

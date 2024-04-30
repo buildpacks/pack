@@ -20,7 +20,7 @@ func (c *Client) AddManifest(ctx context.Context, opts ManifestAddOptions) (err 
 		return err
 	}
 
-	if err = c.addManifestToIndex(ctx, opts.IndexRepoName, opts.RepoName, idx); err != nil {
+	if err = c.addManifestToIndex(ctx, opts.RepoName, idx); err != nil {
 		return err
 	}
 

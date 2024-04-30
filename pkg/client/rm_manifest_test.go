@@ -65,16 +65,10 @@ func testRemoveManifest(t *testing.T, when spec.G, it spec.S) {
 			var idx imgutil.ImageIndex
 
 			it.Before(func() {
-				idx = prepareLoadIndex(t, "some/repo", *mockIndexFactory)
-				imgIdx, ok := idx.(*imgutil.CNBIndex)
-				h.AssertEq(t, ok, true)
-
-				mfest, err := imgIdx.IndexManifest()
-				h.AssertNil(t, err)
-
-				digest, err = name.NewDigest("some/repo@" + mfest.Manifests[0].Digest.String())
-				h.AssertNil(t, err)
+				idx, digest = h.RandomCNBIndexAndDigest(t, "some/repo", 1, 1)
+				mockIndexFactory.EXPECT().LoadIndex(gomock.Eq("some/repo"), gomock.Any()).Return(idx, nil)
 			})
+
 			it("should remove local index", func() {
 				errs := subject.RemoveManifest(context.TODO(), "some/repo", []string{digest.Name()})
 				h.AssertEq(t, len(errs), 0)

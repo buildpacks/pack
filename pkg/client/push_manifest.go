@@ -1,9 +1,12 @@
 package client
 
 import (
+	"fmt"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/google/go-containerregistry/pkg/v1/types"
-	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/style"
 )
 
 type PushManifestOptions struct {
@@ -30,11 +33,11 @@ func (c *Client) PushManifest(opts PushManifestOptions) (err error) {
 	}
 
 	if err = idx.Push(ops...); err != nil {
-		return errors.Wrapf(err, "pushing index '%s'", opts.IndexRepoName)
+		return fmt.Errorf("failed to push manifest list '%s': %w", style.Symbol(opts.IndexRepoName), err)
 	}
 
 	if !opts.Purge {
-		c.logger.Infof("successfully pushed index: '%s'\n", opts.IndexRepoName)
+		c.logger.Infof("Successfully pushed manifest list '%s'", style.Symbol(opts.IndexRepoName))
 		return nil
 	}
 

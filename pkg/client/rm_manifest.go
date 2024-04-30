@@ -17,7 +17,7 @@ func (c *Client) RemoveManifest(ctx context.Context, name string, images []strin
 	for _, image := range images {
 		ref, err := gccrName.NewDigest(image, gccrName.WeakValidation, gccrName.Insecure)
 		if err != nil {
-			errs = append(errs, fmt.Errorf(`invalid instance "%s": %v`, image, err))
+			errs = append(errs, fmt.Errorf("invalid instance '%s': %w", image, err))
 		}
 
 		if err = imgIndex.RemoveManifest(ref); err != nil {
@@ -30,7 +30,7 @@ func (c *Client) RemoveManifest(ctx context.Context, name string, images []strin
 	}
 
 	if len(errs) == 0 {
-		fmt.Printf("Successfully removed images from index: '%s' \n", name)
+		c.logger.Infof("Successfully removed images from index: '%s'", name)
 	}
 
 	return errs
