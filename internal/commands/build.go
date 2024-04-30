@@ -70,7 +70,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			"requires an image name, which will be generated from the source code. Build defaults to the current directory, " +
 			"but you can use `--path` to specify another source code directory. Build requires a `builder`, which can either " +
 			"be provided directly to build using `--builder`, or can be set using the `set-default-builder` command. For more " +
-			"on how to use `pack build`, see: https://buildpacks.io/docs/app-developer-guide/build-an-app/.",
+			"on how to use `pack build`, see: https://buildpacks.io/docs/app-developer-guide/build-an-app/.\n\nNote: Pack uses the nomeclature of <builder-image>-extended to refer to a builder image that has been extended using an extension.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			inputImageName := client.ParseInputImageReference(args[0])
 			if err := validateBuildFlags(&flags, cfg, inputImageName, logger); err != nil {

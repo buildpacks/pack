@@ -1,0 +1,17 @@
+[[group]]
+  id = "samples/hello-extensions"
+  version = "0.0.1"
+  api = "0.9"
+  homepage = "https://github.com/buildpacks/samples/tree/main/buildpacks/hello-extensions"
+
+[[group-extensions]]
+  id = "samples/tree"
+  version = "0.0.1"
+  api = "0.9"
+  homepage = "https://github.com/buildpacks/samples/tree/main/extensions/tree"
+
+[[group-extensions]]
+  id = "samples/test"
+  version = "0.0.1"
+  api = "0.9"
+  homepage = "https://github.com/buildpacks/samples/test/main/extensions/test"

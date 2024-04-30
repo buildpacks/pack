@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -241,6 +242,12 @@ func WithRoot() PhaseConfigProviderOperation {
 		} else {
 			provider.ctrConf.User = linuxContainerAdmin
 		}
+	}
+}
+
+func WithUser(uid int, gid int) PhaseConfigProviderOperation {
+	return func(provider *PhaseConfigProvider) {
+		provider.ctrConf.User = strconv.Itoa(uid) + ":" + strconv.Itoa(gid)
 	}
 }
 
