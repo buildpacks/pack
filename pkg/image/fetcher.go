@@ -123,6 +123,41 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 	return f.fetchDaemonImage(name)
 }
 
+func (f *Fetcher) CheckReadAccess(repo string, options FetchOptions) bool {
+	if !options.Daemon || options.PullPolicy == PullAlways {
+		return f.checkRemoteReadAccess(repo)
+	}
+	if _, err := f.fetchDaemonImage(repo); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			// Image doesn't exist in the daemon
+			// 	Pull Never: should fail
+			// 	Pull If Not Present: need to check the registry
+			if options.PullPolicy == PullNever {
+				return false
+			}
+			return f.checkRemoteReadAccess(repo)
+		}
+		f.logger.Debugf("failed reading image '%s' from the daemon, error: %s", repo, err.Error())
+		return false
+	}
+	return true
+}
+
+func (f *Fetcher) checkRemoteReadAccess(repo string) bool {
+	img, err := remote.NewImage(repo, f.keychain)
+	if err != nil {
+		f.logger.Debugf("failed accessing remote image %s, error: %s", repo, err.Error())
+		return false
+	}
+	if ok, err := img.CheckReadAccess(); ok {
+		f.logger.Debugf("CheckReadAccess succeeded for the run image %s", repo)
+		return true
+	} else {
+		f.logger.Debugf("CheckReadAccess failed for the run image %s, error: %s", repo, err.Error())
+		return false
+	}
+}
+
 func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 	image, err := local.NewImage(name, f.docker, local.FromBaseImage(name))
 	if err != nil {

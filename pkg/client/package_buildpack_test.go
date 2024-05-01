@@ -462,25 +462,25 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 				blob1 := blob.NewBlob(filepath.Join("testdata", "buildpack-flatten", "buildpack-1"))
 				mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/flatten-bp-1.tgz").Return(blob1, nil).AnyTimes()
-				bp, err := buildpack.FromBuildpackRootBlob(blob1, archive.DefaultTarWriterFactory())
+				bp, err := buildpack.FromBuildpackRootBlob(blob1, archive.DefaultTarWriterFactory(), nil)
 				h.AssertNil(t, err)
 				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/flatten-bp-1.tgz", gomock.Any()).Return(bp, nil, nil).AnyTimes()
 
 				// flatten buildpack 2
 				blob2 := blob.NewBlob(filepath.Join("testdata", "buildpack-flatten", "buildpack-2"))
-				bp2, err := buildpack.FromBuildpackRootBlob(blob2, archive.DefaultTarWriterFactory())
+				bp2, err := buildpack.FromBuildpackRootBlob(blob2, archive.DefaultTarWriterFactory(), nil)
 				h.AssertNil(t, err)
 				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/flatten-bp-2.tgz", gomock.Any()).Return(bp2, nil, nil).AnyTimes()
 
 				// flatten buildpack 3
 				blob3 := blob.NewBlob(filepath.Join("testdata", "buildpack-flatten", "buildpack-3"))
-				bp3, err := buildpack.FromBuildpackRootBlob(blob3, archive.DefaultTarWriterFactory())
+				bp3, err := buildpack.FromBuildpackRootBlob(blob3, archive.DefaultTarWriterFactory(), nil)
 				h.AssertNil(t, err)
 
 				var depBPs []buildpack.BuildModule
 				for i := 4; i <= 7; i++ {
 					b := blob.NewBlob(filepath.Join("testdata", "buildpack-flatten", fmt.Sprintf("buildpack-%d", i)))
-					bp, err := buildpack.FromBuildpackRootBlob(b, archive.DefaultTarWriterFactory())
+					bp, err := buildpack.FromBuildpackRootBlob(b, archive.DefaultTarWriterFactory(), nil)
 					h.AssertNil(t, err)
 					depBPs = append(depBPs, bp)
 				}
