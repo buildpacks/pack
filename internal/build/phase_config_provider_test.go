@@ -59,6 +59,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			h.AssertSliceContainsMatch(t, phaseConfigProvider.HostConfig().Binds, "pack-app-.*:/workspace")
 
 			h.AssertEq(t, phaseConfigProvider.HostConfig().Isolation, container.IsolationEmpty)
+			h.AssertEq(t, phaseConfigProvider.HostConfig().UsernsMode, container.UsernsMode("host"))
 		})
 
 		when("building for Windows", func() {
