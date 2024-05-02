@@ -1,6 +1,7 @@
 package target
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -66,11 +67,15 @@ func ParseDistro(distroString string, logger logging.Logger) (distro dist.Distri
 	if d[0] == "" || len(d) == 0 {
 		return distro, errors.Errorf("distro's versions %s cannot be specified without distro's name", style.Symbol("@"+strings.Join(d[1:], "@")))
 	}
-	if len(d) <= 2 && (strings.Contains(strings.Join(d[1:], ""), "") || d[1] == "") {
-		logger.Warnf("distro with name %s has no specific version!", style.Symbol(d[0]))
-	}
 	distro.Name = d[0]
-	distro.Versions = d[1:]
+	if len(d) < 2 {
+		logger.Warnf("distro with name %s has no specific version!", style.Symbol(d[0]))
+		return distro, err
+	}
+	if len(d) > 2 {
+		return distro, fmt.Errorf("invalid distro: %s", distroString)
+	}
+	distro.Version = d[1]
 	return distro, err
 }
 

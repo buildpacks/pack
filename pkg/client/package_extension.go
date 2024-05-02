@@ -42,7 +42,7 @@ func (c *Client) PackageExtension(ctx context.Context, opts PackageBuildpackOpti
 		return err
 	}
 
-	ex, err := buildpack.FromExtensionRootBlob(mainBlob, writerFactory)
+	ex, err := buildpack.FromExtensionRootBlob(mainBlob, writerFactory, c.logger)
 	if err != nil {
 		return errors.Wrapf(err, "creating extension from %s", style.Symbol(exURI))
 	}
