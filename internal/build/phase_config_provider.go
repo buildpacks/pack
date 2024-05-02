@@ -36,6 +36,9 @@ type PhaseConfigProvider struct {
 func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops ...PhaseConfigProviderOperation) *PhaseConfigProvider {
 	hostConf := new(container.HostConfig)
 	hostConf.UsernsMode = "host"
+	if lifecycleExec.os != "windows" {
+		hostConf.SecurityOpt = []string{"no-new-privileges=true"}
+	}
 	provider := &PhaseConfigProvider{
 		ctrConf:     new(container.Config),
 		hostConf:    hostConf,
