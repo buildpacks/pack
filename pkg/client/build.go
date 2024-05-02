@@ -400,6 +400,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	// Get the platform API version to use
 	lifecycleVersion := bldr.LifecycleDescriptor().Info.Version
 	useCreator := supportsCreator(lifecycleVersion) && opts.TrustBuilder(opts.Builder)
+	if useCreator && hasAdditionalModules(opts) {
+		c.logger.Warnf("Builder is trusted but additional modules were added; using the untrusted (5 phases) build flow")
+		useCreator = false
+	}
 	var (
 		lifecycleOptsLifecycleImage string
 		lifecycleAPIs               []string
@@ -701,6 +705,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return fmt.Errorf("executing lifecycle: %w", err)
 	}
 	return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
+}
+
+func hasAdditionalModules(opts BuildOptions) bool {
+	return !(len(opts.Buildpacks) == 0 && len(opts.Extensions) == 0 &&
+		len(opts.PreBuildpacks) == 0 && len(opts.PostBuildpacks) == 0)
 }
 
 func extractSupportedLifecycleApis(labels map[string]string) ([]string, error) {
