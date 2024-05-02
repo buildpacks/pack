@@ -2096,6 +2096,8 @@ api = "0.2"
 				when("builder is untrusted", func() {
 					when("lifecycle image is available", func() {
 						it("uses the 5 phases with the lifecycle image", func() {
+							origLifecyleName := fakeLifecycleImage.Name()
+
 							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 								Image:        "some/app",
 								Builder:      defaultBuilderName,
@@ -2103,9 +2105,9 @@ api = "0.2"
 								TrustBuilder: func(string) bool { return false },
 							}))
 							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, false)
-							h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, fakeLifecycleImage.Name())
-
-							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
+							h.AssertContains(t, fakeLifecycle.Opts.LifecycleImage, "pack.local/lifecycle")
+							args := fakeImageFetcher.FetchCalls[origLifecyleName]
+							h.AssertNotNil(t, args)
 							h.AssertEq(t, args.Daemon, true)
 							h.AssertEq(t, args.PullPolicy, image.PullAlways)
 							h.AssertEq(t, args.Platform, "linux/amd64")
@@ -2194,6 +2196,7 @@ api = "0.2"
 				when("builder is untrusted", func() {
 					when("lifecycle image is available", func() {
 						it("uses the 5 phases with the lifecycle image", func() {
+							origLifecyleName := fakeLifecycleImage.Name()
 							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 								Image:        "some/app",
 								Builder:      defaultBuilderName,
@@ -2201,9 +2204,9 @@ api = "0.2"
 								TrustBuilder: func(string) bool { return false },
 							}))
 							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, false)
-							h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, fakeLifecycleImage.Name())
-
-							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
+							h.AssertContains(t, fakeLifecycle.Opts.LifecycleImage, "pack.local/lifecycle")
+							args := fakeImageFetcher.FetchCalls[origLifecyleName]
+							h.AssertNotNil(t, args)
 							h.AssertEq(t, args.Daemon, true)
 							h.AssertEq(t, args.PullPolicy, image.PullAlways)
 							h.AssertEq(t, args.Platform, "linux/amd64")

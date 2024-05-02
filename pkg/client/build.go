@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	internalConfig "github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/layer"
 	pname "github.com/buildpacks/pack/internal/name"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/stack"
@@ -423,6 +425,29 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				return fmt.Errorf("fetching lifecycle image: %w", err)
 			}
 
+			// if lifecyle container os isn't windows, use ephemeral lifecycle to add /workspace with correct ownership
+			imageOS, err := lifecycleImage.OS()
+			if err != nil {
+				return errors.Wrap(err, "getting lifecycle image OS")
+			}
+			if imageOS != "windows" {
+				// obtain uid/gid from builder to use when extending lifecycle image
+				uid, gid, err := userAndGroupIDs(rawBuilderImage)
+				if err != nil {
+					return fmt.Errorf("obtaining build uid/gid from builder image: %w", err)
+				}
+
+				c.logger.Debugf("Creating ephemeral lifecycle from %s with uid %d and gid %d. With workspace dir %s", lifecycleImage.Name(), uid, gid, opts.Workspace)
+				// extend lifecycle image with mountpoints, and use it instead of current lifecycle image
+				lifecycleImage, err = c.createEphemeralLifecycle(lifecycleImage, opts.Workspace, uid, gid)
+				if err != nil {
+					return err
+				}
+				c.logger.Debugf("Selecting ephemeral lifecycle image %s for build", lifecycleImage.Name())
+				// cleanup the extended lifecycle image when done
+				defer c.docker.ImageRemove(context.Background(), lifecycleImage.Name(), types.ImageRemoveOptions{Force: true})
+			}
+
 			lifecycleOptsLifecycleImage = lifecycleImage.Name()
 			labels, err := lifecycleImage.Labels()
 			if err != nil {
@@ -637,7 +662,17 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 			if len(manifestContents) < 1 {
 				return "", errors.New("missing manifest entries")
 			}
-			return manifestContents[0].Layers[len(manifestContents[0].Layers)-1], nil // we can assume the lifecycle layer is the last in the tar
+			// we can assume the lifecycle layer is the last in the tar, except if the lifecycle has been extended as an ephemeral lifecycle
+			layerOffset := 1
+			if strings.Contains(lifecycleOpts.LifecycleImage, "pack.local/lifecycle") {
+				layerOffset = 2
+			}
+
+			if (len(manifestContents[0].Layers) - layerOffset) < 0 {
+				return "", errors.New("Lifecycle image did not contain expected layer count")
+			}
+
+			return manifestContents[0].Layers[len(manifestContents[0].Layers)-layerOffset], nil
 		}()
 		if err != nil {
 			return "", err
@@ -1316,6 +1351,109 @@ func (c *Client) processExtensions(ctx context.Context, builderImage imgutil.Ima
 	}
 
 	return fetchedExs, orderExtensions, nil
+}
+
+func userAndGroupIDs(img imgutil.Image) (int, int, error) {
+	sUID, err := img.Env(builder.EnvUID)
+	if err != nil {
+		return 0, 0, errors.Wrap(err, "reading builder env variables")
+	} else if sUID == "" {
+		return 0, 0, fmt.Errorf("image %s missing required env var %s", style.Symbol(img.Name()), style.Symbol(builder.EnvUID))
+	}
+
+	sGID, err := img.Env(builder.EnvGID)
+	if err != nil {
+		return 0, 0, errors.Wrap(err, "reading builder env variables")
+	} else if sGID == "" {
+		return 0, 0, fmt.Errorf("image %s missing required env var %s", style.Symbol(img.Name()), style.Symbol(builder.EnvGID))
+	}
+
+	var uid, gid int
+	uid, err = strconv.Atoi(sUID)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to parse %s, value %s should be an integer", style.Symbol(builder.EnvUID), style.Symbol(sUID))
+	}
+
+	gid, err = strconv.Atoi(sGID)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to parse %s, value %s should be an integer", style.Symbol(builder.EnvGID), style.Symbol(sGID))
+	}
+
+	return uid, gid, nil
+}
+
+func workspacePathForOS(os, workspace string) string {
+	if workspace == "" {
+		workspace = "workspace"
+	}
+	if os == "windows" {
+		// note we don't use ephemeral lifecycle when os is windows..
+		return "c:\\" + workspace
+	}
+	return "/" + workspace
+}
+
+func (c *Client) addUserMountpoints(lifecycleImage imgutil.Image, dest string, workspace string, uid int, gid int) (string, error) {
+	// today only workspace needs to be added, easy to add future dirs if required.
+
+	imageOS, err := lifecycleImage.OS()
+	if err != nil {
+		return "", errors.Wrap(err, "getting image OS")
+	}
+	layerWriterFactory, err := layer.NewWriterFactory(imageOS)
+	if err != nil {
+		return "", err
+	}
+
+	workspace = workspacePathForOS(imageOS, workspace)
+
+	fh, err := os.Create(filepath.Join(dest, "dirs.tar"))
+	if err != nil {
+		return "", err
+	}
+	defer fh.Close()
+
+	lw := layerWriterFactory.NewWriter(fh)
+	defer lw.Close()
+
+	for _, path := range []string{workspace} {
+		if err := lw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeDir,
+			Name:     path,
+			Mode:     0755,
+			ModTime:  archive.NormalizedDateTime,
+			Uid:      uid,
+			Gid:      gid,
+		}); err != nil {
+			return "", errors.Wrapf(err, "creating %s mountpoint dir in layer", style.Symbol(path))
+		}
+	}
+
+	return fh.Name(), nil
+}
+
+func (c *Client) createEphemeralLifecycle(lifecycleImage imgutil.Image, workspace string, uid int, gid int) (imgutil.Image, error) {
+	lifecycleImage.Rename(fmt.Sprintf("pack.local/lifecycle/%x:latest", randString(10)))
+
+	tmpDir, err := os.MkdirTemp("", "create-lifecycle-scratch")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(tmpDir)
+	dirsTar, err := c.addUserMountpoints(lifecycleImage, tmpDir, workspace, uid, gid)
+	if err != nil {
+		return nil, err
+	}
+	if err := lifecycleImage.AddLayer(dirsTar); err != nil {
+		return nil, errors.Wrap(err, "adding mountpoint dirs layer")
+	}
+
+	err = lifecycleImage.Save()
+	if err != nil {
+		return nil, err
+	}
+
+	return lifecycleImage, nil
 }
 
 func (c *Client) createEphemeralBuilder(
