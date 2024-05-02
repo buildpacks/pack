@@ -2,6 +2,7 @@ module github.com/buildpacks/pack
 
 require (
 	github.com/BurntSushi/toml v1.3.2
+	github.com/GoogleContainerTools/kaniko v1.21.1
 	github.com/Masterminds/semver v1.5.0
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/apex/log v1.9.0
