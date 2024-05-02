@@ -2176,6 +2176,61 @@ api = "0.2"
 
 								h.AssertContains(t, outBuf.String(), "Builder is trusted but additional modules were added; using the untrusted (5 phases) build flow")
 							})
+
+							when("from project descriptor", func() {
+								it("uses the 5 phases with the lifecycle image", func() {
+									additionalBP := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+										WithAPI: api.MustParse("0.3"),
+										WithInfo: dist.ModuleInfo{
+											ID:      "buildpack.add.1.id",
+											Version: "buildpack.add.1.version",
+										},
+										WithStacks: []dist.Stack{{ID: defaultBuilderStackID}},
+										WithOrder:  nil,
+									})
+
+									h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+										Image:        "some/app",
+										Builder:      defaultBuilderName,
+										Publish:      true,
+										TrustBuilder: func(string) bool { return true },
+										ProjectDescriptor: projectTypes.Descriptor{Build: projectTypes.Build{
+											Buildpacks: []projectTypes.Buildpack{{
+												URI: additionalBP,
+											}},
+										}},
+									}))
+									h.AssertEq(t, fakeLifecycle.Opts.UseCreator, false)
+									h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, fakeLifecycleImage.Name())
+
+									h.AssertContains(t, outBuf.String(), "Builder is trusted but additional modules were added; using the untrusted (5 phases) build flow")
+								})
+
+								when("inline buildpack", func() {
+									it("uses the creator with the provided builder", func() {
+										h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+											Image:        "some/app",
+											Builder:      defaultBuilderName,
+											Publish:      true,
+											TrustBuilder: func(string) bool { return true },
+											ProjectDescriptor: projectTypes.Descriptor{Build: projectTypes.Build{
+												Buildpacks: []projectTypes.Buildpack{{
+													ID:      "buildpack.add.1.id",
+													Version: "buildpack.add.1.version",
+													Script: projectTypes.Script{
+														API:    "0.10",
+														Inline: "echo hello",
+													},
+												}},
+											}},
+										}))
+										h.AssertEq(t, fakeLifecycle.Opts.UseCreator, true)
+
+										args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
+										h.AssertNil(t, args)
+									})
+								})
+							})
 						})
 					})
 
