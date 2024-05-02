@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1714403198384,
+  "lastUpdate": 1714665280565,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -6328,6 +6328,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 50763114745,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc5946137baf881d3aaec90be2ec05db9aad91a1",
+          "message": "Merge pull request #2129 from BarDweller/mountpoints\n\nAdd ephemeral lifecycle image, enabling podman support",
+          "timestamp": "2024-05-02T10:53:10-05:00",
+          "tree_id": "e1cc2f12293dbd17de273e4f4b07221339fc0f40",
+          "url": "https://github.com/buildpacks/pack/commit/dc5946137baf881d3aaec90be2ec05db9aad91a1"
+        },
+        "date": 1714665280043,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4347953772,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 901558354,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 54072517055,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
