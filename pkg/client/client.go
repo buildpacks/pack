@@ -38,6 +38,7 @@ import (
 )
 
 const (
+	// Env variable to set the root folder for manifest list local storage
 	xdgRuntimePath = "XDG_RUNTIME_DIR"
 )
 
