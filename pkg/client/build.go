@@ -445,7 +445,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				}
 				c.logger.Debugf("Selecting ephemeral lifecycle image %s for build", lifecycleImage.Name())
 				// cleanup the extended lifecycle image when done
-				defer c.docker.ImageRemove(context.Background(), lifecycleImage.Name(), types.ImageRemoveOptions{Force: true})
+				defer c.docker.ImageRemove(context.Background(), lifecycleImage.Name(), types.RemoveOptions{Force: true})
 			}
 
 			lifecycleOptsLifecycleImage = lifecycleImage.Name()
