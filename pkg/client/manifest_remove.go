@@ -19,7 +19,7 @@ func (c *Client) DeleteManifest(ctx context.Context, names []string) (errs []err
 	}
 
 	if len(errs) == 0 {
-		c.logger.Info("Successfully deleted manifest lists")
+		c.logger.Info("Successfully deleted manifest list(s) from local storage")
 	}
 	return errs
 }

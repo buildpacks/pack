@@ -66,7 +66,7 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 
 	when("#CreateManifest", func() {
 		var indexRepoName string
-		when("index doesn't exists", func() {
+		when("index doesn't exist", func() {
 			var indexLocalPath string
 
 			when("remote manifest is provided", func() {
@@ -125,7 +125,7 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 							mockIndexFactory.EXPECT().CreateIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(index, nil)
 						})
 
-						it("creates the index adding the manifest and push it to the registry", func() {
+						it("creates the index adding the manifest and pushes it to the registry", func() {
 							err = subject.CreateManifest(
 								context.TODO(),
 								CreateManifestOptions{
@@ -200,7 +200,7 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 				mockIndexFactory.EXPECT().Exists(gomock.Eq(indexRepoName)).AnyTimes().Return(true)
 			})
 
-			it("return an error when index already exists", func() {
+			it("returns an error when index already exists", func() {
 				err = subject.CreateManifest(
 					context.TODO(),
 					CreateManifestOptions{

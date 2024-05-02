@@ -47,7 +47,7 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 	cmdFlags := cmd.Flags()
 
 	cmdFlags.StringVarP(&flags.format, "format", "f", "oci", "Media type to use when saving the image index. Accepted values are: oci, docker")
-	cmdFlags.BoolVar(&flags.insecure, "insecure", false, "When pushing the index to a registry, do not use TLS encryption or certificate verification")
+	cmdFlags.BoolVar(&flags.insecure, "insecure", false, "When pushing the index to a registry, do not use TLS encryption or certificate verification; use with --publish")
 	cmdFlags.BoolVar(&flags.publish, "publish", false, "Publish directly to a registry without saving a local copy")
 
 	AddHelpFlag(cmd, "create")

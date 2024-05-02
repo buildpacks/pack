@@ -3,6 +3,8 @@ package client
 import (
 	"context"
 	"fmt"
+
+	"github.com/buildpacks/pack/internal/style"
 )
 
 type ManifestAddOptions struct {
@@ -25,9 +27,9 @@ func (c *Client) AddManifest(ctx context.Context, opts ManifestAddOptions) (err 
 	}
 
 	if err = idx.SaveDir(); err != nil {
-		return fmt.Errorf("'%s' could not be saved in the local storage: %s", opts.RepoName, err)
+		return fmt.Errorf("failed to save manifest list '%s' to local storage: %w", style.Symbol(opts.RepoName), err)
 	}
 
-	c.logger.Infof("successfully added to index: '%s'\n", opts.RepoName)
+	c.logger.Infof("Successfully added image '%s' to index", style.Symbol(opts.RepoName))
 	return nil
 }

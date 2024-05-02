@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/buildpacks/imgutil"
@@ -60,18 +61,32 @@ func testRemoveManifest(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#RemoveManifest", func() {
+		var (
+			indexPath     string
+			indexRepoName string
+		)
+
 		when("index exists", func() {
 			var digest name.Digest
 			var idx imgutil.ImageIndex
 
 			it.Before(func() {
-				idx, digest = h.RandomCNBIndexAndDigest(t, "some/repo", 1, 1)
-				mockIndexFactory.EXPECT().LoadIndex(gomock.Eq("some/repo"), gomock.Any()).Return(idx, nil)
+				indexRepoName = h.NewRandomIndexRepoName()
+				indexPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+
+				// Initialize the Index with 2 image manifest
+				idx, digest = h.RandomCNBIndexAndDigest(t, indexRepoName, 1, 2)
+				mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
 			})
 
 			it("should remove local index", func() {
-				errs := subject.RemoveManifest(context.TODO(), "some/repo", []string{digest.Name()})
+				errs := subject.RemoveManifest(context.TODO(), indexRepoName, []string{digest.Name()})
 				h.AssertEq(t, len(errs), 0)
+
+				// We expect one manifest after removing one of them
+				index := h.ReadIndexManifest(t, indexPath)
+				h.AssertEq(t, len(index.Manifests), 1)
+				h.AssertNotEq(t, index.Manifests[0].Digest.String(), digest.Name())
 			})
 		})
 	})

@@ -2,11 +2,13 @@ package client
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
@@ -55,50 +57,54 @@ func testInspectManifest(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#InspectManifest", func() {
+		var indexRepoName string
+
 		when("index doesn't exits", func() {
 			it.Before(func() {
+				indexRepoName = h.NewRandomIndexRepoName()
 				mockIndexFactory.
 					EXPECT().
-					FindIndex(gomock.Any(), gomock.Any()).
-					AnyTimes().
-					Return(nil, errors.New("index not found"))
+					FindIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(nil, errors.New("index not found"))
 			})
 
 			it("should return an error when index not found", func() {
-				err = subject.InspectManifest("some/name")
+				err = subject.InspectManifest(indexRepoName)
 				h.AssertEq(t, err.Error(), "index not found")
 			})
 		})
 
 		when("index exists", func() {
+			var indexManifest *v1.IndexManifest
+
 			it.Before(func() {
-				setUpIndex(t, "some/name", *mockIndexFactory)
+				indexRepoName = h.NewRandomIndexRepoName()
+				idx := setUpIndex(t, indexRepoName, *mockIndexFactory)
+				indexManifest, err = idx.IndexManifest()
+				h.AssertNil(t, err)
 			})
 
 			it("should return formatted IndexManifest", func() {
-				err = subject.InspectManifest("some/name")
+				err = subject.InspectManifest(indexRepoName)
 				h.AssertNil(t, err)
-				h.AssertEq(t, stderr.String(), "")
+
+				printedIndex := &v1.IndexManifest{}
+				err = json.Unmarshal(stdout.Bytes(), printedIndex)
+				h.AssertEq(t, indexManifest, printedIndex)
 			})
 		})
 	})
 }
 
-func setUpIndex(t *testing.T, indexRepoName string, mockIndexFactory testmocks.MockIndexFactory) imgutil.ImageIndex {
-	ridx, err := random.Index(1024, 1, 2)
+func setUpIndex(t *testing.T, indexRepoName string, mockIndexFactory testmocks.MockIndexFactory) v1.ImageIndex {
+	randomUnderlyingIndex, err := random.Index(1024, 1, 2)
 	h.AssertNil(t, err)
 
 	options := &imgutil.IndexOptions{
-		BaseIndex: ridx,
+		BaseIndex: randomUnderlyingIndex,
 	}
 	idx, err := imgutil.NewCNBIndex(indexRepoName, *options)
 	h.AssertNil(t, err)
 
-	mockIndexFactory.
-		EXPECT().
-		FindIndex(gomock.Any(), gomock.Any()).
-		AnyTimes().
-		Return(idx, nil)
-
-	return idx
+	mockIndexFactory.EXPECT().FindIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
+	return randomUnderlyingIndex
 }

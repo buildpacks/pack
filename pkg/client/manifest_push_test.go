@@ -60,7 +60,7 @@ func testPushManifest(t *testing.T, when spec.G, it spec.S) {
 				index = h.NewMockImageIndex(t, "some-index", 1, 2)
 				mockIndexFactory.EXPECT().LoadIndex(gomock.Eq("some-index"), gomock.Any()).Return(index, nil)
 			})
-			it("push the index to the registry", func() {
+			it("pushes the index to the registry", func() {
 				err = subject.PushManifest(PushManifestOptions{
 					IndexRepoName: "some-index",
 				})
@@ -74,7 +74,7 @@ func testPushManifest(t *testing.T, when spec.G, it spec.S) {
 				mockIndexFactory.EXPECT().LoadIndex(gomock.Any(), gomock.Any()).Return(nil, errors.New("ErrNoImageOrIndexFoundWithGivenDigest"))
 			})
 
-			it("error a message", func() {
+			it("errors with a message", func() {
 				err = subject.PushManifest(PushManifestOptions{
 					IndexRepoName: "some-index",
 				})

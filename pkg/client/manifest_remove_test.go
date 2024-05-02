@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/buildpacks/imgutil"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/heroku/color"
@@ -59,6 +61,11 @@ func testDeleteManifest(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#DeleteManifest", func() {
+		var (
+			indexPath     string
+			indexRepoName string
+		)
+
 		when("index doesn't exists", func() {
 			it.Before(func() {
 				mockIndexFactory.EXPECT().LoadIndex(gomock.Any(), gomock.Any()).Return(nil, errors.New("index not found locally"))
@@ -70,16 +77,23 @@ func testDeleteManifest(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("index exists", func() {
-			var index *h.MockImageIndex
+			var idx imgutil.ImageIndex
+
 			it.Before(func() {
-				index = h.NewMockImageIndex(t, "some-index", 1, 2)
-				mockIndexFactory.EXPECT().LoadIndex(gomock.Eq("some-index"), gomock.Any()).Return(index, nil)
+				indexRepoName = h.NewRandomIndexRepoName()
+				indexPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+				idx = h.RandomCNBIndex(t, indexRepoName, 1, 1)
+				mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
+
+				// Let's write the index on disk
+				h.AssertNil(t, idx.SaveDir())
 			})
 
 			it("should delete local index", func() {
-				errs := subject.DeleteManifest(context.TODO(), []string{"some-index"})
+				errs := subject.DeleteManifest(context.TODO(), []string{indexRepoName})
 				h.AssertEq(t, len(errs), 0)
-				h.AssertTrue(t, index.DeleteDirCalled)
+				h.AssertContains(t, out.String(), "Successfully deleted manifest list(s) from local storage")
+				h.AssertPathDoesNotExists(t, indexPath)
 			})
 		})
 	})

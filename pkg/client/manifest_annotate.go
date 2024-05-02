@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 
+	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -13,7 +14,7 @@ type ManifestAnnotateOptions struct {
 	// Image index we want to update
 	IndexRepoName string
 
-	// Name of image we wish to update into the image index
+	// Name of image within the index that we wish to update
 	RepoName string
 
 	// 'os' of the image we wish to update in the image index
@@ -38,7 +39,7 @@ func (c *Client) AnnotateManifest(ctx context.Context, opts ManifestAnnotateOpti
 
 	imageRef, err := name.ParseReference(opts.RepoName, name.WeakValidation)
 	if err != nil {
-		return fmt.Errorf("'%s' is not a valid manifest reference: %s", opts.RepoName, err)
+		return fmt.Errorf("'%s' is not a valid image reference: %s", opts.RepoName, err)
 	}
 
 	imageToAnnotate, err := c.imageFetcher.Fetch(ctx, imageRef.Name(), image.FetchOptions{Daemon: false})
@@ -58,29 +59,29 @@ func (c *Client) AnnotateManifest(ctx context.Context, opts ManifestAnnotateOpti
 
 	if opts.OS != "" {
 		if err = idx.SetOS(digest, opts.OS); err != nil {
-			return fmt.Errorf("'%s' setting the 'os': %s", opts.RepoName, err)
+			return fmt.Errorf("failed to set the 'os' for '%s': %w", opts.RepoName, err)
 		}
 	}
 	if opts.OSArch != "" {
 		if err = idx.SetArchitecture(digest, opts.OSArch); err != nil {
-			return fmt.Errorf("'%s' setting the 'arch': %s", opts.RepoName, err)
+			return fmt.Errorf("failed to set the 'arch' for '%s': %w", opts.RepoName, err)
 		}
 	}
 	if opts.OSVariant != "" {
 		if err = idx.SetVariant(digest, opts.OSVariant); err != nil {
-			return fmt.Errorf("'%s' setting the 'os variant': %s", opts.RepoName, err)
+			return fmt.Errorf("failed to set the 'os variant' for '%s': %w", opts.RepoName, err)
 		}
 	}
 	if len(opts.Annotations) != 0 {
 		if err = idx.SetAnnotations(digest, opts.Annotations); err != nil {
-			return fmt.Errorf("'%s' updating the 'annotations': %s", opts.RepoName, err)
+			return fmt.Errorf("failed to set the 'annotations' for '%s': %w", opts.RepoName, err)
 		}
 	}
 
 	if err = idx.SaveDir(); err != nil {
-		return fmt.Errorf("'%s' could not be saved in the local storage: %s", opts.RepoName, err)
+		return fmt.Errorf("failed to save manifest list '%s' to local storage: %w", opts.RepoName, err)
 	}
 
-	c.logger.Infof("successfully annotated image '%s' in index '%s'\n", opts.RepoName, opts.IndexRepoName)
+	c.logger.Infof("Successfully annotated image '%s' in index '%s'", style.Symbol(opts.RepoName), style.Symbol(opts.IndexRepoName))
 	return nil
 }

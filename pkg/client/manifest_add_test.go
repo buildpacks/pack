@@ -5,8 +5,10 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/buildpacks/imgutil"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/heroku/color"
@@ -68,7 +70,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#AddManifest", func() {
-		when("index doesn't exists", func() {
+		when("index doesn't exist", func() {
 			it.Before(func() {
 				mockIndexFactory.EXPECT().LoadIndex(gomock.Any(), gomock.Any()).Return(nil, errors.New("index not found locally"))
 			})
@@ -92,7 +94,11 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("no errors on save", func() {
+				var indexPath string
+
 				it.Before(func() {
+					indexPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+					// Initialize the Index with 2 image manifest
 					idx := h.RandomCNBIndex(t, indexRepoName, 1, 2)
 					mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
 				})
@@ -107,9 +113,13 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 					)
 					h.AssertNil(t, err)
 					h.AssertContains(t, out.String(), "successfully added to index: 'pack/image'")
+
+					// We expect one more manifest to be added
+					index := h.ReadIndexManifest(t, indexPath)
+					h.AssertEq(t, len(index.Manifests), 3)
 				})
 
-				it("error when invalid manifest reference name is used", func() {
+				it("errors when invalid manifest reference name is used", func() {
 					err = subject.AddManifest(
 						context.TODO(),
 						ManifestAddOptions{
@@ -121,7 +131,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 					h.AssertError(t, err, "is not a valid manifest reference")
 				})
 
-				it("error when manifest reference doesn't exist in a registry", func() {
+				it("errors when manifest reference doesn't exist in the registry", func() {
 					err = subject.AddManifest(
 						context.TODO(),
 						ManifestAddOptions{
@@ -145,7 +155,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 						AnyTimes()
 				})
 
-				it("error when manifest couldn't be saved locally", func() {
+				it("errors when the manifest list couldn't be saved locally", func() {
 					err = subject.AddManifest(
 						context.TODO(),
 						ManifestAddOptions{

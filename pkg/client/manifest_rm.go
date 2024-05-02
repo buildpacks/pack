@@ -30,7 +30,7 @@ func (c *Client) RemoveManifest(ctx context.Context, name string, images []strin
 	}
 
 	if len(errs) == 0 {
-		c.logger.Infof("Successfully removed images from index: '%s'", name)
+		c.logger.Infof("Successfully removed image(s) from index: '%s'", name)
 	}
 
 	return errs
