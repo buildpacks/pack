@@ -27,9 +27,9 @@ func (c *Client) AddManifest(ctx context.Context, opts ManifestAddOptions) (err 
 	}
 
 	if err = idx.SaveDir(); err != nil {
-		return fmt.Errorf("failed to save manifest list '%s' to local storage: %w", style.Symbol(opts.RepoName), err)
+		return fmt.Errorf("failed to save manifest list %s to local storage: %w", style.Symbol(opts.RepoName), err)
 	}
 
-	c.logger.Infof("Successfully added image '%s' to index", style.Symbol(opts.RepoName))
+	c.logger.Infof("Successfully added image %s to index", style.Symbol(opts.RepoName))
 	return nil
 }

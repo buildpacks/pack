@@ -25,7 +25,7 @@ func TestAddManifest(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 
-	spec.Run(t, "build", testAddManifest, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "build", testAddManifest, spec.Report(report.Terminal{}))
 }
 
 func testAddManifest(t *testing.T, when spec.G, it spec.S) {
@@ -66,7 +66,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 	})
 	it.After(func() {
 		mockController.Finish()
-		h.AssertNil(t, os.RemoveAll(tmpDir))
+		os.RemoveAll(tmpDir)
 	})
 
 	when("#AddManifest", func() {
@@ -88,64 +88,87 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("index exists", func() {
-			var indexRepoName string
-			it.Before(func() {
-				indexRepoName = h.NewRandomIndexRepoName()
-			})
+			var (
+				indexPath     string
+				indexRepoName string
+			)
 
 			when("no errors on save", func() {
-				var indexPath string
+				when("valid manifest is provided", func() {
+					it.Before(func() {
+						indexRepoName = h.NewRandomIndexRepoName()
+						indexPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+						// Initialize the Index with 2 image manifest
+						idx := h.RandomCNBIndex(t, indexRepoName, 1, 2)
+						h.AssertNil(t, idx.SaveDir())
+						mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
+					})
 
-				it.Before(func() {
-					indexPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
-					// Initialize the Index with 2 image manifest
-					idx := h.RandomCNBIndex(t, indexRepoName, 1, 2)
-					mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
+					it("adds the given image", func() {
+						err = subject.AddManifest(
+							context.TODO(),
+							ManifestAddOptions{
+								IndexRepoName: indexRepoName,
+								RepoName:      "pack/image",
+							},
+						)
+						h.AssertNil(t, err)
+						h.AssertContains(t, out.String(), "Successfully added image 'pack/image' to index")
+
+						// We expect one more manifest to be added
+						index := h.ReadIndexManifest(t, indexPath)
+						h.AssertEq(t, len(index.Manifests), 3)
+					})
 				})
 
-				it("adds the given image", func() {
-					err = subject.AddManifest(
-						context.TODO(),
-						ManifestAddOptions{
-							IndexRepoName: indexRepoName,
-							RepoName:      "pack/image",
-						},
-					)
-					h.AssertNil(t, err)
-					h.AssertContains(t, out.String(), "successfully added to index: 'pack/image'")
+				when("invalid manifest reference name is used", func() {
+					it.Before(func() {
+						indexRepoName = h.NewRandomIndexRepoName()
+						indexPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+						// Initialize the Index with 2 image manifest
+						idx := h.RandomCNBIndex(t, indexRepoName, 1, 2)
+						mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
+					})
 
-					// We expect one more manifest to be added
-					index := h.ReadIndexManifest(t, indexPath)
-					h.AssertEq(t, len(index.Manifests), 3)
+					it("errors a message", func() {
+						err = subject.AddManifest(
+							context.TODO(),
+							ManifestAddOptions{
+								IndexRepoName: indexRepoName,
+								RepoName:      "pack@@image",
+							},
+						)
+						h.AssertNotNil(t, err)
+						h.AssertError(t, err, "is not a valid manifest reference")
+					})
 				})
 
-				it("errors when invalid manifest reference name is used", func() {
-					err = subject.AddManifest(
-						context.TODO(),
-						ManifestAddOptions{
-							IndexRepoName: indexRepoName,
-							RepoName:      "pack@@image",
-						},
-					)
-					h.AssertNotNil(t, err)
-					h.AssertError(t, err, "is not a valid manifest reference")
-				})
+				when("when manifest reference doesn't exist in the registry", func() {
+					it.Before(func() {
+						indexRepoName = h.NewRandomIndexRepoName()
+						indexPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+						// Initialize the Index with 2 image manifest
+						idx := h.RandomCNBIndex(t, indexRepoName, 1, 2)
+						mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
+					})
 
-				it("errors when manifest reference doesn't exist in the registry", func() {
-					err = subject.AddManifest(
-						context.TODO(),
-						ManifestAddOptions{
-							IndexRepoName: indexRepoName,
-							RepoName:      "pack/image-not-found",
-						},
-					)
-					h.AssertNotNil(t, err)
-					h.AssertError(t, err, "does not exist in registry")
+					it("it errors a message", func() {
+						err = subject.AddManifest(
+							context.TODO(),
+							ManifestAddOptions{
+								IndexRepoName: indexRepoName,
+								RepoName:      "pack/image-not-found",
+							},
+						)
+						h.AssertNotNil(t, err)
+						h.AssertError(t, err, "does not exist in registry")
+					})
 				})
 			})
 
 			when("errors on save", func() {
 				it.Before(func() {
+					indexRepoName = h.NewRandomIndexRepoName()
 					cnbIdx := h.NewMockImageIndex(t, indexRepoName, 1, 2)
 					cnbIdx.ErrorOnSave = true
 					mockIndexFactory.
@@ -164,7 +187,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 						},
 					)
 					h.AssertNotNil(t, err)
-					h.AssertError(t, err, "could not be saved in the local storage")
+					h.AssertError(t, err, "failed to save manifest list")
 				})
 			})
 		})
