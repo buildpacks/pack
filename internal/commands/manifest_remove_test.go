@@ -2,11 +2,11 @@ package commands_test
 
 import (
 	"bytes"
-	"errors"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
@@ -37,53 +37,50 @@ func testManifestDeleteCommand(t *testing.T, when spec.G, it spec.S) {
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
-
 		command = commands.ManifestDelete(logger, mockClient)
 	})
-	it("should delete index", func() {
-		prepareDeleteManifest(t, mockClient)
 
-		command.SetArgs([]string{
-			"some-index",
+	when("args are valid", func() {
+		var indexRepoName string
+		it.Before(func() {
+			indexRepoName = h.NewRandomIndexRepoName()
 		})
-		h.AssertNil(t, command.Execute())
-	})
-	it("should have help flag", func() {
-		command.SetArgs([]string{"--help"})
-		h.AssertNilE(t, command.Execute())
-		h.AssertEq(t, outBuf.String(), "")
-	})
-	it("should return an error", func() {
-		prepareDeleteManifest(t, mockClient)
 
-		command.SetArgs([]string{"some-index"})
-		err := command.Execute()
-		h.AssertNil(t, err)
+		when("index exists", func() {
+			when("no extra flags are provided", func() {
+				it.Before(func() {
+					mockClient.EXPECT().DeleteManifest(
+						gomock.Any(),
+						gomock.Eq([]string{indexRepoName}),
+					).Return(nil)
+				})
 
-		err = command.Execute()
-		h.AssertNotNil(t, err)
-	})
-}
+				it("should delete index", func() {
+					command.SetArgs([]string{indexRepoName})
+					h.AssertNil(t, command.Execute())
+				})
+			})
 
-func prepareDeleteManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
-	mockClient.
-		EXPECT().
-		DeleteManifest(
-			gomock.Any(),
-			gomock.Any(),
-		).
-		AnyTimes().
-		After(
-			mockClient.
-				EXPECT().
-				DeleteManifest(
-					gomock.Any(),
-					gomock.Any(),
-				).
-				Times(1).
-				Return(nil),
-		).
-		Return([]error{
-			errors.New("image index doesn't exists"),
+			when("--help", func() {
+				it("should have help flag", func() {
+					command.SetArgs([]string{"--help"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
 		})
+
+		when("index does not exist", func() {
+			it.Before(func() {
+				mockClient.EXPECT().DeleteManifest(
+					gomock.Any(),
+					gomock.Eq([]string{"some-none-existent-index"}),
+				).Return([]error{errors.New("image index doesn't exists")})
+			})
+
+			it("should return an error", func() {
+				command.SetArgs([]string{"some-none-existent-index"})
+				h.AssertNotNil(t, command.Execute())
+			})
+		})
+	})
 }

@@ -36,31 +36,34 @@ func testManifestInspectCommand(t *testing.T, when spec.G, it spec.S) {
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
-
 		command = commands.ManifestInspect(logger, mockClient)
 	})
-	it("should annotate images with given flags", func() {
-		prepareInspectManifest(t, mockClient)
 
-		command.SetArgs([]string{
-			"some-index",
+	when("args are valid", func() {
+		var indexRepoName string
+		it.Before(func() {
+			indexRepoName = h.NewRandomIndexRepoName()
 		})
-		h.AssertNil(t, command.Execute())
+
+		when("index exists", func() {
+			when("no extra flags are provided", func() {
+				it.Before(func() {
+					mockClient.EXPECT().InspectManifest(indexRepoName).Return(nil)
+				})
+
+				it("should call inspect operation with the given index repo name", func() {
+					command.SetArgs([]string{indexRepoName})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+
+			when("--help", func() {
+				it("should have help flag", func() {
+					command.SetArgs([]string{"--help"})
+					h.AssertNilE(t, command.Execute())
+					h.AssertEq(t, outBuf.String(), "")
+				})
+			})
+		})
 	})
-
-	it("should have help flag", func() {
-		prepareInspectManifest(t, mockClient)
-
-		command.SetArgs([]string{"--help"})
-		h.AssertNilE(t, command.Execute())
-		h.AssertEq(t, outBuf.String(), "")
-	})
-}
-
-func prepareInspectManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
-	mockClient.
-		EXPECT().
-		InspectManifest(gomock.Any()).
-		AnyTimes().
-		Return(nil)
 }

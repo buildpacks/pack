@@ -42,69 +42,127 @@ func testManifestCreateCommand(t *testing.T, when spec.G, it spec.S) {
 		command = commands.ManifestCreate(logger, mockClient)
 	})
 
-	when("valid arguments", func() {
+	when("args are valid", func() {
+		var indexRepoName string
 		it.Before(func() {
-			mockClient.
-				EXPECT().
-				CreateManifest(gomock.Any(),
-					client.CreateManifestOptions{
-						IndexRepoName: "some-index",
-						RepoNames:     []string{"some-manifest"},
-						Format:        types.DockerManifestList,
-						Insecure:      true,
-						Publish:       true,
-					},
-				).
-				AnyTimes().
-				Return(nil)
+			indexRepoName = h.NewRandomIndexRepoName()
 		})
 
-		it("should annotate images with given flags", func() {
-			command.SetArgs([]string{
-				"some-index", "some-manifest",
-				"--format", "docker",
-				"--insecure", "--publish",
+		when("index exists", func() {
+			when("no extra flags are provided", func() {
+				it.Before(func() {
+					mockClient.
+						EXPECT().
+						CreateManifest(gomock.Any(),
+							client.CreateManifestOptions{
+								IndexRepoName: indexRepoName,
+								RepoNames:     []string{"some-manifest"},
+								Format:        types.OCIImageIndex,
+								Insecure:      false,
+								Publish:       false,
+							},
+						).Return(nil)
+				})
+
+				it("should call create operation with default configuration", func() {
+					command.SetArgs([]string{indexRepoName, "some-manifest"})
+					h.AssertNil(t, command.Execute())
+				})
 			})
-			h.AssertNil(t, command.Execute())
-			h.AssertEq(t, outBuf.String(), "")
+
+			when("--format is docker", func() {
+				it.Before(func() {
+					mockClient.
+						EXPECT().
+						CreateManifest(gomock.Any(),
+							client.CreateManifestOptions{
+								IndexRepoName: indexRepoName,
+								RepoNames:     []string{"some-manifest"},
+								Format:        types.DockerManifestList,
+								Insecure:      false,
+								Publish:       false,
+							},
+						).Return(nil)
+				})
+
+				it("should call create operation with docker media type", func() {
+					command.SetArgs([]string{indexRepoName, "some-manifest", "-f", "docker"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+
+			when("--publish", func() {
+				when("--insecure", func() {
+					it.Before(func() {
+						mockClient.
+							EXPECT().
+							CreateManifest(gomock.Any(),
+								client.CreateManifestOptions{
+									IndexRepoName: indexRepoName,
+									RepoNames:     []string{"some-manifest"},
+									Format:        types.OCIImageIndex,
+									Insecure:      true,
+									Publish:       true,
+								},
+							).Return(nil)
+					})
+
+					it("should call create operation with publish and insecure", func() {
+						command.SetArgs([]string{indexRepoName, "some-manifest", "--publish", "--insecure"})
+						h.AssertNil(t, command.Execute())
+					})
+				})
+
+				when("no --insecure", func() {
+					it.Before(func() {
+						mockClient.
+							EXPECT().
+							CreateManifest(gomock.Any(),
+								client.CreateManifestOptions{
+									IndexRepoName: indexRepoName,
+									RepoNames:     []string{"some-manifest"},
+									Format:        types.OCIImageIndex,
+									Insecure:      false,
+									Publish:       true,
+								},
+							).Return(nil)
+					})
+
+					it("should call create operation with publish", func() {
+						command.SetArgs([]string{indexRepoName, "some-manifest", "--publish"})
+						h.AssertNil(t, command.Execute())
+					})
+				})
+			})
+
+			when("--help", func() {
+				it("should have help flag", func() {
+					command.SetArgs([]string{"--help"})
+					h.AssertNilE(t, command.Execute())
+					h.AssertEq(t, outBuf.String(), "")
+				})
+			})
 		})
 	})
 
 	when("invalid arguments", func() {
+		when("--insecure is used without publish", func() {
+			it("errors a message", func() {
+				command.SetArgs([]string{"something", "some-manifest", "--insecure"})
+				h.AssertError(t, command.Execute(), "insecure flag requires the publish flag")
+			})
+		})
+
 		when("invalid media type", func() {
 			var format string
 			it.Before(func() {
 				format = "invalid"
-				mockClient.
-					EXPECT().
-					CreateManifest(gomock.Any(), gomock.Any()).
-					AnyTimes().
-					Return(nil)
 			})
 
-			it("error a message", func() {
-				command.SetArgs([]string{
-					"some-index", "some-manifest",
-					"--format", format,
-				})
+			it("errors a message", func() {
+				command.SetArgs([]string{"some-index", "some-manifest", "--format", format})
 				h.AssertNotNil(t, command.Execute())
 			})
-		})
-	})
-
-	when("help is invoke", func() {
-		it.Before(func() {
-			mockClient.
-				EXPECT().
-				CreateManifest(gomock.Any(), gomock.Any()).
-				AnyTimes().
-				Return(nil)
-		})
-
-		it("should have help flag", func() {
-			command.SetArgs([]string{"--help"})
-			h.AssertNilE(t, command.Execute())
-			h.AssertEq(t, outBuf.String(), "")
 		})
 	})
 }

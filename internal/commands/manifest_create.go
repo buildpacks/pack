@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -31,6 +32,10 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 				return err
 			}
 
+			if err = validateCreateManifestFlags(flags); err != nil {
+				return err
+			}
+
 			return pack.CreateManifest(
 				cmd.Context(),
 				client.CreateManifestOptions{
@@ -52,4 +57,11 @@ func ManifestCreate(logger logging.Logger, pack PackClient) *cobra.Command {
 
 	AddHelpFlag(cmd, "create")
 	return cmd
+}
+
+func validateCreateManifestFlags(flags ManifestCreateFlags) error {
+	if flags.insecure && !flags.publish {
+		return fmt.Errorf("insecure flag requires the publish flag")
+	}
+	return nil
 }

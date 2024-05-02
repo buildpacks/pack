@@ -12,6 +12,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
+	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -40,23 +41,36 @@ func testManifestAddCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("args are valid", func() {
+		var indexRepoName string
 		it.Before(func() {
-			prepareAddManifest(t, mockClient)
+			indexRepoName = h.NewRandomIndexRepoName()
 		})
 
-		it("should add image with current platform specs", func() {
-			command.SetArgs([]string{"some-index", "busybox:1.36-musl"})
-			err := command.Execute()
-			h.AssertNil(t, err)
-			h.AssertEq(t, outBuf.String(), "")
-		})
+		when("index exists", func() {
+			when("no extra flag is provided", func() {
+				it.Before(func() {
+					mockClient.EXPECT().AddManifest(
+						gomock.Any(),
+						gomock.Eq(client.ManifestAddOptions{
+							IndexRepoName: indexRepoName,
+							RepoName:      "busybox:1.36-musl",
+						}),
+					).Return(nil)
+				})
 
-		it("should have help flag", func() {
-			prepareAnnotateManifest(t, mockClient)
+				it("should call add manifest operation with the given arguments", func() {
+					command.SetArgs([]string{indexRepoName, "busybox:1.36-musl"})
+					err := command.Execute()
+					h.AssertNil(t, err)
+				})
+			})
 
-			command.SetArgs([]string{"--help"})
-			h.AssertNilE(t, command.Execute())
-			h.AssertEq(t, outBuf.String(), "")
+			when("--help", func() {
+				it("should have help flag", func() {
+					command.SetArgs([]string{"--help"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
 		})
 	})
 
@@ -68,15 +82,4 @@ func testManifestAddCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertError(t, err, "accepts 2 arg(s), received 1")
 		})
 	})
-}
-
-func prepareAddManifest(_ *testing.T, mockClient *testmocks.MockPackClient) {
-	mockClient.
-		EXPECT().
-		AddManifest(
-			gomock.Any(),
-			gomock.Any(),
-		).
-		AnyTimes().
-		Return(nil)
 }
