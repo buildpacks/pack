@@ -10,17 +10,20 @@ import (
 	"testing"
 
 	"github.com/buildpacks/imgutil"
-
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/heroku/color"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
+	"github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -42,7 +45,7 @@ func TestFetcher(t *testing.T) {
 	var err error
 	docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
-	spec.Run(t, "Fetcher", testFetcher, spec.Report(report.Terminal{}))
+	spec.Run(t, "Fetcher", testFetcher, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testFetcher(t *testing.T, when spec.G, it spec.S) {
@@ -57,7 +60,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		repo = "some-org/" + h.RandString(10)
 		repoName = registryConfig.RepoName(repo)
-		imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker)
+		imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose()), docker)
 
 		info, err := docker.Info(context.TODO())
 		h.AssertNil(t, err)
@@ -400,6 +403,114 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 					// only manifest and config was written
 					h.AssertBlobsLen(t, imagePath, 2)
+				})
+			})
+		})
+	})
+
+	when("#CheckReadAccess", func() {
+		var daemon bool
+
+		when("Daemon is true", func() {
+			it.Before(func() {
+				daemon = true
+			})
+
+			when("an error is thrown by the daemon", func() {
+				it.Before(func() {
+					mockController := gomock.NewController(t)
+					mockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
+					mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{}, errors.New("something wrong happened"))
+					imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose()), mockDockerClient)
+				})
+				when("PullNever", func() {
+					it("read access must be false", func() {
+						h.AssertFalse(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullNever}))
+						h.AssertContains(t, outBuf.String(), "failed reading image 'pack.test/dummy' from the daemon")
+					})
+				})
+
+				when("PullIfNotPresent", func() {
+					it("read access must be false", func() {
+						h.AssertFalse(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullIfNotPresent}))
+						h.AssertContains(t, outBuf.String(), "failed reading image 'pack.test/dummy' from the daemon")
+					})
+				})
+			})
+
+			when("image exists only in the daemon", func() {
+				it.Before(func() {
+					img, err := local.NewImage("pack.test/dummy", docker)
+					h.AssertNil(t, err)
+					h.AssertNil(t, img.Save())
+				})
+				when("PullAlways", func() {
+					it("read access must be false", func() {
+						h.AssertFalse(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullAlways}))
+					})
+				})
+
+				when("PullNever", func() {
+					it("read access must be true", func() {
+						h.AssertTrue(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullNever}))
+					})
+				})
+
+				when("PullIfNotPresent", func() {
+					it("read access must be true", func() {
+						h.AssertTrue(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullIfNotPresent}))
+					})
+				})
+			})
+
+			when("image doesn't exist in the daemon but in remote", func() {
+				it.Before(func() {
+					img, err := remote.NewImage(repoName, authn.DefaultKeychain)
+					h.AssertNil(t, err)
+					h.AssertNil(t, img.Save())
+				})
+				when("PullAlways", func() {
+					it("read access must be true", func() {
+						h.AssertTrue(t, imageFetcher.CheckReadAccess(repoName, image.FetchOptions{Daemon: daemon, PullPolicy: image.PullAlways}))
+					})
+				})
+
+				when("PullNever", func() {
+					it("read access must be false", func() {
+						h.AssertFalse(t, imageFetcher.CheckReadAccess(repoName, image.FetchOptions{Daemon: daemon, PullPolicy: image.PullNever}))
+					})
+				})
+
+				when("PullIfNotPresent", func() {
+					it("read access must be true", func() {
+						h.AssertTrue(t, imageFetcher.CheckReadAccess(repoName, image.FetchOptions{Daemon: daemon, PullPolicy: image.PullIfNotPresent}))
+					})
+				})
+			})
+		})
+
+		when("Daemon is false", func() {
+			it.Before(func() {
+				daemon = false
+			})
+
+			when("remote image doesn't exists", func() {
+				it("fails when checking dummy image", func() {
+					h.AssertFalse(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon}))
+					h.AssertContains(t, outBuf.String(), "CheckReadAccess failed for the run image pack.test/dummy")
+				})
+			})
+
+			when("remote image exists", func() {
+				it.Before(func() {
+					img, err := remote.NewImage(repoName, authn.DefaultKeychain)
+					h.AssertNil(t, err)
+					h.AssertNil(t, img.Save())
+				})
+
+				it("read access is valid", func() {
+					h.AssertTrue(t, imageFetcher.CheckReadAccess(repoName, image.FetchOptions{Daemon: daemon}))
+					h.AssertContains(t, outBuf.String(), fmt.Sprintf("CheckReadAccess succeeded for the run image %s", repoName))
 				})
 			})
 		})
