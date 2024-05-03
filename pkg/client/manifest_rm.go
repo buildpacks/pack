@@ -1,37 +1,39 @@
 package client
 
 import (
-	"context"
+	"errors"
 	"fmt"
 
 	gccrName "github.com/google/go-containerregistry/pkg/name"
 )
 
 // RemoveManifest implements commands.PackClient.
-func (c *Client) RemoveManifest(ctx context.Context, name string, images []string) (errs []error) {
+func (c *Client) RemoveManifest(name string, images []string) error {
+	var allErrors error
+
 	imgIndex, err := c.indexFactory.LoadIndex(name)
 	if err != nil {
-		return append(errs, err)
+		return err
 	}
 
 	for _, image := range images {
 		ref, err := gccrName.NewDigest(image, gccrName.WeakValidation, gccrName.Insecure)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("invalid instance '%s': %w", image, err))
+			allErrors = errors.Join(allErrors, fmt.Errorf("invalid instance '%s': %w", image, err))
 		}
 
 		if err = imgIndex.RemoveManifest(ref); err != nil {
-			errs = append(errs, err)
+			allErrors = errors.Join(allErrors, err)
 		}
 
 		if err = imgIndex.SaveDir(); err != nil {
-			errs = append(errs, err)
+			allErrors = errors.Join(allErrors, err)
 		}
 	}
 
-	if len(errs) == 0 {
+	if allErrors == nil {
 		c.logger.Infof("Successfully removed image(s) from index: '%s'", name)
 	}
 
-	return errs
+	return allErrors
 }

@@ -36,8 +36,8 @@ type PackClient interface {
 	CreateManifest(ctx context.Context, opts client.CreateManifestOptions) error
 	AnnotateManifest(ctx context.Context, opts client.ManifestAnnotateOptions) error
 	AddManifest(ctx context.Context, opts client.ManifestAddOptions) error
-	DeleteManifest(ctx context.Context, name []string) []error
-	RemoveManifest(ctx context.Context, name string, images []string) []error
+	DeleteManifest(name []string) error
+	RemoveManifest(name string, images []string) error
 	PushManifest(client.PushManifestOptions) error
 	InspectManifest(string) error
 }

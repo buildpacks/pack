@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/pkg/logging"
@@ -15,33 +14,13 @@ func ManifestDelete(logger logging.Logger, pack PackClient) *cobra.Command {
 		Short:   "Remove one or more manifest lists from local storage",
 		Example: `pack manifest remove my-image-index`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			return NewErrors(pack.DeleteManifest(cmd.Context(), args)).Error()
+			if err := pack.DeleteManifest(args); err != nil {
+				return err
+			}
+			return nil
 		}),
 	}
 
 	AddHelpFlag(cmd, "remove")
 	return cmd
-}
-
-type Errors struct {
-	errs []error
-}
-
-func NewErrors(errs []error) Errors {
-	return Errors{
-		errs: errs,
-	}
-}
-
-func (e Errors) Error() error {
-	var errMsg string
-	if len(e.errs) == 0 {
-		return nil
-	}
-
-	for _, err := range e.errs {
-		errMsg += err.Error()
-	}
-
-	return errors.New(errMsg)
 }

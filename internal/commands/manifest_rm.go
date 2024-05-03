@@ -17,7 +17,10 @@ func ManifestRemove(logger logging.Logger, pack PackClient) *cobra.Command {
 Users must pass the digest of the image in order to delete it from the index.
 To discard __all__ the images in an index and the index itself, use 'manifest delete'.`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			return NewErrors(pack.RemoveManifest(cmd.Context(), args[0], args[1:])).Error()
+			if err := pack.RemoveManifest(args[0], args[1:]); err != nil {
+				return err
+			}
+			return nil
 		}),
 	}
 

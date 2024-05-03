@@ -50,7 +50,6 @@ func testManifestDeleteCommand(t *testing.T, when spec.G, it spec.S) {
 			when("no extra flags are provided", func() {
 				it.Before(func() {
 					mockClient.EXPECT().DeleteManifest(
-						gomock.Any(),
 						gomock.Eq([]string{indexRepoName}),
 					).Return(nil)
 				})
@@ -72,9 +71,8 @@ func testManifestDeleteCommand(t *testing.T, when spec.G, it spec.S) {
 		when("index does not exist", func() {
 			it.Before(func() {
 				mockClient.EXPECT().DeleteManifest(
-					gomock.Any(),
 					gomock.Eq([]string{"some-none-existent-index"}),
-				).Return([]error{errors.New("image index doesn't exists")})
+				).Return(errors.New("image index doesn't exists"))
 			})
 
 			it("should return an error", func() {

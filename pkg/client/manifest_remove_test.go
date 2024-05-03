@@ -2,7 +2,6 @@ package client
 
 import (
 	"bytes"
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -71,8 +70,8 @@ func testDeleteManifest(t *testing.T, when spec.G, it spec.S) {
 				mockIndexFactory.EXPECT().LoadIndex(gomock.Any(), gomock.Any()).Return(nil, errors.New("index not found locally"))
 			})
 			it("should return an error when index is already deleted", func() {
-				errs := subject.DeleteManifest(context.TODO(), []string{"pack/none-existent-index"})
-				h.AssertNotEq(t, len(errs), 0)
+				err = subject.DeleteManifest([]string{"pack/none-existent-index"})
+				h.AssertNotNil(t, err)
 			})
 		})
 
@@ -90,8 +89,8 @@ func testDeleteManifest(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should delete local index", func() {
-				errs := subject.DeleteManifest(context.TODO(), []string{indexRepoName})
-				h.AssertEq(t, len(errs), 0)
+				err = subject.DeleteManifest([]string{indexRepoName})
+				h.AssertNil(t, err)
 				h.AssertContains(t, out.String(), "Successfully deleted manifest list(s) from local storage")
 				h.AssertPathDoesNotExists(t, indexPath)
 			})

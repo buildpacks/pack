@@ -2,7 +2,6 @@ package client
 
 import (
 	"bytes"
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -80,8 +79,8 @@ func testRemoveManifest(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should remove local index", func() {
-				errs := subject.RemoveManifest(context.TODO(), indexRepoName, []string{digest.Name()})
-				h.AssertEq(t, len(errs), 0)
+				err = subject.RemoveManifest(indexRepoName, []string{digest.Name()})
+				h.AssertNil(t, err)
 
 				// We expect one manifest after removing one of them
 				index := h.ReadIndexManifest(t, indexPath)

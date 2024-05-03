@@ -107,17 +107,17 @@ func (mr *MockPackClientMockRecorder) CreateManifest(arg0, arg1 interface{}) *go
 }
 
 // DeleteManifest mocks base method.
-func (m *MockPackClient) DeleteManifest(arg0 context.Context, arg1 []string) []error {
+func (m *MockPackClient) DeleteManifest(arg0 []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteManifest", arg0, arg1)
-	ret0, _ := ret[0].([]error)
+	ret := m.ctrl.Call(m, "DeleteManifest", arg0)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteManifest indicates an expected call of DeleteManifest.
-func (mr *MockPackClientMockRecorder) DeleteManifest(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockPackClientMockRecorder) DeleteManifest(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteManifest", reflect.TypeOf((*MockPackClient)(nil).DeleteManifest), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteManifest", reflect.TypeOf((*MockPackClient)(nil).DeleteManifest), arg0)
 }
 
 // DownloadSBOM mocks base method.
@@ -312,17 +312,17 @@ func (mr *MockPackClientMockRecorder) RegisterBuildpack(arg0, arg1 interface{}) 
 }
 
 // RemoveManifest mocks base method.
-func (m *MockPackClient) RemoveManifest(arg0 context.Context, arg1 string, arg2 []string) []error {
+func (m *MockPackClient) RemoveManifest(arg0 string, arg1 []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveManifest", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]error)
+	ret := m.ctrl.Call(m, "RemoveManifest", arg0, arg1)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RemoveManifest indicates an expected call of RemoveManifest.
-func (mr *MockPackClientMockRecorder) RemoveManifest(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockPackClientMockRecorder) RemoveManifest(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveManifest", reflect.TypeOf((*MockPackClient)(nil).RemoveManifest), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveManifest", reflect.TypeOf((*MockPackClient)(nil).RemoveManifest), arg0, arg1)
 }
 
 // YankBuildpack mocks base method.
