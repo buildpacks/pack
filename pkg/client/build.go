@@ -492,9 +492,6 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
 
 	if len(bldr.OrderExtensions()) > 0 || len(ephemeralBuilder.OrderExtensions()) > 0 {
-		if !c.experimental {
-			return fmt.Errorf("experimental features must be enabled when builder contains image extensions")
-		}
 		if builderOS == "windows" {
 			return fmt.Errorf("builder contains image extensions which are not supported for Windows builds")
 		}
