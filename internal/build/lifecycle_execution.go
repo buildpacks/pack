@@ -444,7 +444,7 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 		If(l.hasExtensions(), WithPostContainerRunOperations(
 			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.tmpDir))),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
-			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.tmpDir))),
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated"), l.tmpDir))),
 		envOp,
 	)
 
@@ -890,19 +890,21 @@ func (l *LifecycleExecution) hasExtensionsForBuild() bool {
 	if !l.hasExtensions() {
 		return false
 	}
-	// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
-	fis, err := os.ReadDir(filepath.Join(l.tmpDir, "build"))
+	generatedDir := filepath.Join(l.tmpDir, "generated")
+	fis, err := os.ReadDir(filepath.Join(generatedDir, "build"))
 	if err == nil && len(fis) > 0 {
+		// on older platforms, we need to find a file such as <layers>/generated/build/<buildpack-id>/Dockerfile
+		// on newer platforms, <layers>/generated/build doesn't exist
 		return true
 	}
-	// on newer platforms, we need to find a file such as <layers>/generated/<buildpack-id>/Dockerfile.build
-	fis, err = os.ReadDir(l.tmpDir)
+	// on newer platforms, we need to find a file such as <layers>/generated/<buildpack-id>/build.Dockerfile
+	fis, err = os.ReadDir(generatedDir)
 	if err != nil {
 		l.logger.Warnf("failed to read generated directory, assuming no build image extensions: %s", err)
 		return false
 	}
 	for _, fi := range fis {
-		if _, err := os.Stat(filepath.Join(l.tmpDir, fi.Name(), "Dockerfile.build")); err == nil {
+		if _, err := os.Stat(filepath.Join(generatedDir, fi.Name(), "build.Dockerfile")); err == nil {
 			return true
 		}
 	}

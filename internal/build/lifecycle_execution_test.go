@@ -137,14 +137,12 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		// construct fixtures for extensions
 		if extensionsForBuild {
 			if platformAPI.LessThan("0.13") {
-				// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
-				err = os.MkdirAll(filepath.Join(tmpDir, "build", "some-buildpack-id"), 0755)
+				err = os.MkdirAll(filepath.Join(tmpDir, "generated", "build", "some-buildpack-id"), 0755)
 				h.AssertNil(t, err)
 			} else {
-				// the directory is <layers>/generated/some-buildpack-id inside the build container, but `CopyOutTo` only copies the directory
-				err = os.MkdirAll(filepath.Join(tmpDir, "some-buildpack-id"), 0755)
+				err = os.MkdirAll(filepath.Join(tmpDir, "generated", "some-buildpack-id"), 0755)
 				h.AssertNil(t, err)
-				_, err = os.Create(filepath.Join(tmpDir, "some-buildpack-id", "Dockerfile.build"))
+				_, err = os.Create(filepath.Join(tmpDir, "generated", "some-buildpack-id", "build.Dockerfile"))
 				h.AssertNil(t, err)
 			}
 		}
