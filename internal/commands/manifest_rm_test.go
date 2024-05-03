@@ -37,56 +37,59 @@ func testManifestRemoveCommand(t *testing.T, when spec.G, it spec.S) {
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
-
 		command = commands.ManifestRemove(logger, mockClient)
 	})
-	it("should remove index", func() {
-		prepareRemoveManifest(t, mockClient)
-
-		command.SetArgs([]string{
-			"some-index",
-			"some-image",
+	when("args are valid", func() {
+		var indexRepoName string
+		it.Before(func() {
+			indexRepoName = h.NewRandomIndexRepoName()
 		})
-		h.AssertNil(t, command.Execute())
-	})
-	it("should return an error", func() {
-		prepareRemoveManifest(t, mockClient)
 
-		command.SetArgs([]string{"some-index", "some-image"})
-		err := command.Execute()
-		h.AssertNil(t, err)
+		when("index exists", func() {
+			when("no extra flags are provided", func() {
+				it.Before(func() {
+					mockClient.EXPECT().RemoveManifest(
+						gomock.Any(),
+						gomock.Eq(indexRepoName),
+						gomock.Eq([]string{"some-image"}),
+					).Return(nil)
+				})
+				it("should remove index", func() {
+					command.SetArgs([]string{indexRepoName, "some-image"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
 
-		err = command.Execute()
-		h.AssertNotNil(t, err)
-	})
-	it("should have help flag", func() {
-		command.SetArgs([]string{"--help"})
-		h.AssertNilE(t, command.Execute())
-		h.AssertEq(t, outBuf.String(), "")
-	})
-}
-
-func prepareRemoveManifest(t *testing.T, mockClient *testmocks.MockPackClient) {
-	mockClient.
-		EXPECT().
-		RemoveManifest(
-			gomock.Any(),
-			gomock.Any(),
-			gomock.Any(),
-		).
-		AnyTimes().
-		After(
-			mockClient.
-				EXPECT().
-				RemoveManifest(
-					gomock.Any(),
-					gomock.Any(),
-					gomock.Any(),
-				).
-				Times(1).
-				Return(nil),
-		).
-		Return([]error{
-			errors.New("image doesn't exists"),
+			when("--help", func() {
+				it("should have help flag", func() {
+					command.SetArgs([]string{"--help"})
+					h.AssertNil(t, command.Execute())
+					h.AssertEq(t, outBuf.String(), "")
+				})
+			})
 		})
+
+		when("index does not exist", func() {
+			it.Before(func() {
+				mockClient.EXPECT().RemoveManifest(
+					gomock.Any(),
+					gomock.Eq(indexRepoName),
+					gomock.Eq([]string{"some-image"}),
+				).Return([]error{errors.New("image index doesn't exists")})
+			})
+			it("should return an error", func() {
+				command.SetArgs([]string{indexRepoName, "some-image"})
+				h.AssertNotNil(t, command.Execute())
+			})
+		})
+	})
+
+	when("args are invalid", func() {
+		it("errors when missing mandatory arguments", func() {
+			command.SetArgs([]string{"some-index"})
+			err := command.Execute()
+			h.AssertNotNil(t, err)
+			h.AssertError(t, err, "requires at least 2 arg(s), only received 1")
+		})
+	})
 }
