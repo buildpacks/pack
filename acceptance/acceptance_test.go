@@ -834,7 +834,7 @@ func testAcceptance(
 							launchCacheVolume.Clear(context.TODO())
 						})
 
-						when("builder is untrusted", func() {
+						when("there are build image extensions", func() {
 							it("uses the 5 phases, and runs the extender (build)", func() {
 								origLifecycle := lifecycle.Image()
 
