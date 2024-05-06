@@ -437,5 +437,4 @@ func stripTopDirAndWrite(layerReader io.ReadCloser, outputPath string) (*OS.File
 	}
 
 	return file, nil
-
 }
