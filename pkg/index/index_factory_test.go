@@ -109,7 +109,7 @@ func testIndexFactory(t *testing.T, when spec.G, it spec.S) {
 				indexRepoName = h.NewRandomIndexRepoName()
 			})
 
-			it("errors a message", func() {
+			it("errors with a message", func() {
 				_, err = indexFactory.LoadIndex(indexRepoName)
 				h.AssertError(t, err, fmt.Sprintf("Image: '%s' not found", indexRepoName))
 			})
@@ -137,7 +137,7 @@ func testIndexFactory(t *testing.T, when spec.G, it spec.S) {
 				indexRepoName = h.NewRandomIndexRepoName()
 			})
 
-			it("errors a message", func() {
+			it("errors with a message", func() {
 				_, err = indexFactory.FetchIndex(indexRepoName, imgutil.FromBaseIndex(indexRepoName))
 				h.AssertNotNil(t, err)
 			})

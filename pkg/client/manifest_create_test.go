@@ -92,19 +92,38 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 							indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
 						})
 
-						it("creates the index adding the manifest", func() {
-							err = subject.CreateManifest(
-								context.TODO(),
-								CreateManifestOptions{
-									IndexRepoName: indexRepoName,
-									RepoNames:     []string{"busybox:1.36-musl"},
-									Format:        types.OCIImageIndex,
-								},
-							)
-							h.AssertNil(t, err)
-							index := h.ReadIndexManifest(t, indexLocalPath)
-							h.AssertEq(t, len(index.Manifests), 1)
-							h.AssertEq(t, index.MediaType, types.OCIImageIndex)
+						when("no media type is provided", func() {
+							it("creates the index adding the manifest", func() {
+								err = subject.CreateManifest(
+									context.TODO(),
+									CreateManifestOptions{
+										IndexRepoName: indexRepoName,
+										RepoNames:     []string{"busybox:1.36-musl"},
+									},
+								)
+								h.AssertNil(t, err)
+								index := h.ReadIndexManifest(t, indexLocalPath)
+								h.AssertEq(t, len(index.Manifests), 1)
+								// By default uses OCI media-types
+								h.AssertEq(t, index.MediaType, types.OCIImageIndex)
+							})
+						})
+
+						when("media type is provided", func() {
+							it("creates the index adding the manifest", func() {
+								err = subject.CreateManifest(
+									context.TODO(),
+									CreateManifestOptions{
+										IndexRepoName: indexRepoName,
+										RepoNames:     []string{"busybox:1.36-musl"},
+										Format:        types.DockerManifestList,
+									},
+								)
+								h.AssertNil(t, err)
+								index := h.ReadIndexManifest(t, indexLocalPath)
+								h.AssertEq(t, len(index.Manifests), 1)
+								h.AssertEq(t, index.MediaType, types.DockerManifestList)
+							})
 						})
 					})
 				})
@@ -131,7 +150,6 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 								CreateManifestOptions{
 									IndexRepoName: indexRepoName,
 									RepoNames:     []string{"busybox:1.36-musl"},
-									Format:        types.OCIImageIndex,
 									Publish:       true,
 								},
 							)

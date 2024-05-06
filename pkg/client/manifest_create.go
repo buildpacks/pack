@@ -73,6 +73,9 @@ func parseOptsToIndexOptions(opts CreateManifestOptions) (idxOpts []imgutil.Inde
 			imgutil.WithInsecure(),
 		}
 	}
+	if opts.Format == "" {
+		opts.Format = types.OCIImageIndex
+	}
 	return []imgutil.IndexOption{
 		imgutil.WithMediaType(opts.Format),
 	}
