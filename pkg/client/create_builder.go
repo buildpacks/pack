@@ -1,8 +1,12 @@
 package client
 
 import (
+	"archive/tar"
 	"context"
 	"fmt"
+	"io"
+	OS "os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -212,6 +216,43 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 	var uri string
 	var err error
 	switch {
+	case buildpack.HasDockerLocator(config.URI):
+		var lifecycleImage imgutil.Image
+		imageName := buildpack.ParsePackageLocator(config.URI)
+		c.logger.Debugf("Downloading lifecycle image: %s", style.Symbol(imageName))
+
+		lifecycleImage, err = c.imageFetcher.Fetch(ctx, imageName, image.FetchOptions{Daemon: false})
+		if err != nil {
+			return nil, err
+		}
+
+		lifecyclePath := filepath.Join(relativeBaseDir, "lifecycle.tar")
+		layers, err := lifecycleImage.UnderlyingImage().Layers()
+		if err != nil {
+			return nil, err
+		}
+
+		// Assume the last layer has the lifecycle
+		lifecycleLayer := layers[len(layers)-1]
+
+		layerReader, err := lifecycleLayer.Uncompressed()
+		if err != nil {
+			return nil, err
+		}
+		defer layerReader.Close()
+
+		file, err := stripTopDirAndWrite(layerReader, lifecyclePath)
+		if err != nil {
+			return nil, err
+		}
+
+		defer file.Close()
+		// defer OS.Remove(lifecyclePath)
+
+		uri, err = paths.FilePathToURI(lifecyclePath, "")
+		if err != nil {
+			return nil, err
+		}
 	case config.Version != "":
 		v, err := semver.NewVersion(config.Version)
 		if err != nil {
@@ -360,4 +401,41 @@ func uriFromLifecycleVersion(version semver.Version, os string, architecture str
 	}
 
 	return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+linux.%s.tgz", version.String(), version.String(), arch)
+}
+
+func stripTopDirAndWrite(layerReader io.ReadCloser, outputPath string) (*OS.File, error) {
+	file, err := OS.Create(outputPath)
+	if err != nil {
+		return nil, err
+	}
+
+	tarWriter := tar.NewWriter(file)
+	tarReader := tar.NewReader(layerReader)
+	tarReader.Next()
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		pathSep := string(OS.PathSeparator)
+		cnbPrefix := fmt.Sprintf("%scnb%s", pathSep, pathSep)
+		newHeader := *header
+		newHeader.Name = strings.TrimPrefix(header.Name, cnbPrefix)
+
+		if err := tarWriter.WriteHeader(&newHeader); err != nil {
+			return nil, err
+		}
+
+		if _, err := io.Copy(tarWriter, tarReader); err != nil {
+			return nil, err
+		}
+	}
+
+	return file, nil
+
 }
