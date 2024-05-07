@@ -59,29 +59,29 @@ func (c *Client) AnnotateManifest(ctx context.Context, opts ManifestAnnotateOpti
 
 	if opts.OS != "" {
 		if err = idx.SetOS(digest, opts.OS); err != nil {
-			return fmt.Errorf("failed to set the 'os' for '%s': %w", opts.RepoName, err)
+			return fmt.Errorf("failed to set the 'os' for %s: %w", style.Symbol(opts.RepoName), err)
 		}
 	}
 	if opts.OSArch != "" {
 		if err = idx.SetArchitecture(digest, opts.OSArch); err != nil {
-			return fmt.Errorf("failed to set the 'arch' for '%s': %w", opts.RepoName, err)
+			return fmt.Errorf("failed to set the 'arch' for %s: %w", style.Symbol(opts.RepoName), err)
 		}
 	}
 	if opts.OSVariant != "" {
 		if err = idx.SetVariant(digest, opts.OSVariant); err != nil {
-			return fmt.Errorf("failed to set the 'os variant' for '%s': %w", opts.RepoName, err)
+			return fmt.Errorf("failed to set the 'os variant' for %s: %w", style.Symbol(opts.RepoName), err)
 		}
 	}
 	if len(opts.Annotations) != 0 {
 		if err = idx.SetAnnotations(digest, opts.Annotations); err != nil {
-			return fmt.Errorf("failed to set the 'annotations' for '%s': %w", opts.RepoName, err)
+			return fmt.Errorf("failed to set the 'annotations' for %s: %w", style.Symbol(opts.RepoName), err)
 		}
 	}
 
 	if err = idx.SaveDir(); err != nil {
-		return fmt.Errorf("failed to save manifest list '%s' to local storage: %w", opts.RepoName, err)
+		return fmt.Errorf("failed to save manifest list %s to local storage: %w", style.Symbol(opts.RepoName), err)
 	}
 
-	c.logger.Infof("Successfully annotated image '%s' in index '%s'", style.Symbol(opts.RepoName), style.Symbol(opts.IndexRepoName))
+	c.logger.Infof("Successfully annotated image %s in index %s", style.Symbol(opts.RepoName), style.Symbol(opts.IndexRepoName))
 	return nil
 }

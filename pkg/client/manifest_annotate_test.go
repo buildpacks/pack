@@ -26,7 +26,7 @@ const invalidDigest = "sha256:d4707523ce6e12afdbe9a3be5ad69027150a834870ca0933ba
 func TestAnnotateManifest(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "build", testAnnotateManifest, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "build", testAnnotateManifest, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
@@ -97,7 +97,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 						indexRepoName = h.NewRandomIndexRepoName()
 						idx, digest = h.RandomCNBIndexAndDigest(t, indexRepoName, 1, 2)
 						mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
-						fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, digest)
+						fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, "pack/image", digest)
 						fakeImageFetcher.RemoteImages[digest.Name()] = fakeImage
 					})
 
@@ -122,7 +122,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 						indexRepoName = h.NewRandomIndexRepoName()
 						idx, digest = h.RandomCNBIndexAndDigest(t, indexRepoName, 1, 2)
 						mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
-						fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, digest)
+						fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, "pack/image", digest)
 						fakeImageFetcher.RemoteImages[digest.Name()] = fakeImage
 					})
 
@@ -147,7 +147,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 						indexRepoName = h.NewRandomIndexRepoName()
 						idx, digest = h.RandomCNBIndexAndDigest(t, indexRepoName, 1, 2)
 						mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
-						fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, digest)
+						fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, "pack/image", digest)
 						fakeImageFetcher.RemoteImages[digest.Name()] = fakeImage
 					})
 
@@ -172,7 +172,7 @@ func testAnnotateManifest(t *testing.T, when spec.G, it spec.S) {
 						indexRepoName = h.NewRandomIndexRepoName()
 						idx, digest = h.RandomCNBIndexAndDigest(t, indexRepoName, 1, 2)
 						mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
-						fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, digest)
+						fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, "pack/image", digest)
 						fakeImageFetcher.RemoteImages[digest.Name()] = fakeImage
 					})
 

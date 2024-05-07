@@ -54,15 +54,15 @@ func (c *Client) CreateManifest(ctx context.Context, opts CreateManifestOptions)
 			return err
 		}
 
-		c.logger.Infof("Successfully pushed manifest list '%s' to registry", style.Symbol(opts.IndexRepoName))
+		c.logger.Infof("Successfully pushed manifest list %s to registry", style.Symbol(opts.IndexRepoName))
 		return nil
 	}
 
 	if err = index.SaveDir(); err != nil {
-		return fmt.Errorf("manifest list '%s' could not be saved to local storage: %w", style.Symbol(opts.IndexRepoName), err)
+		return fmt.Errorf("manifest list %s could not be saved to local storage: %w", style.Symbol(opts.IndexRepoName), err)
 	}
 
-	c.logger.Infof("Successfully created manifest list '%s'", style.Symbol(opts.IndexRepoName))
+	c.logger.Infof("Successfully created manifest list %s", style.Symbol(opts.IndexRepoName))
 	return nil
 }
 

@@ -32,6 +32,42 @@ func (o OutputAssertionManager) ReportsSuccessfulImageBuild(name string) {
 	o.assert.ContainsF(o.output, "Successfully built image '%s'", name)
 }
 
+func (o OutputAssertionManager) ReportsSuccessfulIndexLocallyCreated(name string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "Successfully created manifest list '%s'", name)
+}
+
+func (o OutputAssertionManager) ReportsSuccessfulIndexPushed(name string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "Successfully pushed manifest list '%s' to registry", name)
+}
+
+func (o OutputAssertionManager) ReportsSuccessfulManifestAddedToIndex(name string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "Successfully added image '%s' to index", name)
+}
+
+func (o OutputAssertionManager) ReportsSuccessfulIndexDeleted() {
+	o.testObject.Helper()
+
+	o.assert.Contains(o.output, "Successfully deleted manifest list(s) from local storage")
+}
+
+func (o OutputAssertionManager) ReportsSuccessfulIndexAnnotated(name, manifest string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "Successfully annotated image '%s' in index '%s'", name, manifest)
+}
+
+func (o OutputAssertionManager) ReportsSuccessfulRemoveManifestFromIndex(name string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "Successfully removed image(s) from index: '%s'", name)
+}
+
 func (o OutputAssertionManager) ReportSuccessfulQuietBuild(name string) {
 	o.testObject.Helper()
 	o.testObject.Log("quiet mode")

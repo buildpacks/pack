@@ -36,11 +36,11 @@ func (c *Client) PushManifest(opts PushManifestOptions) (err error) {
 	}
 
 	if err = idx.Push(ops...); err != nil {
-		return fmt.Errorf("failed to push manifest list '%s': %w", style.Symbol(opts.IndexRepoName), err)
+		return fmt.Errorf("failed to push manifest list %s: %w", style.Symbol(opts.IndexRepoName), err)
 	}
 
 	if !opts.Purge {
-		c.logger.Infof("Successfully pushed manifest list '%s'", style.Symbol(opts.IndexRepoName))
+		c.logger.Infof("Successfully pushed manifest list %s to registry", style.Symbol(opts.IndexRepoName))
 		return nil
 	}
 

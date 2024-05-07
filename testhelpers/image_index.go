@@ -11,11 +11,13 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
+	imgutilRemote "github.com/buildpacks/imgutil/remote"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
 func NewRandomIndexRepoName() string {
@@ -53,6 +55,29 @@ func FetchImageIndexDescriptor(t *testing.T, repoName string) v1.ImageIndex {
 	AssertNil(t, err)
 
 	return index
+}
+
+func AssertRemoteImageIndex(t *testing.T, repoName string, mediaType types.MediaType, expectedNumberOfManifests int) {
+	t.Helper()
+
+	remoteIndex := FetchImageIndexDescriptor(t, repoName)
+	AssertNotNil(t, remoteIndex)
+	remoteIndexMediaType, err := remoteIndex.MediaType()
+	AssertNil(t, err)
+	AssertEq(t, remoteIndexMediaType, mediaType)
+	remoteIndexManifest, err := remoteIndex.IndexManifest()
+	AssertNil(t, err)
+	AssertNotNil(t, remoteIndexManifest)
+	AssertEq(t, len(remoteIndexManifest.Manifests), expectedNumberOfManifests)
+}
+
+func CreateRemoteImage(t *testing.T, repoName, tag, baseImage string) *imgutilRemote.Image {
+	img1RepoName := fmt.Sprintf("%s:%s", repoName, tag)
+	img1, err := imgutilRemote.NewImage(img1RepoName, authn.DefaultKeychain, imgutilRemote.FromBaseImage(baseImage))
+	AssertNil(t, err)
+	err = img1.Save()
+	AssertNil(t, err)
+	return img1
 }
 
 func ReadIndexManifest(t *testing.T, path string) *v1.IndexManifest {
@@ -146,8 +171,8 @@ func (i *MockImageIndex) DeleteDir() error {
 	return nil
 }
 
-func NewFakeWithRandomUnderlyingV1Image(t *testing.T, identifier imgutil.Identifier) *FakeWithRandomUnderlyingImage {
-	fakeCNBImage := fakes.NewImage("pack/image", "", identifier)
+func NewFakeWithRandomUnderlyingV1Image(t *testing.T, repoName string, identifier imgutil.Identifier) *FakeWithRandomUnderlyingImage {
+	fakeCNBImage := fakes.NewImage(repoName, "", identifier)
 	underlyingImage, err := random.Image(1024, 1)
 	AssertNil(t, err)
 	return &FakeWithRandomUnderlyingImage{

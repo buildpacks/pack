@@ -61,7 +61,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 
 		// Create a remote image to be fetched when adding to the image index
-		fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, nil)
+		fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, "pack/image", nil)
 		fakeImageFetcher.RemoteImages["index.docker.io/pack/image:latest"] = fakeImage
 	})
 	it.After(func() {

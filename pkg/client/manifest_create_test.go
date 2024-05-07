@@ -71,7 +71,7 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 
 			when("remote manifest is provided", func() {
 				it.Before(func() {
-					fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, nil)
+					fakeImage := h.NewFakeWithRandomUnderlyingV1Image(t, "pack/image", nil)
 					fakeImageFetcher.RemoteImages["index.docker.io/library/busybox:1.36-musl"] = fakeImage
 				})
 
