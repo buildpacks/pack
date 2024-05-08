@@ -2763,7 +2763,11 @@ api = "0.2"
 								Volumes: []string{":::"},
 							},
 						})
-						h.AssertError(t, err, `platform volume ":::" has invalid format: invalid volume specification: ':::'`)
+						if runtime.GOOS == "darwin" {
+							h.AssertError(t, err, `platform volume ":::" has invalid format: invalid spec: :::: empty section between colons`)
+						} else {
+							h.AssertError(t, err, `platform volume ":::" has invalid format: invalid volume specification: ':::'`)
+						}
 					})
 				})
 

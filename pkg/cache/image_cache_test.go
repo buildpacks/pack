@@ -7,8 +7,8 @@ import (
 	"github.com/buildpacks/pack/pkg/cache"
 
 	"github.com/buildpacks/imgutil/local"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
@@ -126,7 +126,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 			it("removes the image", func() {
 				err := subject.Clear(ctx)
 				h.AssertNil(t, err)
-				images, err := dockerClient.ImageList(context.TODO(), types.ImageListOptions{
+				images, err := dockerClient.ImageList(context.TODO(), image.ListOptions{
 					Filters: filters.NewArgs(filters.KeyValuePair{
 						Key:   "reference",
 						Value: imageName,
