@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1715189166047,
+  "lastUpdate": 1715191116723,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -6496,6 +6496,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 64033050316,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "58332161+husni-faiz@users.noreply.github.com",
+            "name": "Husni Faiz",
+            "username": "husni-faiz"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "67feb16025d36125a634cd90155081ff9fd7e048",
+          "message": "Add a new `manifest` command to support multi-architecture builds (#1705)\n\nImplement Pack Manifest commands in support of https://github.com/buildpacks/rfcs/blob/main/text/0124-pack-manifest-list-commands.md\r\n\r\nSigned-off-by: Husni Faiz <ahamedhusni73@gmail.com>\r\nSigned-off-by: WYGIN <wygininc@gmail.com>\r\nSigned-off-by: sai kiran <wyginc1@gmail.com>\r\nSigned-off-by: Juan Bustamante <jbustamante@vmware.com>\r\nSigned-off-by: Juan Bustamante <juan.bustamante@broadcom.com>\r\nSigned-off-by: Sai Kiran Maggidi <107541780+WYGIN@users.noreply.github.com>\r\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\r\n\r\nCo-authored-by: Juan Bustamante <jbustamante@vmware.com>\r\nCo-authored-by: WYGIN <wygininc@gmail.com>\r\nCo-authored-by: sai kiran <wyginc1@gmail.com>\r\nCo-authored-by: Juan Bustamante <juan.bustamante@broadcom.com>\r\nCo-authored-by: Sai Kiran Maggidi <107541780+WYGIN@users.noreply.github.com>\r\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2024-05-08T12:56:14-05:00",
+          "tree_id": "5f14014f3f547050dbdf4fb72addfb3be781b42d",
+          "url": "https://github.com/buildpacks/pack/commit/67feb16025d36125a634cd90155081ff9fd7e048"
+        },
+        "date": 1715191115528,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6950660957,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2307927654,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 62645054555,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
