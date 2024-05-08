@@ -767,7 +767,7 @@ func (mr *MockCommonAPIClientMockRecorder) ImageBuild(arg0, arg1, arg2 interface
 }
 
 // ImageCreate mocks base method.
-func (m *MockCommonAPIClient) ImageCreate(arg0 context.Context, arg1 string, arg2 types.ImageCreateOptions) (io.ReadCloser, error) {
+func (m *MockCommonAPIClient) ImageCreate(arg0 context.Context, arg1 string, arg2 image.CreateOptions) (io.ReadCloser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ImageCreate", arg0, arg1, arg2)
 	ret0, _ := ret[0].(io.ReadCloser)
@@ -797,7 +797,7 @@ func (mr *MockCommonAPIClientMockRecorder) ImageHistory(arg0, arg1 interface{}) 
 }
 
 // ImageImport mocks base method.
-func (m *MockCommonAPIClient) ImageImport(arg0 context.Context, arg1 types.ImageImportSource, arg2 string, arg3 types.ImageImportOptions) (io.ReadCloser, error) {
+func (m *MockCommonAPIClient) ImageImport(arg0 context.Context, arg1 types.ImageImportSource, arg2 string, arg3 image.ImportOptions) (io.ReadCloser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ImageImport", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(io.ReadCloser)
@@ -828,7 +828,7 @@ func (mr *MockCommonAPIClientMockRecorder) ImageInspectWithRaw(arg0, arg1 interf
 }
 
 // ImageList mocks base method.
-func (m *MockCommonAPIClient) ImageList(arg0 context.Context, arg1 types.ImageListOptions) ([]image.Summary, error) {
+func (m *MockCommonAPIClient) ImageList(arg0 context.Context, arg1 image.ListOptions) ([]image.Summary, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ImageList", arg0, arg1)
 	ret0, _ := ret[0].([]image.Summary)
@@ -858,7 +858,7 @@ func (mr *MockCommonAPIClientMockRecorder) ImageLoad(arg0, arg1, arg2 interface{
 }
 
 // ImagePull mocks base method.
-func (m *MockCommonAPIClient) ImagePull(arg0 context.Context, arg1 string, arg2 types.ImagePullOptions) (io.ReadCloser, error) {
+func (m *MockCommonAPIClient) ImagePull(arg0 context.Context, arg1 string, arg2 image.PullOptions) (io.ReadCloser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ImagePull", arg0, arg1, arg2)
 	ret0, _ := ret[0].(io.ReadCloser)
@@ -873,7 +873,7 @@ func (mr *MockCommonAPIClientMockRecorder) ImagePull(arg0, arg1, arg2 interface{
 }
 
 // ImagePush mocks base method.
-func (m *MockCommonAPIClient) ImagePush(arg0 context.Context, arg1 string, arg2 types.ImagePushOptions) (io.ReadCloser, error) {
+func (m *MockCommonAPIClient) ImagePush(arg0 context.Context, arg1 string, arg2 image.PushOptions) (io.ReadCloser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ImagePush", arg0, arg1, arg2)
 	ret0, _ := ret[0].(io.ReadCloser)
@@ -888,7 +888,7 @@ func (mr *MockCommonAPIClientMockRecorder) ImagePush(arg0, arg1, arg2 interface{
 }
 
 // ImageRemove mocks base method.
-func (m *MockCommonAPIClient) ImageRemove(arg0 context.Context, arg1 string, arg2 types.ImageRemoveOptions) ([]image.DeleteResponse, error) {
+func (m *MockCommonAPIClient) ImageRemove(arg0 context.Context, arg1 string, arg2 image.RemoveOptions) ([]image.DeleteResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ImageRemove", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]image.DeleteResponse)
