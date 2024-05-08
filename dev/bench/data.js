@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1714767163074,
+  "lastUpdate": 1715189166047,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -6454,6 +6454,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 55910989562,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d3904d63b32799cd08f18633f50f81cf0ae49c31",
+          "message": "Merge pull request #2136 from buildpacks/deps/jjbustamante/update-to-docker-26\n\nUpdating to Docker 26.x & lifecycle 0.19.4",
+          "timestamp": "2024-05-08T12:23:06-05:00",
+          "tree_id": "260b6e50bbbf6de58df12d832444e5a9958536e5",
+          "url": "https://github.com/buildpacks/pack/commit/d3904d63b32799cd08f18633f50f81cf0ae49c31"
+        },
+        "date": 1715189164865,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7528616154,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2292871338,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 64033050316,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
