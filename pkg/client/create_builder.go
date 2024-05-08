@@ -247,7 +247,7 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 		}
 
 		defer file.Close()
-		// defer OS.Remove(lifecyclePath)
+Remove this comment
 
 		uri, err = paths.FilePathToURI(lifecyclePath, "")
 		if err != nil {
