@@ -1,15 +1,17 @@
 package state
 
 import (
-	"context"
 	"fmt"
 	"io/fs"
+	"runtime"
 	"strings"
 	"time"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/solver/pb"
+	"github.com/moby/buildkit/util/entitlements"
+	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/buildpacks/pack/internal/buildkit/packerfile"
 	"github.com/buildpacks/pack/internal/buildkit/packerfile/options"
@@ -29,6 +31,7 @@ func (s State) AddArg(args ...string) State {
 		commitStrs = append(commitStrs, commitStr)
 		s.state = s.state.AddEnv(k, v) // we are adding env with we are not defining this env in configFile, so it is only available at buildtime!
 	}
+	s.options.BuildArgs = append(s.options.BuildArgs, args...)
 	commitToHistory(s.config, "ARG "+strings.Join(commitStrs, " "), false, nil, time.Now(), s.version)
 	return s
 }
@@ -43,6 +46,7 @@ func (s State) AddVolume(volumes ...string) State {
 		}
 		s.config.Config.Volumes[v] = struct{}{}
 	}
+	s.options.Volumes = append(s.options.Volumes, volumes...)
 	commitToHistory(s.config, fmt.Sprintf("VOLUME %v", volumes), false, nil, time.Now(), s.version)
 	return s
 }
@@ -50,6 +54,7 @@ func (s State) AddVolume(volumes ...string) State {
 func (s State) AddEnv(key, value string) State {
 	s.state = s.state.AddEnv(key, value)
 	s.config.Config.Env = addEnv(s.config.Config.Env, key, value)
+	s.options.Envs = append(s.options.Envs, fmt.Sprintf("%s=%s", key, value))
 	commitToHistory(s.config, fmt.Sprintf("ENV %s=%s", key, value), false, nil, time.Now(), s.version)
 	return s
 }
@@ -63,7 +68,7 @@ func (s State) Entrypoint(args ...string) State {
 		args = strings.Split(args[0], " ")
 		args = withShell(*s.config, args)
 	}
-	if !s.cmdSet {
+	if !s.options.cmdSet {
 		s.config.Config.Cmd = nil
 	}
 	s.config.Config.Entrypoint = args
@@ -75,11 +80,17 @@ func (s State) Network(mode string) State {
 	switch mode {
 	case "host":
 		s.state = s.state.Network(pb.NetMode_HOST)
+		s.options.entitlement = entitlements.EntitlementNetworkHost
 	case "none":
 		s.state = s.state.Network(pb.NetMode_NONE)
-	default:
+	case "", "default":
 		s.state = s.state.Network(pb.NetMode_UNSET)
 	}
+	return s
+}
+
+func (s State) Mkdir(path string, mode fs.FileMode, ops ...llb.MkdirOption) State {
+	s.state = s.state.File(llb.Mkdir(path, mode, ops...))
 	return s
 }
 
@@ -95,6 +106,7 @@ func (s State) Add(src []string, dest string, opt options.ADD) State {
 		chown:      opt.Chown,
 		chmod:      opt.Chmod,
 		link:       opt.Link,
+		dest: dest,
 	})
 
 	if err != nil {
@@ -107,6 +119,7 @@ func (s State) Add(src []string, dest string, opt options.ADD) State {
 func (s State) User(user string) State {
 	s.state = s.state.User(user)
 	s.config.Config.User = user
+	s.options.User = user
 	commitToHistory(s.config, fmt.Sprintf("USER %v", user), false, nil, time.Now(), s.version)
 	return s
 }
@@ -118,30 +131,41 @@ func (s State) Cmd(cmd ...string) State {
 
 	s.config.Config.Cmd = cmd
 	s.config.Config.ArgsEscaped = true
-	s.cmdSet = true
+	s.options.cmdSet = true
 	commitToHistory(s.config, fmt.Sprintf("CMD %q", cmd), false, nil, time.Now(), s.version)
 	return s
 }
 
-func (s State) Platform() *v1.Platform {
-	return &v1.Platform{
-		OS:           s.config.OS,
-		Architecture: s.config.Architecture,
-		OSVersion:    s.config.OSVersion,
-		OSFeatures:   s.config.OSFeatures,
-		Variant:      s.config.Variant,
+func (s State) Run(cmd []string, execState func(state llb.ExecState) llb.State) State {
+	exec := s.state.Run(WithInternalName("running cmd"), llb.Args(cmd))
+	s.state = exec.Root()
+	s.state = execState(exec)
+	return s
+}
+
+// shall we allow buildpack authors like paketo, heroku, kpack, dokku, GCP etc...,
+// to modify [State] by passing pointer?
+func (s State) State() *llb.State {
+	return &s.state
+}
+
+// shall we allow buildpack authors like paketo, heroku, kpack, dokku, GCP etc...,
+// to modify [State] by passing pointer?
+func (s State) ConfigFile() *v1.ConfigFile {
+	return s.config
+}
+
+func (s State) Platform() *ocispecs.Platform {
+	if s.platform != nil {
+		return s.platform
+	}
+
+	return &ocispecs.Platform{
+		OS: runtime.GOOS,
+		Architecture: runtime.GOARCH,
 	}
 }
 
-func (s *State) Marshal(ctx context.Context, co ...llb.ConstraintsOpt) (*llb.Definition, error) {
-	co = append(co, llb.Platform(*s.platform))
-	return s.state.Marshal(ctx, co...)
-}
-
-func (s *State) ConfigFile() v1.ConfigFile {
-	if s.config == nil {
-		return v1.ConfigFile{}
-	}
-
-	return *s.config
+func (s State) Options() Options {
+	return s.options
 }

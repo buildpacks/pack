@@ -478,7 +478,7 @@ func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error
 		return ephemeralRunImageName, nil
 	}
 
-	c.lifecycleExecutor = executor.New(*scratch, c.logger, opts.Targets)
+	c.lifecycleExecutor = executor.New(c.docker, *scratch, c.logger, opts.Targets)
 	if err = c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
 		return fmt.Errorf("executing lifecycle: %w", err)
 	}

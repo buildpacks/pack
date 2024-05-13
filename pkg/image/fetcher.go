@@ -163,7 +163,7 @@ func (f *Fetcher) fetchLayoutImage(name string, options LayoutOption) (imgutil.I
 	if options.Sparse {
 		image, err = sparse.NewImage(options.Path, v1Image)
 	} else {
-		image, err = layout.NewImage(options.Path, layout.FromBaseImage(v1Image))
+		image, err = layout.NewImage(options.Path, layout.FromBaseImageInstance(v1Image))
 	}
 
 	if err != nil {

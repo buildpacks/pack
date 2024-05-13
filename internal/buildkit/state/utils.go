@@ -161,7 +161,7 @@ func dispatchCopy(s *State, srcPaths []string, destPath string, cfg CopyOptions)
 		cmd = "ADD "
 	}
 	name := uppercaseCmd(cmd + strings.Join(env, " "))
-	pgName := prefixCommand(s, name, s.multiArch, &platform, env)
+	pgName := prefixCommand(s, name, s.options.multiArch, &platform, env)
 
 	var a *llb.FileAction
 
@@ -221,8 +221,8 @@ func dispatchCopy(s *State, srcPaths []string, destPath string, cfg CopyOptions)
 
 	if cfg.link && cfg.chmod == "" {
 		pgID := identity.NewID()
-		s.cmdIndex-- // prefixCommand increases it
-		pgName := prefixCommand(s, name, s.multiArch, &platform, env)
+		s.options.cmdIndex-- // prefixCommand increases it
+		pgName := prefixCommand(s, name, s.options.multiArch, &platform, env)
 
 		copyOpts := []llb.ConstraintsOpt{
 			llb.Platform(*s.platform),
@@ -231,8 +231,8 @@ func dispatchCopy(s *State, srcPaths []string, destPath string, cfg CopyOptions)
 		copyOpts = append(copyOpts, llb.ProgressGroup(pgID, pgName, true))
 
 		mergeOpts := append([]llb.ConstraintsOpt{}, fileOpt...)
-		s.cmdIndex--
-		mergeOpts = append(mergeOpts, llb.ProgressGroup(pgID, pgName, false), llb.WithCustomName(prefixCommand(s, "LINK "+name, s.multiArch, &platform, env)))
+		s.options.cmdIndex--
+		mergeOpts = append(mergeOpts, llb.ProgressGroup(pgID, pgName, false), llb.WithCustomName(prefixCommand(s, "LINK "+name, s.options.multiArch, &platform, env)))
 
 		s.state = s.state.WithOutput(llb.Merge([]llb.State{s.state, llb.Scratch().File(a, copyOpts...)}, mergeOpts...).Output())
 	} else {
@@ -254,18 +254,18 @@ func uppercaseCmd(str string) string {
 
 // fork from: https://github.com/moby/buildkit/blob/9c8832ff46cc805f37537f0540aa4ac99be568d3/frontend/dockerfile/dockerfile2llb/convert.go#L1826C1-L1840C2
 func prefixCommand(s *State, str string, prefixPlatform bool, platform *ocispecs.Platform, env []string) string {
-	if s.cmdTotal == 0 {
+	if s.options.cmdTotal == 0 {
 		return str
 	}
 	out := "["
 	if prefixPlatform && platform != nil {
 		out += platforms.Format(*platform) + formatTargetPlatform(*platform, platformFromEnv(env)) + " "
 	}
-	if s.stageName != "" {
-		out += s.stageName + " "
+	if s.options.stageName != "" {
+		out += s.options.stageName + " "
 	}
-	s.cmdIndex++
-	out += fmt.Sprintf("%*d/%d] ", int(1+math.Log10(float64(s.cmdTotal))), s.cmdIndex, s.cmdTotal)
+	s.options.cmdIndex++
+	out += fmt.Sprintf("%*d/%d] ", int(1+math.Log10(float64(s.options.cmdTotal))), s.options.cmdIndex, s.options.cmdTotal)
 	return out + str
 }
 

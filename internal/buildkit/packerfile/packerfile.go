@@ -21,8 +21,6 @@ type Packerfile[T any] interface {
 	Add(src []string, dest string, opt options.ADD) T
 	User(user string) T
 	Cmd(cmd ...string) T
-	Marshal(ctx context.Context, co ...llb.ConstraintsOpt) (*llb.Definition, error)
-	ConfigFile() v1.ConfigFile
 	// ADDCommand(string, options.ADD) error                          // Add local or remote files and directories.
 	// CMDCommand(cmd []string, ops options.CMD) error                // Specify default commands. There can only be one CMD instruction in a Dockerfile. If you list more than one CMD, only the last one takes effect.
 	// COPYCommand(src string, desc []string, ops options.COPY) error // Copy files and directories.
@@ -40,4 +38,9 @@ type Packerfile[T any] interface {
 	// USERCommand(options.USER) error                        // Set user and group ID.
 	// VOLUMECommand(options.VOLUME, ...options.VOLUME) error // Create volume mounts.
 	// WORKDIRCommand(options.WORKDIR) error                  // Change working directory.
+}
+
+type PackerfileState[T any] interface {
+	Marshal(ctx context.Context, co ...llb.ConstraintsOpt) (*llb.Definition, error)
+	ConfigFile() v1.ConfigFile
 }

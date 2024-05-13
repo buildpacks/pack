@@ -6,26 +6,31 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strconv"
 
 	"github.com/buildpacks/lifecycle/auth"
+	"github.com/docker/buildx/util/progress"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/moby/buildkit/client"
-	gatewayClient "github.com/moby/buildkit/frontend/gateway/client"
-	"github.com/moby/buildkit/solver/pb"
+	"github.com/moby/buildkit/client/llb"
+	"github.com/moby/buildkit/exporter/containerimage/exptypes"
+
+	// gatewayClient "github.com/moby/buildkit/frontend/gateway/client"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 
+	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/buildkit/builder"
-	"github.com/buildpacks/pack/internal/buildkit/cnb"
 	mountpaths "github.com/buildpacks/pack/internal/buildkit/mount_paths"
-	"github.com/buildpacks/pack/internal/buildkit/packerfile/options"
+
+	// "github.com/buildpacks/pack/internal/buildkit/packerfile/options"
 	"github.com/buildpacks/pack/internal/buildkit/state"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
-func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client) error {
+func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, buildCache, launchCache build.Cache) error {
 	mounter := mountpaths.MountPathsForOS(l.state.Platform().OS, l.opts.Workspace)
 	flags := addTags([]string{
 		"-app", mounter.AppDir(),
@@ -92,13 +97,22 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client) error
 		return err
 	}
 	flags = append(l.withLogLevel(flags...), l.opts.Image.String())
-	userPerm := fmt.Sprintf("%s:%s", strconv.Itoa(l.opts.Builder.UID()), strconv.Itoa(l.opts.Builder.GID()))
-	l.state = l.state.Entrypoint("lifecycle/creator").
+	// userPerm := fmt.Sprintf("%s:%s", strconv.Itoa(l.opts.Builder.UID()), strconv.Itoa(l.opts.Builder.GID()))
+	l.state = l.state.// Entrypoint("lifecycle/creator"). // TODO: uncomment this line
 		Network(l.opts.Network).
-		MkFile(mounter.ProjectPath(), fs.ModePerm, projectMetadata).
+		Mkdir(mounter.CacheDir(), fs.ModeDir, llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID())). // create `/cache` dir
+		Mkdir(l.opts.Workspace, fs.ModeDir, llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID())). // create `/workspace` dir
+		Mkdir(
+			mounter.LayersDir(), // create `/layers` dir for future reference
+			fs.ModeDir, 
+			llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID()), // add uid and gid for for the given `layers` dir
+		).
+		MkFile(mounter.ProjectPath(), fs.ModePerm, projectMetadata, llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID())).
+		Mkdir(mounter.AppDir(), fs.ModeDir, llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID())).
 		// Use Add, cause: The AppPath can be either a directory or a tar file!
 		// The [Add] command is responsible for extracting tar and fetching remote files!
-		Add([]string{l.opts.AppPath}, mounter.AppDir(), options.ADD{Chown: userPerm, Chmod: userPerm, Link: true})
+		AddVolume(fmt.Sprintf("%s:%s", l.opts.AppPath, mounter.AppDir()))
+		// Add([]string{l.opts.AppPath}, mounter.AppDir(), options.ADD{Chown: userPerm, Chmod: userPerm, Link: true})
 		// TODO: CopyOutTo(mounter.SbomDir(), l.opts.SBOMDestinationDir)
 		// TODO: CopyOutTo(mounter.ReportPath(), l.opts.ReportDestinationDir)
 		// TODO: CopyOut(l.opts.Termui.ReadLayers, mounter.LayersDir(), mounter.AppDir())))
@@ -107,7 +121,8 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client) error
 		layoutDir := filepath.Join(paths.RootDir, "layout-repo")
 		l.state = l.state.AddEnv("CNB_USE_LAYOUT", "true").
 			AddEnv("CNB_LAYOUT_DIR", layoutDir).
-			AddEnv(cnb.CnbExperimentalMode, cnb.WARN)
+			AddEnv("CNB_EXPERIMENTAL_MODE", "WARN").
+			Mkdir(layoutDir, fs.ModeDir) // also create `layoutDir`
 	}
 
 	if l.opts.Publish || l.opts.Layout {
@@ -117,47 +132,20 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client) error
 		}
 
 		// can we use SecretAsEnv, cause The ENV is exposed in ConfigFile whereas SecretAsEnv not! But are we using DinD?
-		l.state = l.state.User(state.RootUser(l.state.Platform().OS)).AddEnv("CNB_REGISTRY_AUTH", authConfig)
+		// shall we add secret to builder instead of remodifying existing builder to add `CNB_REGISTRY_AUTH` 
+		// we can also reference a file as secret!
+		l.state = l.state.User(state.RootUser(l.state.Platform().OS)).AddArg(fmt.Sprintf("CNB_REGISTRY_AUTH=%s", authConfig))
 	} else {
 		// TODO: WithDaemonAccess(l.opts.DockerHost)
-		// Maybe adding ExtraHost?
 
 		flags = append(flags, "-daemon", "-launch-cache", mounter.LaunchCacheDir())
-		// l.state = l.state.AddVolume(fmt.Sprintf("%s:%s", launchCache.Name(), mounter.LaunchCacheDir()))
+		l.state = l.state.AddVolume(fmt.Sprintf("%s:%s", launchCache.Name(), mounter.LaunchCacheDir()))
 	}
-	l.state = l.state.Cmd(flags...)
+	// TODO: uncomment below line
+	l.state = l.state.Cmd(flags...).Run([]string{"/cnb/lifecycle/creator", "-app", "/workspace", "-cache-dir", "/cache", "-run-image", "ghcr.io/jericop/run-jammy:latest", "wygin/react-yarn"}, func(state llb.ExecState) llb.State {return state.Root()})
+	// TODO: delete below line
+	// l.state = l.state.AddArg(flags...)
 
-	cacheImports := []client.CacheOptionsEntry{
-		{
-			Type: client.ExporterLocal,
-			Attrs: map[string]string{
-				"src": filepath.Join(".", "DinD", "cache"),
-			},
-		},
-		// Also import cache from registry if not present
-		// {
-		// 	Type: "registry",
-		// 	Attrs: map[string]string{
-		// 		"ref": target,
-		// 	},
-		// },
-	}
-
-	gatewayCacheImport := make([]gatewayClient.CacheOptionsEntry, 0, len(cacheImports))
-	for _, c := range cacheImports {
-		gatewayCacheImport = append(gatewayCacheImport, gatewayClient.CacheOptionsEntry{
-			Type:  c.Type,
-			Attrs: c.Attrs,
-		})
-	}
-	mounts := make([]gatewayClient.Mount, 0, len(l.opts.Volumes))
-	for _, v := range l.opts.Volumes {
-		mounts = append(mounts, gatewayClient.Mount{
-			Dest:      v,
-			MountType: pb.MountType_CACHE,
-			CacheOpt:  &pb.CacheOpt{Sharing: pb.CacheSharingOpt_SHARED},
-		})
-	}
 	var platforms = make([]v1.Platform, 0)
 	for _, target := range l.targets {
 		target.Range(ctx, func(t dist.Target) error {
@@ -170,24 +158,74 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client) error
 			return nil
 		})
 	}
-	b := builder.New(l.opts.Image.Name(), l.state, nil, platforms, mounts, gatewayCacheImport)
-	// I don't think we need to export DinD image!
-	// Instead of using volumes for caching let's use CacheImports and CacheExports.
-	//
-	_, err = c.Build(ctx, client.SolveOpt{
+
+	bldr := builder.New(l.opts.Image.Name(), l.state, nil)
+	// res, err := bldr.Build(appcontext.Context(), *c)
+	var status = make(chan *client.SolveStatus)
+	resp, err := c.Build(ctx, client.SolveOpt{
+		Exports: []client.ExportEntry{
+			{
+				Type: "image",
+				Attrs: map[string]string{
+					"name": "wygin/react-yarn-builder",
+					// "push": "true",
+				},
+			},
+			{
+				Type: "local",
+				OutputDir: filepath.Join("exports"),
+			},
+		},
 		CacheExports: []client.CacheOptionsEntry{
 			{
-				Type: client.ExporterLocal,
+				Type: "local",
 				Attrs: map[string]string{
-					"dest": filepath.Join(".", "DinD", "cache"),
+					"dest": filepath.Join("DinD", "cache"),
 				},
 			},
 		},
-		CacheImports: cacheImports,
-	}, "", b.Build, nil)
+		CacheImports: []client.CacheOptionsEntry{
+			{
+				Type: "local",
+				Attrs: map[string]string{
+					"src": filepath.Join("DinD", "cache"),
+				},
+			},
+		},
+	}, "packerfile.v0", bldr.Build, status)
+	if resp != nil {
+		fmt.Printf("configFile current: %s", resp.ExporterResponse[exptypes.ExporterImageConfigKey])
+	}
+
 	if err != nil {
 		return err
 	}
 
-	return nil
+	ctx2, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+	printer, err := progress.NewPrinter(ctx2, os.Stderr, "plain")
+	if err != nil {
+		return err
+	}
+
+	select {
+	case status := <- status:
+		fmt.Printf("status: \n")
+		printer.Write(status)
+	default:
+		return err
+	}
+	// if err := grpcclient.RunFromEnvironment(appcontext.Context(),bldr.Build); err != nil {
+	// 	return err
+	// }
+	// if err := grpcclient.RunFromEnvironment(ctx, bldr.Build); err != nil {
+	// 	l.logger.Errorf("fatal error: %+v", err)
+	// }
+	
+	// I don't think we need to export DinD image!
+	// Instead of using volumes for caching let's use CacheImports and CacheExports.
+	//
+	// var sloveStatus chan *client.SolveStatus = make(chan *client.SolveStatus)
+
+	return err
 }

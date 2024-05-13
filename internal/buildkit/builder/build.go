@@ -2,147 +2,136 @@ package builder
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
+	"errors"
 	"os"
+	"path/filepath"
 
-	"github.com/containerd/containerd/platforms"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/moby/buildkit/client/llb"
-	"github.com/moby/buildkit/exporter/containerimage/exptypes"
 	"github.com/moby/buildkit/frontend/gateway/client"
-	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/pack/internal/buildkit/state"
 )
 
 type Builder struct {
+	ref string
 	state        state.State
-	mounts       []client.Mount
-	cacheImports []client.CacheOptionsEntry
-	platforms    []ocispecs.Platform
-	imageName    string
-	prevImage    *state.State
+	mounts []string
 }
 
-func New(imageName string, state state.State, prevImage *state.State, platforms []ocispecs.Platform, mounts []client.Mount, imports []client.CacheOptionsEntry) *Builder {
+func New(ref string, state state.State, mounts []string) *Builder {
 	return &Builder{
-		imageName:    imageName,
+		ref: ref,
 		state:        state,
-		mounts:       mounts,
-		cacheImports: imports,
-		platforms:    platforms,
-		prevImage:    prevImage,
+		mounts: mounts,
 	}
 }
 
-func (b *Builder) Build(ctx context.Context, c client.Client) (*client.Result, error) {
-	res := client.NewResult()
-	expPlatforms := &exptypes.Platforms{
-		Platforms: make([]exptypes.Platform, 0, len(b.platforms)),
-	}
-
-	res.AddMeta("image.name", []byte(b.imageName))
-	eg, ctx := errgroup.WithContext(ctx)
-	for i, platform := range b.platforms {
-		i, platform := i, platform
-		eg.Go(func() error {
-			def, err := b.state.Marshal(ctx, llb.Platform(platform))
-			if err != nil {
-				return errors.Wrap(err, "failed to marshal state")
-			}
-
-			r, err := c.Solve(ctx, client.SolveRequest{
-				CacheImports: b.cacheImports,
-				Definition:   def.ToPB(),
-			})
-			if err != nil {
-				return errors.Wrap(err, "failed to solve")
-			}
-
-			ref, err := r.SingleRef()
-			if err != nil {
-				return err
-			}
-
-			_, err = ref.ToState()
-			if err != nil {
-				return err
-			}
-
-			p := platforms.Format(platform)
-			res.AddRef(p, ref)
-
-			config := b.state.ConfigFile()
-			mutateConfigFile(&config, platform)
-			configBytes, err := json.Marshal(config)
-			if err != nil {
-				return err
-			}
-
-			res.AddMeta(fmt.Sprintf("%s/%s", exptypes.ExporterImageConfigKey, p), configBytes)
-			if b.prevImage != nil {
-				baseConfig := b.prevImage.ConfigFile()
-				mutateConfigFile(&baseConfig, platform)
-				configBytes, err := json.Marshal(baseConfig)
-				if err != nil {
-					return err
-				}
-				res.AddMeta(fmt.Sprintf("%s/%s", exptypes.ExporterImageBaseConfigKey, p), configBytes)
-			}
-
-			expPlatforms.Platforms[i] = exptypes.Platform{
-				ID:       p,
-				Platform: platform,
-			}
-
-			return nil
-		})
-	}
-
-	if err := eg.Wait(); err != nil {
-		return nil, err
-	}
-
-	dt, err := json.Marshal(expPlatforms)
+func (b *Builder) Build(ctx context.Context, c client.Client) (res *client.Result, err error) {	
+	def, err := b.state.State().Marshal(ctx)
 	if err != nil {
 		return nil, err
 	}
-	res.AddMeta(exptypes.ExporterPlatformsKey, dt)
 
-	ctr, err := c.NewContainer(ctx, client.NewContainerRequest{
-		Mounts: b.mounts,
-	})
-	if err != nil {
-		return res, err
+	if err = llb.WriteTo(def, os.Stderr); err != nil {
+		return nil, err
 	}
 
-	pid, err := ctr.Start(ctx, client.StartRequest{
-		Args:   b.state.ConfigFile().Config.Cmd,
-		Env:    b.state.ConfigFile().Config.Env,
-		User:   b.state.ConfigFile().Config.User,
-		Cwd:    b.state.ConfigFile().Config.WorkingDir,
-		Stdin:  os.Stdin,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
+	resp, err := c.Solve(ctx, client.SolveRequest{
+		Definition: def.ToPB(),
+		CacheImports: []client.CacheOptionsEntry{
+			{
+				Type: "local",
+				Attrs: map[string]string{
+					"src": filepath.Join("DinD", "cache"),
+				},
+			},
+		},
 	})
 	if err != nil {
-		return res, err
+		return resp, err
+	}
+
+	// var mounts = make([]client.Mount, 0)
+	// for _, m := range b.mounts {
+	// 	mounts = append(mounts, client.Mount{
+	// 		MountType: pb.MountType_CACHE,
+	// 		CacheOpt: &pb.CacheOpt{Sharing: pb.CacheSharingOpt_SHARED},
+	// 		Dest: m,
+	// 		Ref: resp.Ref,
+	// 	})
+	// }
+
+	ctx2, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
+	ctr, err := c.NewContainer(ctx2, client.NewContainerRequest{
+		// Mounts: mounts,
+		// NetMode: llb.NetModeSandbox,
+	})
+	if err != nil {
+		return resp, err
+	}
+
+	defer ctr.Release(ctx2)
+
+	pid, err := ctr.Start(ctx2, client.StartRequest{
+		// Stdin: os.Stdin,
+		// Stdout: os.Stdout,
+		// Stderr: os.Stderr,
+		// Args: []string{"sleep", "10", "&&", "echo", "hello world!"}, // append([]string{"/cnb/lifecycle/creator", "-app" "/workspace" "-cache-dir" "/cache" "-run-image" "ghcr.io/jericop/run-jammy:latest" "wygin/react-yarn"}, b.state.Options().BuildArgs...),
+		// Env: b.state.Options().Envs,
+		// User: b.state.Options().User,
+	})
+	if err != nil {
+		return resp, errors.New("starting container failed: " + err.Error())
 	}
 
 	if err := pid.Wait(); err != nil {
-		return res, err
+		return resp, errors.New("pid failed: " + err.Error())
 	}
 
-	return res, ctr.Release(ctx)
-}
+	// var status = make(chan *client.SolveStatus)
+	// resp, err := c.Solve(ctx, def, client.SolveOpt{
+	// 	Exports: []client.ExportEntry{
+	// 		{
+	// 			Type: "image",
+	// 			Attrs: map[string]string{
+	// 				"push": "true",
+	// 				"push-by-digest": "true",
+	// 			},
+	// 		},
+	// 	},
+	// 	CacheExports: []client.CacheOptionsEntry{
+	// 		{
+	// 			Type: "local",
+	// 			Attrs: map[string]string{
+	// 				"dest": filepath.Join("DinD", "cache"),
+	// 			},
+	// 		},
+	// 	},
+	// 	CacheImports: []client.CacheOptionsEntry{
+	// 		{
+	// 			Type: "local",
+	// 			Attrs: map[string]string{
+	// 				"src": filepath.Join("DinD", "cache"),
+	// 			},
+	// 		},
+	// 	},
+	// }, nil)
 
-func mutateConfigFile(config *v1.ConfigFile, platform ocispecs.Platform) {
-	config.OS = platform.OS
-	config.Architecture = platform.Architecture
-	config.Variant = platform.Variant
-	config.OSVersion = platform.OSVersion
-	config.OSFeatures = platform.OSFeatures
+	// ctx2, cancel := context.WithCancel(context.TODO())
+	// defer cancel()
+	// printer, err := progress.NewPrinter(ctx2, os.Stderr, "plain")
+	// if err != nil {
+	// 	return res, err
+	// }
+
+	// select {
+	// case status := <- status:
+	// 	fmt.Printf("status: \n")
+	// 	printer.Write(status)
+	// default:
+	// 	return resp, err
+	// }
+	return resp, err
 }

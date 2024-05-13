@@ -19,6 +19,7 @@ const (
 type LifecycleExecution struct {
 	logger       logging.Logger
 	state        state.State
+	dockerClient build.DockerClient
 	platformAPI  *api.Version
 	layersVolume string
 	appVolume    string
