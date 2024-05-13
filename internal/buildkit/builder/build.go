@@ -61,10 +61,10 @@ func (b *Builder) Build(ctx context.Context, c client.Client) (res *client.Resul
 	// 	})
 	// }
 
-	ctx2, cancel := context.WithCancel(context.TODO())
-	defer cancel()
+	// ctx2, cancel := context.WithCancel(context.TODO())
+	// defer cancel()
 
-	ctr, err := c.NewContainer(ctx2, client.NewContainerRequest{
+	ctr, err := c.NewContainer(ctx, client.NewContainerRequest{
 		// Mounts: mounts,
 		// NetMode: llb.NetModeSandbox,
 	})
@@ -72,9 +72,9 @@ func (b *Builder) Build(ctx context.Context, c client.Client) (res *client.Resul
 		return resp, err
 	}
 
-	defer ctr.Release(ctx2)
+	defer ctr.Release(ctx)
 
-	pid, err := ctr.Start(ctx2, client.StartRequest{
+	pid, err := ctr.Start(ctx, client.StartRequest{
 		// Stdin: os.Stdin,
 		// Stdout: os.Stdout,
 		// Stderr: os.Stderr,

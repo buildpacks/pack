@@ -25,7 +25,6 @@ import (
 	mountpaths "github.com/buildpacks/pack/internal/buildkit/mount_paths"
 
 	// "github.com/buildpacks/pack/internal/buildkit/packerfile/options"
-	"github.com/buildpacks/pack/internal/buildkit/state"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/pkg/dist"
 )
@@ -134,7 +133,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, build
 		// can we use SecretAsEnv, cause The ENV is exposed in ConfigFile whereas SecretAsEnv not! But are we using DinD?
 		// shall we add secret to builder instead of remodifying existing builder to add `CNB_REGISTRY_AUTH` 
 		// we can also reference a file as secret!
-		l.state = l.state.User(state.RootUser(l.state.Platform().OS)).AddArg(fmt.Sprintf("CNB_REGISTRY_AUTH=%s", authConfig))
+		l.state = l.state/*.User(state.RootUser(l.state.Platform().OS))*/.AddArg(fmt.Sprintf("CNB_REGISTRY_AUTH=%s", authConfig))
 	} else {
 		// TODO: WithDaemonAccess(l.opts.DockerHost)
 
@@ -142,7 +141,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, build
 		l.state = l.state.AddVolume(fmt.Sprintf("%s:%s", launchCache.Name(), mounter.LaunchCacheDir()))
 	}
 	// TODO: uncomment below line
-	l.state = l.state.Cmd(flags...).Run([]string{"/cnb/lifecycle/creator", "-app", "/workspace", "-cache-dir", "/cache", "-run-image", "ghcr.io/jericop/run-jammy:latest", "wygin/react-yarn"}, func(state llb.ExecState) llb.State {return state.Root()})
+	l.state = l.state.Cmd(flags...) // .Run([]string{"/cnb/lifecycle/creator", "-app", "/workspace", "-cache-dir", "/cache", "-run-image", "ghcr.io/jericop/run-jammy:latest", "wygin/react-yarn"}, func(state llb.ExecState) llb.State {return state.State})
 	// TODO: delete below line
 	// l.state = l.state.AddArg(flags...)
 
