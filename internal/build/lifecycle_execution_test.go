@@ -672,8 +672,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 									return fakePhaseFactory
 								})
 								h.AssertNil(t, err)
-								h.AssertEq(t, fakeFetcher.calledWithArgAtCall[0], "some-new-run-image-identifier")
-								h.AssertEq(t, fakeFetcher.callCount, 1)
+								h.AssertEq(t, fakeFetcher.callCount, 2)
+								h.AssertEq(t, fakeFetcher.calledWithArgAtCall[0], "some-new-run-image")
+								h.AssertEq(t, fakeFetcher.calledWithArgAtCall[1], "some-new-run-image-identifier")
 							})
 						})
 					})

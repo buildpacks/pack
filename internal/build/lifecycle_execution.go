@@ -240,6 +240,17 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			}
 		}
 
+		var (
+			ephemeralRunImage string
+			err               error
+		)
+		if l.runImageChanged() || l.hasExtensionsForRun() {
+			// Pull the run image by name in case we fail to pull it by identifier later.
+			if ephemeralRunImage, err = l.opts.FetchRunImageWithLifecycleLayer(l.runImageNameAfterExtensions()); err != nil {
+				return err
+			}
+		}
+
 		l.logger.Info(style.Step("RESTORING"))
 		if l.opts.ClearCache && l.PlatformAPI().LessThan("0.10") {
 			l.logger.Info("Skipping 'restore' due to clearing cache")
@@ -247,19 +258,13 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			return err
 		}
 
-		var (
-			ephemeralRunImage string
-			err               error
-		)
 		if l.runImageChanged() || l.hasExtensionsForRun() {
-			if ephemeralRunImage, err = l.opts.FetchRunImageWithLifecycleLayer(l.runImageIdentifierAfterExtensions()); err != nil {
+			if newEphemeralRunImage, err := l.opts.FetchRunImageWithLifecycleLayer(l.runImageIdentifierAfterExtensions()); err == nil {
 				// If the run image was switched by extensions, the run image reference as written by the __restorer__ will be a digest reference
 				// that is pullable from a registry.
 				// However, if the run image is only extended (not switched), the run image reference as written by the __analyzer__ may be an image identifier
 				// (in the daemon case), and will not be pullable.
-				if ephemeralRunImage, err = l.opts.FetchRunImageWithLifecycleLayer(l.runImageNameAfterExtensions()); err != nil {
-					return err
-				}
+				ephemeralRunImage = newEphemeralRunImage
 			}
 		}
 
@@ -543,6 +548,8 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 		registryOp,
 		layoutOp,
 		layoutBindOp,
+		If(l.hasExtensions(), WithPostContainerRunOperations(
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.tmpDir))),
 	)
 
 	restore := phaseFactory.New(configProvider)

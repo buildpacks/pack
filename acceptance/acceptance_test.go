@@ -866,8 +866,7 @@ func testAcceptance(
 									h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
 								})
 
-								// FIXME: now that we pull the run image AFTER the restore phases, the restorer fails to access the non-existent run image when it does restore checks
-								it.Pend("uses the 5 phases, and tries to pull the new run image before restore", func() {
+								it("uses the 5 phases, and tries to pull the new run image by name before restore, and by identifier after restore", func() {
 									output, _ := pack.Run(
 										"build", repoName,
 										"-p", filepath.Join("testdata", "mock_app"),
@@ -875,8 +874,7 @@ func testAcceptance(
 										"-B", builderName,
 										"--env", "EXT_RUN_SWITCH=1",
 									)
-									h.AssertContains(t, output, "ERROR: failed to build: executing lifecycle: resolve auth for ref some-not-exist-run-image!")
-									h.AssertNotContains(t, output, "RESTORING")
+									h.AssertContains(t, output, "Pulling image 'busybox:latest'")
 								})
 							})
 
