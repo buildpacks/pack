@@ -9,7 +9,7 @@ import (
 )
 
 // NewState creates an empty [State] with system specific default PATH env set
-func NewState(os string) (_ *State, err error) {
+func Scratch(os string) (_ *State, err error) {
 	config := &v1.ConfigFile{
 		RootFS: v1.RootFS{
 			Type: "layers",
@@ -30,4 +30,26 @@ func NewState(os string) (_ *State, err error) {
 		state:  state,
 		config: config,
 	}, err
+}
+
+func Remote(ref string, opts ...llb.ImageOption) *State {
+	state := llb.Image(ref, opts...)
+	return &State{
+		state: state,
+		config: &v1.ConfigFile{}, // update with the current [llb.state]
+	}
+}
+
+func Local(name string, opts ...llb.LocalOption) *State {
+	return &State{
+		state: llb.Local(name, opts...),
+		config: &v1.ConfigFile{}, // update with the current [llb.state]
+	}
+}
+
+func OCILayout(ref string, opts ...llb.OCILayoutOption) *State {
+	return &State{
+		state: llb.OCILayout(ref, opts...),
+		config: &v1.ConfigFile{}, // update with the current [llb.state]
+	}
 }

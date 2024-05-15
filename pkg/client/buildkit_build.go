@@ -15,10 +15,19 @@ import (
 	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/platforms"
 	"github.com/docker/docker/api/types"
+	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
-	"github.com/moby/buildkit/identity"
+	"github.com/moby/buildkit/exporter/containerimage/exptypes"
+	gatewayClient "github.com/moby/buildkit/frontend/gateway/client"
+	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/moby/buildkit/frontend/gateway/grpcclient"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
@@ -36,10 +45,6 @@ import (
 )
 
 func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error {
-	scratch, err := state.NewState("linux")
-	if err != nil {
-		return err
-	}
 	var pathsConfig layoutPathConfig
 
 	imageRef, err := c.parseReference(opts)
@@ -72,49 +77,77 @@ func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
 
-	var state llb.State
+	var buidlerState *state.State
 	switch opts.PullPolicy {
 	case image.PullNever:
-		state = llb.Local(builderRef.Name())
+		buidlerState = state.Local(builderRef.Name())
 	case image.PullAlways:
-		state = llb.Image(builderRef.Name())
+		buidlerState = state.Remote(builderRef.Name(), llb.MarkImageInternal)
 	default:
-		state = llb.Local(builderRef.Name())
-		if err := state.Validate(ctx, llb.NewConstraints(llb.LocalUniqueID(identity.NewID()))); err != nil {
-			// lets not validate llb.Image
-			state = llb.Image(builderRef.Name())
-		}
+		buidlerState = state.Local(builderRef.Name())
+		// if err := state.Validate(ctx, llb.NewConstraints(llb.LocalUniqueID(identity.NewID()))); err != nil {
+		// 	// lets not validate llb.Image
+		// 	state = llb.Image(builderRef.Name())
+		// }
 	}
 
-	// NewClient, err := client.New(ctx, "")
+	NewClient, err := client.New(ctx, "") // use default address
+	if err != nil {
+		return err
+	}
+	
+	var pforms = make([]ocispecs.Platform, 0)
+	for _, t := range opts.Targets {
+		t.Range(ctx, func(target dist.Target) error {
+			pforms = append(pforms, ocispecs.Platform{
+				OS: target.OS,
+				Architecture: target.Arch,
+				Variant: target.ArchVariant,
+			})
+			return nil
+		})
+	}
+
+	bldr := NewBuilder(imageName, c, pforms, opts)
+
+	def, err := buidlerState.State().Marshal(ctx)
+	if err != nil {
+		return err
+	}
+
+	buildkitCtx := namespaces.WithNamespace(ctx, "buildkit")
+	_, err = NewClient.Build(buildkitCtx, client.SolveOpt{
+		CacheExports: []client.CacheOptionsEntry{
+			{
+				Type: client.ExporterOCI,
+				Attrs: map[string]string{
+					"dest": filepath.Join("DinD", "cache"),
+				},
+			},
+		},
+		CacheImports: []client.CacheOptionsEntry{
+			{
+				Type: client.ExporterOCI,
+				Attrs: map[string]string{
+					"src": filepath.Join("DinD", "cache"),
+				},
+			},
+		},
+	}, "packerfile.v0", bldr.BuildkitBuilderBuild, nil)
+	if err != nil {
+		return err
+	}
+
+	
+	// builderOS, err := rawBuilderImage.OS()
 	// if err != nil {
-	// 	return err
+	// 	return errors.Wrapf(err, "getting builder OS")
 	// }
 
-	// def, err := state.Marshal(ctx)
+	// builderArch, err := rawBuilderImage.Architecture()
 	// if err != nil {
-	// 	return err
+	// 	return errors.Wrapf(err, "getting builder architecture")
 	// }
-
-	// res, err := NewClient.Solve(ctx, def, client.SolveOpt{}, nil)
-	// if err != nil {
-	// 	return err
-	// }
-
-	rawBuilderImage, err := c.imageFetcher.Fetch(ctx, builderRef.Name(), image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy})
-	if err != nil {
-		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
-	}
-
-	builderOS, err := rawBuilderImage.OS()
-	if err != nil {
-		return errors.Wrapf(err, "getting builder OS")
-	}
-
-	builderArch, err := rawBuilderImage.Architecture()
-	if err != nil {
-		return errors.Wrapf(err, "getting builder architecture")
-	}
 
 	bldr, err := c.getBuilder(rawBuilderImage)
 	if err != nil {
@@ -263,6 +296,7 @@ func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error
 		opts.ContainerConfig.Volumes = appendLayoutVolumes(opts.ContainerConfig.Volumes, pathsConfig)
 	}
 
+	// now bui
 	processedVolumes, warnings, err := processVolumes(builderOS, opts.ContainerConfig.Volumes)
 	if err != nil {
 		return err
@@ -354,7 +388,7 @@ func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error
 		if err != nil {
 			return "", err
 		}
-		tmpDir, err := os.MkdirTemp("", "extend-run-image-scratch") // we need to write to disk because manifest.json is last in the tar
+		tmpDir, err := os.MkdirTemp("", "extend-run-image-buidlerState") // we need to write to disk because manifest.json is last in the tar
 		if err != nil {
 			return "", err
 		}
@@ -478,9 +512,207 @@ func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error
 		return ephemeralRunImageName, nil
 	}
 
-	c.lifecycleExecutor = executor.New(c.docker, *scratch, c.logger, opts.Targets)
+	// implement with buildkit
+	c.lifecycleExecutor = executor.New(c.docker, *buidlerState, c.logger, opts.Targets)
 	if err = c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
 		return fmt.Errorf("executing lifecycle: %w", err)
 	}
 	return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
+}
+
+type Builder struct {
+	appName name.Reference
+	ref name.Reference
+	state.State
+	prevImage *state.State
+	platforms []ocispecs.Platform
+	client *Client
+	opts BuildOptions
+}
+
+func NewBuilder(appName, bldrName string, client *Client, platforms []ocispecs.Platform, opts BuildOptions) (*Builder, error) {
+	bldrRef, err := name.ParseReference(bldrName)
+	if err != nil {
+		return nil, err
+	}
+
+	appRef, err := name.ParseReference(appName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Builder{
+		platforms: platforms,
+		ref: bldrRef,
+		appName: appRef,
+		client: client,
+		opts: opts,
+	}, nil
+}
+
+func (b *Builder) BuildkitBuilderBuild(ctx context.Context, c gatewayClient.Client) (res *gatewayClient.Result, err error) {
+	res = gatewayClient.NewResult()
+	expPlatforms := &exptypes.Platforms{
+		Platforms: make([]exptypes.Platform, 0),
+	}
+
+	res.AddMeta("image.name", []byte(b.ref.Name())) // added an annotation to the image/index manifest
+	eg, ctx1 := errgroup.WithContext(ctx)
+	for i, platform := range b.platforms {
+		i, platform := i, platform
+		eg.Go(func() error {
+			def, err := b.State.State().Marshal(ctx1, llb.Platform(platform))
+			if err != nil {
+				return errors.Wrap(err, "failed to marshal state")
+			}
+
+			r, err := c.Solve(ctx1, gatewayClient.SolveRequest{
+				// CacheImports: b.cacheImports, // TODO: update cache imports to [pack home]
+				Definition:   def.ToPB(),
+			})
+			if err != nil {
+				return errors.Wrap(err, "failed to solve")
+			}
+
+			ref, err := r.SingleRef()
+			if err != nil {
+				return err
+			}
+
+			_, err = ref.ToState()
+			if err != nil {
+				return err
+			}
+
+			p := platforms.Format(platform)
+			res.AddRef(p, ref)
+			fmt.Printf("\n formatted platform: %s\n", p)
+
+			config := b.State.ConfigFile()
+			mutateConfigFile(config, platform)
+			configBytes, err := json.Marshal(config)
+			if err != nil {
+				return err
+			}
+
+			res.AddMeta(fmt.Sprintf("%s/%s", exptypes.ExporterImageConfigKey, p), configBytes)
+			if b.prevImage != nil {
+				baseConfig := b.prevImage.ConfigFile()
+				mutateConfigFile(baseConfig, platform)
+				configBytes, err := json.Marshal(baseConfig)
+				if err != nil {
+					return err
+				}
+				res.AddMeta(fmt.Sprintf("%s/%s", exptypes.ExporterImageBaseConfigKey, p), configBytes)
+			}
+
+			expPlatforms.Platforms[i] = exptypes.Platform{
+				ID:       p,
+				Platform: platform,
+			}
+			fmt.Printf("\n export platform at %d is %s/%s/%s\n", i, platform.OS, platform.Architecture, platform.Variant)
+
+			var mfest *ocispecs.Image
+			mfestBytes := res.Metadata[exptypes.ExporterImageConfigKey]
+			if err := json.Unmarshal(mfestBytes, mfest); err != nil {
+				return err
+			}
+
+			bkBldr, err := builder.NewBuildkitBuilder(res, b.ref.Name(), platform)
+			if err != nil {
+				return errors.Wrapf(err, "invalid builder %s(%s)", style.Symbol(b.ref.Name()), p)
+			}
+
+			runImageName := b.client.resolveRunImage(b.opts.RunImage, b.appName.Context().RegistryStr(), b.ref.Context().RegistryStr(), bkBldr.DefaultRunImage(), b.opts.AdditionalMirrors, b.opts.Publish, b.client.accessChecker)
+			runImgRes, err := b.validateBuildkitRunImage(ctx, runImageName, platform, bkBldr.StackID)
+			if err != nil {
+				return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
+			}
+
+			var runMixins []string
+			if _, err := dist.GetBuildkitLabel(runImgRes, stack.MixinsLabel, &runMixins); err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+
+	dt, err := json.Marshal(expPlatforms)
+	if err != nil {
+		return res, errors.Wrap(err, "failed to marshal the target platforms")
+	}
+
+	fmt.Printf("\n multi-arch export platform: %v", expPlatforms.Platforms)
+
+	res.AddMeta(exptypes.ExporterPlatformsKey, dt)
+}
+
+func (b *Builder) validateBuildkitRunImage(ctx context.Context, name string, platform ocispecs.Platform, expectedStack string) (res *gatewayClient.Result, err error) {
+	if name == "" {
+		return nil, errors.New("run image must be specified")
+	}
+
+	var runImageState *state.State
+	switch b.opts.PullPolicy {
+	case image.PullNever:
+		runImageState = state.Local(name, llb.Platform(platform))
+	case image.PullAlways:
+		runImageState = state.Remote(name, llb.MarkImageInternal, llb.Platform(platform))
+	default:
+		runImageState = state.Local(name, llb.Platform(platform))
+		// if err := state.Validate(ctx, llb.NewConstraints(llb.LocalUniqueID(identity.NewID()))); err != nil {
+		// 	// lets not validate llb.Image
+		// 	state = llb.Image(builderRef.Name())
+		// }
+	}
+
+	def, err := runImageState.State().Marshal(ctx)
+	if err != nil {
+		return res, err
+	}
+
+	err = grpcclient.RunFromEnvironment(ctx, func(ctx context.Context, c gatewayClient.Client) (*gatewayClient.Result, error) {
+		return c.Solve(ctx, gatewayClient.SolveRequest{
+			Definition: def.ToPB(),
+			CacheImports: []gatewayClient.CacheOptionsEntry{
+				{
+					Type: client.ExporterOCI,
+					Attrs: map[string]string{
+						"src": filepath.Join("DinD", "cache"),
+					},
+				},
+			},
+		})
+	})
+	if err != nil {
+		return res, err
+	}
+
+	platformStr := platforms.Format(platform)
+	bkBldr, err := builder.NewBuildkitBuilder(res, name, platform)
+	if err != nil {
+		return res, errors.Wrapf(err, "invalid runImage %s(%s)", style.Symbol(b.ref.Name()), platformStr)
+	}
+
+	stackID, err := bkBldr.Label("io.buildpacks.stack.id")
+	if err != nil {
+		return res, errors.Wrap(err, "resolving runImage stackID")
+	}
+
+	if stackID != expectedStack {
+		return nil, fmt.Errorf("run-image stack id '%s' does not match builder stack '%s'", stackID, expectedStack)
+	}
+	return res, err
+}
+
+func mutateConfigFile(config *v1.ConfigFile, platform ocispecs.Platform) {
+	config.OS = platform.OS
+	config.Architecture = platform.Architecture
+	config.Variant = platform.Variant
+	config.OSVersion = platform.OSVersion
+	config.OSFeatures = platform.OSFeatures
 }
