@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"strings"
 
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/pack/internal/build"
@@ -22,14 +21,11 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
-	gatewayClient "github.com/moby/buildkit/frontend/gateway/client"
-	"github.com/moby/buildkit/solver/pb"
 )
 
 func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, buildCache, launchCache build.Cache) error {
 	// TODO: move mounter into [l.[*builder.Builder[state.State]]]
 	mounter := mountpaths.MountPathsForOS(runtime.GOOS, l.opts.Workspace) // we are going to run a single container i.e the container with the current target's OS 
-	var mounts = make([]gatewayClient.Mount, 0, 4)
 	flags := addTags([]string{
 		"-app", mounter.AppDir(),
 		"-cache-dir", mounter.CacheDir(),
@@ -82,16 +78,6 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, build
 	case cache.Image:
 		flags = append(flags, "-cache-image", buildCache.Name())
 		l.AddVolume(l.opts.Volumes...)
-		for _, m := range l.opts.Volumes {
-			host, _, _ := strings.Cut(m, ":") // l.opts.Volumes in format /host:/conatiner:RO
-			mounts = append(mounts, gatewayClient.Mount{
-				Dest: host,
-				MountType: pb.MountType_CACHE,
-				CacheOpt: &pb.CacheOpt{
-					Sharing: pb.CacheSharingOpt_SHARED,
-				},
-			})
-		}
 	case cache.Volume, cache.Bind:
 		volumes := append(l.opts.Volumes, fmt.Sprintf("%s:%s", buildCache.Name(), mounter.CacheDir()))
 		l.AddVolume(volumes...)
@@ -143,17 +129,13 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, build
 		// can we use SecretAsEnv, cause The ENV is exposed in ConfigFile whereas SecretAsEnv not! But are we using DinD?
 		// shall we add secret to builder instead of remodifying existing builder to add `CNB_REGISTRY_AUTH` 
 		// we can also reference a file as secret!
-		l.User(state.RootUser(runtime.GOOS)).AddArg(fmt.Sprintf("CNB_REGISTRY_AUTH=%s", authConfig))
+		l.User(state.RootUser(runtime.GOOS)).
+			AddArg(fmt.Sprintf("CNB_REGISTRY_AUTH=%s", authConfig))
 	} else {
 		// TODO: WithDaemonAccess(l.opts.DockerHost)
 
 		flags = append(flags, "-daemon", "-launch-cache", mounter.LaunchCacheDir())
 		l.AddVolume(fmt.Sprintf("%s:%s", launchCache.Name(), mounter.LaunchCacheDir()))
-		mounts = append(mounts, gatewayClient.Mount{
-			Dest: launchCache.Name(), // fmt.Sprintf("%s:%s", launchCache.Name(), mounter.LaunchCacheDir()),
-			MountType: pb.MountType_CACHE,
-			CacheOpt: &pb.CacheOpt{Sharing: pb.CacheSharingOpt_SHARED},
-		})
 	}
 	l.Cmd(flags...) // .Run([]string{"/cnb/lifecycle/creator", "-app", "/workspace", "-cache-dir", "/cache", "-run-image", "ghcr.io/jericop/run-jammy:latest", "wygin/react-yarn"}, func(state llb.ExecState) llb.State {return state.State})
 	// TODO: delete below line
@@ -161,7 +143,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, build
 
 	var platforms = make([]v1.Platform, 0)
 	for _, target := range l.targets {
-		target.Range(ctx, func(t dist.Target) error {
+		target.Range(func(t dist.Target) error {
 			platforms = append(platforms, v1.Platform{
 				OS:           t.OS,
 				Architecture: t.Arch,

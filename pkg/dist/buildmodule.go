@@ -51,15 +51,3 @@ type Stack struct {
 	ID     string   `json:"id" toml:"id"`
 	Mixins []string `json:"mixins,omitempty" toml:"mixins,omitempty"`
 }
-
-type Target struct {
-	OS            string         `json:"os" toml:"os"`
-	Arch          string         `json:"arch" toml:"arch"`
-	ArchVariant   string         `json:"variant,omitempty" toml:"variant,omitempty"`
-	Distributions []Distribution `json:"distros,omitempty" toml:"distros,omitempty"`
-}
-
-type Distribution struct {
-	Name    string `json:"name,omitempty" toml:"name,omitempty"`
-	Version string `json:"version,omitempty" toml:"version,omitempty"`
-}
