@@ -38,14 +38,67 @@ func (b *builder[any]) Build(ctx context.Context) error {
 }
 
 func (b *builder[any])build(ctx context.Context, c gatewayClient.Client) (*gatewayClient.Result, error) {
-	res := gatewayClient.NewResult() // empty result
+	if l := len(b.platforms); l > 1 { // multi-arch
+		res := gatewayClient.NewResult() // empty result
+		res.AddMeta("image.name", []byte(b.ref)) // added an annotation to the image/index manifest
+		return b.multiArchBuild(ctx, c, res)
+	} else if l == 0 {
+		b.platforms = append(b.platforms, platforms.DefaultSpec()) // target current platform
+	}
+
+	p := b.platforms[0]
+	def, err := b.State.State().Marshal(ctx, llb.Platform(p))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal state")
+	}
+
+	res, err := c.Solve(ctx, gatewayClient.SolveRequest{
+		Evaluate: true,
+		// CacheImports: b.cacheImports, // TODO: update cache imports to [pack home]
+		Definition:   def.ToPB(),
+	})
+	if err != nil {
+		return res, errors.Wrap(err, "failed to solve")
+	}
+
+	ref, err := res.SingleRef()
+	if err != nil {
+		return res, err
+	}
+
+	_, err = ref.ToState()
+	if err != nil {
+		return res, err
+	}
+
+	res.SetRef(ref)
+
+	config := b.State.ConfigFile()
+	MutateConfigFile(config, p)
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		return res, err
+	}
+
+	res.AddMeta(exptypes.ExporterImageConfigKey, configBytes)
+	if b.prevImage != nil {
+		baseConfig := b.prevImage.ConfigFile()
+		MutateConfigFile(baseConfig, p)
+		configBytes, err := json.Marshal(baseConfig)
+		if err != nil {
+			return res, err
+		}
+		res.AddMeta(exptypes.ExporterImageBaseConfigKey, configBytes)
+	}
+	return res, nil
+}
+
+func (b *builder[any]) multiArchBuild(ctx context.Context, c gatewayClient.Client, res *gatewayClient.Result) (*gatewayClient.Result, error) {
 	expPlatforms := &exptypes.Platforms{
 		Platforms: make([]exptypes.Platform, 0, len(b.platforms)),
 	}
 
-	res.AddMeta("image.name", []byte(b.ref)) // added an annotation to the image/index manifest
 	eg, ctx1 := errgroup.WithContext(ctx)
-
 	for i, p := range b.platforms {
 		i, p := i, p
 		eg.Go(func() error {
@@ -113,11 +166,7 @@ func (b *builder[any])build(ctx context.Context, c gatewayClient.Client) (*gatew
 	}
 
 	res.AddMeta(exptypes.ExporterPlatformsKey, dt)
-	for _, m := range b.mounts {
-		m.Ref = res.Ref
-	}
-
-	return res, nil
+	return res, err
 }
 
 func MutateConfigFile(config *v1.ConfigFile, platform ocispecs.Platform) {

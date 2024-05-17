@@ -9,7 +9,6 @@ import (
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/moby/buildkit/client/llb"
-	"github.com/moby/buildkit/frontend/gateway/client"
 	"github.com/moby/buildkit/solver/pb"
 	"github.com/moby/buildkit/util/entitlements"
 	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
@@ -166,8 +165,4 @@ func (s *State) Platform() *ocispecs.Platform {
 
 func (s *State) Options() Options {
 	return s.options
-}
-
-func (s *State) Build() (*client.Result, error) {
-	s.c
 }
