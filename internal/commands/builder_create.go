@@ -130,7 +130,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 	cmd.Flags().StringSliceVarP(&flags.Targets, "target", "t", nil,
 		`Target platforms to build for.\nTargets should be in the format '[os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]'.
 - To specify two different architectures:  '--target "linux/amd64" --target "linux/arm64"'
-- To specify the distribution version: '--target "linux/arm/v6@ubuntu@14.04"'
+- To specify the distribution version: '--target "linux/arm/v6:ubuntu@14.04"'
 - To specify multiple distribution versions: '--target "linux/arm/v6:ubuntu@14.04"  --target "linux/arm/v6:ubuntu@16.04"'
 	`)
 

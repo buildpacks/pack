@@ -10,8 +10,8 @@ import (
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
-// MultiArchConfig Targets can be defined in .toml files or can be override by end-users, this structure offers
-// utility method to determine the expected final Targets configuration
+// MultiArchConfig targets can be defined in .toml files or can be overridden by end-users via the command line; this structure offers
+// utility methods to determine the expected final targets configuration.
 type MultiArchConfig struct {
 	// Targets defined in .toml files
 	buildpackTargets []dist.Target
@@ -37,9 +37,9 @@ func (m *MultiArchConfig) Targets() []dist.Target {
 	return m.expectedTargets
 }
 
-// CopyConfigFiles will, given a base directory - which is expected to be the root folder of a single buildpack,
-// copy the buildpack.toml file into the corresponding platform root folder for each target.
-// it will return an array with all the platform root folder where the buildpack.toml file were copied to
+// CopyConfigFiles will, given a base directory (which is expected to be the root folder of a single buildpack),
+// copy the buildpack.toml file from the base directory into the corresponding platform root folder for each target.
+// It will return an array with all the platform root folders where the buildpack.toml file were copied.
 func (m *MultiArchConfig) CopyConfigFiles(baseDir string) ([]string, error) {
 	var filesToClean []string
 	targets := dist.ExpandTargetsDistributions(m.Targets()...)

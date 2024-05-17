@@ -821,7 +821,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							Targets: targets,
 						})
 						h.AssertNotNil(t, err)
-						h.AssertError(t, err, "is not allowed when creating a composite multi-platform buildpack, push your dependencies to a registry")
+						h.AssertError(t, err, "is not allowed when creating a composite multi-platform buildpack; push your dependencies to a registry and use 'docker://<image>' instead")
 					})
 				})
 			})

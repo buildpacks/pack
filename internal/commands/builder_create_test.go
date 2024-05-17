@@ -36,11 +36,11 @@ const validConfig = `
 
 const validConfigWithTargets = `
 [[buildpacks]]
-  id = "some.buildpack"
+id = "some.buildpack"
 
 [[order]]
-	[[order.group]]
-		id = "some.buildpack"
+[[order.group]]
+id = "some.buildpack"
 
 [[targets]]
 os = "linux"
@@ -464,7 +464,7 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("multi-platform builder is expected to be created", func() {
 			when("--target", func() {
-				when("builder config hasn't targets defined", func() {
+				when("builder config has no targets defined", func() {
 					it.Before(func() {
 						h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(validConfig), 0666))
 					})
@@ -527,7 +527,7 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					when("invalid target flag is used", func() {
-						it("errors a message when invalid target flag is used", func() {
+						it("errors with a message when invalid target flag is used", func() {
 							command.SetArgs([]string{
 								"some/builder",
 								"--config", builderConfigPath,

@@ -154,7 +154,7 @@ func (c *Client) packageBuildpackTarget(ctx context.Context, opts PackageBuildpa
 			}
 			if locatorType == buildpack.URILocator {
 				// When building a composite multi-platform buildpack all the dependencies must be pushed to a registry
-				return digest, errors.New(fmt.Sprintf("%s is not allowed when creating a composite multi-platform buildpack, push your dependencies to a registry and use 'docker://' instead", style.Symbol(dep.URI)))
+				return digest, errors.New(fmt.Sprintf("uri %s is not allowed when creating a composite multi-platform buildpack; push your dependencies to a registry and use 'docker://<image>' instead", style.Symbol(dep.URI)))
 			}
 		}
 

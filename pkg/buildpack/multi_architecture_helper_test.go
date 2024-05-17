@@ -48,26 +48,26 @@ func testMultiArchConfig(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Targets", func() {
-		when("buildpacks targets are defined", func() {
+		when("buildpack targets are defined", func() {
 			it.Before(func() {
 				multiArchConfig, err = buildpack.NewMultiArchConfig(targetsFromBuildpack, []dist.Target{}, logger)
 				h.AssertNil(t, err)
 			})
 
-			it("returns buildpacks targets", func() {
+			it("returns buildpack targets", func() {
 				h.AssertEq(t, len(multiArchConfig.Targets()), 1)
 				h.AssertEq(t, multiArchConfig.Targets()[0].OS, "linux")
 				h.AssertEq(t, multiArchConfig.Targets()[0].Arch, "amd64")
 			})
 		})
 
-		when("expected targets are not defined", func() {
+		when("buildpack targets are not defined, but flags are provided", func() {
 			it.Before(func() {
 				multiArchConfig, err = buildpack.NewMultiArchConfig([]dist.Target{}, targetsFromFlags, logger)
 				h.AssertNil(t, err)
 			})
 
-			it("returns buildpacks targets", func() {
+			it("returns targets from flags", func() {
 				h.AssertEq(t, len(multiArchConfig.Targets()), 1)
 				h.AssertEq(t, multiArchConfig.Targets()[0].OS, "linux")
 				h.AssertEq(t, multiArchConfig.Targets()[0].Arch, "arm64")
@@ -77,7 +77,7 @@ func testMultiArchConfig(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#CopyConfigFiles", func() {
-		when("buildpacks root folder exists", func() {
+		when("buildpack root folder exists", func() {
 			var rootFolder string
 
 			it.Before(func() {
@@ -117,19 +117,19 @@ func testMultiArchConfig(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("target has 'os'", func() {
-				when("'os' exists", func() {
+				when("'os' directory exists", func() {
 					it.Before(func() {
 						target = dist.Target{OS: "linux"}
 					})
 
-					it("returns <root>/linux", func() {
+					it("returns <root>/<os directory>", func() {
 						found, path := buildpack.PlatformRootFolder(bpURI, target)
 						h.AssertTrue(t, found)
 						h.AssertEq(t, path, filepath.Join(tmpDir, "linux"))
 					})
 				})
 
-				when("'os' doesn't exist", func() {
+				when("'os' directory doesn't exist", func() {
 					it.Before(func() {
 						target = dist.Target{OS: "darwin"}
 					})
@@ -142,24 +142,24 @@ func testMultiArchConfig(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("target has 'os' and 'arch'", func() {
-				when("'arch' exists", func() {
+				when("'arch' directory exists", func() {
 					it.Before(func() {
 						target = dist.Target{OS: "linux", Arch: "arm64"}
 					})
 
-					it("returns <root>/linux/arm64", func() {
+					it("returns <root>/<os directory>/<arch directory>", func() {
 						found, path := buildpack.PlatformRootFolder(bpURI, target)
 						h.AssertTrue(t, found)
 						h.AssertEq(t, path, filepath.Join(tmpDir, "linux", "arm64"))
 					})
 				})
 
-				when("'arch' doesn't exist", func() {
+				when("'arch' directory doesn't exist", func() {
 					it.Before(func() {
 						target = dist.Target{OS: "linux", Arch: "amd64"}
 					})
 
-					it("returns <root>/linux", func() {
+					it("returns <root>/<os directory>", func() {
 						found, path := buildpack.PlatformRootFolder(bpURI, target)
 						h.AssertTrue(t, found)
 						h.AssertEq(t, path, filepath.Join(tmpDir, "linux"))
@@ -172,7 +172,7 @@ func testMultiArchConfig(t *testing.T, when spec.G, it spec.S) {
 					target = dist.Target{OS: "linux", Arch: "arm64", ArchVariant: "v8"}
 				})
 
-				it("returns <root>/linux/arm64/v8", func() {
+				it("returns <root>/<os directory>/<arch directory>/<variant directory>", func() {
 					found, path := buildpack.PlatformRootFolder(bpURI, target)
 					h.AssertTrue(t, found)
 					h.AssertEq(t, path, filepath.Join(tmpDir, "linux", "arm64", "v8"))
@@ -180,12 +180,12 @@ func testMultiArchConfig(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("target has 'os', 'arch', 'variant' and name@version", func() {
-				when("version exists", func() {
+				when("all directories exist", func() {
 					it.Before(func() {
 						target = dist.Target{OS: "windows", Arch: "amd64", ArchVariant: "v2", Distributions: []dist.Distribution{{Name: "windows", Version: "10.0.20348.1970"}}}
 					})
 
-					it("returns <root>/linux/amd64/v2/windows@10.0.20348.1970", func() {
+					it("returns <root>/<os directory>/<arch directory>/<variant directory>/<distro name directory>@<distro version directory>", func() {
 						found, path := buildpack.PlatformRootFolder(bpURI, target)
 						h.AssertTrue(t, found)
 						h.AssertEq(t, path, filepath.Join(tmpDir, "windows", "amd64", "v2", "windows@10.0.20348.1970"))
@@ -197,7 +197,7 @@ func testMultiArchConfig(t *testing.T, when spec.G, it spec.S) {
 						target = dist.Target{OS: "windows", Arch: "amd64", ArchVariant: "v2", Distributions: []dist.Distribution{{Name: "windows", Version: "foo"}}}
 					})
 
-					it("returns <root>/windows/amd64/v2 (last matching)", func() {
+					it("returns the most specific matching directory (<root>/<os directory>/<arch directory>/<variant directory>)", func() {
 						found, path := buildpack.PlatformRootFolder(bpURI, target)
 						h.AssertTrue(t, found)
 						h.AssertEq(t, path, filepath.Join(tmpDir, "windows", "amd64", "v2"))

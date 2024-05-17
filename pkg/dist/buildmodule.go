@@ -62,8 +62,8 @@ type Target struct {
 	Distributions []Distribution `json:"distros,omitempty" toml:"distros,omitempty"`
 }
 
-// ValuesAsSlice converts the internal representation of a target, os, arch, variant, etc. into a string slice,
-// where each value included into the final array must be not empty.
+// ValuesAsSlice converts the internal representation of a target (os, arch, variant, etc.) into a string slice,
+// where each value included in the final array must be not empty.
 func (t *Target) ValuesAsSlice() []string {
 	var targets []string
 	if t.OS != "" {
@@ -86,15 +86,14 @@ func (t *Target) ValuesAsPlatform() string {
 	return strings.Join(t.ValuesAsSlice(), "/")
 }
 
-// ExpandTargetsDistributions expands each given target with multiple distribution versions to single target values
-// with just one distribution definition, for example:
-// given an array with ONE single target with the format:
+// ExpandTargetsDistributions expands each provided target (with multiple distribution versions) to multiple targets (each with a single distribution version).
+// For example, given an array with ONE target with the format:
 //
 //	[
 //	  {OS:"linux", Distributions: []dist.Distribution{{Name: "ubuntu", Version: "18.01"},{Name: "ubuntu", Version: "21.01"}}}
 //	]
 //
-// returns an array with TWO values with the format:
+// it returns an array with TWO targets each with the format:
 //
 //	[
 //	 {OS:"linux",Distributions: []dist.Distribution{{Name: "ubuntu", Version: "18.01"}}},

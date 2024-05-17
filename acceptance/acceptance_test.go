@@ -186,7 +186,7 @@ func testWithoutSpecificBuilderRequirement(
 			})
 
 			it.After(func() {
-				assert.Nil(os.RemoveAll(tmpDir))
+				//assert.Nil(os.RemoveAll(tmpDir))
 			})
 
 			generateAggregatePackageToml := func(buildpackURI, nestedPackageName, operatingSystem string) string {
@@ -319,18 +319,18 @@ func testWithoutSpecificBuilderRequirement(
 							packageName = registryConfig.RepoName("simple-multi-platform-buildpack" + h.RandString(8))
 						})
 
-						when("simple buildpacks on disk", func() {
+						when("simple buildpack on disk", func() {
 							var path string
 
 							it.Before(func() {
-								// creates a simple buildpack on disk
+								// create a simple buildpack on disk
 								sourceDir := filepath.Join("testdata", "mock_buildpacks")
 								path = filepath.Join(tmpDir, "simple-layers-buildpack")
 								err := buildpacks.BpFolderSimpleLayers.Prepare(sourceDir, tmpDir)
 								h.AssertNil(t, err)
 							})
 
-							it("publishes images to registry and creates an image index", func() {
+							it("publishes images for each requested target to the registry and creates an image index", func() {
 								output := pack.RunSuccessfully(
 									"buildpack", "package", packageName,
 									"--path", path,
@@ -350,20 +350,24 @@ func testWithoutSpecificBuilderRequirement(
 							})
 						})
 
-						when("composite buildpacks on disk", func() {
+						when("composite buildpack on disk", func() {
 							var packageTomlPath string
 
 							when("dependencies are not available in a registry", func() {
 								it.Before(func() {
 									// creates a composite buildpack on disk
 									sourceDir := filepath.Join("testdata", "mock_buildpacks")
-									err := buildpacks.MetaBpFolder.Prepare(sourceDir, tmpDir)
+
+									err := buildpacks.MetaBpDependency.Prepare(sourceDir, tmpDir)
+									h.AssertNil(t, err)
+
+									err = buildpacks.MetaBpFolder.Prepare(sourceDir, tmpDir)
 									h.AssertNil(t, err)
 
 									packageTomlPath = filepath.Join(tmpDir, "meta-buildpack", "package.toml")
 								})
 
-								it("errors a descriptive message", func() {
+								it("errors with a descriptive message", func() {
 									output, err := pack.Run(
 										"buildpack", "package", packageName,
 										"--config", packageTomlPath,
@@ -373,7 +377,7 @@ func testWithoutSpecificBuilderRequirement(
 										"--verbose",
 									)
 									assert.NotNil(err)
-									h.AssertContains(t, output, "'../meta-buildpack-dependency' is not allowed when creating a composite multi-platform buildpack, push your dependencies to a registry and use 'docker://' instead")
+									h.AssertContains(t, output, "uri '../meta-buildpack-dependency' is not allowed when creating a composite multi-platform buildpack; push your dependencies to a registry and use 'docker://<image>' instead")
 								})
 							})
 
@@ -381,10 +385,10 @@ func testWithoutSpecificBuilderRequirement(
 								var depPackageName string
 
 								it.Before(func() {
-									// multi-platform composite buildpacks requires the dependencies to be available on a registry
+									// multi-platform composite buildpacks require the dependencies to be available in a registry
 									// let's push it
 
-									// creates the simple buildpack dependency on disk
+									// first creates the simple buildpack dependency on disk
 									depSourceDir := filepath.Join("testdata", "mock_buildpacks")
 									depPath := filepath.Join(tmpDir, "meta-buildpack-dependency")
 									err := buildpacks.MetaBpDependency.Prepare(depSourceDir, tmpDir)
@@ -403,7 +407,7 @@ func testWithoutSpecificBuilderRequirement(
 									assertImage.CanBePulledFromRegistry(depPackageName)
 									assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(depPackageName)
 
-									// let's prepare de composite buildpack to use the previous simple buildpack dependency
+									// let's prepare the composite buildpack to use the simple buildpack dependency prepared above
 									packageTomlPath = generateMultiPlatformCompositeBuildpackPackageToml(".", depPackageName)
 
 									// We need to copy the buildpack toml to the folder where the packageTomlPath was created
@@ -412,7 +416,7 @@ func testWithoutSpecificBuilderRequirement(
 									h.CopyFile(t, sourceDir, filepath.Join(packageTomlDir, "buildpack.toml"))
 								})
 
-								it.Focus("publishes images to registry and creates an image index", func() {
+								it("publishes images for each requested target to the registry and creates an image index", func() {
 									output := pack.RunSuccessfully(
 										"buildpack", "package", packageName,
 										"--config", packageTomlPath,
@@ -442,18 +446,18 @@ func testWithoutSpecificBuilderRequirement(
 							packageName = registryConfig.RepoName("simple-multi-platform-buildpack" + h.RandString(8))
 						})
 
-						when("simple buildpacks on disk", func() {
+						when("simple buildpack on disk", func() {
 							var path string
 
 							it.Before(func() {
-								// creates a simple buildpack on disk
+								// create a simple buildpack on disk
 								sourceDir := filepath.Join("testdata", "mock_buildpacks")
 								path = filepath.Join(tmpDir, "multi-platform-buildpack")
 								err := buildpacks.MultiPlatformFolderBP.Prepare(sourceDir, tmpDir)
 								h.AssertNil(t, err)
 							})
 
-							it("publishes images to registry and creates an image index", func() {
+							it("publishes images for each target specified in buildpack.toml to the registry and creates an image index", func() {
 								output := pack.RunSuccessfully(
 									"buildpack", "package", packageName,
 									"--path", path,
@@ -468,8 +472,6 @@ func testWithoutSpecificBuilderRequirement(
 
 								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(packageName)
 								h.AssertRemoteImageIndex(t, packageName, types.OCIImageIndex, 2)
-
-								fmt.Println(output)
 							})
 						})
 					})

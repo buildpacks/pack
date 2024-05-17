@@ -133,7 +133,7 @@ func parseFormatFlag(value string) (types.MediaType, error) {
 }
 
 // processMultiArchitectureConfig takes an array of targets with format: [os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]
-// and a list of targets defined in a configuration file (buildpack.toml or package.toml) and create a multi-architecture configuration
+// and a list of targets defined in a configuration file (buildpack.toml or package.toml) and creates a multi-architecture configuration
 func processMultiArchitectureConfig(logger logging.Logger, userTargets []string, configTargets []dist.Target, daemon bool) (*buildpack.MultiArchConfig, error) {
 	var (
 		expectedTargets []dist.Target

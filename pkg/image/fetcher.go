@@ -194,7 +194,7 @@ func (f *Fetcher) fetchRemoteImage(name string, target *dist.Target) (imgutil.Im
 			// We assumed the given target's distributions were expanded, and we are just dealing with 1 version.
 			platform.OSVersion = target.Distributions[0].Version
 			if len(target.Distributions) > 1 {
-				f.logger.Warnf("trying to fetch an image with more than one version, using %s", style.Symbol(target.Distributions[0].Version))
+				f.logger.Warnf("trying to fetch an image with more than one OS distribution, using %s", style.Symbol(target.Distributions[0].Version))
 			}
 		}
 		image, err = remote.NewImage(name, f.keychain, remote.FromBaseImage(name), remote.WithDefaultPlatform(platform))

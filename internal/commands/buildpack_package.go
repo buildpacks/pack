@@ -104,7 +104,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				logger.Warn("Flattening a buildpack package could break the distribution specification. Please use it with caution.")
 			}
 
-			targets, composedBP, err := processBuildpackPackageTargets(flags.Path, packageConfigReader, bpPackageCfg)
+			targets, isCompositeBP, err := processBuildpackPackageTargets(flags.Path, packageConfigReader, bpPackageCfg)
 			if err != nil {
 				return err
 			}
@@ -116,7 +116,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 
 			if len(multiArchCfg.Targets()) == 0 {
 				logger.Warnf("A new '--target' flag is available to set the platform, using '%s' as default", bpPackageCfg.Platform.OS)
-			} else if !composedBP {
+			} else if !isCompositeBP {
 				filesToClean, err := multiArchCfg.CopyConfigFiles(bpPath)
 				if err != nil {
 					return err
@@ -166,9 +166,9 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 	cmd.Flags().StringSliceVarP(&flags.Targets, "target", "t", nil,
 		`Target platforms to build for.
 Targets should be in the format '[os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]'.
-- To specify two different architectures :  '--target "linux/amd64" --target "linux/arm64"'
-- To specify the distribution version: '--target "linux/arm/v6@ubuntu@14.04"'
-- To specify multiple distribution  versions : '--target "linux/arm/v6:ubuntu@14.04"  --target "linux/arm/v6:ubuntu@16.04"'
+- To specify two different architectures: '--target "linux/amd64" --target "linux/arm64"'
+- To specify the distribution version: '--target "linux/arm/v6:ubuntu@14.04"'
+- To specify multiple distribution versions: '--target "linux/arm/v6:ubuntu@14.04"  --target "linux/arm/v6:ubuntu@16.04"'
 	`)
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("flatten")
@@ -202,13 +202,13 @@ func validateBuildpackPackageFlags(cfg config.Config, p *BuildpackPackageFlags) 
 	return nil
 }
 
-// processBuildpackPackageTargets returns the list of targets defined in the configuration file, it could be the buildpack.toml or
-// the package.toml if the buildpack is a composed buildpack
+// processBuildpackPackageTargets returns the list of targets defined in the configuration file; it could be the buildpack.toml or
+// the package.toml if the buildpack is a composite buildpack
 func processBuildpackPackageTargets(path string, packageConfigReader PackageConfigReader, bpPackageCfg pubbldpkg.Config) ([]dist.Target, bool, error) {
 	var (
-		targets    []dist.Target
-		order      dist.Order
-		composedBP bool
+		targets       []dist.Target
+		order         dist.Order
+		isCompositeBP bool
 	)
 
 	// Read targets from buildpack.toml
@@ -220,14 +220,14 @@ func processBuildpackPackageTargets(path string, packageConfigReader PackageConf
 		}
 		targets = buildpackCfg.Targets()
 		order = buildpackCfg.Order()
-		composedBP = len(order) > 0
+		isCompositeBP = len(order) > 0
 	}
 
 	// When composite buildpack, targets are defined in package.toml - See RFC-0128
-	if composedBP {
+	if isCompositeBP {
 		targets = bpPackageCfg.Targets
 	}
-	return targets, composedBP, nil
+	return targets, isCompositeBP, nil
 }
 
 func clean(paths []string) error {

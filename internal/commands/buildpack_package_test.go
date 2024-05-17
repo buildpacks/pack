@@ -279,7 +279,7 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 			when("a path is specified", func() {
-				when("no multi-platform", func() {
+				when("not multi-platform", func() {
 					it("creates a default config with the appropriate path", func() {
 						cmd := packageCommand(withBuildpackPackager(fakeBuildpackPackager))
 						cmd.SetArgs([]string{"some-name", "-p", ".."})

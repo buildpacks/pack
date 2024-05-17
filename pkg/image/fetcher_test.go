@@ -123,7 +123,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, osVersion, "my-version")
 						})
 
-						it("returns the remote image and logs a warn message when more than one distributions", func() {
+						it("returns the remote image and logs a warn message when there is more than one os distribution", func() {
 							target = dist.Target{
 								OS:          runtime.GOOS,
 								Arch:        runtime.GOARCH,
@@ -136,7 +136,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 							img, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways, Target: &target})
 							h.AssertNil(t, err)
-							h.AssertContains(t, outBuf.String(), "trying to fetch an image with more than one version")
+							h.AssertContains(t, outBuf.String(), "trying to fetch an image with more than one OS distribution")
 
 							variant, err := img.Variant()
 							h.AssertNil(t, err)

@@ -65,7 +65,7 @@ type DownloadOptions struct {
 	// The base directory to use to resolve relative assets
 	RelativeBaseDir string
 
-	// Deprecated: the older alternative to set builder OS, use Target instead
+	// Deprecated: the older alternative to specify the OS to download; use Target instead
 	ImageOS string
 
 	// Deprecated: the older alternative to buildpack URI
@@ -78,7 +78,7 @@ type DownloadOptions struct {
 
 	PullPolicy image.PullPolicy
 
-	// The OS/Architecture to download
+	// The OS/Architecture/Variant to download.
 	Target *dist.Target
 }
 
