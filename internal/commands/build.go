@@ -10,6 +10,7 @@ import (
 
 	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/moby/buildkit/util/appcontext"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -218,7 +219,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			})
 
 			if len(targets) > 0 || targetsLen.Load() > 1 {
-				if err := packClient.BuildWithBuildkit(cmd.Context(), buildOps); err != nil {
+				if err := packClient.BuildWithBuildkit(appcontext.Context(), buildOps); err != nil {
 					return errors.Wrap(err, "failed to build")
 				}
 			} else {

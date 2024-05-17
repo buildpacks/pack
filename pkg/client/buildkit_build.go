@@ -15,19 +15,10 @@ import (
 	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/lifecycle/platform/files"
-	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/containerd/platforms"
 	"github.com/docker/docker/api/types"
-	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/moby/buildkit/client"
-	"github.com/moby/buildkit/client/llb"
-	"github.com/moby/buildkit/exporter/containerimage/exptypes"
-	gatewayClient "github.com/moby/buildkit/frontend/gateway/client"
+	// gatewayClient "github.com/moby/buildkit/frontend/gateway/client"
 	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/moby/buildkit/frontend/gateway/grpcclient"
 	"github.com/pkg/errors"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
@@ -77,24 +68,24 @@ func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
 
-	var buidlerState *state.State
-	switch opts.PullPolicy {
-	case image.PullNever:
-		buidlerState = state.Local(builderRef.Name())
-	case image.PullAlways:
-		buidlerState = state.Remote(builderRef.Name(), llb.MarkImageInternal)
-	default:
-		buidlerState = state.Local(builderRef.Name())
-		// if err := state.Validate(ctx, llb.NewConstraints(llb.LocalUniqueID(identity.NewID()))); err != nil {
-		// 	// lets not validate llb.Image
-		// 	state = llb.Image(builderRef.Name())
-		// }
-	}
+	var buidlerState *state.State = state.Remote("busybox:latest")
+	// switch opts.PullPolicy {
+	// case image.PullNever:
+	// 	buidlerState = state.Local(builderRef.Name())
+	// case image.PullAlways:
+	// 	buidlerState = state.Remote(builderRef.Name(), llb.MarkImageInternal)
+	// default:
+	// 	buidlerState = state.Local(builderRef.Name())
+	// 	// if err := state.Validate(ctx, llb.NewConstraints(llb.LocalUniqueID(identity.NewID()))); err != nil {
+	// 	// 	// lets not validate llb.Image
+	// 	// 	state = llb.Image(builderRef.Name())
+	// 	// }
+	// }
 
-	NewClient, err := client.New(ctx, "") // use default address
-	if err != nil {
-		return err
-	}
+	// NewClient, err := client.New(ctx, "") // use default address
+	// if err != nil {
+	// 	return err
+	// }
 	
 	var pforms = make([]ocispecs.Platform, 0)
 	for _, t := range opts.Targets {
@@ -108,46 +99,58 @@ func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error
 		})
 	}
 
-	bldr := NewBuilder(imageName, c, pforms, opts)
-
-	def, err := buidlerState.State().Marshal(ctx)
-	if err != nil {
-		return err
-	}
-
-	buildkitCtx := namespaces.WithNamespace(ctx, "buildkit")
-	_, err = NewClient.Build(buildkitCtx, client.SolveOpt{
-		CacheExports: []client.CacheOptionsEntry{
-			{
-				Type: client.ExporterOCI,
-				Attrs: map[string]string{
-					"dest": filepath.Join("DinD", "cache"),
-				},
-			},
-		},
-		CacheImports: []client.CacheOptionsEntry{
-			{
-				Type: client.ExporterOCI,
-				Attrs: map[string]string{
-					"src": filepath.Join("DinD", "cache"),
-				},
-			},
-		},
-	}, "packerfile.v0", bldr.BuildkitBuilderBuild, nil)
-	if err != nil {
-		return err
-	}
-
-	
-	// builderOS, err := rawBuilderImage.OS()
+	// bkBldr, err := NewBuilder(imageName, builderRef.Name(), c, pforms, opts)
 	// if err != nil {
-	// 	return errors.Wrapf(err, "getting builder OS")
+	// 	return err
 	// }
 
-	// builderArch, err := rawBuilderImage.Architecture()
+	// bkBldr.State = buidlerState
+	// // def, err := buidlerState.State().Marshal(ctx)
+	// // if err != nil {
+	// // 	return err
+	// // }
+
+	// buildkitCtx := namespaces.WithNamespace(ctx, "buildkit")
+	// _, err = NewClient.Build(buildkitCtx, client.SolveOpt{
+	// 	AllowedEntitlements: []entitlements.Entitlement{
+	// 		entitlements.EntitlementNetworkHost, // allow --network=host
+	// 	},
+	// 	Internal: true,
+	// 	// CacheExports: []client.CacheOptionsEntry{
+	// 	// 	{
+	// 	// 		Type: client.ExporterOCI,
+	// 	// 		Attrs: map[string]string{
+	// 	// 			"dest": filepath.Join("DinD", "cache"),
+	// 	// 		},
+	// 	// 	},
+	// 	// },
+	// 	// CacheImports: []client.CacheOptionsEntry{
+	// 	// 	{
+	// 	// 		Type: client.ExporterOCI,
+	// 	// 		Attrs: map[string]string{
+	// 	// 			"src": filepath.Join("DinD", "cache"),
+	// 	// 		},
+	// 	// 	},
+	// 	// },
+	// }, "packerfile.v0", bkBldr.BuildkitBuilderBuild, nil)
 	// if err != nil {
-	// 	return errors.Wrapf(err, "getting builder architecture")
+	// 	return err
 	// }
+
+	rawBuilderImage, err := c.imageFetcher.Fetch(ctx, builderRef.Name(), image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy})
+	if err != nil {
+		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
+	}
+
+	builderOS, err := rawBuilderImage.OS()
+	if err != nil {
+		return errors.Wrapf(err, "getting builder OS")
+	}
+
+	builderArch, err := rawBuilderImage.Architecture()
+	if err != nil {
+		return errors.Wrapf(err, "getting builder architecture")
+	}
 
 	bldr, err := c.getBuilder(rawBuilderImage)
 	if err != nil {
@@ -379,138 +382,138 @@ func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error
 	}
 
 	lifecycleOpts.FetchRunImageWithLifecycleLayer = func(runImageName string) (string, error) {
-		ephemeralRunImageName := fmt.Sprintf("pack.local/run-image/%x:latest", randString(10))
-		runImage, err := c.imageFetcher.Fetch(ctx, runImageName, fetchOptions)
-		if err != nil {
-			return "", err
-		}
-		ephemeralRunImage, err := local.NewImage(ephemeralRunImageName, c.docker, local.FromBaseImage(runImage.Name()))
-		if err != nil {
-			return "", err
-		}
-		tmpDir, err := os.MkdirTemp("", "extend-run-image-buidlerState") // we need to write to disk because manifest.json is last in the tar
-		if err != nil {
-			return "", err
-		}
-		defer os.RemoveAll(tmpDir)
-		lifecycleImageTar, err := func() (string, error) {
-			lifecycleImageTar := filepath.Join(tmpDir, "lifecycle-image.tar")
-			lifecycleImageReader, err := c.docker.ImageSave(context.Background(), []string{lifecycleOpts.LifecycleImage}) // this is fast because the lifecycle image is based on distroless static
-			if err != nil {
-				return "", err
-			}
-			defer lifecycleImageReader.Close()
-			lifecycleImageWriter, err := os.Create(lifecycleImageTar)
-			if err != nil {
-				return "", err
-			}
-			defer lifecycleImageWriter.Close()
-			if _, err = io.Copy(lifecycleImageWriter, lifecycleImageReader); err != nil {
-				return "", err
-			}
-			return lifecycleImageTar, nil
-		}()
-		if err != nil {
-			return "", err
-		}
-		advanceTarToEntryWithName := func(tarReader *tar.Reader, wantName string) (*tar.Header, error) {
-			var (
-				header *tar.Header
-				err    error
-			)
-			for {
-				header, err = tarReader.Next()
-				if err == io.EOF {
-					break
-				}
-				if err != nil {
-					return nil, err
-				}
-				if header.Name != wantName {
-					continue
-				}
-				return header, nil
-			}
-			return nil, fmt.Errorf("failed to find header with name: %s", wantName)
-		}
-		lifecycleLayerName, err := func() (string, error) {
-			lifecycleImageReader, err := os.Open(lifecycleImageTar)
-			if err != nil {
-				return "", err
-			}
-			defer lifecycleImageReader.Close()
-			tarReader := tar.NewReader(lifecycleImageReader)
-			if _, err = advanceTarToEntryWithName(tarReader, "manifest.json"); err != nil {
-				return "", err
-			}
-			type descriptor struct {
-				Layers []string
-			}
-			type manifestJSON []descriptor
-			var manifestContents manifestJSON
-			if err = json.NewDecoder(tarReader).Decode(&manifestContents); err != nil {
-				return "", err
-			}
-			if len(manifestContents) < 1 {
-				return "", errors.New("missing manifest entries")
-			}
-			return manifestContents[0].Layers[len(manifestContents[0].Layers)-1], nil // we can assume the lifecycle layer is the last in the tar
-		}()
-		if err != nil {
-			return "", err
-		}
-		if lifecycleLayerName == "" {
-			return "", errors.New("failed to find lifecycle layer")
-		}
-		lifecycleLayerTar, err := func() (string, error) {
-			lifecycleImageReader, err := os.Open(lifecycleImageTar)
-			if err != nil {
-				return "", err
-			}
-			defer lifecycleImageReader.Close()
-			tarReader := tar.NewReader(lifecycleImageReader)
-			var header *tar.Header
-			if header, err = advanceTarToEntryWithName(tarReader, lifecycleLayerName); err != nil {
-				return "", err
-			}
-			lifecycleLayerTar := filepath.Join(filepath.Dir(lifecycleImageTar), filepath.Dir(lifecycleLayerName)+".tar")
-			lifecycleLayerWriter, err := os.OpenFile(lifecycleLayerTar, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-			if err != nil {
-				return "", err
-			}
-			defer lifecycleLayerWriter.Close()
-			if _, err = io.Copy(lifecycleLayerWriter, tarReader); err != nil {
-				return "", err
-			}
-			return lifecycleLayerTar, nil
-		}()
-		if err != nil {
-			return "", err
-		}
-		diffID, err := func() (string, error) {
-			lifecycleLayerReader, err := os.Open(lifecycleLayerTar)
-			if err != nil {
-				return "", err
-			}
-			defer lifecycleLayerReader.Close()
-			hasher := sha256.New()
-			if _, err = io.Copy(hasher, lifecycleLayerReader); err != nil {
-				return "", err
-			}
-			// it's weird that this doesn't match lifecycleLayerTar
-			return hex.EncodeToString(hasher.Sum(nil)), nil
-		}()
-		if err != nil {
-			return "", err
-		}
-		if err = ephemeralRunImage.AddLayerWithDiffID(lifecycleLayerTar, "sha256:"+diffID); err != nil {
-			return "", err
-		}
-		if err = ephemeralRunImage.Save(); err != nil {
-			return "", err
-		}
-		return ephemeralRunImageName, nil
+	ephemeralRunImageName := fmt.Sprintf("pack.local/run-image/%x:latest", randString(10))
+	runImage, err := c.imageFetcher.Fetch(ctx, runImageName, fetchOptions)
+	if err != nil {
+		return "", err
 	}
+	ephemeralRunImage, err := local.NewImage(ephemeralRunImageName, c.docker, local.FromBaseImage(runImage.Name()))
+	if err != nil {
+		return "", err
+	}
+	tmpDir, err := os.MkdirTemp("", "extend-run-image-buidlerState") // we need to write to disk because manifest.json is last in the tar
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(tmpDir)
+	lifecycleImageTar, err := func() (string, error) {
+		lifecycleImageTar := filepath.Join(tmpDir, "lifecycle-image.tar")
+		lifecycleImageReader, err := c.docker.ImageSave(context.Background(), []string{lifecycleOpts.LifecycleImage}) // this is fast because the lifecycle image is based on distroless static
+		if err != nil {
+			return "", err
+		}
+		defer lifecycleImageReader.Close()
+		lifecycleImageWriter, err := os.Create(lifecycleImageTar)
+		if err != nil {
+			return "", err
+		}
+		defer lifecycleImageWriter.Close()
+		if _, err = io.Copy(lifecycleImageWriter, lifecycleImageReader); err != nil {
+			return "", err
+		}
+		return lifecycleImageTar, nil
+	}()
+	if err != nil {
+		return "", err
+	}
+	advanceTarToEntryWithName := func(tarReader *tar.Reader, wantName string) (*tar.Header, error) {
+		var (
+			header *tar.Header
+			err    error
+		)
+		for {
+			header, err = tarReader.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return nil, err
+			}
+			if header.Name != wantName {
+				continue
+			}
+			return header, nil
+		}
+		return nil, fmt.Errorf("failed to find header with name: %s", wantName)
+	}
+	lifecycleLayerName, err := func() (string, error) {
+		lifecycleImageReader, err := os.Open(lifecycleImageTar)
+		if err != nil {
+			return "", err
+		}
+		defer lifecycleImageReader.Close()
+		tarReader := tar.NewReader(lifecycleImageReader)
+		if _, err = advanceTarToEntryWithName(tarReader, "manifest.json"); err != nil {
+			return "", err
+		}
+		type descriptor struct {
+			Layers []string
+		}
+		type manifestJSON []descriptor
+		var manifestContents manifestJSON
+		if err = json.NewDecoder(tarReader).Decode(&manifestContents); err != nil {
+			return "", err
+		}
+		if len(manifestContents) < 1 {
+			return "", errors.New("missing manifest entries")
+		}
+		return manifestContents[0].Layers[len(manifestContents[0].Layers)-1], nil // we can assume the lifecycle layer is the last in the tar
+	}()
+	if err != nil {
+		return "", err
+	}
+	if lifecycleLayerName == "" {
+		return "", errors.New("failed to find lifecycle layer")
+	}
+	lifecycleLayerTar, err := func() (string, error) {
+		lifecycleImageReader, err := os.Open(lifecycleImageTar)
+		if err != nil {
+			return "", err
+		}
+		defer lifecycleImageReader.Close()
+		tarReader := tar.NewReader(lifecycleImageReader)
+		var header *tar.Header
+		if header, err = advanceTarToEntryWithName(tarReader, lifecycleLayerName); err != nil {
+			return "", err
+		}
+		lifecycleLayerTar := filepath.Join(filepath.Dir(lifecycleImageTar), filepath.Dir(lifecycleLayerName)+".tar")
+		lifecycleLayerWriter, err := os.OpenFile(lifecycleLayerTar, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+		if err != nil {
+			return "", err
+		}
+		defer lifecycleLayerWriter.Close()
+		if _, err = io.Copy(lifecycleLayerWriter, tarReader); err != nil {
+			return "", err
+		}
+		return lifecycleLayerTar, nil
+	}()
+	if err != nil {
+		return "", err
+	}
+	diffID, err := func() (string, error) {
+		lifecycleLayerReader, err := os.Open(lifecycleLayerTar)
+		if err != nil {
+			return "", err
+		}
+		defer lifecycleLayerReader.Close()
+		hasher := sha256.New()
+		if _, err = io.Copy(hasher, lifecycleLayerReader); err != nil {
+			return "", err
+		}
+		// it's weird that this doesn't match lifecycleLayerTar
+		return hex.EncodeToString(hasher.Sum(nil)), nil
+	}()
+	if err != nil {
+		return "", err
+	}
+	if err = ephemeralRunImage.AddLayerWithDiffID(lifecycleLayerTar, "sha256:"+diffID); err != nil {
+		return "", err
+	}
+	if err = ephemeralRunImage.Save(); err != nil {
+		return "", err
+	}
+	return ephemeralRunImageName, nil
+}
 
 	// implement with buildkit
 	c.lifecycleExecutor = executor.New(c.docker, *buidlerState, c.logger, opts.Targets)
@@ -520,199 +523,203 @@ func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error
 	return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
 }
 
-type Builder struct {
-	appName name.Reference
-	ref name.Reference
-	state.State
-	prevImage *state.State
-	platforms []ocispecs.Platform
-	client *Client
-	opts BuildOptions
-}
+// type Builder struct {
+// 	appName name.Reference
+// 	ref name.Reference
+// 	*state.State
+// 	prevImage *state.State
+// 	platforms []ocispecs.Platform
+// 	client *Client
+// 	opts BuildOptions
+// }
 
-func NewBuilder(appName, bldrName string, client *Client, platforms []ocispecs.Platform, opts BuildOptions) (*Builder, error) {
-	bldrRef, err := name.ParseReference(bldrName)
-	if err != nil {
-		return nil, err
-	}
+// func NewBuilder(appName, bldrName string, client *Client, platforms []ocispecs.Platform, opts BuildOptions) (*Builder, error) {
+// 	bldrRef, err := name.ParseReference(bldrName)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	appRef, err := name.ParseReference(appName)
-	if err != nil {
-		return nil, err
-	}
+// 	appRef, err := name.ParseReference(appName)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return &Builder{
-		platforms: platforms,
-		ref: bldrRef,
-		appName: appRef,
-		client: client,
-		opts: opts,
-	}, nil
-}
+// 	return &Builder{
+// 		platforms: platforms,
+// 		ref: bldrRef,
+// 		appName: appRef,
+// 		client: client,
+// 		opts: opts,
+// 	}, nil
+// }
 
-func (b *Builder) BuildkitBuilderBuild(ctx context.Context, c gatewayClient.Client) (res *gatewayClient.Result, err error) {
-	res = gatewayClient.NewResult()
-	expPlatforms := &exptypes.Platforms{
-		Platforms: make([]exptypes.Platform, 0),
-	}
+// func (b *Builder) BuildkitBuilderBuild(ctx context.Context, c gatewayClient.Client) (res *gatewayClient.Result, err error) {
+// 	res = gatewayClient.NewResult()
+// 	expPlatforms := &exptypes.Platforms{
+// 		Platforms: make([]exptypes.Platform, len(b.platforms)),
+// 	}
 
-	res.AddMeta("image.name", []byte(b.ref.Name())) // added an annotation to the image/index manifest
-	eg, ctx1 := errgroup.WithContext(ctx)
-	for i, platform := range b.platforms {
-		i, platform := i, platform
-		eg.Go(func() error {
-			def, err := b.State.State().Marshal(ctx1, llb.Platform(platform))
-			if err != nil {
-				return errors.Wrap(err, "failed to marshal state")
-			}
+// 	res.AddMeta("image.name", []byte(b.ref.Name())) // added an annotation to the image/index manifest
+// 	eg, ctx1 := errgroup.WithContext(ctx)
+// 	for i, platform := range b.platforms {
+// 		i, platform := i, platform
+// 		eg.Go(func() error {
+// 			def, err := b.State.State().Marshal(ctx1, llb.Platform(platform))
+// 			if err != nil {
+// 				return errors.Wrap(err, "failed to marshal state")
+// 			}
 
-			r, err := c.Solve(ctx1, gatewayClient.SolveRequest{
-				// CacheImports: b.cacheImports, // TODO: update cache imports to [pack home]
-				Definition:   def.ToPB(),
-			})
-			if err != nil {
-				return errors.Wrap(err, "failed to solve")
-			}
+// 			r, err := c.Solve(ctx1, gatewayClient.SolveRequest{
+// 				// CacheImports: b.cacheImports, // TODO: update cache imports to [pack home]
+// 				Definition:   def.ToPB(),
+// 			})
+// 			if err != nil {
+// 				return errors.Wrap(err, "failed to solve")
+// 			}
 
-			ref, err := r.SingleRef()
-			if err != nil {
-				return err
-			}
+// 			ref, err := r.SingleRef()
+// 			if err != nil {
+// 				return err
+// 			}
 
-			_, err = ref.ToState()
-			if err != nil {
-				return err
-			}
+// 			// _, err = ref.ToState()
+// 			// if err != nil {
+// 			// 	return err
+// 			// }
 
-			p := platforms.Format(platform)
-			res.AddRef(p, ref)
-			fmt.Printf("\n formatted platform: %s\n", p)
+// 			p := platforms.Format(platform)
+// 			res.AddRef(p, ref)
+// 			fmt.Printf("\n formatted platform: %s\n", p)
 
-			config := b.State.ConfigFile()
-			mutateConfigFile(config, platform)
-			configBytes, err := json.Marshal(config)
-			if err != nil {
-				return err
-			}
+// 			config := b.State.ConfigFile()
+// 			mutateConfigFile(config, platform)
+// 			configBytes, err := json.Marshal(config)
+// 			if err != nil {
+// 				return err
+// 			}
 
-			res.AddMeta(fmt.Sprintf("%s/%s", exptypes.ExporterImageConfigKey, p), configBytes)
-			if b.prevImage != nil {
-				baseConfig := b.prevImage.ConfigFile()
-				mutateConfigFile(baseConfig, platform)
-				configBytes, err := json.Marshal(baseConfig)
-				if err != nil {
-					return err
-				}
-				res.AddMeta(fmt.Sprintf("%s/%s", exptypes.ExporterImageBaseConfigKey, p), configBytes)
-			}
+// 			res.AddMeta(fmt.Sprintf("%s/%s", exptypes.ExporterImageConfigKey, p), configBytes)
+// 			if b.prevImage != nil {
+// 				baseConfig := b.prevImage.ConfigFile()
+// 				mutateConfigFile(baseConfig, platform)
+// 				configBytes, err := json.Marshal(baseConfig)
+// 				if err != nil {
+// 					return err
+// 				}
+// 				res.AddMeta(fmt.Sprintf("%s/%s", exptypes.ExporterImageBaseConfigKey, p), configBytes)
+// 			}
 
-			expPlatforms.Platforms[i] = exptypes.Platform{
-				ID:       p,
-				Platform: platform,
-			}
-			fmt.Printf("\n export platform at %d is %s/%s/%s\n", i, platform.OS, platform.Architecture, platform.Variant)
+// 			expPlatforms.Platforms[i] = exptypes.Platform{
+// 				ID:       p,
+// 				Platform: platform,
+// 			}
+// 			fmt.Printf("\n export platform at %d is %s/%s/%s\n", i, platform.OS, platform.Architecture, platform.Variant)
 
-			var mfest *ocispecs.Image
-			mfestBytes := res.Metadata[exptypes.ExporterImageConfigKey]
-			if err := json.Unmarshal(mfestBytes, mfest); err != nil {
-				return err
-			}
+// 			// var mfest *ocispecs.Image
+// 			// mfestBytes := res.Metadata[exptypes.ExporterImageConfigKey]
+// 			// if err := json.Unmarshal(mfestBytes, mfest); err != nil {
+// 			// 	return err
+// 			// }
 
-			bkBldr, err := builder.NewBuildkitBuilder(res, b.ref.Name(), platform)
-			if err != nil {
-				return errors.Wrapf(err, "invalid builder %s(%s)", style.Symbol(b.ref.Name()), p)
-			}
+// 			// bkBldr, err := builder.NewBuildkitBuilder(res, b.ref.Name(), platform)
+// 			// if err != nil {
+// 			// 	return errors.Wrapf(err, "invalid builder %s(%s)", style.Symbol(b.ref.Name()), p)
+// 			// }
 
-			runImageName := b.client.resolveRunImage(b.opts.RunImage, b.appName.Context().RegistryStr(), b.ref.Context().RegistryStr(), bkBldr.DefaultRunImage(), b.opts.AdditionalMirrors, b.opts.Publish, b.client.accessChecker)
-			runImgRes, err := b.validateBuildkitRunImage(ctx, runImageName, platform, bkBldr.StackID)
-			if err != nil {
-				return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
-			}
+// 			// runImageName := b.client.resolveRunImage(b.opts.RunImage, b.appName.Context().RegistryStr(), b.ref.Context().RegistryStr(), bkBldr.DefaultRunImage(), b.opts.AdditionalMirrors, b.opts.Publish, b.client.accessChecker)
+// 			// runImgRes, err := b.validateBuildkitRunImage(ctx, runImageName, platform, bkBldr.StackID)
+// 			// if err != nil {
+// 			// 	return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
+// 			// }
 
-			var runMixins []string
-			if _, err := dist.GetBuildkitLabel(runImgRes, stack.MixinsLabel, &runMixins); err != nil {
-				return err
-			}
-			return nil
-		})
-	}
+// 			// var runMixins []string
+// 			// if _, err := dist.GetBuildkitLabel(runImgRes, stack.MixinsLabel, &runMixins); err != nil {
+// 			// 	return err
+// 			// }
+// 			return nil
+// 		})
+// 	}
 
-	if err := eg.Wait(); err != nil {
-		return nil, err
-	}
+// 	if err := eg.Wait(); err != nil {
+// 		return nil, err
+// 	}
 
-	dt, err := json.Marshal(expPlatforms)
-	if err != nil {
-		return res, errors.Wrap(err, "failed to marshal the target platforms")
-	}
+// 	dt, err := json.Marshal(expPlatforms)
+// 	if err != nil {
+// 		return res, errors.Wrap(err, "failed to marshal the target platforms")
+// 	}
 
-	fmt.Printf("\n multi-arch export platform: %v", expPlatforms.Platforms)
+// 	fmt.Printf("\n multi-arch export platform: %v", expPlatforms.Platforms)
 
-	res.AddMeta(exptypes.ExporterPlatformsKey, dt)
-}
+// 	res.AddMeta(exptypes.ExporterPlatformsKey, dt)
+// 	return res, err
+// }
 
-func (b *Builder) validateBuildkitRunImage(ctx context.Context, name string, platform ocispecs.Platform, expectedStack string) (res *gatewayClient.Result, err error) {
-	if name == "" {
-		return nil, errors.New("run image must be specified")
-	}
+// func (b *Builder) validateBuildkitRunImage(ctx context.Context, name string, platform ocispecs.Platform, expectedStack string) (res *gatewayClient.Result, err error) {
+// 	if name == "" {
+// 		return nil, errors.New("run image must be specified")
+// 	}
 
-	var runImageState *state.State
-	switch b.opts.PullPolicy {
-	case image.PullNever:
-		runImageState = state.Local(name, llb.Platform(platform))
-	case image.PullAlways:
-		runImageState = state.Remote(name, llb.MarkImageInternal, llb.Platform(platform))
-	default:
-		runImageState = state.Local(name, llb.Platform(platform))
-		// if err := state.Validate(ctx, llb.NewConstraints(llb.LocalUniqueID(identity.NewID()))); err != nil {
-		// 	// lets not validate llb.Image
-		// 	state = llb.Image(builderRef.Name())
-		// }
-	}
+// 	var runImageState *state.State
+// 	switch b.opts.PullPolicy {
+// 	case image.PullNever:
+// 		runImageState = state.Local(name, llb.Platform(platform))
+// 	case image.PullAlways:
+// 		runImageState = state.Remote(name, llb.MarkImageInternal, llb.Platform(platform))
+// 	default:
+// 		runImageState = state.Local(name, llb.Platform(platform))
+// 		// if err := state.Validate(ctx, llb.NewConstraints(llb.LocalUniqueID(identity.NewID()))); err != nil {
+// 		// 	// lets not validate llb.Image
+// 		// 	state = llb.Image(builderRef.Name())
+// 		// }
+// 	}
 
-	def, err := runImageState.State().Marshal(ctx)
-	if err != nil {
-		return res, err
-	}
+// 	def, err := runImageState.State().Marshal(ctx)
+// 	if err != nil {
+// 		return res, err
+// 	}
 
-	err = grpcclient.RunFromEnvironment(ctx, func(ctx context.Context, c gatewayClient.Client) (*gatewayClient.Result, error) {
-		return c.Solve(ctx, gatewayClient.SolveRequest{
-			Definition: def.ToPB(),
-			CacheImports: []gatewayClient.CacheOptionsEntry{
-				{
-					Type: client.ExporterOCI,
-					Attrs: map[string]string{
-						"src": filepath.Join("DinD", "cache"),
-					},
-				},
-			},
-		})
-	})
-	if err != nil {
-		return res, err
-	}
+// 	err = grpcclient.RunFromEnvironment(ctx, func(ctx context.Context, c gatewayClient.Client) (*gatewayClient.Result, error) {
+// 		return c.Solve(ctx, gatewayClient.SolveRequest{
+// 			Definition: def.ToPB(),
+// 			// CacheImports: []gatewayClient.CacheOptionsEntry{
+// 			// 	{
+// 			// 		Type: client.ExporterOCI,
+// 			// 		Attrs: map[string]string{
+// 			// 			"src": filepath.Join("DinD", "cache"),
+// 			// 		},
+// 			// 	},
+// 			// },
+// 		})
+// 	})
+// 	if err != nil {
+// 		return res, err
+// 	}
 
-	platformStr := platforms.Format(platform)
-	bkBldr, err := builder.NewBuildkitBuilder(res, name, platform)
-	if err != nil {
-		return res, errors.Wrapf(err, "invalid runImage %s(%s)", style.Symbol(b.ref.Name()), platformStr)
-	}
+// 	platformStr := platforms.Format(platform)
+// 	bkBldr, err := builder.NewBuildkitBuilder(res, name, platform)
+// 	if err != nil {
+// 		return res, errors.Wrapf(err, "invalid runImage %s(%s)", style.Symbol(b.ref.Name()), platformStr)
+// 	}
 
-	stackID, err := bkBldr.Label("io.buildpacks.stack.id")
-	if err != nil {
-		return res, errors.Wrap(err, "resolving runImage stackID")
-	}
+// 	stackID, err := bkBldr.Label("io.buildpacks.stack.id")
+// 	if err != nil {
+// 		return res, errors.Wrap(err, "resolving runImage stackID")
+// 	}
 
-	if stackID != expectedStack {
-		return nil, fmt.Errorf("run-image stack id '%s' does not match builder stack '%s'", stackID, expectedStack)
-	}
-	return res, err
-}
+// 	if stackID != expectedStack {
+// 		return nil, fmt.Errorf("run-image stack id '%s' does not match builder stack '%s'", stackID, expectedStack)
+// 	}
+// 	return res, err
+// }
 
-func mutateConfigFile(config *v1.ConfigFile, platform ocispecs.Platform) {
-	config.OS = platform.OS
-	config.Architecture = platform.Architecture
-	config.Variant = platform.Variant
-	config.OSVersion = platform.OSVersion
-	config.OSFeatures = platform.OSFeatures
-}
+// func mutateConfigFile(config *v1.ConfigFile, platform ocispecs.Platform) {
+// 	if config == nil {
+// 		config = &v1.ConfigFile{}
+// 	}
+// 	config.OS = platform.OS
+// 	config.Architecture = platform.Architecture
+// 	config.Variant = platform.Variant
+// 	config.OSVersion = platform.OSVersion
+// 	config.OSFeatures = platform.OSFeatures
+// }

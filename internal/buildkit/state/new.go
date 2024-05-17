@@ -25,7 +25,7 @@ func Scratch(os string) (_ *State, err error) {
 		return nil, err
 	}
 
-	state, err := llb.Scratch().WithImageConfig(cfgBytes)
+	state, err := llb.Scratch().Network(llb.NetModeHost).WithImageConfig(cfgBytes)
 	return &State{
 		state:  state,
 		config: config,
@@ -33,7 +33,7 @@ func Scratch(os string) (_ *State, err error) {
 }
 
 func Remote(ref string, opts ...llb.ImageOption) *State {
-	state := llb.Image(ref, opts...)
+	state := llb.Image(ref, opts...).Network(llb.NetModeHost)
 	return &State{
 		state: state,
 		config: &v1.ConfigFile{}, // update with the current [llb.state]
@@ -42,14 +42,14 @@ func Remote(ref string, opts ...llb.ImageOption) *State {
 
 func Local(name string, opts ...llb.LocalOption) *State {
 	return &State{
-		state: llb.Local(name, opts...),
+		state: llb.Local(name, opts...).Network(llb.NetModeHost),
 		config: &v1.ConfigFile{}, // update with the current [llb.state]
 	}
 }
 
 func OCILayout(ref string, opts ...llb.OCILayoutOption) *State {
 	return &State{
-		state: llb.OCILayout(ref, opts...),
+		state: llb.OCILayout(ref, opts...).Network(llb.NetModeHost),
 		config: &v1.ConfigFile{}, // update with the current [llb.state]
 	}
 }

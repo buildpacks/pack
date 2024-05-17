@@ -137,7 +137,7 @@ func (s State) Cmd(cmd ...string) State {
 }
 
 func (s State) Run(cmd []string, execState func(state llb.ExecState) llb.State) State {
-	exec := s.state.Run(WithInternalName("running cmd"), llb.Args(cmd))
+	exec := s.state.Run(WithInternalName("running cmd"), llb.Args(cmd), llb.Network(llb.NetModeHost))
 	s.state = exec.Root()
 	s.state = execState(exec)
 	return s

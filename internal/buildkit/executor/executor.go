@@ -26,7 +26,7 @@ func (l LifecycleExecutor) Execute(ctx context.Context, opts build.LifecycleOpti
 		return err
 	}
 
-	client, err := client.New(ctx, opts.DockerHost)
+	client, err := client.New(ctx, "") // use default address
 	if err != nil {
 		return err
 	}
