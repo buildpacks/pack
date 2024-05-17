@@ -25,6 +25,7 @@ import (
 
 	dockertypes "github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -454,7 +455,7 @@ func DockerRmi(dockerCli client.CommonAPIClient, repoNames ...string) error {
 		_, e := dockerCli.ImageRemove(
 			ctx,
 			name,
-			dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true},
+			image.RemoveOptions{Force: true, PruneChildren: true},
 		)
 		if e != nil && err == nil {
 			err = e
@@ -464,7 +465,7 @@ func DockerRmi(dockerCli client.CommonAPIClient, repoNames ...string) error {
 }
 
 func PushImage(dockerCli client.CommonAPIClient, ref string, registryConfig *TestRegistryConfig) error {
-	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: registryConfig.RegistryAuth()})
+	rc, err := dockerCli.ImagePush(context.Background(), ref, image.PushOptions{RegistryAuth: registryConfig.RegistryAuth()})
 	if err != nil {
 		return errors.Wrap(err, "pushing image")
 	}
@@ -553,7 +554,7 @@ func RunE(cmd *exec.Cmd) (string, error) {
 }
 
 func PullImageWithAuth(dockerCli client.CommonAPIClient, ref, registryAuth string) error {
-	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{RegistryAuth: registryAuth})
+	rc, err := dockerCli.ImagePull(context.Background(), ref, image.PullOptions{RegistryAuth: registryAuth})
 	if err != nil {
 		return err
 	}

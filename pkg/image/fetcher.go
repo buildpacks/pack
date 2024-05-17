@@ -14,7 +14,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/auth"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -50,7 +50,7 @@ func WithKeychain(keychain authn.Keychain) FetcherOption {
 
 type DockerClient interface {
 	local.DockerClient
-	ImagePull(ctx context.Context, ref string, options types.ImagePullOptions) (io.ReadCloser, error)
+	ImagePull(ctx context.Context, ref string, options image.PullOptions) (io.ReadCloser, error)
 }
 
 type Fetcher struct {
@@ -198,7 +198,7 @@ func (f *Fetcher) fetchLayoutImage(name string, options LayoutOption) (imgutil.I
 	if options.Sparse {
 		image, err = sparse.NewImage(options.Path, v1Image)
 	} else {
-		image, err = layout.NewImage(options.Path, layout.FromBaseImage(v1Image))
+		image, err = layout.NewImage(options.Path, layout.FromBaseImageInstance(v1Image))
 	}
 
 	if err != nil {
@@ -219,7 +219,7 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string, platform string
 		return err
 	}
 
-	rc, err := f.docker.ImagePull(ctx, imageID, types.ImagePullOptions{RegistryAuth: regAuth, Platform: platform})
+	rc, err := f.docker.ImagePull(ctx, imageID, image.PullOptions{RegistryAuth: regAuth, Platform: platform})
 	if err != nil {
 		if client.IsErrNotFound(err) {
 			return errors.Wrapf(ErrNotFound, "image %s does not exist on the daemon", style.Symbol(imageID))
