@@ -217,41 +217,9 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 	var err error
 	switch {
 	case buildpack.HasDockerLocator(config.URI):
-		var lifecycleImage imgutil.Image
-		imageName := buildpack.ParsePackageLocator(config.URI)
-		c.logger.Debugf("Downloading lifecycle image: %s", style.Symbol(imageName))
-
-		lifecycleImage, err = c.imageFetcher.Fetch(ctx, imageName, image.FetchOptions{Daemon: false})
+		uri, err = c.uriFromLifecycleImage(ctx, relativeBaseDir, config)
 		if err != nil {
-			return nil, err
-		}
-
-		lifecyclePath := filepath.Join(relativeBaseDir, "lifecycle.tar")
-		layers, err := lifecycleImage.UnderlyingImage().Layers()
-		if err != nil {
-			return nil, err
-		}
-
-		// Assume the last layer has the lifecycle
-		lifecycleLayer := layers[len(layers)-1]
-
-		layerReader, err := lifecycleLayer.Uncompressed()
-		if err != nil {
-			return nil, err
-		}
-		defer layerReader.Close()
-
-		file, err := stripTopDirAndWrite(layerReader, lifecyclePath)
-		if err != nil {
-			return nil, err
-		}
-
-		defer file.Close()
-Remove this comment
-
-		uri, err = paths.FilePathToURI(lifecyclePath, "")
-		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "Could not parse uri from lifecycle image")
 		}
 	case config.Version != "":
 		v, err := semver.NewVersion(config.Version)
@@ -437,4 +405,43 @@ func stripTopDirAndWrite(layerReader io.ReadCloser, outputPath string) (*OS.File
 	}
 
 	return file, nil
+}
+
+func (c *Client) uriFromLifecycleImage(ctx context.Context, basePath string, config pubbldr.LifecycleConfig) (uri string, err error) {
+	var lifecycleImage imgutil.Image
+	imageName := buildpack.ParsePackageLocator(config.URI)
+	c.logger.Debugf("Downloading lifecycle image: %s", style.Symbol(imageName))
+
+	lifecycleImage, err = c.imageFetcher.Fetch(ctx, imageName, image.FetchOptions{Daemon: false})
+	if err != nil {
+		return "", nil
+	}
+
+	lifecyclePath := filepath.Join(basePath, "lifecycle.tar")
+	layers, err := lifecycleImage.UnderlyingImage().Layers()
+	if err != nil {
+		return "", err
+	}
+
+	// Assume the last layer has the lifecycle
+	lifecycleLayer := layers[len(layers)-1]
+
+	layerReader, err := lifecycleLayer.Uncompressed()
+	if err != nil {
+		return "", err
+	}
+	defer layerReader.Close()
+
+	file, err := stripTopDirAndWrite(layerReader, lifecyclePath)
+	if err != nil {
+		return "", err
+	}
+
+	defer file.Close()
+
+	uri, err = paths.FilePathToURI(lifecyclePath, "")
+	if err != nil {
+		return "", err
+	}
+	return uri, err
 }
