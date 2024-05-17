@@ -101,3 +101,8 @@ func (b *Builder[any]) Workdir(dir string) *Builder[any] {
 	return b
 }
 
+func (b *Builder[any]) AddVolume(volumes ...string) *Builder[any] {
+	b.Packerfile.AddVolume(volumes...)
+	b.mounts = append(b.mounts, volumes...)
+	return b
+}

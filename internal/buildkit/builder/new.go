@@ -5,11 +5,10 @@ import (
 
 	"github.com/buildpacks/pack/internal/buildkit/packerfile"
 	"github.com/moby/buildkit/client"
-	gatewayClient "github.com/moby/buildkit/frontend/gateway/client"
 	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-func New[T any](ctx context.Context, ref string, state packerfile.Packerfile[T], mounts ...gatewayClient.Mount) (*Builder[T], error) {
+func New[T any](ctx context.Context, ref string, state packerfile.Packerfile[T], mounts ...string) (*Builder[T], error) {
 	c, err := client.New(ctx, "")
 	return &Builder[T]{
 		ref: ref,
