@@ -74,6 +74,21 @@ func testMultiArchConfig(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, multiArchConfig.Targets()[0].ArchVariant, "v6")
 			})
 		})
+
+		when("buildpack targets are defined and flags are provided", func() {
+			it.Before(func() {
+				multiArchConfig, err = buildpack.NewMultiArchConfig(targetsFromBuildpack, targetsFromFlags, logger)
+				h.AssertNil(t, err)
+			})
+
+			it("returns targets from flags", func() {
+				// flags overrides the targets in the configuration files
+				h.AssertEq(t, len(multiArchConfig.Targets()), 1)
+				h.AssertEq(t, multiArchConfig.Targets()[0].OS, "linux")
+				h.AssertEq(t, multiArchConfig.Targets()[0].Arch, "arm64")
+				h.AssertEq(t, multiArchConfig.Targets()[0].ArchVariant, "v6")
+			})
+		})
 	})
 
 	when("#CopyConfigFiles", func() {

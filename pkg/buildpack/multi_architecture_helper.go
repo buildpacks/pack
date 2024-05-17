@@ -22,7 +22,6 @@ type MultiArchConfig struct {
 }
 
 func NewMultiArchConfig(targets []dist.Target, expected []dist.Target, logger logging.Logger) (*MultiArchConfig, error) {
-	// TODO: Let's do some validations
 	return &MultiArchConfig{
 		buildpackTargets: targets,
 		expectedTargets:  expected,

@@ -186,7 +186,7 @@ func testWithoutSpecificBuilderRequirement(
 			})
 
 			it.After(func() {
-				//assert.Nil(os.RemoveAll(tmpDir))
+				assert.Nil(os.RemoveAll(tmpDir))
 			})
 
 			generateAggregatePackageToml := func(buildpackURI, nestedPackageName, operatingSystem string) string {

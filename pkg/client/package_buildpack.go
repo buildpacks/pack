@@ -57,7 +57,7 @@ type PackageBuildpackOptions struct {
 	// Flatten layers
 	Flatten bool
 
-	// List of buildpack images to exclude from the package being flattened.
+	// List of buildpack images to exclude from being flattened.
 	FlattenExclude []string
 
 	// Map of labels to add to the Buildpack

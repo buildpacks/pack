@@ -565,7 +565,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 								expectedMultiPlatformImage{digest: newDigest(t, repoName, "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda35")})
 						})
 
-						it("creates a multi-platform buildpack and push it to a registry", func() {
+						it("creates a multi-platform buildpack and pushes it to a registry", func() {
 							// Define targets we want to package
 							targets = []dist.Target{{OS: "linux", Arch: "amd64"}, {OS: "linux", Arch: "arm"}}
 
@@ -615,7 +615,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 								expectedMultiPlatformImage{digest: newDigest(t, repoName, "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda35")})
 						})
 
-						it("creates a multi-platform buildpack and push it to a registry", func() {
+						it("creates a multi-platform buildpack and pushes it to a registry", func() {
 							// Define targets we want to package
 							targets = []dist.Target{{OS: "linux", Arch: "amd64"}, {OS: "linux", Arch: "arm"}}
 
@@ -671,7 +671,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 								{Name: "ubuntu", Version: "21.01"}}}, expectedMultiPlatformImage{digest: newDigest(t, repoName, "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda36")})
 						})
 
-						it("creates a multi-platform buildpack and push it to a registry", func() {
+						it("creates a multi-platform buildpack and pushes it to a registry", func() {
 							// Define targets we want to package
 							targets = []dist.Target{{OS: "linux", Arch: "amd64", ArchVariant: "v5",
 								Distributions: []dist.Distribution{{Name: "ubuntu", Version: "18.01"}, {Name: "ubuntu", Version: "21.01"}}},
@@ -755,7 +755,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						mockIndexFactory.EXPECT().CreateIndex(gomock.Eq(repoName), gomock.Any()).Return(index, nil)
 					})
 
-					it("creates a multi-platform buildpack and push it to a registry", func() {
+					it("creates a multi-platform buildpack and pushes it to a registry", func() {
 						h.AssertNil(t, subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
 							Format:          client.FormatImage,
 							Publish:         true,
@@ -802,7 +802,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						targets = []dist.Target{target1, target2}
 					})
 
-					it("errors a message", func() {
+					it("errors with a message", func() {
 						// If dependencies point to a file or a URL like https://example.com/buildpack.tgz
 						// we will need to define some conventions to fetch by target
 						// The OCI registry already solved the problem, that's why we do not allow this path for now
@@ -1230,7 +1230,7 @@ func prepareExpectedMultiPlaformImages(t *testing.T, mockImageFactory *testmocks
 	mockImageFetcher.EXPECT().Fetch(gomock.Any(), expected.digest.Name(), gomock.Any()).Return(fakeImage, nil)
 }
 
-// prepareRemoteMultiPlatformBuildpackPackage creates remotes buildpack packages requires to create a composite buildapck
+// prepareRemoteMultiPlatformBuildpackPackage creates remotes buildpack packages required to create a composite buildapck
 // repoName: image index reference name
 // digest: manifest digest for the given target
 // target: os/arch for the given manifest
