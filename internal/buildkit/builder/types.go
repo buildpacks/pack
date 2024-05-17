@@ -20,7 +20,7 @@ type builder[T any] struct { // let's make the [builder] private so that no one 
 	user string
 	attachStdin, attachStdout, attachStderr bool
 	platforms []ocispecs.Platform
-	prevImage *packerfile.Packerfile[T]
+	prevImage packerfile.Packerfile[*T]
 	workdir string
 }
 

@@ -7,6 +7,7 @@ require (
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20240206215312-f8d38e1de03d
 	github.com/buildpacks/lifecycle v0.19.3
+	github.com/containerd/containerd v1.7.14
 	github.com/docker/cli v25.0.3+incompatible
 	github.com/docker/docker v25.0.5+incompatible
 	github.com/docker/go-connections v0.5.0
@@ -20,6 +21,7 @@ require (
 	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
 	github.com/heroku/color v0.0.6
 	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
+	github.com/moby/buildkit v0.13.1
 	github.com/onsi/gomega v1.33.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0
@@ -75,7 +77,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
-	github.com/containerd/containerd v1.7.14 // indirect
 	github.com/containerd/continuity v0.4.3 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.15.1 // indirect
@@ -119,7 +120,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/moby/buildkit v0.13.1 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect

@@ -7,16 +7,38 @@ import (
 
 	"github.com/containerd/containerd/platforms"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/exporter/containerimage/exptypes"
-	"github.com/moby/buildkit/frontend/gateway/client"
+	gatewayClient "github.com/moby/buildkit/frontend/gateway/client"
+	"github.com/moby/buildkit/util/entitlements"
 	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 )
 
-func (b *builder[any])Build(ctx context.Context, c client.Client) (*client.Result, error) {
-	res := client.NewResult() // empty result
+func (b *builder[any]) Build(ctx context.Context) error {
+	var statusChan chan *client.SolveStatus
+	res, err := b.client.Build(ctx, client.SolveOpt{
+		AllowedEntitlements: []entitlements.Entitlement{
+			entitlements.EntitlementNetworkHost,
+		},
+		CacheExports: []client.CacheOptionsEntry{},
+		CacheImports: []client.CacheOptionsEntry{},
+		Exports: []client.ExportEntry{},
+		Internal: true,
+	}, "packerfile.v0", b.build, statusChan)
+	if err != nil {
+		return err
+	}
+
+	digest := res.ExporterResponse[exptypes.ExporterConfigDigestKey]
+	fmt.Printf("successfully built image %s(%s)", b.ref, digest)
+	return nil
+}
+
+func (b *builder[any])build(ctx context.Context, c gatewayClient.Client) (*gatewayClient.Result, error) {
+	res := gatewayClient.NewResult() // empty result
 	expPlatforms := &exptypes.Platforms{
 		Platforms: make([]exptypes.Platform, 0, len(b.platforms)),
 	}
@@ -32,7 +54,7 @@ func (b *builder[any])Build(ctx context.Context, c client.Client) (*client.Resul
 				return errors.Wrap(err, "failed to marshal state")
 			}
 
-			r, err := c.Solve(ctx1, client.SolveRequest{
+			r, err := c.Solve(ctx1, gatewayClient.SolveRequest{
 				Evaluate: true,
 				// CacheImports: b.cacheImports, // TODO: update cache imports to [pack home]
 				Definition:   def.ToPB(),
