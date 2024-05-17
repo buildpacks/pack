@@ -89,7 +89,8 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		digests = append(digests, digest)
 	}
 
-	if multiArch && len(digests) > 1 {
+	if opts.Publish && len(digests) > 1 {
+		// Image Index must be created only when we pushed to registry
 		return c.CreateManifest(ctx, CreateManifestOptions{
 			IndexRepoName: opts.Name,
 			RepoNames:     digests,
