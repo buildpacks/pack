@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	state "github.com/buildpacks/pack/internal/buildkit/build_state"
+	"github.com/buildpacks/pack/internal/buildkit/builder"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 )
@@ -18,7 +19,7 @@ const (
 
 type LifecycleExecution struct {
 	logger       logging.Logger
-	state        state.State
+	*builder.Builder[state.State]
 	dockerClient build.DockerClient
 	platformAPI  *api.Version
 	layersVolume string

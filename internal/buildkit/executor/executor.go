@@ -21,7 +21,7 @@ func (l LifecycleExecutor) Execute(ctx context.Context, opts build.LifecycleOpti
 		return err
 	}
 
-	exec, err := lifecycle.NewLifecycleExecution(l.logger, l.state, l.targets, tmpDir, opts)
+	exec, err := lifecycle.NewLifecycleExecution(ctx, l.logger, l.Builder, l.targets, tmpDir, opts)
 	if err != nil {
 		return err
 	}

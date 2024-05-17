@@ -17,7 +17,13 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func (b *builder[any]) Build(ctx context.Context) error {
+// Build solves the state and exports it to host filesystem
+//
+// The exported format can be one of the following
+// - OCI tar file
+// - Docker tar file
+// - Image to registry
+func (b *Builder[any]) Build(ctx context.Context) error {
 	var statusChan chan *client.SolveStatus
 	res, err := b.client.Build(ctx, client.SolveOpt{
 		AllowedEntitlements: []entitlements.Entitlement{
@@ -37,7 +43,8 @@ func (b *builder[any]) Build(ctx context.Context) error {
 	return nil
 }
 
-func (b *builder[any])build(ctx context.Context, c gatewayClient.Client) (*gatewayClient.Result, error) {
+// build solve the state and return the Result
+func (b *Builder[any])build(ctx context.Context, c gatewayClient.Client) (*gatewayClient.Result, error) {
 	if l := len(b.platforms); l > 1 { // multi-arch
 		res := gatewayClient.NewResult() // empty result
 		res.AddMeta("image.name", []byte(b.ref)) // added an annotation to the image/index manifest
@@ -47,7 +54,7 @@ func (b *builder[any])build(ctx context.Context, c gatewayClient.Client) (*gatew
 	}
 
 	p := b.platforms[0]
-	def, err := b.State.State().Marshal(ctx, llb.Platform(p))
+	def, err := b.State().Marshal(ctx, llb.Platform(p))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal state")
 	}
@@ -73,7 +80,7 @@ func (b *builder[any])build(ctx context.Context, c gatewayClient.Client) (*gatew
 
 	res.SetRef(ref)
 
-	config := b.State.ConfigFile()
+	config := b.ConfigFile()
 	MutateConfigFile(config, p)
 	configBytes, err := json.Marshal(config)
 	if err != nil {
@@ -93,7 +100,8 @@ func (b *builder[any])build(ctx context.Context, c gatewayClient.Client) (*gatew
 	return res, nil
 }
 
-func (b *builder[any]) multiArchBuild(ctx context.Context, c gatewayClient.Client, res *gatewayClient.Result) (*gatewayClient.Result, error) {
+// responsible for converting [llb.State] into multi-arch supported [gatewayClient.Result]
+func (b *Builder[any]) multiArchBuild(ctx context.Context, c gatewayClient.Client, res *gatewayClient.Result) (*gatewayClient.Result, error) {
 	expPlatforms := &exptypes.Platforms{
 		Platforms: make([]exptypes.Platform, 0, len(b.platforms)),
 	}
@@ -102,7 +110,7 @@ func (b *builder[any]) multiArchBuild(ctx context.Context, c gatewayClient.Clien
 	for i, p := range b.platforms {
 		i, p := i, p
 		eg.Go(func() error {
-			def, err := b.State.State().Marshal(ctx1, llb.Platform(p))
+			def, err := b.State().Marshal(ctx1, llb.Platform(p))
 			if err != nil {
 				return errors.Wrap(err, "failed to marshal state")
 			}
@@ -129,7 +137,7 @@ func (b *builder[any]) multiArchBuild(ctx context.Context, c gatewayClient.Clien
 			platform := platforms.Format(p)
 			res.AddRef(platform, ref)
 
-			config := b.State.ConfigFile()
+			config := b.ConfigFile()
 			MutateConfigFile(config, p)
 			configBytes, err := json.Marshal(config)
 			if err != nil {
@@ -169,6 +177,7 @@ func (b *builder[any]) multiArchBuild(ctx context.Context, c gatewayClient.Clien
 	return res, err
 }
 
+// adds platform to config
 func MutateConfigFile(config *v1.ConfigFile, platform ocispecs.Platform) {
 	config.OS = platform.OS
 	config.Architecture = platform.Architecture
