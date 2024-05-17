@@ -3,9 +3,9 @@ package packerfile
 import (
 	"io/fs"
 
-	"github.com/moby/buildkit/client/llb"
-
 	"github.com/buildpacks/pack/internal/buildkit/packerfile/options"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/moby/buildkit/client/llb"
 )
 
 // Packerfile is an interface that performs set of instructions. Inspired from [Dockerfile] syntax
@@ -19,6 +19,8 @@ type Packerfile[T any] interface {
 	Add(src []string, dest string, opt options.ADD) *T
 	User(user string) *T
 	Cmd(cmd ...string) *T
+	State() *llb.State
+	ConfigFile() *v1.ConfigFile
 	// ADDCommand(string, options.ADD) error                          // Add local or remote files and directories.
 	// CMDCommand(cmd []string, ops options.CMD) error                // Specify default commands. There can only be one CMD instruction in a Dockerfile. If you list more than one CMD, only the last one takes effect.
 	// COPYCommand(src string, desc []string, ops options.COPY) error // Copy files and directories.

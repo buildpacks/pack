@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"encoding/json"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -9,7 +10,7 @@ import (
 )
 
 // NewState creates an empty [State] with system specific default PATH env set
-func Scratch(os string) (_ *State, err error) {
+func Scratch(ctx context.Context, name, os string) (_ *State, err error) {
 	config := &v1.ConfigFile{
 		RootFS: v1.RootFS{
 			Type: "layers",
@@ -24,7 +25,7 @@ func Scratch(os string) (_ *State, err error) {
 	if err != nil {
 		return nil, err
 	}
-
+	
 	state, err := llb.Scratch().Network(llb.NetModeHost).WithImageConfig(cfgBytes)
 	return &State{
 		state:  state,
