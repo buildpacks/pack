@@ -17,6 +17,8 @@ import (
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
+	state "github.com/buildpacks/pack/internal/buildkit/build_state"
+	"github.com/buildpacks/pack/internal/buildkit/executor"
 	internalConfig "github.com/buildpacks/pack/internal/config"
 	pname "github.com/buildpacks/pack/internal/name"
 	"github.com/buildpacks/pack/internal/paths"
@@ -27,6 +29,7 @@ import (
 	"github.com/buildpacks/pack/pkg/image"
 	v02 "github.com/buildpacks/pack/pkg/project/v02"
 	"github.com/docker/docker/api/types"
+	"github.com/moby/buildkit/client/llb"
 	"github.com/pkg/errors"
 )
 
@@ -34,7 +37,7 @@ import (
 // It adds the additional buildpacks and lifecycles if needed
 // It is powered with buildkit and uses advanced caching to speed up builds
 // when recreating the ephemeral builder
-// 
+//
 // BuildWithBuildkit configures settings for the build container(s) and lifecycle.
 // It then invokes the lifecycle to build an app image.
 // If any configuration is deemed invalid, or if any lifecycle phases fail,
@@ -71,6 +74,18 @@ func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error
 	if err != nil {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
+
+	var buidlerState *state.State
+	switch opts.PullPolicy {
+	case image.PullAlways:
+		buidlerState = state.Remote(builderRef.Name(), llb.WithCustomName("pulling builder image..."), llb.ResolveModePreferLocal).Network(llb.NetModeHost.String()) // llb.ResolveModeForcePull
+	case image.PullNever:
+		buidlerState = state.Remote(builderRef.Name(), llb.WithCustomName("pulling builder image..."), llb.ResolveModePreferLocal).Network(llb.NetModeHost.String())
+	default:
+		buidlerState = state.Remote(builderRef.Name(), llb.WithCustomName("pulling builder image..."), llb.ResolveModePreferLocal).Network(llb.NetModeHost.String()) // llb.ResolveModeDefault
+	}
+	buidlerState.State().Security(llb.SecurityModeInsecure)
+
 
 	rawBuilderImage, err := c.imageFetcher.Fetch(ctx, builderRef.Name(), image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy})
 	if err != nil {
@@ -479,8 +494,25 @@ func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error
 		return ephemeralRunImageName, nil
 	}
 
+	// switch opts.PullPolicy {
+	// case image.PullAlways:
+	// 	buidlerState = state.Remote(ephemeralBuilder.Name(), llb.WithCustomName("pulling ephermeral builder image..."), llb.ResolveModePreferLocal).Network(llb.NetModeHost.String()) // llb.ResolveModeForcePull
+	// case image.PullNever:
+	// 	buidlerState = state.Remote(ephemeralBuilder.Name(), llb.WithCustomName("pulling ephermeral builder image..."), llb.ResolveModePreferLocal).Network(llb.NetModeHost.String())
+	// default:
+	// 	buidlerState = state.Remote(ephemeralBuilder.Name(), llb.WithCustomName("pulling ephermeral builder image..."), llb.ResolveModePreferLocal).Network(llb.NetModeHost.String()) // llb.ResolveModeDefault
+	// }
+	// buidlerState.State().Security(llb.SecurityModeInsecure)
+
+	// the Client#lifecycleExecutor defaults to docker's lifecycle executor
+	// replace this executor with the buildkit one to build with buildkit
+	c.lifecycleExecutor, err = executor.New(ctx, c.docker, buidlerState, c.logger, []dist.Target{}) // TODO: replace []dist.Target{} with targets from cli by creating a new field in BuildOptions
+	if err != nil {
+		return err
+	}
+	
 	if err = c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
-		return fmt.Errorf("executing lifecycle: %w", err)
+		return fmt.Errorf("executing lifecycle with buildkit: %w", err)
 	}
 	return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
 }

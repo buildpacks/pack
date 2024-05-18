@@ -22,3 +22,7 @@ func (t Target) Range(loop func(target Target) error) error {
 
 	return nil
 }
+
+func (t Target) MultiArch() bool {
+	return len(t.Distributions) > 1
+}

@@ -75,12 +75,12 @@ func (s *State) Entrypoint(args ...string) *State {
 
 func (s *State) Network(mode string) *State {
 	switch mode {
-	case "host":
+	case "host", "HOST":
 		s.state = s.state.Network(pb.NetMode_HOST)
 		s.options.entitlement = entitlements.EntitlementNetworkHost
-	case "none":
+	case "none", "NONE":
 		s.state = s.state.Network(pb.NetMode_NONE)
-	case "", "default":
+	case "", "default", "UNSET":
 		s.state = s.state.Network(pb.NetMode_UNSET)
 	}
 	return s

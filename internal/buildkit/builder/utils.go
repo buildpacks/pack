@@ -19,5 +19,3 @@ func ParseVolume(volume string) (hostPath, ctrPath, perm string) {
 	ctrPath, perm, _ = strings.Cut(other, ":")
 	return hostPath, ctrPath, perm
 }
-
-func ParseVolumePerm(perm string) 

@@ -19,6 +19,11 @@ type MockPackClient struct {
 	recorder *MockPackClientMockRecorder
 }
 
+// BuildWithBuildkit implements commands.PackClient.
+func (m *MockPackClient) BuildWithBuildkit(context.Context, client.BuildOptions) error {
+	panic("unimplemented")
+}
+
 // MockPackClientMockRecorder is the mock recorder for MockPackClient.
 type MockPackClientMockRecorder struct {
 	mock *MockPackClient
