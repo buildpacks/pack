@@ -49,7 +49,6 @@ func (b *Builder[T]) Build(ctx context.Context) error {
 		res, err := b.client.Build(ctx, client.SolveOpt{
 			AllowedEntitlements: []entitlements.Entitlement{
 				entitlements.EntitlementNetworkHost,
-				entitlements.EntitlementSecurityInsecure,
 			},
 			CacheExports: []client.CacheOptionsEntry{},
 			CacheImports: []client.CacheOptionsEntry{},
@@ -83,6 +82,11 @@ func (b *Builder[T])build(ctx context.Context, c gwClient.Client) (*gwClient.Res
 		return b.multiArchBuild(ctx, c, res)
 	} else if l == 0 {
 		b.platforms = append(b.platforms, platforms.DefaultSpec()) // target current platform
+	}
+
+	// if gwClient.Result found don't repeat build again
+	if b.res != nil {
+		return b.res, b.bootstrapContainer(ctx, c)
 	}
 
 	// we need to create a single image with default target's platform
@@ -135,11 +139,16 @@ func (b *Builder[T])build(ctx context.Context, c gwClient.Client) (*gwClient.Res
 		res.AddMeta(exptypes.ExporterImageBaseConfigKey, configBytes)
 	}
 	
+	b.res = res
 	return res, b.bootstrapContainer(ctx, c)
 }
 
 // responsible for converting [llb.State] into multi-arch supported [gwClient.Result]
 func (b *Builder[any]) multiArchBuild(ctx context.Context, c gwClient.Client, res *gwClient.Result) (*gwClient.Result, error) {
+	if b.res != nil {
+		return b.res, b.bootstrapMultiArchContainer(ctx, c)
+	}
+	
 	expPlatforms := &exptypes.Platforms{
 		Platforms: make([]exptypes.Platform, 0, len(b.platforms)),
 	}
@@ -229,6 +238,11 @@ func (b *Builder[T]) bootstrapMultiArchContainer(ctx context.Context, c gwClient
 	fmt.Printf("creating new container with platform: %s, worker: %s", platform.String(), workerID)
 	hostPlatform := pb.PlatformFromSpec(platforms.DefaultSpec()) // same as platform but ocispec.Platform instead of v1.Platform
 	ctr, err := c.NewContainer(ctx, gwClient.NewContainerRequest{
+		Mounts: []gwClient.Mount{{
+			Dest:      "/",
+			MountType: pb.MountType_BIND,
+			Ref:       b.res.Ref,
+		}},
 		Platform: &hostPlatform,
 		NetMode: llb.NetModeHost, // ephemeral builder runs on `--network=host`
 	})
@@ -294,7 +308,6 @@ func (b *Builder[T]) workerSupportCtr(c gwClient.Client) (workerID string, platf
 // creates a new conatiner and starts the default process
 // 
 func (b *Builder[T]) bootstrapContainer(ctx context.Context, c gwClient.Client) error {
-	eg, ctx := errgroup.WithContext(ctx)
 	ctrCtx, ctrCancel := context.WithCancel(ctx)
 	defer ctrCancel()
 	workerID, platform, err := b.workerSupportCtr(c)
@@ -302,43 +315,38 @@ func (b *Builder[T]) bootstrapContainer(ctx context.Context, c gwClient.Client) 
 		return err
 	}
 
-	eg.Go(func() error {
-		fmt.Printf("creating new container with platform: %s, worker: %s\n", platform.String(), workerID)
-		ctr, err := c.NewContainer(ctrCtx, gwClient.NewContainerRequest{
-			NetMode: llb.NetModeHost, // ephemeral builder runs on `--network=host`
-		})
-		if err != nil {
-			return err
-		}
-	
-		defer ctr.Release(ctrCtx)
-		fmt.Printf("starting container: \n %+v\n", ctr)
-		pid, err := ctr.Start(ctrCtx, gwClient.StartRequest{
-			Stdout: os.Stdout,
-			Stderr: os.Stderr,
-			SecurityMode: llb.SecurityModeInsecure,
-			RemoveMountStubsRecursive: true,
-		})
-		doneCh := make(chan struct{})
-		defer close(doneCh)
-		go func() {
-			select {
-			case <-ctrCtx.Done():
-				if err := pid.Signal(ctrCtx, syscall.SIGKILL); err != nil {
-					logrus.Warnf("failed to kill process: %v", err)
-				}
-				logrus.Info("killed process")
-			case <-doneCh:
-			}
-		}()
-		if err != nil {
-			return err
-		}
-
-		return pid.Wait()
+	fmt.Printf("creating new container with platform: %s, worker: %s\n", platform.String(), workerID)
+	ctr, err := c.NewContainer(ctrCtx, gwClient.NewContainerRequest{
+		Mounts: []gwClient.Mount{{
+			Dest:      "/",
+			MountType: pb.MountType_BIND,
+			Ref:       b.res.Ref,
+		}},
+		NetMode: llb.NetModeHost, // ephemeral builder runs on `--network=host`
 	})
+	if err != nil {
+		return err
+	}
+	
+	defer ctr.Release(ctrCtx)
+	pid, err := ctr.Start(ctrCtx, gwClient.StartRequest{
+		Args: []string{"sleep", "1"},
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+		RemoveMountStubsRecursive: true,
+	})
+	if err != nil {
+		if err := pid.Signal(ctrCtx, syscall.SIGKILL); err != nil {
+			logrus.Warnf("failed to kill process: %v", err)
+		}
+		return err
+	}
 
-	return eg.Wait()
+	if err := pid.Wait(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // adds platform to config

@@ -84,7 +84,6 @@ func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error
 	default:
 		buidlerState = state.Remote(builderRef.Name(), llb.WithCustomName("pulling builder image..."), llb.ResolveModePreferLocal).Network(llb.NetModeHost.String()) // llb.ResolveModeDefault
 	}
-	buidlerState.State().Security(llb.SecurityModeInsecure)
 
 
 	rawBuilderImage, err := c.imageFetcher.Fetch(ctx, builderRef.Name(), image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy})
@@ -502,7 +501,6 @@ func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error
 	// default:
 	// 	buidlerState = state.Remote(ephemeralBuilder.Name(), llb.WithCustomName("pulling ephermeral builder image..."), llb.ResolveModePreferLocal).Network(llb.NetModeHost.String()) // llb.ResolveModeDefault
 	// }
-	// buidlerState.State().Security(llb.SecurityModeInsecure)
 
 	// the Client#lifecycleExecutor defaults to docker's lifecycle executor
 	// replace this executor with the buildkit one to build with buildkit
