@@ -4,16 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"syscall"
 
 	"github.com/containerd/containerd/platforms"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/exporter/containerimage/exptypes"
-	gatewayClient "github.com/moby/buildkit/frontend/gateway/client"
+	gwClient "github.com/moby/buildkit/frontend/gateway/client"
+	"github.com/moby/buildkit/solver/pb"
 	"github.com/moby/buildkit/util/entitlements"
 	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -23,7 +26,7 @@ import (
 // - OCI tar file
 // - Docker tar file
 // - Image to registry
-func (b *Builder[any]) Build(ctx context.Context) error {
+func (b *Builder[T]) Build(ctx context.Context) error {
 	var statusChan chan *client.SolveStatus
 	res, err := b.client.Build(ctx, client.SolveOpt{
 		AllowedEntitlements: []entitlements.Entitlement{
@@ -44,9 +47,9 @@ func (b *Builder[any]) Build(ctx context.Context) error {
 }
 
 // build solve the state and return the Result
-func (b *Builder[any])build(ctx context.Context, c gatewayClient.Client) (*gatewayClient.Result, error) {
+func (b *Builder[T])build(ctx context.Context, c gwClient.Client) (*gwClient.Result, error) {
 	if l := len(b.platforms); l > 1 { // multi-arch
-		res := gatewayClient.NewResult() // empty result
+		res := gwClient.NewResult() // empty result
 		res.AddMeta("image.name", []byte(b.ref)) // added an annotation to the image/index manifest
 		return b.multiArchBuild(ctx, c, res)
 	} else if l == 0 {
@@ -59,7 +62,7 @@ func (b *Builder[any])build(ctx context.Context, c gatewayClient.Client) (*gatew
 		return nil, errors.Wrap(err, "failed to marshal state")
 	}
 
-	res, err := c.Solve(ctx, gatewayClient.SolveRequest{
+	res, err := c.Solve(ctx, gwClient.SolveRequest{
 		Evaluate: true,
 		// CacheImports: b.cacheImports, // TODO: update cache imports to [pack home]
 		Definition:   def.ToPB(),
@@ -97,11 +100,12 @@ func (b *Builder[any])build(ctx context.Context, c gatewayClient.Client) (*gatew
 		}
 		res.AddMeta(exptypes.ExporterImageBaseConfigKey, configBytes)
 	}
-	return res, nil
+	
+	return res, b.bootstrapContainer(ctx, c)
 }
 
-// responsible for converting [llb.State] into multi-arch supported [gatewayClient.Result]
-func (b *Builder[any]) multiArchBuild(ctx context.Context, c gatewayClient.Client, res *gatewayClient.Result) (*gatewayClient.Result, error) {
+// responsible for converting [llb.State] into multi-arch supported [gwClient.Result]
+func (b *Builder[any]) multiArchBuild(ctx context.Context, c gwClient.Client, res *gwClient.Result) (*gwClient.Result, error) {
 	expPlatforms := &exptypes.Platforms{
 		Platforms: make([]exptypes.Platform, 0, len(b.platforms)),
 	}
@@ -115,7 +119,7 @@ func (b *Builder[any]) multiArchBuild(ctx context.Context, c gatewayClient.Clien
 				return errors.Wrap(err, "failed to marshal state")
 			}
 
-			r, err := c.Solve(ctx1, gatewayClient.SolveRequest{
+			r, err := c.Solve(ctx1, gwClient.SolveRequest{
 				Evaluate: true,
 				// CacheImports: b.cacheImports, // TODO: update cache imports to [pack home]
 				Definition:   def.ToPB(),
@@ -174,7 +178,116 @@ func (b *Builder[any]) multiArchBuild(ctx context.Context, c gatewayClient.Clien
 	}
 
 	res.AddMeta(exptypes.ExporterPlatformsKey, dt)
-	return res, err
+
+	return res, b.bootstrapMultiArchContainer(ctx, c)
+}
+
+func (b *Builder[T]) bootstrapMultiArchContainer(ctx context.Context, c gwClient.Client) error {
+	workerID, platform, err := b.workerSupportCtr(c)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("creating new container with platform: %s, worker: %s", platform.String(), workerID)
+	hostPlatform := pb.PlatformFromSpec(platforms.DefaultSpec()) // same as platform but ocispec.Platform instead of v1.Platform
+	ctr, err := c.NewContainer(ctx, gwClient.NewContainerRequest{
+		Platform: &hostPlatform,
+		NetMode: llb.NetModeHost, // ephemeral builder runs on `--network=host`
+	})
+	if err != nil {
+		return err
+	}
+
+	defer ctr.Release(ctx)
+	pid, err := ctr.Start(ctx, gwClient.StartRequest{})
+	if err != nil {
+		return err
+	}
+
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+	go func() {
+		select {
+		case <-ctx.Done():
+			if err := pid.Signal(ctx, syscall.SIGKILL); err != nil {
+				logrus.Warnf("failed to kill process: %v", err)
+			}
+		case <-doneCh:
+		}
+	}()
+
+	return pid.Wait()
+}
+
+// Lists the Platforms that are supported by the worker
+// Returns an error if no supported worker supports the host's platform
+func (b *Builder[T]) workerSupportCtr(c gwClient.Client) (workerID string, platform *v1.Platform, err error) {
+	hostv1Platform := platforms.DefaultSpec() // returns the host's platform
+	v1Platform, err := v1.ParsePlatform(platforms.Format(hostv1Platform))
+	if err != nil {
+		return workerID, v1Platform, err
+	}
+
+	var platformSupportedByWorker bool
+	for _, w := range c.BuildOpts().Workers {
+		for _, p := range w.Platforms {
+			p, err := v1.ParsePlatform(platforms.Format(p))
+			if err != nil {
+				return workerID, v1Platform, err
+			}
+
+			// worker platform list might not contain the OSFeatures and Features
+			// v1Platform#Satisifies ensures to ignore these fields!
+			// use p#Satisifies iff worker platform cnatins OSFeatures and/or Features
+			if v1Platform.Satisfies(*p) {
+				platformSupportedByWorker = true
+				workerID = w.ID
+				break
+			}
+		}
+	}
+	if !platformSupportedByWorker {
+		return workerID, v1Platform, errors.Errorf("platform %s is not supported by workers", v1Platform.String())
+	}
+
+	return workerID, v1Platform, nil
+}
+
+// creates a new conatiner and starts the default process
+// 
+func (b *Builder[T]) bootstrapContainer(ctx context.Context, c gwClient.Client) error {
+	workerID, platform, err := b.workerSupportCtr(c)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("creating new container with platform: %s, worker: %s", platform.String(), workerID)
+	ctr, err := c.NewContainer(ctx, gwClient.NewContainerRequest{
+		NetMode: llb.NetModeHost, // ephemeral builder runs on `--network=host`
+	})
+	if err != nil {
+		return err
+	}
+
+	defer ctr.Release(ctx)
+	pid, err := ctr.Start(ctx, gwClient.StartRequest{})
+	if err != nil {
+		return err
+	}
+
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+	go func() {
+		select {
+		case <-ctx.Done():
+			if err := pid.Signal(ctx, syscall.SIGKILL); err != nil {
+				logrus.Warnf("failed to kill process: %v", err)
+			}
+		case <-doneCh:
+		}
+	}()
+
+	return pid.Wait()
 }
 
 // adds platform to config
