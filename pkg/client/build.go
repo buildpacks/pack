@@ -211,6 +211,9 @@ type BuildOptions struct {
 
 	// Configuration to export to OCI layout format
 	LayoutConfig *LayoutConfig
+
+	// Target platforms the builder supports
+	Targets []dist.Target
 }
 
 func (b *BuildOptions) Layout() bool {

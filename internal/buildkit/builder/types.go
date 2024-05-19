@@ -22,6 +22,7 @@ type Builder[T any] struct {
 	platforms []ocispecs.Platform
 	prevImage packerfile.Packerfile[*T]
 	workdir string
+	uid, gid string
 }
 
 type Stringifier interface {

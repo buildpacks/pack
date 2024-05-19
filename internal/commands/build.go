@@ -214,6 +214,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				// 	return client.NewExperimentError("MultiArchitecture support is currently experimental!")
 				// }
 
+				buildOps.Targets = targets // set targets only for multi-arch builds
 				logger.Infof("Using %s to build!", style.Symbol("Buildkit"))
 				if err := packClient.BuildWithBuildkit(cmd.Context(), buildOps); err != nil {
 					return errors.Wrap(err, "failed to build with buildkit")

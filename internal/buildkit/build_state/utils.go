@@ -166,17 +166,16 @@ func dispatchCopy(s *State, srcPaths []string, destPath string, cfg CopyOptions)
 	var a *llb.FileAction
 
 	for _, src := range srcPaths {
+		srcState := llb.Local(src, WithInternalName(fmt.Sprintf("%sING %s", cmd, src)))
 		commitMessage.WriteString(" " + src)
 		// Add git and http/https support when needed
 		var patterns []string
 		if cfg.parents {
 			// detect optional pivot point
-			parent, pattern, ok := strings.Cut(src, "/./")
+			_, pattern, ok := strings.Cut(src, "/./")
 			if !ok {
 				pattern = src
 				src = "/"
-			} else {
-				src = parent
 			}
 
 			pattern, err = system.NormalizePath("/", pattern, s.platform.OS, false)
@@ -185,11 +184,6 @@ func dispatchCopy(s *State, srcPaths []string, destPath string, cfg CopyOptions)
 			}
 
 			patterns = []string{strings.TrimPrefix(pattern, "/")}
-		}
-
-		src, err = system.NormalizePath("/", src, s.platform.OS, false)
-		if err != nil {
-			return errors.Wrap(err, "removing drive letter")
 		}
 
 		opts := append([]llb.CopyOption{&llb.CopyInfo{
@@ -204,9 +198,9 @@ func dispatchCopy(s *State, srcPaths []string, destPath string, cfg CopyOptions)
 		}}, copyOpt...)
 
 		if a == nil {
-			a = llb.Copy(cfg.source, src, dest, opts...)
+			a = llb.Copy(srcState, "/", dest, opts...)
 		} else {
-			a = a.Copy(cfg.source, src, dest, opts...)
+			a = a.Copy(srcState, "/", dest, opts...)
 		}
 	}
 

@@ -504,7 +504,7 @@ func (c *Client) BuildWithBuildkit(ctx context.Context, opts BuildOptions) error
 
 	// the Client#lifecycleExecutor defaults to docker's lifecycle executor
 	// replace this executor with the buildkit one to build with buildkit
-	c.lifecycleExecutor, err = executor.New(ctx, c.docker, buidlerState, c.logger, []dist.Target{}) // TODO: replace []dist.Target{} with targets from cli by creating a new field in BuildOptions
+	c.lifecycleExecutor, err = executor.New(ctx, c.docker, buidlerState, c.logger, opts.Targets) // TODO: replace []dist.Target{} with targets from cli by creating a new field in BuildOptions
 	if err != nil {
 		return err
 	}

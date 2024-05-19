@@ -38,10 +38,8 @@ type Options struct {
 }
 
 type CopyOptions struct {
-	dest           string
 	targetPlatform ocispecs.Platform
 	exclude        []string
-	source         llb.State
 	AddCommand     bool
 	chmod, chown   string
 	link, parents  bool

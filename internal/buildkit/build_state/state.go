@@ -97,14 +97,13 @@ func (s *State) MkFile(path string, mode fs.FileMode, data []byte, ops ...llb.Mk
 }
 
 func (s *State) Add(src []string, dest string, opt options.ADD) *State {
+
 	err := dispatchCopy(s, src, dest, CopyOptions{
 		exclude:    opt.Exclude,
 		AddCommand: true,
 		chown:      opt.Chown,
 		chmod:      opt.Chmod,
 		link:       opt.Link,
-		dest: dest,
-		source: s.state,
 	})
 
 	if err != nil {

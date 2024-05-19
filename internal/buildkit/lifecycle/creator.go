@@ -6,11 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"syscall"
 
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/pack/internal/build"
@@ -23,10 +21,6 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
-	gwClient "github.com/moby/buildkit/frontend/gateway/client"
-	"github.com/moby/buildkit/solver/pb"
-	"github.com/moby/buildkit/util/progress/progresswriter"
-	"github.com/tonistiigi/fsutil"
 )
 
 func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, buildCache, launchCache build.Cache) error {
@@ -111,118 +105,14 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, build
 		MkFile(mounter.ProjectPath(), fs.ModePerm, projectMetadata, llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID())).
 		Mkdir(mounter.AppDir(), fs.ModeDir, llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID()))
 		// Use Add, cause: The AppPath can be either a directory or a tar file!
-		// The [Add] command is responsible for extracting tar and fetching remote files!
-		// AddVolume(fmt.Sprintf("%s:%s", l.opts.AppPath, mounter.AppDir()))
-		// Add([]string{l.opts.AppPath}, mounter.AppDir(), options.ADD{Chown: userPerm, Chmod: userPerm, Link: true})
+		// The [Add] command is responsible for extracting tar
 		// TODO: CopyOutTo(mounter.SbomDir(), l.opts.SBOMDestinationDir)
 		// TODO: CopyOutTo(mounter.ReportPath(), l.opts.ReportDestinationDir)
 		// TODO: CopyOut(l.opts.Termui.ReadLayers, mounter.LayersDir(), mounter.AppDir())))
 
-		// l.Add([]string{l.opts.AppPath}, mounter.AppDir(), options.ADD{
-		// 	Chown: fmt.Sprintf("%d:%d", l.opts.UID, l.opts.GID),
-		// 	Chmod: fmt.Sprintf("%d:%d", l.opts.UID, l.opts.GID),
-		// 	Link: true,
-		// })
-
-		pw, err := progresswriter.NewPrinter(context.TODO(), os.Stderr, "plain")
-		if err != nil {
-			return err
-		}
-		mw := progresswriter.NewMultiWriter(pw)
-		appSrc := llb.Local(filepath.Join(l.opts.AppPath), llb.WithCustomNamef("Mounting Volume: %s", l.opts.AppPath))
-		var mode *os.FileMode
-		p, err := strconv.ParseUint(fmt.Sprintf("%d:%d", l.opts.Builder.UID(), l.opts.Builder.GID()), 8, 32)
-		if err == nil {
-			perm := os.FileMode(p)
-			mode = &perm
-		}
-
-		appScrCopy := llb.Copy(
-			appSrc,
-			"/", // copy root
-			"/workspace",
-			&llb.CopyInfo{
-				Mode: mode,
-				IncludePatterns: []string{"/*"},
-			// 	FollowSymlinks: true,
-			// 	AttemptUnpack: true,
-				CreateDestPath: true,
-			// 	AllowWildcard: true,
-			// 	AllowEmptyWildcard: true,
-			// 	ChownOpt: &llb.ChownOpt{
-			// 		User: &llb.UserOpt{UID: l.opts.Builder.UID()},
-			// 		Group: &llb.UserOpt{UID: l.opts.Builder.GID()},
-			// 	},
-			},
-			// llb.WithUser("root"),
-		)
-		llbState := llb.Image("busybox:latest").File(
-			appScrCopy,
-			llb.WithCustomNamef("COPY %s %s", l.opts.AppPath, mounter.AppDir()),
-		)
-
-		def, err := llbState.Marshal(ctx)
-		if err != nil {
-			return err
-		}
-
-		workspaceLocalMount, err := fsutil.NewFS(l.opts.AppPath)
-		if err != nil {
-			return err
-		}
-
-		_, err = c.Build(ctx, client.SolveOpt{
-			LocalMounts: map[string]fsutil.FS{
-				l.opts.AppPath: workspaceLocalMount,
-			},
-		}, "", func (ctx context.Context, c gwClient.Client) (*gwClient.Result, error) {
-			res, err := c.Solve(ctx, gwClient.SolveRequest{
-				Evaluate: true,
-				Definition: def.ToPB(),
-			})
-			if err != nil {
-				return res, err
-			}
-
-			ctr, err := c.NewContainer(ctx, gwClient.NewContainerRequest{
-				Mounts: []gwClient.Mount{
-					{
-						Dest: "/",
-						Ref: res.Ref,
-						MountType: pb.MountType_BIND,
-					},
-				},
-			})
-			if err != nil {
-				return res, err
-			}
-
-			defer ctr.Release(ctx)
-			pid, err := ctr.Start(ctx, gwClient.StartRequest{
-				Stdout: os.Stdout,
-				Stderr: os.Stderr,
-				Args: []string{"sleep", "10"},
-			})
-
-			if err := pid.Wait(); err != nil {
-				if err := pid.Signal(ctx, syscall.SIGKILL); err != nil {
-					l.logger.Warn("test container failed to kill")
-				}
-				return res, err
-			}
-
-			return res, err
-		}, progresswriter.ResetTime(mw.WithPrefix("test: ", true)).Status())
-		if err != nil {
-			return err
-		}
-		// s := state.New(llbState)
-		// bldr, err := builder.New(ctx, l.opts.Builder.Image().Name(), s)
-		// if err != nil {
-		// 	return err
-		// }
-
-		// l.Builder = bldr
+	l.UID(fmt.Sprintf("%d", l.opts.Builder.UID())).
+		GID(fmt.Sprintf("%d", l.opts.Builder.GID())).
+		AppSource(l.opts.AppPath, mounter.AppDir())
 
 	layoutDir := filepath.Join(paths.RootDir, "layout-repo")
 	if l.opts.Layout {

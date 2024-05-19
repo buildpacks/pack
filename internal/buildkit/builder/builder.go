@@ -1,16 +1,18 @@
 package builder
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/buildpacks/pack/internal/buildkit/packerfile"
+	"github.com/buildpacks/pack/internal/buildkit/packerfile/options"
 	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// FIXME: any better way to isolate both Cmd and Cmdf?
+// FIXME: T better way to isolate both Cmd and Cmdf?
 
 // Dockerfile: CMD
-func (b *Builder[any]) Cmd(c ...string) *Builder[any] {
+func (b *Builder[T]) Cmd(c ...string) *Builder[T] {
 	for _, v := range c {
 		b.cmd = append(b.cmd, CMD(v))
 	}
@@ -19,33 +21,33 @@ func (b *Builder[any]) Cmd(c ...string) *Builder[any] {
 }
 
 // Dockerfile: CMD
-func (b *Builder[any]) Cmdf(cmd ...cmd) *Builder[any] {
+func (b *Builder[T]) Cmdf(cmd ...cmd) *Builder[T] {
 	b.cmd = append(b.cmd, cmd...)
 	// b.Packerfile.Cmd(cmd...) // TODO: support cmd
 	return b
 }
 // Dockerfile: ENTRYPOINT
-func (b *Builder[any]) Entrypoint(ep ...string) *Builder[any] {
+func (b *Builder[T]) Entrypoint(ep ...string) *Builder[T] {
 	b.entrypoint = append(b.entrypoint, ep...)
 	b.Packerfile.Entrypoint(ep...)
 	return b
 }
 
 // the name of the exported image
-func (b *Builder[any]) Name(name string) *Builder[any] {
+func (b *Builder[T]) Name(name string) *Builder[T] {
 	b.ref = name
 	return b
 }
 
 // Dockerfile: USER
-func (b *Builder[any]) User(user string) *Builder[any] {
+func (b *Builder[T]) User(user string) *Builder[T] {
 	b.user = user
 	b.Packerfile.User(user)
 	return b
 }
 
 // Dockerfile: ENV
-func (b *Builder[any]) AddEnv(env ...string) *Builder[any] {
+func (b *Builder[T]) AddEnv(env ...string) *Builder[T] {
 	b.envs = append(b.envs, env...)
 	for _, e := range env {
 		k, v, _ := strings.Cut(e, "=")
@@ -55,36 +57,36 @@ func (b *Builder[any]) AddEnv(env ...string) *Builder[any] {
 }
 
 // Attach STDIN
-func (b *Builder[any]) Stdin() *Builder[any] {
+func (b *Builder[T]) Stdin() *Builder[T] {
 	b.attachStdin = true
 	return b
 }
 
 // Attach STDOUT
-func (b *Builder[any]) Stdout() *Builder[any] {
+func (b *Builder[T]) Stdout() *Builder[T] {
 	b.attachStdout = true
 	return b
 }
 
 // Attach STDERR
-func (b *Builder[any]) Stderr() *Builder[any] {
+func (b *Builder[T]) Stderr() *Builder[T] {
 	b.attachStderr = true
 	return b
 }
 
 // list of platforms builder targeting
-func (b *Builder[any]) Platforms() []ocispecs.Platform {
+func (b *Builder[T]) Platforms() []ocispecs.Platform {
 	return b.platforms
 }
 
 // list of platforms builder targeting
-func (b *Builder[any]) AddPlatform(platform ...ocispecs.Platform) *Builder[any] {
+func (b *Builder[T]) AddPlatform(platform ...ocispecs.Platform) *Builder[T] {
 	b.platforms = append(b.platforms, platform...)
 	return b
 }
 
 // list of platforms builder targeting
-func (b *Builder[any]) SetPlatform(platform ...ocispecs.Platform) *Builder[any] {
+func (b *Builder[T]) SetPlatform(platform ...ocispecs.Platform) *Builder[T] {
 	b.platforms = platform
 	return b
 }
@@ -95,14 +97,33 @@ func (b *Builder[T]) PrevImage(prevImage packerfile.Packerfile[*T]) *Builder[T] 
 	return b
 }
 
-func (b *Builder[any]) Workdir(dir string) *Builder[any] {
+func (b *Builder[T]) Workdir(dir string) *Builder[T] {
 	b.workdir = dir
 	b.Packerfile.State().Dir(dir)
 	return b
 }
 
-func (b *Builder[any]) AddVolume(volumes ...string) *Builder[any] {
+func (b *Builder[T]) AddVolume(volumes ...string) *Builder[T] {
 	b.Packerfile.AddVolume(volumes...)
 	b.mounts = append(b.mounts, volumes...)
+	return b
+}
+
+func (b *Builder[T]) AppSource(src, dest string) *Builder[T] {
+	b.Packerfile.Add([]string{src}, dest, options.ADD{
+		Link: true,
+		Chown: fmt.Sprintf("%s:%s", b.uid, b.gid),
+		Chmod: fmt.Sprintf("%s:%s", b.uid, b.gid),
+	})
+	return b
+}
+
+func (b *Builder[T]) UID(uid string) *Builder[T] {
+	b.uid = uid
+	return b
+}
+
+func (b *Builder[T]) GID(gid string) *Builder[T] {
+	b.gid = gid
 	return b
 }
