@@ -10,12 +10,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"syscall"
 
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/pack/internal/build"
 	state "github.com/buildpacks/pack/internal/buildkit/build_state"
 	mountpaths "github.com/buildpacks/pack/internal/buildkit/mount_paths"
-	gwClient "github.com/moby/buildkit/frontend/gateway/client"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/dist"
@@ -23,6 +23,8 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
+	gwClient "github.com/moby/buildkit/frontend/gateway/client"
+	"github.com/moby/buildkit/solver/pb"
 	"github.com/moby/buildkit/util/progress/progresswriter"
 	"github.com/tonistiigi/fsutil"
 )
@@ -138,7 +140,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, build
 		appScrCopy := llb.Copy(
 			appSrc,
 			"/", // copy root
-			"/",
+			"/workspace",
 			&llb.CopyInfo{
 				Mode: mode,
 				IncludePatterns: []string{"/*"},
@@ -154,7 +156,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, build
 			},
 			// llb.WithUser("root"),
 		)
-		llbState := llb.Scratch().File(
+		llbState := llb.Image("busybox:latest").File(
 			appScrCopy,
 			llb.WithCustomNamef("COPY %s %s", l.opts.AppPath, mounter.AppDir()),
 		)
@@ -174,10 +176,42 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, build
 				l.opts.AppPath: workspaceLocalMount,
 			},
 		}, "", func (ctx context.Context, c gwClient.Client) (*gwClient.Result, error) {
-			return c.Solve(ctx, gwClient.SolveRequest{
+			res, err := c.Solve(ctx, gwClient.SolveRequest{
 				Evaluate: true,
 				Definition: def.ToPB(),
 			})
+			if err != nil {
+				return res, err
+			}
+
+			ctr, err := c.NewContainer(ctx, gwClient.NewContainerRequest{
+				Mounts: []gwClient.Mount{
+					{
+						Dest: "/",
+						Ref: res.Ref,
+						MountType: pb.MountType_BIND,
+					},
+				},
+			})
+			if err != nil {
+				return res, err
+			}
+
+			defer ctr.Release(ctx)
+			pid, err := ctr.Start(ctx, gwClient.StartRequest{
+				Stdout: os.Stdout,
+				Stderr: os.Stderr,
+				Args: []string{"sleep", "10"},
+			})
+
+			if err := pid.Wait(); err != nil {
+				if err := pid.Signal(ctx, syscall.SIGKILL); err != nil {
+					l.logger.Warn("test container failed to kill")
+				}
+				return res, err
+			}
+
+			return res, err
 		}, progresswriter.ResetTime(mw.WithPrefix("test: ", true)).Status())
 		if err != nil {
 			return err
