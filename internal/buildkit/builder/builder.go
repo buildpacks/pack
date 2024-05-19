@@ -45,7 +45,7 @@ func (b *Builder[any]) User(user string) *Builder[any] {
 }
 
 // Dockerfile: ENV
-func (b *Builder[any]) Env(env ...string) *Builder[any] {
+func (b *Builder[any]) AddEnv(env ...string) *Builder[any] {
 	b.envs = append(b.envs, env...)
 	for _, e := range env {
 		k, v, _ := strings.Cut(e, "=")

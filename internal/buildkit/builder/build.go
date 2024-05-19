@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
 
 	"github.com/containerd/containerd/platforms"
@@ -22,6 +23,7 @@ import (
 	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"github.com/tonistiigi/fsutil"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -32,7 +34,7 @@ import (
 // - Docker tar file
 // - Image to registry
 func (b *Builder[T]) Build(ctx context.Context) error {
-	eg, ctx := errgroup.WithContext(ctx)
+	eg, _ := errgroup.WithContext(ctx)
 	pw, err := progresswriter.NewPrinter(context.TODO(), os.Stderr, "plain")
 	if err != nil {
 		return err
@@ -45,7 +47,24 @@ func (b *Builder[T]) Build(ctx context.Context) error {
 	// }
 	
 	attachable := []session.Attachable{authprovider.NewDockerAuthProvider(dockerConfig, nil)}
+	workspaceLocalMount, err := fsutil.NewFS(filepath.Join("/home/user/Github/pack/out/samples/go/no-imports/"))
+	if err != nil {
+		return err
+	}
+
 	eg.Go(func() error {
+		// st := llb.Local("/home/user/Github/pack/out/samples/go/no-imports")
+
+		// def, err := st.Marshal(context.TODO())
+		// if err != nil {
+		// 	return err
+		// }
+
+		// _, err = b.client.Solve(context.TODO(), def, client.SolveOpt{
+		// 	LocalMounts: map[string]fsutil.FS{
+		// 		"/home/user/Github/pack/out/samples/go/no-imports": workspaceLocalMount,
+		// 	},
+		// }, progresswriter.ResetTime(mw.WithPrefix("", false)).Status())
 		res, err := b.client.Build(ctx, client.SolveOpt{
 			AllowedEntitlements: []entitlements.Entitlement{
 				entitlements.EntitlementNetworkHost,
@@ -54,6 +73,9 @@ func (b *Builder[T]) Build(ctx context.Context) error {
 			CacheImports: []client.CacheOptionsEntry{},
 			Exports: []client.ExportEntry{},
 			Session: attachable,
+			LocalMounts: map[string]fsutil.FS{
+				"/workspace": workspaceLocalMount,
+			},
 			// Internal: true,
 		}, "packerfile.v0", b.build, progresswriter.ResetTime(mw.WithPrefix("packerfile.v0: ", true)).Status())
 		if err != nil {
@@ -63,7 +85,7 @@ func (b *Builder[T]) Build(ctx context.Context) error {
 		digest := res.ExporterResponse[exptypes.ExporterConfigDigestKey]
 		fmt.Printf("successfully built image %s(%s)", b.ref, digest)
 
-		return nil
+		return err
 	})
 
 	eg.Go(func() error {
@@ -112,6 +134,21 @@ func (b *Builder[T])build(ctx context.Context, c gwClient.Client) (*gwClient.Res
 	ref, err := res.SingleRef()
 	if err != nil {
 		return res, err
+	}
+
+	stat, err := ref.ReadDir(ctx, gwClient.ReadDirRequest{
+		Path: "/workspace",
+	})
+	if err != nil {
+		return res, err
+	}
+
+	// if len(stat) == 0 {
+	// 	return res, errors.Errorf("no app source found in workspace")
+	// }
+
+	for _, s := range stat {
+		fmt.Printf("/workspace: name -> %s: size -> %d \n", s.Path, s.Size())
 	}
 
 	_, err = ref.ToState()
@@ -238,11 +275,30 @@ func (b *Builder[T]) bootstrapMultiArchContainer(ctx context.Context, c gwClient
 	fmt.Printf("creating new container with platform: %s, worker: %s", platform.String(), workerID)
 	hostPlatform := pb.PlatformFromSpec(platforms.DefaultSpec()) // same as platform but ocispec.Platform instead of v1.Platform
 	ctr, err := c.NewContainer(ctx, gwClient.NewContainerRequest{
-		Mounts: []gwClient.Mount{{
-			Dest:      "/",
-			MountType: pb.MountType_BIND,
-			Ref:       b.res.Ref,
-		}},
+		Mounts: []gwClient.Mount{
+			{
+				Dest:      "/",
+				MountType: pb.MountType_BIND,
+				Ref:       b.res.Ref,
+			},
+			{
+				Dest: "/home/user/Github/pack/out/samples/go/no-imports/",
+				Selector:      "/workspace",
+				MountType: pb.MountType_TMPFS,
+				Ref:       b.res.Ref,
+			},
+			// {
+			// 	Dest:      "/layers",
+			// 	MountType: pb.MountType_BIND,
+			// 	Ref:       b.res.Ref,
+			// },
+			{
+				Selector: "/cache",
+				Dest:      "/cache",
+				MountType: pb.MountType_BIND,
+				Ref:       b.res.Ref,
+			},
+		},
 		Platform: &hostPlatform,
 		NetMode: llb.NetModeHost, // ephemeral builder runs on `--network=host`
 	})
@@ -317,11 +373,19 @@ func (b *Builder[T]) bootstrapContainer(ctx context.Context, c gwClient.Client) 
 
 	fmt.Printf("creating new container with platform: %s, worker: %s\n", platform.String(), workerID)
 	ctr, err := c.NewContainer(ctrCtx, gwClient.NewContainerRequest{
-		Mounts: []gwClient.Mount{{
-			Dest:      "/",
-			MountType: pb.MountType_BIND,
-			Ref:       b.res.Ref,
-		}},
+		Mounts: []gwClient.Mount{
+			{
+				Dest:      "/",
+				MountType: pb.MountType_BIND,
+				Ref:       b.res.Ref,
+			},
+			{
+				MountType: pb.MountType_BIND,
+				Dest: "home/user/Github/pack/out/samples/go/no-imports",
+				// Selector: "home/user/Github/pack/out/samples/go/no-imports",
+				Ref: b.res.Ref,
+			},
+		},
 		NetMode: llb.NetModeHost, // ephemeral builder runs on `--network=host`
 	})
 	if err != nil {
@@ -329,8 +393,19 @@ func (b *Builder[T]) bootstrapContainer(ctx context.Context, c gwClient.Client) 
 	}
 	
 	defer ctr.Release(ctrCtx)
+	var cmds = make([]string, 0, len(b.cmd))
+	for _, c := range b.cmd {
+		cmds = append(cmds, c.String())
+	}
+	fmt.Printf("using envs: %+v\n", b.envs)
+	fmt.Printf("using args: %+v\n", append(b.entrypoint, cmds...))
+	fmt.Printf("using user: %+v\n", b.user)
+	fmt.Printf("using workdir: %+v\n", b.workdir)
 	pid, err := ctr.Start(ctrCtx, gwClient.StartRequest{
-		Args: []string{"sleep", "1"},
+		User: b.user,
+		Cwd: b.workdir,
+		Env: append(b.envs,"CNB_PLATFORM_API=0.12"),
+		Args: /* append(b.entrypoint, cmds...),*/ []string{"/cnb/lifecycle/creator", "-app", "/workspace", "-run-image", "index.docker.io/paketobuildpacks/run-jammy-tiny:latest", "ttl.sh/wygin/react-yarn:1d"},
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 		RemoveMountStubsRecursive: true,

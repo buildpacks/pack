@@ -33,6 +33,13 @@ func Scratch(ctx context.Context, name, os string) (_ *State, err error) {
 	}, err
 }
 
+func New(state llb.State) *State {
+	return &State{
+		state: state,
+		config: &v1.ConfigFile{},
+	}
+}
+
 func Remote(ref string, opts ...llb.ImageOption) *State {
 	state := llb.Image(ref, opts...).Network(llb.NetModeHost)
 	return &State{

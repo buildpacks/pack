@@ -104,6 +104,7 @@ func (s *State) Add(src []string, dest string, opt options.ADD) *State {
 		chmod:      opt.Chmod,
 		link:       opt.Link,
 		dest: dest,
+		source: s.state,
 	})
 
 	if err != nil {
