@@ -2510,6 +2510,10 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					})
 
 					when("--platform", func() {
+						it.Before(func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.PlatformOption), "")
+						})
+
 						it("uses the builder with the desired platform", func() {
 							output, err := pack.Run(
 								"build", repoName,
