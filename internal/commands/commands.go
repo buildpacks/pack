@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -32,6 +33,13 @@ type PackClient interface {
 	InspectExtension(client.InspectExtensionOptions) (*client.ExtensionInfo, error)
 	PullBuildpack(context.Context, client.PullBuildpackOptions) error
 	DownloadSBOM(name string, options client.DownloadSBOMOptions) error
+	CreateManifest(ctx context.Context, opts client.CreateManifestOptions) error
+	AnnotateManifest(ctx context.Context, opts client.ManifestAnnotateOptions) error
+	AddManifest(ctx context.Context, opts client.ManifestAddOptions) error
+	DeleteManifest(name []string) error
+	RemoveManifest(name string, images []string) error
+	PushManifest(client.PushManifestOptions) error
+	InspectManifest(string) error
 }
 
 func AddHelpFlag(cmd *cobra.Command, commandName string) {
@@ -106,4 +114,17 @@ func isTrustedBuilder(cfg config.Config, builder string) bool {
 
 func deprecationWarning(logger logging.Logger, oldCmd, replacementCmd string) {
 	logger.Warnf("Command %s has been deprecated, please use %s instead", style.Symbol("pack "+oldCmd), style.Symbol("pack "+replacementCmd))
+}
+
+func parseFormatFlag(value string) (types.MediaType, error) {
+	var format types.MediaType
+	switch value {
+	case "oci":
+		format = types.OCIImageIndex
+	case "docker":
+		format = types.DockerManifestList
+	default:
+		return format, errors.Errorf("%s invalid media type format", value)
+	}
+	return format, nil
 }

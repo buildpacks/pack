@@ -26,11 +26,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
 	"github.com/onsi/gomega/ghttp"
-	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	cfg "github.com/buildpacks/pack/internal/config"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
@@ -56,7 +54,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		subject                      *Client
 		fakeImageFetcher             *ifakes.FakeImageFetcher
 		fakeLifecycle                *ifakes.FakeLifecycle
-		fakeAccessChecker            *ifakes.FakeAccessChecker
 		defaultBuilderStackID        = "some.stack.id"
 		defaultWindowsBuilderStackID = "some.windows.stack.id"
 		defaultBuilderImage          *fakes.Image
@@ -81,7 +78,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		var err error
 
 		fakeImageFetcher = ifakes.NewFakeImageFetcher()
-		fakeAccessChecker = ifakes.NewFakeAccessChecker()
 		fakeLifecycle = &ifakes.FakeLifecycle{}
 
 		tmpDir, err = os.MkdirTemp("", "build-test")
@@ -138,7 +134,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			logger:              logger,
 			imageFetcher:        fakeImageFetcher,
 			downloader:          blobDownloader,
-			accessChecker:       fakeAccessChecker,
 			lifecycleExecutor:   fakeLifecycle,
 			docker:              docker,
 			buildpackDownloader: buildpackDownloader,
@@ -2101,6 +2096,8 @@ api = "0.2"
 				when("builder is untrusted", func() {
 					when("lifecycle image is available", func() {
 						it("uses the 5 phases with the lifecycle image", func() {
+							origLifecyleName := fakeLifecycleImage.Name()
+
 							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 								Image:        "some/app",
 								Builder:      defaultBuilderName,
@@ -2108,9 +2105,9 @@ api = "0.2"
 								TrustBuilder: func(string) bool { return false },
 							}))
 							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, false)
-							h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, fakeLifecycleImage.Name())
-
-							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
+							h.AssertContains(t, fakeLifecycle.Opts.LifecycleImage, "pack.local/lifecycle")
+							args := fakeImageFetcher.FetchCalls[origLifecyleName]
+							h.AssertNotNil(t, args)
 							h.AssertEq(t, args.Daemon, true)
 							h.AssertEq(t, args.PullPolicy, image.PullAlways)
 							h.AssertEq(t, args.Platform, "linux/amd64")
@@ -2199,6 +2196,7 @@ api = "0.2"
 				when("builder is untrusted", func() {
 					when("lifecycle image is available", func() {
 						it("uses the 5 phases with the lifecycle image", func() {
+							origLifecyleName := fakeLifecycleImage.Name()
 							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 								Image:        "some/app",
 								Builder:      defaultBuilderName,
@@ -2206,9 +2204,9 @@ api = "0.2"
 								TrustBuilder: func(string) bool { return false },
 							}))
 							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, false)
-							h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, fakeLifecycleImage.Name())
-
-							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
+							h.AssertContains(t, fakeLifecycle.Opts.LifecycleImage, "pack.local/lifecycle")
+							args := fakeImageFetcher.FetchCalls[origLifecyleName]
+							h.AssertNotNil(t, args)
 							h.AssertEq(t, args.Daemon, true)
 							h.AssertEq(t, args.PullPolicy, image.PullAlways)
 							h.AssertEq(t, args.Platform, "linux/amd64")
@@ -2763,7 +2761,11 @@ api = "0.2"
 								Volumes: []string{":::"},
 							},
 						})
-						h.AssertError(t, err, `platform volume ":::" has invalid format: invalid volume specification: ':::'`)
+						if runtime.GOOS == "darwin" {
+							h.AssertError(t, err, `platform volume ":::" has invalid format: invalid spec: :::: empty section between colons`)
+						} else {
+							h.AssertError(t, err, `platform volume ":::" has invalid format: invalid volume specification: ':::'`)
+						}
 					})
 				})
 
@@ -3013,40 +3015,19 @@ api = "0.2"
 		when("there are extensions", func() {
 			withExtensionsLabel = true
 
-			when("experimental", func() {
-				when("false", func() {
-					it("errors", func() {
-						err := subject.Build(context.TODO(), BuildOptions{
-							Image:   "some/app",
-							Builder: defaultBuilderName,
-						})
-
-						h.AssertNotNil(t, err)
-					})
-				})
-
-				when("true", func() {
-					it.Before(func() {
-						subject.experimental = true
+			when("default configuration", func() {
+				it("succeeds", func() {
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: defaultBuilderName,
 					})
 
-					it("succeeds", func() {
-						err := subject.Build(context.TODO(), BuildOptions{
-							Image:   "some/app",
-							Builder: defaultBuilderName,
-						})
-
-						h.AssertNil(t, err)
-						h.AssertEq(t, fakeLifecycle.Opts.BuilderImage, defaultBuilderName)
-					})
+					h.AssertNil(t, err)
+					h.AssertEq(t, fakeLifecycle.Opts.BuilderImage, defaultBuilderName)
 				})
 			})
 
 			when("os", func() {
-				it.Before(func() {
-					subject.experimental = true
-				})
-
 				when("windows", func() {
 					it.Before(func() {
 						h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
@@ -3076,10 +3057,6 @@ api = "0.2"
 			})
 
 			when("pull policy", func() {
-				it.Before(func() {
-					subject.experimental = true
-				})
-
 				when("always", func() {
 					it("succeeds", func() {
 						err := subject.Build(context.TODO(), BuildOptions{
@@ -3365,13 +3342,4 @@ func setAPIs(t *testing.T, image *fakes.Image, buildpackAPIs []string, platformA
 	builderMDLabelBytes, err := json.Marshal(&builderMD)
 	h.AssertNil(t, err)
 	h.AssertNil(t, image.SetLabel(builderMDLabelName, string(builderMDLabelBytes)))
-}
-
-type executeFailsLifecycle struct { //nolint
-	Opts build.LifecycleOptions
-}
-
-func (f *executeFailsLifecycle) Execute(_ context.Context, opts build.LifecycleOptions) error { //nolint
-	f.Opts = opts
-	return errors.New("")
 }

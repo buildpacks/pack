@@ -272,7 +272,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		if l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild() {
 			group.Go(func() error {
 				l.logger.Info(style.Step("EXTENDING (BUILD)"))
-				return l.ExtendBuild(ctx, kanikoCache, phaseFactory)
+				return l.ExtendBuild(ctx, kanikoCache, phaseFactory, l.extensionsAreExperimental())
 			})
 		} else {
 			group.Go(func() error {
@@ -284,7 +284,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {
 			group.Go(func() error {
 				l.logger.Info(style.Step("EXTENDING (RUN)"))
-				return l.ExtendRun(ctx, kanikoCache, phaseFactory, ephemeralRunImage)
+				return l.ExtendRun(ctx, kanikoCache, phaseFactory, ephemeralRunImage, l.extensionsAreExperimental())
 			})
 		}
 
@@ -431,7 +431,7 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 
 	envOp := NullOp()
 	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
-		envOp = WithEnv("CNB_EXPERIMENTAL_MODE=warn")
+		envOp = If(l.extensionsAreExperimental(), WithEnv("CNB_EXPERIMENTAL_MODE=warn"))
 	}
 
 	configProvider := NewPhaseConfigProvider(
@@ -451,13 +451,17 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 		If(l.hasExtensions(), WithPostContainerRunOperations(
 			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.tmpDir))),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
-			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.tmpDir))),
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated"), l.tmpDir))),
 		envOp,
 	)
 
 	detect := phaseFactory.New(configProvider)
 	defer detect.Cleanup()
 	return detect.Run(ctx)
+}
+
+func (l *LifecycleExecution) extensionsAreExperimental() bool {
+	return l.PlatformAPI().AtLeast("0.10") && l.platformAPI.LessThan("0.13")
 }
 
 func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kanikoCache Cache, phaseFactory PhaseFactory) error {
@@ -718,7 +722,7 @@ func (l *LifecycleExecution) Build(ctx context.Context, phaseFactory PhaseFactor
 	return build.Run(ctx)
 }
 
-func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory, experimental bool) error {
 	flags := []string{"-app", l.mountPaths.appDir()}
 
 	configProvider := NewPhaseConfigProvider(
@@ -727,7 +731,7 @@ func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache,
 		WithLogPrefix("extender (build)"),
 		WithArgs(l.withLogLevel()...),
 		WithBinds(l.opts.Volumes...),
-		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
+		If(experimental, WithEnv("CNB_EXPERIMENTAL_MODE=warn")),
 		WithFlags(flags...),
 		WithNetwork(l.opts.Network),
 		WithRoot(),
@@ -739,7 +743,7 @@ func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache,
 	return extend.Run(ctx)
 }
 
-func (l *LifecycleExecution) ExtendRun(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory, runImageName string) error {
+func (l *LifecycleExecution) ExtendRun(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory, runImageName string, experimental bool) error {
 	flags := []string{"-app", l.mountPaths.appDir(), "-kind", "run"}
 
 	configProvider := NewPhaseConfigProvider(
@@ -748,7 +752,7 @@ func (l *LifecycleExecution) ExtendRun(ctx context.Context, kanikoCache Cache, p
 		WithLogPrefix("extender (run)"),
 		WithArgs(l.withLogLevel()...),
 		WithBinds(l.opts.Volumes...),
-		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
+		If(experimental, WithEnv("CNB_EXPERIMENTAL_MODE=warn")),
 		WithFlags(flags...),
 		WithNetwork(l.opts.Network),
 		WithRoot(),
@@ -784,7 +788,7 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 	} else {
 		flags = append(flags, "-run", l.mountPaths.runPath())
 		if l.hasExtensionsForRun() {
-			expEnv = WithEnv("CNB_EXPERIMENTAL_MODE=warn")
+			expEnv = If(l.extensionsAreExperimental(), WithEnv("CNB_EXPERIMENTAL_MODE=warn"))
 			kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir()))
 		}
 	}
@@ -899,12 +903,25 @@ func (l *LifecycleExecution) hasExtensionsForBuild() bool {
 	if !l.hasExtensions() {
 		return false
 	}
-	// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
-	fis, err := os.ReadDir(filepath.Join(l.tmpDir, "build"))
+	generatedDir := filepath.Join(l.tmpDir, "generated")
+	fis, err := os.ReadDir(filepath.Join(generatedDir, "build"))
+	if err == nil && len(fis) > 0 {
+		// on older platforms, we need to find a file such as <layers>/generated/build/<buildpack-id>/Dockerfile
+		// on newer platforms, <layers>/generated/build doesn't exist
+		return true
+	}
+	// on newer platforms, we need to find a file such as <layers>/generated/<buildpack-id>/build.Dockerfile
+	fis, err = os.ReadDir(generatedDir)
 	if err != nil {
+		l.logger.Warnf("failed to read generated directory, assuming no build image extensions: %s", err)
 		return false
 	}
-	return len(fis) > 0
+	for _, fi := range fis {
+		if _, err := os.Stat(filepath.Join(generatedDir, fi.Name(), "build.Dockerfile")); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (l *LifecycleExecution) hasExtensionsForRun() bool {

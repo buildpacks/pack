@@ -137,11 +137,15 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		// construct fixtures for extensions
 		if extensionsForBuild {
-			// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
-			err = os.MkdirAll(filepath.Join(tmpDir, "build"), 0755)
-			h.AssertNil(t, err)
-			_, err = os.Create(filepath.Join(tmpDir, "build", "some-dockerfile"))
-			h.AssertNil(t, err)
+			if platformAPI.LessThan("0.13") {
+				err = os.MkdirAll(filepath.Join(tmpDir, "generated", "build", "some-buildpack-id"), 0755)
+				h.AssertNil(t, err)
+			} else {
+				err = os.MkdirAll(filepath.Join(tmpDir, "generated", "some-buildpack-id"), 0755)
+				h.AssertNil(t, err)
+				_, err = os.Create(filepath.Join(tmpDir, "generated", "some-buildpack-id", "build.Dockerfile"))
+				h.AssertNil(t, err)
+			}
 		}
 		amd := files.Analyzed{RunImage: &files.RunImage{
 			Extend: false,
@@ -583,7 +587,32 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
 
 				when("for build", func() {
-					when("present <layers>/generated/build", func() {
+					when("present in <layers>/generated/<buildpack-id>", func() {
+						extensionsForBuild = true
+
+						when("platform >= 0.13", func() {
+							platformAPI = api.MustParse("0.13")
+
+							it("runs the extender (build)", func() {
+								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+									return fakePhaseFactory
+								})
+								h.AssertNil(t, err)
+
+								h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+
+								var found bool
+								for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+									if entry.Name() == "extender" {
+										found = true
+									}
+								}
+								h.AssertEq(t, found, true)
+							})
+						})
+					})
+
+					when("present in <layers>/generated/build", func() {
 						extensionsForBuild = true
 
 						when("platform < 0.10", func() {
@@ -607,7 +636,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							})
 						})
 
-						when("platform >= 0.10", func() {
+						when("platform 0.10 to 0.12", func() {
 							platformAPI = api.MustParse("0.10")
 
 							it("runs the extender (build)", func() {
@@ -2030,8 +2059,10 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#ExtendBuild", func() {
+		var experimental bool
 		it.Before(func() {
-			err := lifecycle.ExtendBuild(context.Background(), fakeKanikoCache, fakePhaseFactory)
+			experimental = true
+			err := lifecycle.ExtendBuild(context.Background(), fakeKanikoCache, fakePhaseFactory, experimental)
 			h.AssertNil(t, err)
 
 			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -2069,11 +2100,31 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		it("configures the phase with root", func() {
 			h.AssertEq(t, configProvider.ContainerConfig().User, "root")
 		})
+
+		when("experimental is false", func() {
+			it.Before(func() {
+				experimental = false
+				err := lifecycle.ExtendBuild(context.Background(), fakeKanikoCache, fakePhaseFactory, experimental)
+				h.AssertNil(t, err)
+
+				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+				h.AssertNotEq(t, lastCallIndex, -1)
+
+				configProvider = fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+				h.AssertEq(t, configProvider.Name(), "extender")
+			})
+
+			it("CNB_EXPERIMENTAL_MODE=warn is not enable in the environment", func() {
+				h.AssertSliceNotContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
+			})
+		})
 	})
 
 	when("#ExtendRun", func() {
+		var experimental bool
 		it.Before(func() {
-			err := lifecycle.ExtendRun(context.Background(), fakeKanikoCache, fakePhaseFactory, "some-run-image")
+			experimental = true
+			err := lifecycle.ExtendRun(context.Background(), fakeKanikoCache, fakePhaseFactory, "some-run-image", experimental)
 			h.AssertNil(t, err)
 
 			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -2116,6 +2167,24 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 		it("configures the phase with root", func() {
 			h.AssertEq(t, configProvider.ContainerConfig().User, "root")
+		})
+
+		when("experimental is false", func() {
+			it.Before(func() {
+				experimental = false
+				err := lifecycle.ExtendRun(context.Background(), fakeKanikoCache, fakePhaseFactory, "some-run-image", experimental)
+				h.AssertNil(t, err)
+
+				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+				h.AssertNotEq(t, lastCallIndex, -1)
+
+				configProvider = fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+				h.AssertEq(t, configProvider.Name(), "extender")
+			})
+
+			it("CNB_EXPERIMENTAL_MODE=warn is not enable in the environment", func() {
+				h.AssertSliceNotContains(t, configProvider.ContainerConfig().Env, "CNB_EXPERIMENTAL_MODE=warn")
+			})
 		})
 	})
 

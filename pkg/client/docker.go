@@ -19,8 +19,8 @@ type DockerClient interface {
 	ImageTag(ctx context.Context, image, ref string) error
 	ImageLoad(ctx context.Context, input io.Reader, quiet bool) (types.ImageLoadResponse, error)
 	ImageSave(ctx context.Context, images []string) (io.ReadCloser, error)
-	ImageRemove(ctx context.Context, image string, options types.ImageRemoveOptions) ([]image.DeleteResponse, error)
-	ImagePull(ctx context.Context, ref string, options types.ImagePullOptions) (io.ReadCloser, error)
+	ImageRemove(ctx context.Context, image string, options image.RemoveOptions) ([]image.DeleteResponse, error)
+	ImagePull(ctx context.Context, ref string, options image.PullOptions) (io.ReadCloser, error)
 	Info(ctx context.Context) (system.Info, error)
 	ServerVersion(ctx context.Context) (types.Version, error)
 	VolumeRemove(ctx context.Context, volumeID string, force bool) error

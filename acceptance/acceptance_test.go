@@ -18,10 +18,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pelletier/go-toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -623,6 +626,147 @@ func testWithoutSpecificBuilderRequirement(
 			})
 		})
 	})
+
+	when("manifest", func() {
+		var (
+			indexRepoName  string
+			repoName1      string
+			repoName2      string
+			indexLocalPath string
+			tmpDir         string
+			err            error
+		)
+
+		it.Before(func() {
+			h.SkipIf(t, !pack.SupportsFeature(invoke.ManifestCommands), "pack manifest commands are available since 0.34.0")
+
+			// local storage path
+			tmpDir, err = os.MkdirTemp("", "manifest-commands-test")
+			assert.Nil(err)
+			os.Setenv("XDG_RUNTIME_DIR", tmpDir)
+
+			// manifest commands are experimental
+			pack.EnableExperimental()
+
+			// used to avoid authentication issues with the local registry
+			os.Setenv("DOCKER_CONFIG", registryConfig.DockerConfigDir)
+		})
+
+		it.After(func() {
+			assert.Succeeds(os.RemoveAll(tmpDir))
+		})
+
+		when("create", func() {
+			it.Before(func() {
+				it.Before(func() {
+					indexRepoName = registryConfig.RepoName(h.NewRandomIndexRepoName())
+
+					// Manifest 1
+					repoName1 = fmt.Sprintf("%s:%s", indexRepoName, "busybox-amd64")
+					h.CreateRemoteImage(t, indexRepoName, "busybox-amd64", "busybox@sha256:a236a6469768c17ca1a6ac81a35fe6fbc1efd76b0dcdf5aebb1cf5f0774ee539")
+
+					// Manifest 2
+					repoName2 = fmt.Sprintf("%s:%s", indexRepoName, "busybox-arm64")
+					h.CreateRemoteImage(t, indexRepoName, "busybox-arm64", "busybox@sha256:0bcc1b827b855c65eaf6e031e894e682b6170160b8a676e1df7527a19d51fb1a")
+				})
+			})
+			when("--publish", func() {
+				it("creates and push the index to a remote registry", func() {
+					output := pack.RunSuccessfully("manifest", "create", "--publish", indexRepoName, repoName1, repoName2)
+					assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(indexRepoName)
+					h.AssertRemoteImageIndex(t, indexRepoName, types.OCIImageIndex, 2)
+				})
+			})
+
+			when("no --publish", func() {
+				it("creates the index locally", func() {
+					output := pack.RunSuccessfully("manifest", "create", indexRepoName, repoName1, repoName2)
+					assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexLocallyCreated(indexRepoName)
+
+					indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+					index := h.ReadIndexManifest(t, indexLocalPath)
+					h.AssertEq(t, len(index.Manifests), 2)
+					h.AssertEq(t, index.MediaType, types.OCIImageIndex)
+				})
+			})
+		})
+
+		when("index is already created", func() {
+			var digest v1.Hash
+
+			it.Before(func() {
+				indexRepoName = registryConfig.RepoName(h.NewRandomIndexRepoName())
+
+				// Manifest 1
+				repoName1 = fmt.Sprintf("%s:%s", indexRepoName, "busybox-amd64")
+				image1 := h.CreateRemoteImage(t, indexRepoName, "busybox-amd64", "busybox@sha256:a236a6469768c17ca1a6ac81a35fe6fbc1efd76b0dcdf5aebb1cf5f0774ee539")
+				digest, err = image1.Digest()
+				assert.Nil(err)
+
+				// Manifest 2
+				repoName2 = fmt.Sprintf("%s:%s", indexRepoName, "busybox-arm64")
+				h.CreateRemoteImage(t, indexRepoName, "busybox-arm64", "busybox@sha256:0bcc1b827b855c65eaf6e031e894e682b6170160b8a676e1df7527a19d51fb1a")
+
+				// create an index locally
+				pack.RunSuccessfully("manifest", "create", indexRepoName, repoName1)
+				indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+			})
+
+			when("add", func() {
+				it("adds the manifest to the index", func() {
+					output := pack.RunSuccessfully("manifest", "add", indexRepoName, repoName2)
+					assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulManifestAddedToIndex(repoName2)
+
+					index := h.ReadIndexManifest(t, indexLocalPath)
+					h.AssertEq(t, len(index.Manifests), 2)
+					h.AssertEq(t, index.MediaType, types.OCIImageIndex)
+				})
+			})
+
+			when("remove", func() {
+				it("removes the index from local storage", func() {
+					output := pack.RunSuccessfully("manifest", "remove", indexRepoName)
+					assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexDeleted()
+
+					h.AssertPathDoesNotExists(t, indexLocalPath)
+				})
+			})
+
+			when("annotate", func() {
+				it("adds annotations to the manifest in the index", func() {
+					output := pack.RunSuccessfully("manifest", "annotate", indexRepoName, repoName1, "--annotations", "foo=bar")
+					assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexAnnotated(repoName1, indexRepoName)
+
+					index := h.ReadIndexManifest(t, indexLocalPath)
+					h.AssertEq(t, len(index.Manifests), 1)
+					h.AssertEq(t, len(index.Manifests[0].Annotations), 1)
+				})
+			})
+
+			when("rm", func() {
+				it.Before(func() {
+					// we need to point to the manifest digest we want to delete
+					repoName1 = fmt.Sprintf("%s@%s", repoName1, digest.String())
+				})
+
+				it("removes the manifest from the index", func() {
+					output := pack.RunSuccessfully("manifest", "rm", indexRepoName, repoName1)
+					assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulRemoveManifestFromIndex(indexRepoName)
+
+					index := h.ReadIndexManifest(t, indexLocalPath)
+					h.AssertEq(t, len(index.Manifests), 0)
+				})
+			})
+
+			when("push", func() {
+				it("pushes the index to a remote registry", func() {
+					output := pack.RunSuccessfully("manifest", "push", indexRepoName)
+					assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(indexRepoName)
+					h.AssertRemoteImageIndex(t, indexRepoName, types.OCIImageIndex, 1)
+				})
+			})
+		})
+	})
 }
 
 func testAcceptance(
@@ -834,8 +978,10 @@ func testAcceptance(
 							launchCacheVolume.Clear(context.TODO())
 						})
 
-						when("builder is untrusted", func() {
+						when("there are build image extensions", func() {
 							it("uses the 5 phases, and runs the extender (build)", func() {
+								origLifecycle := lifecycle.Image()
+
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
@@ -846,7 +992,7 @@ func testAcceptance(
 								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 								assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-								assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+								assertOutput.IncludesTagOrEphemeralLifecycle(origLifecycle)
 								assertOutput.IncludesSeparatePhasesWithBuildExtension()
 
 								t.Log("inspecting image")
@@ -885,6 +1031,8 @@ func testAcceptance(
 								})
 
 								it("uses the 5 phases, and runs the extender (run)", func() {
+									origLifecycle := lifecycle.Image()
+
 									output := pack.RunSuccessfully(
 										"build", repoName,
 										"-p", filepath.Join("testdata", "mock_app"),
@@ -896,7 +1044,8 @@ func testAcceptance(
 									assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 									assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-									assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+
+									assertOutput.IncludesTagOrEphemeralLifecycle(origLifecycle)
 									assertOutput.IncludesSeparatePhasesWithRunExtension()
 
 									t.Log("inspecting image")
@@ -976,6 +1125,8 @@ func testAcceptance(
 
 					when("daemon", func() {
 						it("uses the 5 phases", func() {
+							origLifecycle := lifecycle.Image()
+
 							output := pack.RunSuccessfully(
 								"build", repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
@@ -985,13 +1136,15 @@ func testAcceptance(
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 							assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-							assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+							assertOutput.IncludesTagOrEphemeralLifecycle(origLifecycle)
 							assertOutput.IncludesSeparatePhases()
 						})
 					})
 
 					when("--publish", func() {
 						it("uses the 5 phases", func() {
+							origLifecycle := lifecycle.Image()
+
 							buildArgs := []string{
 								repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
@@ -1007,7 +1160,7 @@ func testAcceptance(
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 							assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-							assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
+							assertOutput.IncludesTagOrEphemeralLifecycle(origLifecycle)
 							assertOutput.IncludesSeparatePhases()
 						})
 					})

@@ -14,7 +14,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/auth"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -50,7 +50,7 @@ func WithKeychain(keychain authn.Keychain) FetcherOption {
 
 type DockerClient interface {
 	local.DockerClient
-	ImagePull(ctx context.Context, ref string, options types.ImagePullOptions) (io.ReadCloser, error)
+	ImagePull(ctx context.Context, ref string, options image.PullOptions) (io.ReadCloser, error)
 }
 
 type Fetcher struct {
@@ -123,6 +123,41 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 	return f.fetchDaemonImage(name)
 }
 
+func (f *Fetcher) CheckReadAccess(repo string, options FetchOptions) bool {
+	if !options.Daemon || options.PullPolicy == PullAlways {
+		return f.checkRemoteReadAccess(repo)
+	}
+	if _, err := f.fetchDaemonImage(repo); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			// Image doesn't exist in the daemon
+			// 	Pull Never: should fail
+			// 	Pull If Not Present: need to check the registry
+			if options.PullPolicy == PullNever {
+				return false
+			}
+			return f.checkRemoteReadAccess(repo)
+		}
+		f.logger.Debugf("failed reading image '%s' from the daemon, error: %s", repo, err.Error())
+		return false
+	}
+	return true
+}
+
+func (f *Fetcher) checkRemoteReadAccess(repo string) bool {
+	img, err := remote.NewImage(repo, f.keychain)
+	if err != nil {
+		f.logger.Debugf("failed accessing remote image %s, error: %s", repo, err.Error())
+		return false
+	}
+	if ok, err := img.CheckReadAccess(); ok {
+		f.logger.Debugf("CheckReadAccess succeeded for the run image %s", repo)
+		return true
+	} else {
+		f.logger.Debugf("CheckReadAccess failed for the run image %s, error: %s", repo, err.Error())
+		return false
+	}
+}
+
 func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 	image, err := local.NewImage(name, f.docker, local.FromBaseImage(name))
 	if err != nil {
@@ -163,7 +198,7 @@ func (f *Fetcher) fetchLayoutImage(name string, options LayoutOption) (imgutil.I
 	if options.Sparse {
 		image, err = sparse.NewImage(options.Path, v1Image)
 	} else {
-		image, err = layout.NewImage(options.Path, layout.FromBaseImage(v1Image))
+		image, err = layout.NewImage(options.Path, layout.FromBaseImageInstance(v1Image))
 	}
 
 	if err != nil {
@@ -184,7 +219,7 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string, platform string
 		return err
 	}
 
-	rc, err := f.docker.ImagePull(ctx, imageID, types.ImagePullOptions{RegistryAuth: regAuth, Platform: platform})
+	rc, err := f.docker.ImagePull(ctx, imageID, image.PullOptions{RegistryAuth: regAuth, Platform: platform})
 	if err != nil {
 		if client.IsErrNotFound(err) {
 			return errors.Wrapf(ErrNotFound, "image %s does not exist on the daemon", style.Symbol(imageID))
