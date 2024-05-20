@@ -2510,22 +2510,14 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					})
 
 					when("--platform", func() {
-						wrongArch := "arm64"
-						it.Before(func() {
-							h.SkipIf(t, !pack.SupportsFeature(invoke.PlatformOption), "")
-							h.SkipIf(t, imageManager.HostOS() == "windows", "Not relevant on windows")
-							if hostArch := imageManager.HostArch(); hostArch == wrongArch {
-								wrongArch = "amd64"
-							}
-						})
-
 						it("uses the builder with the desired platform", func() {
-							output, _ := pack.Run(
+							output, err := pack.Run(
 								"build", repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
-								"--platform", fmt.Sprintf("linux/%s", wrongArch),
+								"--platform", "linux/not-exist-arch",
 							)
-							h.AssertContainsMatch(t, output, fmt.Sprintf("Pulling image '.+' with platform 'linux/%s'", wrongArch))
+							h.AssertNotNil(t, err)
+							h.AssertContainsMatch(t, output, "Pulling image '.*test/builder.*' with platform 'linux/not-exist-arch")
 						})
 					})
 				})
