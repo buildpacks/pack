@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1716213325736,
+  "lastUpdate": 1716214929303,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -6706,6 +6706,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 51366552168,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "302963e08104e03f1262a495b5f5e1846ff5ce48",
+          "message": "Merge pull request #2155 from jjbustamante/bugfix/jjbustamante/issue-1922\n\nWarn misconfiguration keys in project.toml only for tables we own",
+          "timestamp": "2024-05-20T09:20:44-05:00",
+          "tree_id": "8dd254c2f046c5c0c05069704fb3a8cf843251a4",
+          "url": "https://github.com/buildpacks/pack/commit/302963e08104e03f1262a495b5f5e1846ff5ce48"
+        },
+        "date": 1716214927769,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4034379198,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 797298986,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 49865869547,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
