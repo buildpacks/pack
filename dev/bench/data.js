@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1716214929303,
+  "lastUpdate": 1716217108105,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -6748,6 +6748,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 49865869547,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e1d6106d3b1072f0b0895ace3f8f05a2636022f1",
+          "message": "Merge pull request #2161 from buildpacks/fix/buildpack-toml-validation\n\nWhen validating buildpack.toml, don't warn for keys that are actually defined",
+          "timestamp": "2024-05-20T09:57:04-05:00",
+          "tree_id": "9c9665f0f60bc4d5470b1e63ba9735541009a82e",
+          "url": "https://github.com/buildpacks/pack/commit/e1d6106d3b1072f0b0895ace3f8f05a2636022f1"
+        },
+        "date": 1716217107619,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3619460345,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1076238686,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 50218301415,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
