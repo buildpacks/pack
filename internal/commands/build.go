@@ -35,6 +35,7 @@ type BuildFlags struct {
 	Builder              string
 	Registry             string
 	RunImage             string
+	Platform             string
 	Policy               string
 	Network              string
 	DescriptorPath       string
@@ -132,6 +133,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}
+
 			var lifecycleImage string
 			if flags.LifecycleImage != "" {
 				ref, err := name.ParseReference(flags.LifecycleImage)
@@ -140,6 +142,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				}
 				lifecycleImage = ref.Name()
 			}
+
 			var gid = -1
 			if cmd.Flags().Changed("gid") {
 				gid = flags.GID
@@ -165,6 +168,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Image:             inputImageName.Name(),
 				Publish:           flags.Publish,
 				DockerHost:        flags.DockerHost,
+				Platform:          flags.Platform,
 				PullPolicy:        pullPolicy,
 				ClearCache:        flags.ClearCache,
 				TrustBuilder: func(string) bool {
@@ -257,6 +261,7 @@ Special value 'inherit' may be used in which case DOCKER_HOST environment variab
 This option may set DOCKER_HOST environment variable for the build container if needed.
 `)
 	cmd.Flags().StringVar(&buildFlags.LifecycleImage, "lifecycle-image", cfg.LifecycleImage, `Custom lifecycle image to use for analysis, restore, and export when builder is untrusted.`)
+	cmd.Flags().StringVar(&buildFlags.Platform, "platform", "", `Platform to build on (e.g., "linux/amd64").`)
 	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
 	cmd.Flags().StringVarP(&buildFlags.Registry, "buildpack-registry", "r", cfg.DefaultRegistryName, "Buildpack Registry by name")
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")

@@ -148,6 +148,17 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("--platform", func() {
+			it("sets platform", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithPlatform("linux/amd64")).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--platform", "linux/amd64"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
 		when("--pull-policy", func() {
 			it("sets pull-policy=never", func() {
 				mockClient.EXPECT().
@@ -954,6 +965,15 @@ func EqBuildOptionsDefaultProcess(defaultProc string) gomock.Matcher {
 		description: fmt.Sprintf("Default Process Type=%s", defaultProc),
 		equals: func(o client.BuildOptions) bool {
 			return o.DefaultProcessType == defaultProc
+		},
+	}
+}
+
+func EqBuildOptionsWithPlatform(platform string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Platform=%s", platform),
+		equals: func(o client.BuildOptions) bool {
+			return o.Platform == platform
 		},
 	}
 }

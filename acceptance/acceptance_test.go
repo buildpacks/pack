@@ -2508,6 +2508,27 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							})
 						})
 					})
+
+					when("--platform", func() {
+						wrongArch := "arm64"
+						it.Before(func() {
+							h.SkipIf(t, imageManager.HostOS() == "windows", "Not relevant on windows")
+							if hostArch := imageManager.HostArch(); hostArch == wrongArch {
+								wrongArch = "amd64"
+							}
+							// FIXME: on an M1 with emulation enabled this test might pass when we expect it to fail
+						})
+
+						it("uses the builder with the desired platform", func() {
+							output, err := pack.Run(
+								"build", repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--platform", fmt.Sprintf("linux/%s", wrongArch),
+							)
+							h.AssertNotNil(t, err)
+							h.AssertContains(t, output, "was found but does not match the specified platform")
+						})
+					})
 				})
 
 				when("build --buildpack <flattened buildpack>", func() {

@@ -62,6 +62,13 @@ func (im ImageManager) HostOS() string {
 	return daemonInfo.OSType
 }
 
+func (im ImageManager) HostArch() string {
+	im.testObject.Helper()
+	daemonInfo, err := im.dockerCli.Info(context.Background())
+	im.assert.Nil(err)
+	return daemonInfo.Architecture
+}
+
 func (im ImageManager) TagImage(image, ref string) {
 	im.testObject.Helper()
 	err := im.dockerCli.ImageTag(context.Background(), image, ref)

@@ -159,6 +159,9 @@ type BuildOptions struct {
 	// Process type that will be used when setting container start command.
 	DefaultProcessType string
 
+	// Platform is the desired platform to build on (e.g., linux/amd64)
+	Platform string
+
 	// Strategy for updating local images before a build.
 	PullPolicy image.PullPolicy
 
@@ -320,7 +323,14 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
 
-	rawBuilderImage, err := c.imageFetcher.Fetch(ctx, builderRef.Name(), image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy})
+	rawBuilderImage, err := c.imageFetcher.Fetch(
+		ctx,
+		builderRef.Name(),
+		image.FetchOptions{
+			Daemon:     true,
+			Platform:   opts.Platform,
+			PullPolicy: opts.PullPolicy},
+	)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
 	}
@@ -335,6 +345,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "getting builder architecture")
 	}
 
+	platformToUse := opts.Platform
+	if platformToUse == "" {
+		platformToUse = fmt.Sprintf("%s/%s", builderOS, builderArch) // TODO: what about arch variant, etc.
+	}
+
 	bldr, err := c.getBuilder(rawBuilderImage)
 	if err != nil {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
@@ -343,7 +358,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	fetchOptions := image.FetchOptions{
 		Daemon:     !opts.Publish,
 		PullPolicy: opts.PullPolicy,
-		Platform:   fmt.Sprintf("%s/%s", builderOS, builderArch),
+		Platform:   platformToUse,
 	}
 	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish, fetchOptions)
 
@@ -418,7 +433,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				image.FetchOptions{
 					Daemon:     true,
 					PullPolicy: opts.PullPolicy,
-					Platform:   fmt.Sprintf("%s/%s", builderOS, builderArch),
+					Platform:   platformToUse,
 				},
 			)
 			if err != nil {
@@ -1213,10 +1228,16 @@ func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir 
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "getting builder architecture")
 		}
+
+		platformToUse := opts.Platform
+		if platformToUse == "" {
+			platformToUse = fmt.Sprintf("%s/%s", builderOS, builderArch) // TODO: what about arch variant, etc.
+		}
+
 		downloadOptions := buildpack.DownloadOptions{
 			RegistryName:    registry,
 			ImageOS:         builderOS,
-			Platform:        fmt.Sprintf("%s/%s", builderOS, builderArch),
+			Platform:        platformToUse,
 			RelativeBaseDir: relativeBaseDir,
 			Daemon:          !publish,
 			PullPolicy:      pullPolicy,
