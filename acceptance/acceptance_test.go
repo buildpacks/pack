@@ -941,7 +941,7 @@ func testAcceptance(
 						if imageManager.HostOS() != "windows" {
 							// Linux containers (including Linux containers on Windows)
 							extSimpleLayersDiffID := "sha256:d24758b8b75b13292746fe7a06666f28a9499da31826a60afe6ee6b8cba29b73"
-							extReadEnvDiffID := "sha256:4490d78f2b056cdb99ad9cd3892f3c0617c5a485fb300dd90c572ce375ee45b2"
+							extReadEnvDiffID := "sha256:43072b16e96564a4dd6bd2e74c55c3c94af78cf99d869cab1e62c873e1fa6780"
 							bpSimpleLayersDiffID := "sha256:ade9da86859fa4ea50a513757f9b242bf1038667abf92dad3d018974a17f0ea7"
 							bpReadEnvDiffID := "sha256:db0797077ba8deff7054ab5578133b8f0206b6393de34b5bfd795cf50f6afdbd"
 							// extensions
@@ -1012,7 +1012,7 @@ func testAcceptance(
 									h.SkipIf(t, !lifecycle.SupportsFeature(config.RunImageExtensions), "")
 								})
 
-								it("uses the 5 phases, and tries to pull the new run image before restore", func() {
+								it("uses the 5 phases, and tries to pull the new run image by name before restore, and by identifier after restore", func() {
 									output, _ := pack.Run(
 										"build", repoName,
 										"-p", filepath.Join("testdata", "mock_app"),
@@ -1020,8 +1020,7 @@ func testAcceptance(
 										"-B", builderName,
 										"--env", "EXT_RUN_SWITCH=1",
 									)
-									h.AssertContains(t, output, "ERROR: failed to build: executing lifecycle: resolve auth for ref some-not-exist-run-image!")
-									h.AssertNotContains(t, output, "RESTORING")
+									h.AssertContains(t, output, "Pulling image 'busybox:latest'")
 								})
 							})
 
