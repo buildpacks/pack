@@ -427,7 +427,7 @@ foo = "bar"
 
 			_, err = ReadProjectDescriptor(tmpProjectToml.Name(), logger)
 			h.AssertNil(t, err)
-			h.AssertContains(t, readStdout(), "Warning: The following keys declared in project.toml are not supported in schema version 0.1:\nWarning: - project.authors\nWarning: - io.buildpacks.build.env\nWarning: - io.buildpacks.build.env.name\nWarning: - io.buildpacks.build.env.value\nWarning: The above keys will be ignored. If this is not intentional, maybe try updating your schema version.\n")
+			h.AssertContains(t, readStdout(), "Warning: The following keys declared in project.toml are not supported in schema version 0.1:\nWarning: - project.authors\nWarning: - io.buildpacks.build.env\nWarning: - io.buildpacks.build.env.name\nWarning: - io.buildpacks.build.env.value\nWarning: The above keys will be ignored. If this is not intentional, try updating your schema version.\n")
 		})
 
 		it("should warn when unsupported keys, on tables the project owns, are declared with schema v0.2", func() {
@@ -467,7 +467,7 @@ buzz = ["a", "b", "c"]
 			h.AssertNil(t, err)
 
 			// Assert we only warn
-			h.AssertContains(t, readStdout(), "Warning: The following keys declared in project.toml are not supported in schema version 0.2:\nWarning: - _.versions\nWarning: - _.licenses.foo\nWarning: - io.buildpacks.build.foo\nWarning: - io.buildpacks.build.foo.name\nWarning: The above keys will be ignored. If this is not intentional, maybe try updating your schema version.\n")
+			h.AssertContains(t, readStdout(), "Warning: The following keys declared in project.toml are not supported in schema version 0.2:\nWarning: - _.versions\nWarning: - _.licenses.foo\nWarning: - io.buildpacks.build.foo\nWarning: - io.buildpacks.build.foo.name\nWarning: The above keys will be ignored. If this is not intentional, try updating your schema version.\n")
 		})
 	})
 }

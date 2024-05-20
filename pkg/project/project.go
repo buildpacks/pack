@@ -80,7 +80,7 @@ func warnIfTomlContainsKeysNotSupportedBySchema(schemaVersion string, tomlMetaDa
 		for _, unsupportedKey := range unsupportedKeys {
 			logger.Warnf("- %s\n", unsupportedKey)
 		}
-		logger.Warn("The above keys will be ignored. If this is not intentional, maybe try updating your schema version.\n")
+		logger.Warn("The above keys will be ignored. If this is not intentional, try updating your schema version.\n")
 	}
 }
 
