@@ -244,12 +244,9 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			ephemeralRunImage string
 			err               error
 		)
-		currentRunImage := l.runImageAfterExtensions()
 		if l.runImageChanged() || l.hasExtensionsForRun() {
-			if currentRunImage == "" { // sanity check
-				return nil
-			}
-			if ephemeralRunImage, err = l.opts.FetchRunImageWithLifecycleLayer(currentRunImage); err != nil {
+			// Pull the run image by name in case we fail to pull it by identifier later.
+			if ephemeralRunImage, err = l.opts.FetchRunImageWithLifecycleLayer(l.runImageNameAfterExtensions()); err != nil {
 				return err
 			}
 		}
@@ -259,6 +256,16 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			l.logger.Info("Skipping 'restore' due to clearing cache")
 		} else if err := l.Restore(ctx, buildCache, kanikoCache, phaseFactory); err != nil {
 			return err
+		}
+
+		if l.runImageChanged() || l.hasExtensionsForRun() {
+			if newEphemeralRunImage, err := l.opts.FetchRunImageWithLifecycleLayer(l.runImageIdentifierAfterExtensions()); err == nil {
+				// If the run image was switched by extensions, the run image reference as written by the __restorer__ will be a digest reference
+				// that is pullable from a registry.
+				// However, if the run image is only extended (not switched), the run image reference as written by the __analyzer__ may be an image identifier
+				// (in the daemon case), and will not be pullable.
+				ephemeralRunImage = newEphemeralRunImage
+			}
 		}
 
 		group, _ := errgroup.WithContext(context.TODO())
@@ -494,7 +501,7 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 			registryImages = append(registryImages, l.opts.BuilderImage)
 		}
 		if l.runImageChanged() || l.hasExtensionsForRun() {
-			registryImages = append(registryImages, l.runImageAfterExtensions())
+			registryImages = append(registryImages, l.runImageNameAfterExtensions())
 		}
 		if l.hasExtensionsForBuild() || l.hasExtensionsForRun() {
 			kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir()))
@@ -545,6 +552,8 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 		registryOp,
 		layoutOp,
 		layoutBindOp,
+		If(l.hasExtensions(), WithPostContainerRunOperations(
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.tmpDir))),
 	)
 
 	restore := phaseFactory.New(configProvider)
@@ -932,25 +941,42 @@ func (l *LifecycleExecution) hasExtensionsForRun() bool {
 	return amd.RunImage.Extend
 }
 
-func (l *LifecycleExecution) runImageAfterExtensions() string {
+func (l *LifecycleExecution) runImageIdentifierAfterExtensions() string {
 	if !l.hasExtensions() {
 		return l.opts.RunImage
 	}
 	var amd files.Analyzed
 	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
-		l.logger.Warnf("failed to parse analyzed.toml file, assuming run image did not change: %s", err)
+		l.logger.Warnf("failed to parse analyzed.toml file, assuming run image identifier did not change: %s", err)
+		return l.opts.RunImage
+	}
+	if amd.RunImage == nil || amd.RunImage.Reference == "" {
+		// this shouldn't be reachable
+		l.logger.Warnf("found no run image in analyzed.toml file, assuming run image identifier did not change...")
+		return l.opts.RunImage
+	}
+	return amd.RunImage.Reference
+}
+
+func (l *LifecycleExecution) runImageNameAfterExtensions() string {
+	if !l.hasExtensions() {
+		return l.opts.RunImage
+	}
+	var amd files.Analyzed
+	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
+		l.logger.Warnf("failed to parse analyzed.toml file, assuming run image name did not change: %s", err)
 		return l.opts.RunImage
 	}
 	if amd.RunImage == nil || amd.RunImage.Image == "" {
 		// this shouldn't be reachable
-		l.logger.Warnf("found no run image in analyzed.toml file, assuming run image did not change...")
+		l.logger.Warnf("found no run image in analyzed.toml file, assuming run image name did not change...")
 		return l.opts.RunImage
 	}
 	return amd.RunImage.Image
 }
 
 func (l *LifecycleExecution) runImageChanged() bool {
-	currentRunImage := l.runImageAfterExtensions()
+	currentRunImage := l.runImageNameAfterExtensions()
 	return currentRunImage != "" && currentRunImage != l.opts.RunImage
 }
 

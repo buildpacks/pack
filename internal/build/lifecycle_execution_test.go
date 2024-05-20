@@ -76,7 +76,8 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		configProvider   *build.PhaseConfigProvider
 
 		extensionsForBuild, extensionsForRun bool
-		extensionsRunImage                   string
+		extensionsRunImageName               string
+		extensionsRunImageIdentifier         string
 		useCreatorWithExtensions             bool
 	)
 
@@ -153,8 +154,11 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		if extensionsForRun {
 			amd.RunImage.Extend = true
 		}
-		if extensionsRunImage != "" {
-			amd.RunImage.Image = extensionsRunImage
+		if extensionsRunImageName != "" {
+			amd.RunImage.Image = extensionsRunImageName
+		}
+		if extensionsRunImageIdentifier != "" {
+			amd.RunImage.Reference = extensionsRunImageIdentifier
 		}
 		f, err := os.Create(filepath.Join(tmpDir, "analyzed.toml"))
 		h.AssertNil(t, err)
@@ -689,15 +693,17 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						when("does not match provided run image", func() {
-							extensionsRunImage = "some-new-run-image"
+							extensionsRunImageName = "some-new-run-image"
+							extensionsRunImageIdentifier = "some-new-run-image-identifier"
 
 							it("pulls the new run image", func() {
 								err := lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
 									return fakePhaseFactory
 								})
 								h.AssertNil(t, err)
+								h.AssertEq(t, fakeFetcher.callCount, 2)
 								h.AssertEq(t, fakeFetcher.calledWithArgAtCall[0], "some-new-run-image")
-								h.AssertEq(t, fakeFetcher.callCount, 1)
+								h.AssertEq(t, fakeFetcher.calledWithArgAtCall[1], "some-new-run-image-identifier")
 							})
 						})
 					})

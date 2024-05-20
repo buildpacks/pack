@@ -68,10 +68,9 @@ func ReadProjectDescriptor(pathToFile string, logger logging.Logger) (types.Desc
 func warnIfTomlContainsKeysNotSupportedBySchema(schemaVersion string, tomlMetaData toml.MetaData, logger logging.Logger) {
 	unsupportedKeys := []string{}
 
-	// filter out any keys from [_]
 	for _, undecodedKey := range tomlMetaData.Undecoded() {
 		keyName := undecodedKey.String()
-		if keyName != "_" && !strings.HasPrefix(keyName, "_.schema-version") {
+		if unsupportedKey(keyName, schemaVersion) {
 			unsupportedKeys = append(unsupportedKeys, keyName)
 		}
 	}
@@ -81,8 +80,19 @@ func warnIfTomlContainsKeysNotSupportedBySchema(schemaVersion string, tomlMetaDa
 		for _, unsupportedKey := range unsupportedKeys {
 			logger.Warnf("- %s\n", unsupportedKey)
 		}
-		logger.Warn("The above keys will be ignored. If this is not intentional, maybe try updating your schema version.\n")
+		logger.Warn("The above keys will be ignored. If this is not intentional, try updating your schema version.\n")
 	}
+}
+
+func unsupportedKey(keyName, schemaVersion string) bool {
+	if schemaVersion == "0.1" {
+		// filter out any keys from [metadata] and any other custom table defined by end-users
+		return strings.HasPrefix(keyName, "project.") || strings.HasPrefix(keyName, "build.") || strings.Contains(keyName, "io.buildpacks")
+	} else if schemaVersion == "0.2" {
+		// filter out any keys from [_.metadata] and any other custom table defined by end-users
+		return strings.Contains(keyName, "io.buildpacks") || (strings.HasPrefix(keyName, "_.") && !strings.HasPrefix(keyName, "_.metadata"))
+	}
+	return true
 }
 
 func validate(p types.Descriptor) error {
