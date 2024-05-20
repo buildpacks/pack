@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1715877014913,
+  "lastUpdate": 1716213325736,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -6664,6 +6664,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 54010467891,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c1676bb5fe972aba0df38d80fecb72d146668b49",
+          "message": "Merge pull request #2127 from buildpacks/fix/run-image-pull\n\nPull run image using digest reference in analyzed.toml (not image name from extensions)",
+          "timestamp": "2024-05-20T08:53:57-05:00",
+          "tree_id": "7ba1e676f39d9cac5f4c3b12ccc6ed099fcf8957",
+          "url": "https://github.com/buildpacks/pack/commit/c1676bb5fe972aba0df38d80fecb72d146668b49"
+        },
+        "date": 1716213325046,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5244764546,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1723114143,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 51366552168,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
