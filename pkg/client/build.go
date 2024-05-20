@@ -347,7 +347,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	platformToUse := opts.Platform
 	if platformToUse == "" {
-		platformToUse = fmt.Sprintf("%s/%s", builderOS, builderArch) // TODO: what about arch variant, etc.
+		platformToUse = fmt.Sprintf("%s/%s", builderOS, builderArch) // FIXME: what about arch variant, etc.
 	}
 
 	bldr, err := c.getBuilder(rawBuilderImage)
@@ -1231,7 +1231,7 @@ func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir 
 
 		platformToUse := opts.Platform
 		if platformToUse == "" {
-			platformToUse = fmt.Sprintf("%s/%s", builderOS, builderArch) // TODO: what about arch variant, etc.
+			platformToUse = fmt.Sprintf("%s/%s", builderOS, builderArch) // FIXME: what about arch variant, etc.
 		}
 
 		downloadOptions := buildpack.DownloadOptions{

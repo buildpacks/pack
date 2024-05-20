@@ -2512,6 +2512,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					when("--platform", func() {
 						wrongArch := "arm64"
 						it.Before(func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.PlatformOption), "")
 							h.SkipIf(t, imageManager.HostOS() == "windows", "Not relevant on windows")
 							if hostArch := imageManager.HostArch(); hostArch == wrongArch {
 								wrongArch = "amd64"
