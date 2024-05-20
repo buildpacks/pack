@@ -197,6 +197,7 @@ func (f *Fetcher) fetchRemoteImage(name string, target *dist.Target) (imgutil.Im
 				f.logger.Warnf("trying to fetch an image with more than one OS distribution, using %s", style.Symbol(target.Distributions[0].Version))
 			}
 		}
+		f.logger.Debugf("Fetching image %s with platform %v", style.Symbol(name), platform)
 		image, err = remote.NewImage(name, f.keychain, remote.FromBaseImage(name), remote.WithDefaultPlatform(platform))
 	}
 

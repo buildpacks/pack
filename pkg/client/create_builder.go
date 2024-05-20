@@ -254,14 +254,14 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 			return nil, errors.Wrapf(err, "%s must be a valid semver", style.Symbol("lifecycle.version"))
 		}
 
-		uri = uriFromLifecycleVersion(*v, os, architecture)
+		uri = c.uriFromLifecycleVersion(*v, os, architecture)
 	case config.URI != "":
 		uri, err = paths.FilePathToURI(config.URI, relativeBaseDir)
 		if err != nil {
 			return nil, err
 		}
 	default:
-		uri = uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion), os, architecture)
+		uri = c.uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion), os, architecture)
 	}
 
 	blob, err := c.downloader.Download(ctx, uri)
@@ -405,15 +405,20 @@ func validateModule(kind string, module buildpack.BuildModule, source, expectedI
 	return nil
 }
 
-func uriFromLifecycleVersion(version semver.Version, os string, architecture string) string {
+func (c *Client) uriFromLifecycleVersion(version semver.Version, os string, architecture string) string {
 	arch := "x86-64"
 
 	if os == "windows" {
 		return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+windows.%s.tgz", version.String(), version.String(), arch)
 	}
 
-	if architecture == "arm64" {
+	if builder.SupportedLinuxArchitecture(architecture) {
 		arch = architecture
+	} else {
+		// TODO: Do we want to fail in this case instead of a warning?
+		// I added the warning to help the buildpack authors understand if they builder ended up with a wrong
+		// lifecycle binary.
+		c.logger.Warnf("trying to download a lifecycle binary for an unsupported architecture: %s, using default %s", style.Symbol(architecture), style.Symbol(arch))
 	}
 
 	return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+linux.%s.tgz", version.String(), version.String(), arch)
