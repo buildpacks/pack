@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"sort"
 	"strings"
 
@@ -64,63 +63,80 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	if err != nil {
 		return err
 	}
-	multiArch := len(targets) > 1 && opts.Publish
 
-	var digests []string
-	for _, target := range targets {
-		if err := c.validateConfig(ctx, opts, target); err != nil {
-			return err
-		}
-
-		bldr, err := c.createBaseBuilder(ctx, opts, target)
-		if err != nil {
-			return errors.Wrap(err, "failed to create builder")
-		}
-
-		if err := c.addBuildpacksToBuilder(ctx, opts, bldr); err != nil {
-			return errors.Wrap(err, "failed to add buildpacks to builder")
-		}
-
-		if err := c.addExtensionsToBuilder(ctx, opts, bldr); err != nil {
-			return errors.Wrap(err, "failed to add extensions to builder")
-		}
-
-		bldr.SetOrder(opts.Config.Order)
-		bldr.SetOrderExtensions(opts.Config.OrderExtensions)
-
-		if opts.Config.Stack.ID != "" {
-			bldr.SetStack(opts.Config.Stack)
-		}
-		bldr.SetRunImage(opts.Config.Run)
-		bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
-
-		err = bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version})
+	if len(targets) == 0 {
+		_, err = c.createBuilderTarget(ctx, opts, nil, false)
 		if err != nil {
 			return err
 		}
+	} else {
+		var digests []string
+		multiArch := len(targets) > 1 && opts.Publish
 
-		if multiArch {
-			// We need to keep the identifier to create the image index
-			id, err := bldr.Image().Identifier()
+		for _, target := range targets {
+			digest, err := c.createBuilderTarget(ctx, opts, &target, multiArch)
 			if err != nil {
-				return errors.Wrapf(err, "determining image manifest digest")
+				return err
 			}
-			digests = append(digests, id.String())
+			digests = append(digests, digest)
 		}
-	}
 
-	if multiArch && len(digests) > 1 {
-		return c.CreateManifest(ctx, CreateManifestOptions{
-			IndexRepoName: opts.BuilderName,
-			RepoNames:     digests,
-			Publish:       true,
-		})
+		if multiArch && len(digests) > 1 {
+			return c.CreateManifest(ctx, CreateManifestOptions{
+				IndexRepoName: opts.BuilderName,
+				RepoNames:     digests,
+				Publish:       true,
+			})
+		}
 	}
 
 	return nil
 }
 
-func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions, target dist.Target) error {
+func (c *Client) createBuilderTarget(ctx context.Context, opts CreateBuilderOptions, target *dist.Target, multiArch bool) (string, error) {
+	if err := c.validateConfig(ctx, opts, target); err != nil {
+		return "", err
+	}
+
+	bldr, err := c.createBaseBuilder(ctx, opts, target)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to create builder")
+	}
+
+	if err := c.addBuildpacksToBuilder(ctx, opts, bldr); err != nil {
+		return "", errors.Wrap(err, "failed to add buildpacks to builder")
+	}
+
+	if err := c.addExtensionsToBuilder(ctx, opts, bldr); err != nil {
+		return "", errors.Wrap(err, "failed to add extensions to builder")
+	}
+
+	bldr.SetOrder(opts.Config.Order)
+	bldr.SetOrderExtensions(opts.Config.OrderExtensions)
+
+	if opts.Config.Stack.ID != "" {
+		bldr.SetStack(opts.Config.Stack)
+	}
+	bldr.SetRunImage(opts.Config.Run)
+	bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
+
+	err = bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version})
+	if err != nil {
+		return "", err
+	}
+
+	if multiArch {
+		// We need to keep the identifier to create the image index
+		id, err := bldr.Image().Identifier()
+		if err != nil {
+			return "", errors.Wrapf(err, "determining image manifest digest")
+		}
+		return id.String(), nil
+	}
+	return "", nil
+}
+
+func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions, target *dist.Target) error {
 	if err := pubbldr.ValidateConfig(opts.Config); err != nil {
 		return errors.Wrap(err, "invalid builder config")
 	}
@@ -132,12 +148,12 @@ func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions, 
 	return nil
 }
 
-func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOptions, target dist.Target) error {
+func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOptions, target *dist.Target) error {
 	var runImages []imgutil.Image
 	for _, r := range opts.Config.Run.Images {
 		for _, i := range append([]string{r.Image}, r.Mirrors...) {
 			if !opts.Publish {
-				img, err := c.imageFetcher.Fetch(ctx, i, image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy, Target: &target})
+				img, err := c.imageFetcher.Fetch(ctx, i, image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy, Target: target})
 				if err != nil {
 					if errors.Cause(err) != image.ErrNotFound {
 						return errors.Wrap(err, "failed to fetch image")
@@ -148,7 +164,7 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 				}
 			}
 
-			img, err := c.imageFetcher.Fetch(ctx, i, image.FetchOptions{Daemon: false, PullPolicy: opts.PullPolicy, Target: &target})
+			img, err := c.imageFetcher.Fetch(ctx, i, image.FetchOptions{Daemon: false, PullPolicy: opts.PullPolicy, Target: target})
 			if err != nil {
 				if errors.Cause(err) != image.ErrNotFound {
 					return errors.Wrap(err, "failed to fetch image")
@@ -181,8 +197,8 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 	return nil
 }
 
-func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOptions, target dist.Target) (*builder.Builder, error) {
-	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Build.Image, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy, Target: &target})
+func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOptions, target *dist.Target) (*builder.Builder, error) {
+	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Build.Image, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy, Target: target})
 	if err != nil {
 		return nil, errors.Wrap(err, "fetch build image")
 	}
@@ -363,19 +379,18 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 
 func (c *Client) processBuilderCreateTargets(ctx context.Context, opts CreateBuilderOptions) ([]dist.Target, error) {
 	var targets []dist.Target
+
 	if len(opts.Targets) > 0 {
-		// when exporting to the daemon, we need to select just one target
-		if !opts.Publish {
+		if opts.Publish {
+			targets = opts.Targets
+		} else {
+			// find a target that matches the daemon
 			daemonTarget, err := c.daemonTarget(ctx, opts.Targets)
 			if err != nil {
 				return targets, err
 			}
 			targets = append(targets, daemonTarget)
-		} else {
-			targets = opts.Targets
 		}
-	} else {
-		targets = append(targets, dist.Target{OS: runtime.GOOS, Arch: runtime.GOARCH})
 	}
 	return targets, nil
 }

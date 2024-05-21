@@ -262,12 +262,12 @@ func (c *Client) validateOSPlatform(ctx context.Context, os string, publish bool
 	return nil
 }
 
+// daemonTarget returns a target that matches with the given daemon os/arch
 func (c *Client) daemonTarget(ctx context.Context, targets []dist.Target) (dist.Target, error) {
 	info, err := c.docker.ServerVersion(ctx)
 	if err != nil {
 		return dist.Target{}, err
 	}
-
 	for _, t := range targets {
 		if t.Arch != "" && t.OS == info.Os && t.Arch == info.Arch {
 			return t, nil

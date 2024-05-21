@@ -38,7 +38,7 @@ func (m *MultiArchConfig) Targets() []dist.Target {
 
 // CopyConfigFiles will, given a base directory (which is expected to be the root folder of a single buildpack),
 // copy the buildpack.toml file from the base directory into the corresponding platform root folder for each target.
-// It will return an array with all the platform root folders where the buildpack.toml file were copied.
+// It will return an array with all the platform root folders where the buildpack.toml file was copied.
 func (m *MultiArchConfig) CopyConfigFiles(baseDir string) ([]string, error) {
 	var filesToClean []string
 	targets := dist.ExpandTargetsDistributions(m.Targets()...)

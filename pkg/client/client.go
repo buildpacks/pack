@@ -323,7 +323,7 @@ func (f *imageFactory) NewImage(repoName string, daemon bool, target dist.Target
 		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(platform))
 	}
 
-	// when targeting a registry, we need to use variant and osVersion to hit the correct image
+	// when targeting a registry, we need to use variant if available to hit the correct image
 	platform.Variant = target.ArchVariant
 	if len(target.Distributions) > 0 {
 		// We assume the given target's distributions were already expanded, we should be dealing with just 1 distribution name and version.
