@@ -55,6 +55,7 @@ type BuildFlags struct {
 	DateTime             string
 	PreBuildpacks        []string
 	PostBuildpacks       []string
+	InsecureRegistries   []string
 }
 
 // Build an image from source code
@@ -198,6 +199,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 					PreviousInputImage: inputPreviousImage,
 					LayoutRepoDir:      cfg.LayoutRepositoryDir,
 				},
+				InsecureRegistries: flags.InsecureRegistries,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -231,6 +233,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVarP(&buildFlags.AppPath, "path", "p", "", "Path to app dir or zip-formatted file (defaults to current working directory)")
 	cmd.Flags().StringSliceVarP(&buildFlags.Buildpacks, "buildpack", "b", nil, "Buildpack to use. One of:\n  a buildpack by id and version in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows),\n  path/URL to a buildpack .tar or .tgz file, or\n  a packaged buildpack image name in the form of '<hostname>/<repo>[:<tag>]'"+stringSliceHelp("buildpack"))
 	cmd.Flags().StringSliceVarP(&buildFlags.Extensions, "extension", "", nil, "Extension to use. One of:\n  an extension by id and version in the form of '<extension>@<version>',\n  path to an extension directory (not supported on Windows),\n  path/URL to an extension .tar or .tgz file, or\n  a packaged extension image name in the form of '<hostname>/<repo>[:<tag>]'"+stringSliceHelp("extension"))
+	cmd.Flags().StringSliceVarP(&buildFlags.InsecureRegistries, "insecure-registry", "", nil, "List of insecure registries")
 	cmd.Flags().StringVarP(&buildFlags.Builder, "builder", "B", cfg.DefaultBuilder, "Builder image")
 	cmd.Flags().Var(&buildFlags.Cache, "cache",
 		`Cache options used to define cache techniques for build process.
