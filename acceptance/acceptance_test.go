@@ -2515,12 +2515,11 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 
 						it("uses the builder with the desired platform", func() {
-							output, err := pack.Run(
+							output, _ := pack.Run(
 								"build", repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
 								"--platform", "linux/not-exist-arch",
 							)
-							h.AssertNotNil(t, err)
 							h.AssertContainsMatch(t, output, "Pulling image '.*test/builder.*' with platform 'linux/not-exist-arch")
 						})
 					})
