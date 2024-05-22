@@ -21,6 +21,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/buildpacks/pack/pkg/testmocks"
@@ -71,16 +72,56 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 		when("daemon is false", func() {
 			when("PullAlways", func() {
 				when("there is a remote image", func() {
-					it.Before(func() {
-						img, err := remote.NewImage(repoName, authn.DefaultKeychain)
-						h.AssertNil(t, err)
+					when("default platform", func() {
+						// default is linux/runtime.GOARCH
+						it.Before(func() {
+							img, err := remote.NewImage(repoName, authn.DefaultKeychain)
+							h.AssertNil(t, err)
 
-						h.AssertNil(t, img.Save())
+							h.AssertNil(t, img.Save())
+						})
+
+						it("returns the remote image", func() {
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways})
+							h.AssertNil(t, err)
+						})
 					})
 
-					it("returns the remote image", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways})
-						h.AssertNil(t, err)
+					when("platform with variant and version", func() {
+						var target dist.Target
+
+						// default is linux/runtime.GOARCH
+						it.Before(func() {
+							img, err := remote.NewImage(repoName, authn.DefaultKeychain, remote.WithDefaultPlatform(imgutil.Platform{
+								OS:           runtime.GOOS,
+								Architecture: runtime.GOARCH,
+								Variant:      "v1",
+								OSVersion:    "my-version",
+							}))
+							h.AssertNil(t, err)
+							h.AssertNil(t, img.Save())
+						})
+
+						it("returns the remote image", func() {
+							target = dist.Target{
+								OS:          runtime.GOOS,
+								Arch:        runtime.GOARCH,
+								ArchVariant: "v1",
+								Distributions: []dist.Distribution{
+									{Name: "some-name", Version: "my-version"},
+								},
+							}
+
+							img, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways, Target: &target})
+							h.AssertNil(t, err)
+							variant, err := img.Variant()
+							h.AssertNil(t, err)
+							h.AssertEq(t, variant, "v1")
+
+							osVersion, err := img.OSVersion()
+							h.AssertNil(t, err)
+							h.AssertEq(t, osVersion, "my-version")
+						})
 					})
 				})
 
@@ -221,7 +262,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 				when("image platform is specified", func() {
 					it("passes the platform argument to the daemon", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: "some-unsupported-platform"})
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Target: &dist.Target{OS: "some-unsupported-platform"}})
 						h.AssertError(t, err, "unknown operating system or architecture")
 					})
 
@@ -233,7 +274,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("retries without setting platform", func() {
-							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: fmt.Sprintf("%s/%s", osType, runtime.GOARCH)})
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Target: &dist.Target{OS: osType, Arch: runtime.GOARCH}})
 							h.AssertNil(t, err)
 						})
 					})
@@ -340,7 +381,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 				when("image platform is specified", func() {
 					it("passes the platform argument to the daemon", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfNotPresent, Platform: "some-unsupported-platform"})
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfNotPresent, Target: &dist.Target{OS: "some-unsupported-platform"}})
 						h.AssertError(t, err, "unknown operating system or architecture")
 					})
 				})

@@ -323,31 +323,43 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
 
+	requestedTarget := func() *dist.Target {
+		if opts.Platform == "" {
+			return nil
+		}
+		parts := strings.Split(opts.Platform, "/")
+		switch len(parts) {
+		case 0:
+			return nil
+		case 1:
+			return &dist.Target{OS: parts[0]}
+		case 2:
+			return &dist.Target{OS: parts[0], Arch: parts[1]}
+		default:
+			return &dist.Target{OS: parts[0], Arch: parts[1], ArchVariant: parts[2]}
+		}
+	}()
+
 	rawBuilderImage, err := c.imageFetcher.Fetch(
 		ctx,
 		builderRef.Name(),
 		image.FetchOptions{
 			Daemon:     true,
-			Platform:   opts.Platform,
+			Target:     requestedTarget,
 			PullPolicy: opts.PullPolicy},
 	)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
 	}
 
-	builderOS, err := rawBuilderImage.OS()
-	if err != nil {
-		return errors.Wrapf(err, "getting builder OS")
-	}
-
-	builderArch, err := rawBuilderImage.Architecture()
-	if err != nil {
-		return errors.Wrapf(err, "getting builder architecture")
-	}
-
-	platformToUse := opts.Platform
-	if platformToUse == "" {
-		platformToUse = fmt.Sprintf("%s/%s", builderOS, builderArch) // FIXME: what about arch variant, etc.
+	var targetToUse *dist.Target
+	if requestedTarget != nil {
+		targetToUse = requestedTarget
+	} else {
+		targetToUse, err = getTargetFromBuilder(rawBuilderImage)
+		if err != nil {
+			return err
+		}
 	}
 
 	bldr, err := c.getBuilder(rawBuilderImage)
@@ -358,7 +370,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	fetchOptions := image.FetchOptions{
 		Daemon:     !opts.Publish,
 		PullPolicy: opts.PullPolicy,
-		Platform:   platformToUse,
+		Target:     targetToUse,
 	}
 	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish, fetchOptions)
 
@@ -387,12 +399,12 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Image(), bldr.Buildpacks(), bldr.Order(), bldr.StackID, opts)
+	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Buildpacks(), bldr.Order(), bldr.StackID, opts, targetToUse)
 	if err != nil {
 		return err
 	}
 
-	fetchedExs, orderExtensions, err := c.processExtensions(ctx, bldr.Image(), bldr.Extensions(), bldr.OrderExtensions(), bldr.StackID, opts)
+	fetchedExs, orderExtensions, err := c.processExtensions(ctx, bldr.Extensions(), opts, targetToUse)
 	if err != nil {
 		return err
 	}
@@ -433,7 +445,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				image.FetchOptions{
 					Daemon:     true,
 					PullPolicy: opts.PullPolicy,
-					Platform:   platformToUse,
+					Target:     targetToUse,
 				},
 			)
 			if err != nil {
@@ -503,6 +515,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.RemoveOptions{Force: true})
+
+	builderOS, err := rawBuilderImage.OS()
+	if err != nil {
+		return fmt.Errorf("failed to get builder OS: %w", err)
+	}
 
 	if len(bldr.OrderExtensions()) > 0 || len(ephemeralBuilder.OrderExtensions()) > 0 {
 		if builderOS == "windows" {
@@ -746,6 +763,26 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return fmt.Errorf("executing lifecycle: %w", err)
 	}
 	return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
+}
+
+func getTargetFromBuilder(builderImage imgutil.Image) (*dist.Target, error) {
+	builderOS, err := builderImage.OS()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get builder OS: %w", err)
+	}
+	builderArch, err := builderImage.Architecture()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get builder architecture: %w", err)
+	}
+	builderArchVariant, err := builderImage.Variant()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get builder architecture variant: %w", err)
+	}
+	return &dist.Target{
+		OS:          builderOS,
+		Arch:        builderArch,
+		ArchVariant: builderArchVariant,
+	}, nil
 }
 
 func extractSupportedLifecycleApis(labels map[string]string) ([]string, error) {
@@ -1100,7 +1137,7 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 //		----------
 //		- group:
 //			- A
-func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedBPs []buildpack.BuildModule, order dist.Order, err error) {
+func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions, targetToUse *dist.Target) (fetchedBPs []buildpack.BuildModule, order dist.Order, err error) {
 	relativeBaseDir := opts.RelativeBaseDir
 	declaredBPs := opts.Buildpacks
 
@@ -1143,7 +1180,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				order = newOrder
 			}
 		default:
-			newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderImage, builderBPs, opts, buildpack.KindBuildpack)
+			newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderBPs, opts, buildpack.KindBuildpack, targetToUse)
 			if err != nil {
 				return fetchedBPs, order, err
 			}
@@ -1177,7 +1214,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 		if len(preBuildpacks) > 0 || len(postBuildpacks) > 0 {
 			order = builderOrder
 			for _, bp := range preBuildpacks {
-				newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderImage, builderBPs, opts, buildpack.KindBuildpack)
+				newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderBPs, opts, buildpack.KindBuildpack, targetToUse)
 				if err != nil {
 					return fetchedBPs, order, err
 				}
@@ -1186,7 +1223,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			}
 
 			for _, bp := range postBuildpacks {
-				newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderImage, builderBPs, opts, buildpack.KindBuildpack)
+				newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderBPs, opts, buildpack.KindBuildpack, targetToUse)
 				if err != nil {
 					return fetchedBPs, order, err
 				}
@@ -1199,7 +1236,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 	return fetchedBPs, order, nil
 }
 
-func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir string, builderImage imgutil.Image, builderBPs []dist.ModuleInfo, opts BuildOptions, kind string) ([]buildpack.BuildModule, *dist.ModuleInfo, error) {
+func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir string, builderBPs []dist.ModuleInfo, opts BuildOptions, kind string, targetToUse *dist.Target) ([]buildpack.BuildModule, *dist.ModuleInfo, error) {
 	pullPolicy := opts.PullPolicy
 	publish := opts.Publish
 	registry := opts.Registry
@@ -1219,25 +1256,10 @@ func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir 
 			Version: version,
 		}
 	default:
-		builderOS, err := builderImage.OS()
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "getting builder OS")
-		}
-
-		builderArch, err := builderImage.Architecture()
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "getting builder architecture")
-		}
-
-		platformToUse := opts.Platform
-		if platformToUse == "" {
-			platformToUse = fmt.Sprintf("%s/%s", builderOS, builderArch) // FIXME: what about arch variant, etc.
-		}
-
 		downloadOptions := buildpack.DownloadOptions{
 			RegistryName:    registry,
-			ImageOS:         builderOS,
-			Platform:        platformToUse,
+			ImageOS:         targetToUse.OS,
+			Target:          targetToUse,
 			RelativeBaseDir: relativeBaseDir,
 			Daemon:          !publish,
 			PullPolicy:      pullPolicy,
@@ -1274,8 +1296,7 @@ func (c *Client) fetchBuildpackDependencies(ctx context.Context, bp string, pack
 		for _, dep := range packageCfg.Dependencies {
 			mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
 				RegistryName:    downloadOptions.RegistryName,
-				ImageOS:         downloadOptions.ImageOS,
-				Platform:        downloadOptions.Platform,
+				Target:          downloadOptions.Target,
 				Daemon:          downloadOptions.Daemon,
 				PullPolicy:      downloadOptions.PullPolicy,
 				RelativeBaseDir: filepath.Join(bp, packageCfg.Buildpack.URI),
@@ -1342,7 +1363,7 @@ func prependBuildpackToOrder(order dist.Order, bpInfo dist.ModuleInfo) (newOrder
 	return newOrder
 }
 
-func (c *Client) processExtensions(ctx context.Context, builderImage imgutil.Image, builderExs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedExs []buildpack.BuildModule, orderExtensions dist.Order, err error) {
+func (c *Client) processExtensions(ctx context.Context, builderExs []dist.ModuleInfo, opts BuildOptions, targetToUse *dist.Target) (fetchedExs []buildpack.BuildModule, orderExtensions dist.Order, err error) {
 	relativeBaseDir := opts.RelativeBaseDir
 	declaredExs := opts.Extensions
 
@@ -1359,7 +1380,7 @@ func (c *Client) processExtensions(ctx context.Context, builderImage imgutil.Ima
 		case buildpack.FromBuilderLocator:
 			return nil, nil, errors.New("from builder is not supported for extensions")
 		default:
-			newFetchedExs, moduleInfo, err := c.fetchBuildpack(ctx, ex, relativeBaseDir, builderImage, builderExs, opts, buildpack.KindExtension)
+			newFetchedExs, moduleInfo, err := c.fetchBuildpack(ctx, ex, relativeBaseDir, builderExs, opts, buildpack.KindExtension, targetToUse)
 			if err != nil {
 				return fetchedExs, orderExtensions, err
 			}

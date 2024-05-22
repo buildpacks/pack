@@ -32,6 +32,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/index"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -83,7 +84,7 @@ type BlobDownloader interface {
 type ImageFactory interface {
 	// NewImage initializes an image object with required settings so that it
 	// can be written either locally or to a registry.
-	NewImage(repoName string, local bool, imageOS string) (imgutil.Image, error)
+	NewImage(repoName string, local bool, target dist.Target) (imgutil.Image, error)
 }
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_index_factory.go github.com/buildpacks/pack/pkg/client IndexFactory
@@ -269,7 +270,6 @@ func NewClient(opts ...Option) (*Client, error) {
 			return nil, errors.Wrap(err, "getting pack home")
 		}
 		indexRootStoragePath := filepath.Join(packHome, "manifests")
-
 		if xdgPath, ok := os.LookupEnv(xdgRuntimePath); ok {
 			indexRootStoragePath = xdgPath
 		}
@@ -315,8 +315,14 @@ type imageFactory struct {
 	keychain     authn.Keychain
 }
 
-func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (imgutil.Image, error) {
-	platform := imgutil.Platform{OS: imageOS}
+func (f *imageFactory) NewImage(repoName string, daemon bool, target dist.Target) (imgutil.Image, error) {
+	platform := imgutil.Platform{OS: target.OS, Architecture: target.Arch, Variant: target.ArchVariant}
+
+	if len(target.Distributions) > 0 {
+		// We need to set platform distribution information so that it will be reflected in the image config.
+		// We assume the given target's distributions were already expanded, we should be dealing with just 1 distribution name and version.
+		platform.OSVersion = target.Distributions[0].Version
+	}
 
 	if daemon {
 		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(platform))
