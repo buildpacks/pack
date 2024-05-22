@@ -3407,7 +3407,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 						it("publishes builder image to the daemon for the given target", func() {
 							platform := "linux/amd64"
-							if runtime.GOOS == "windows" {
+							if imageManager.HostOS() == "windows" {
 								platform = "windows/amd64"
 							}
 
@@ -3459,7 +3459,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 						it("publishes builder image to the daemon for the given target", func() {
 							platform := "linux/amd64"
-							if runtime.GOOS == "windows" {
+							if imageManager.HostOS() == "windows" {
 								platform = "windows/amd64"
 							}
 
