@@ -318,16 +318,14 @@ type imageFactory struct {
 func (f *imageFactory) NewImage(repoName string, daemon bool, target dist.Target) (imgutil.Image, error) {
 	platform := imgutil.Platform{OS: target.OS, Architecture: target.Arch}
 
-	// daemon only uses os/arch
-	if daemon {
-		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(platform))
-	}
-
-	// when targeting a registry, we need to use variant if available to hit the correct image
 	platform.Variant = target.ArchVariant
 	if len(target.Distributions) > 0 {
 		// We assume the given target's distributions were already expanded, we should be dealing with just 1 distribution name and version.
 		platform.OSVersion = target.Distributions[0].Version
+	}
+
+	if daemon {
+		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(platform))
 	}
 
 	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform))
