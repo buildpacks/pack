@@ -340,10 +340,12 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
 
+	target := &dist.Target{OS: builderOS, Arch: builderArch}
+
 	fetchOptions := image.FetchOptions{
 		Daemon:     !opts.Publish,
 		PullPolicy: opts.PullPolicy,
-		Platform:   fmt.Sprintf("%s/%s", builderOS, builderArch),
+		Target:     target,
 	}
 	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish, fetchOptions)
 
@@ -418,7 +420,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				image.FetchOptions{
 					Daemon:     true,
 					PullPolicy: opts.PullPolicy,
-					Platform:   fmt.Sprintf("%s/%s", builderOS, builderArch),
+					Target:     target,
 				},
 			)
 			if err != nil {
@@ -1213,10 +1215,10 @@ func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir 
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "getting builder architecture")
 		}
+
 		downloadOptions := buildpack.DownloadOptions{
 			RegistryName:    registry,
-			ImageOS:         builderOS,
-			Platform:        fmt.Sprintf("%s/%s", builderOS, builderArch),
+			Target:          &dist.Target{OS: builderOS, Arch: builderArch},
 			RelativeBaseDir: relativeBaseDir,
 			Daemon:          !publish,
 			PullPolicy:      pullPolicy,
@@ -1253,8 +1255,7 @@ func (c *Client) fetchBuildpackDependencies(ctx context.Context, bp string, pack
 		for _, dep := range packageCfg.Dependencies {
 			mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
 				RegistryName:    downloadOptions.RegistryName,
-				ImageOS:         downloadOptions.ImageOS,
-				Platform:        downloadOptions.Platform,
+				Target:          downloadOptions.Target,
 				Daemon:          downloadOptions.Daemon,
 				PullPolicy:      downloadOptions.PullPolicy,
 				RelativeBaseDir: filepath.Join(bp, packageCfg.Buildpack.URI),

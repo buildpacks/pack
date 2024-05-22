@@ -6,14 +6,15 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
 type FetchArgs struct {
 	Daemon       bool
 	PullPolicy   image.PullPolicy
-	Platform     string
 	LayoutOption image.LayoutOption
+	Target       *dist.Target
 }
 
 type FakeImageFetcher struct {
@@ -31,7 +32,7 @@ func NewFakeImageFetcher() *FakeImageFetcher {
 }
 
 func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, options image.FetchOptions) (imgutil.Image, error) {
-	f.FetchCalls[name] = &FetchArgs{Daemon: options.Daemon, PullPolicy: options.PullPolicy, Platform: options.Platform, LayoutOption: options.LayoutOption}
+	f.FetchCalls[name] = &FetchArgs{Daemon: options.Daemon, PullPolicy: options.PullPolicy, Target: options.Target, LayoutOption: options.LayoutOption}
 
 	ri, remoteFound := f.RemoteImages[name]
 

@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -99,10 +98,11 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		}
 	}
 
+	target := &dist.Target{OS: appOS, Arch: appArch}
 	fetchOptions := image.FetchOptions{
 		Daemon:     !opts.Publish,
 		PullPolicy: opts.PullPolicy,
-		Platform:   fmt.Sprintf("%s/%s", appOS, appArch),
+		Target:     target,
 	}
 
 	runImageName := c.resolveRunImage(

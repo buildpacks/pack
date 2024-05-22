@@ -209,6 +209,25 @@ func testWithoutSpecificBuilderRequirement(
 				return packageTomlFile.Name()
 			}
 
+			generateMultiPlatformCompositeBuildpackPackageToml := func(buildpackURI, dependencyURI string) string {
+				t.Helper()
+				packageTomlFile, err := os.CreateTemp(tmpDir, "package_multi_platform-*.toml")
+				assert.Nil(err)
+
+				pack.FixtureManager().TemplateFixtureToFile(
+					"package_multi_platform.toml",
+					packageTomlFile,
+					map[string]interface{}{
+						"BuildpackURI": buildpackURI,
+						"PackageName":  dependencyURI,
+					},
+				)
+
+				assert.Nil(packageTomlFile.Close())
+
+				return packageTomlFile.Name()
+			}
+
 			when("no --format is provided", func() {
 				it("creates the package as image", func() {
 					packageName := "test/package-" + h.RandString(10)
@@ -255,34 +274,206 @@ func testWithoutSpecificBuilderRequirement(
 				})
 
 				when("--publish", func() {
-					it("publishes image to registry", func() {
-						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
-						nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+					it.Before(func() {
+						// used to avoid authentication issues with the local registry
+						os.Setenv("DOCKER_CONFIG", registryConfig.DockerConfigDir)
+					})
 
-						nestedPackage := buildpacks.NewPackageImage(
-							t,
-							pack,
-							nestedPackageName,
-							packageTomlPath,
-							buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayers),
-							buildpacks.WithPublish(),
-						)
-						buildpackManager.PrepareBuildModules(tmpDir, nestedPackage)
+					when("no --targets", func() {
+						it("publishes image to registry", func() {
+							packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+							nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
-						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
-						packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+							nestedPackage := buildpacks.NewPackageImage(
+								t,
+								pack,
+								nestedPackageName,
+								packageTomlPath,
+								buildpacks.WithRequiredBuildpacks(buildpacks.BpSimpleLayers),
+								buildpacks.WithPublish(),
+							)
+							buildpackManager.PrepareBuildModules(tmpDir, nestedPackage)
 
-						output := pack.RunSuccessfully(
-							"buildpack", "package", packageName,
-							"-c", aggregatePackageToml,
-							"--publish",
-						)
+							aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
+							packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
-						defer imageManager.CleanupImages(packageName)
-						assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
+							output := pack.RunSuccessfully(
+								"buildpack", "package", packageName,
+								"-c", aggregatePackageToml,
+								"--publish",
+							)
 
-						assertImage.NotExistsLocally(packageName)
-						assertImage.CanBePulledFromRegistry(packageName)
+							defer imageManager.CleanupImages(packageName)
+							assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
+
+							assertImage.NotExistsLocally(packageName)
+							assertImage.CanBePulledFromRegistry(packageName)
+						})
+					})
+
+					when("--targets", func() {
+						var packageName string
+
+						it.Before(func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.MultiPlatformBuildersAndBuildPackages), "multi-platform builders and buildpack packages are available since 0.34.0")
+							packageName = registryConfig.RepoName("simple-multi-platform-buildpack" + h.RandString(8))
+						})
+
+						when("simple buildpack on disk", func() {
+							var path string
+
+							it.Before(func() {
+								// create a simple buildpack on disk
+								sourceDir := filepath.Join("testdata", "mock_buildpacks")
+								path = filepath.Join(tmpDir, "simple-layers-buildpack")
+								err := buildpacks.BpFolderSimpleLayers.Prepare(sourceDir, tmpDir)
+								h.AssertNil(t, err)
+							})
+
+							it("publishes images for each requested target to the registry and creates an image index", func() {
+								output := pack.RunSuccessfully(
+									"buildpack", "package", packageName,
+									"--path", path,
+									"--publish",
+									"--target", "linux/amd64",
+									"--target", "windows/amd64",
+								)
+
+								defer imageManager.CleanupImages(packageName)
+								assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
+
+								assertImage.NotExistsLocally(packageName)
+								assertImage.CanBePulledFromRegistry(packageName)
+
+								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(packageName)
+								h.AssertRemoteImageIndex(t, packageName, types.OCIImageIndex, 2)
+							})
+						})
+
+						when("composite buildpack on disk", func() {
+							var packageTomlPath string
+
+							when("dependencies are not available in a registry", func() {
+								it.Before(func() {
+									// creates a composite buildpack on disk
+									sourceDir := filepath.Join("testdata", "mock_buildpacks")
+
+									err := buildpacks.MetaBpDependency.Prepare(sourceDir, tmpDir)
+									h.AssertNil(t, err)
+
+									err = buildpacks.MetaBpFolder.Prepare(sourceDir, tmpDir)
+									h.AssertNil(t, err)
+
+									packageTomlPath = filepath.Join(tmpDir, "meta-buildpack", "package.toml")
+								})
+
+								it("errors with a descriptive message", func() {
+									output, err := pack.Run(
+										"buildpack", "package", packageName,
+										"--config", packageTomlPath,
+										"--publish",
+										"--target", "linux/amd64",
+										"--target", "windows/amd64",
+										"--verbose",
+									)
+									assert.NotNil(err)
+									h.AssertContains(t, output, "uri '../meta-buildpack-dependency' is not allowed when creating a composite multi-platform buildpack; push your dependencies to a registry and use 'docker://<image>' instead")
+								})
+							})
+
+							when("dependencies are available in a registry", func() {
+								var depPackageName string
+
+								it.Before(func() {
+									// multi-platform composite buildpacks require the dependencies to be available in a registry
+									// let's push it
+
+									// first creates the simple buildpack dependency on disk
+									depSourceDir := filepath.Join("testdata", "mock_buildpacks")
+									depPath := filepath.Join(tmpDir, "meta-buildpack-dependency")
+									err := buildpacks.MetaBpDependency.Prepare(depSourceDir, tmpDir)
+									h.AssertNil(t, err)
+
+									// push the dependency to a registry
+									depPackageName = registryConfig.RepoName("simple-multi-platform-buildpack" + h.RandString(8))
+									output := pack.RunSuccessfully(
+										"buildpack", "package", depPackageName,
+										"--path", depPath,
+										"--publish",
+										"--target", "linux/amd64",
+										"--target", "windows/amd64",
+									)
+									assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(depPackageName)
+									assertImage.CanBePulledFromRegistry(depPackageName)
+									assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(depPackageName)
+
+									// let's prepare the composite buildpack to use the simple buildpack dependency prepared above
+									packageTomlPath = generateMultiPlatformCompositeBuildpackPackageToml(".", depPackageName)
+
+									// We need to copy the buildpack toml to the folder where the packageTomlPath was created
+									packageTomlDir := filepath.Dir(packageTomlPath)
+									sourceDir := filepath.Join("testdata", "mock_buildpacks", "meta-buildpack", "buildpack.toml")
+									h.CopyFile(t, sourceDir, filepath.Join(packageTomlDir, "buildpack.toml"))
+								})
+
+								it("publishes images for each requested target to the registry and creates an image index", func() {
+									output := pack.RunSuccessfully(
+										"buildpack", "package", packageName,
+										"--config", packageTomlPath,
+										"--publish",
+										"--target", "linux/amd64",
+										"--target", "windows/amd64",
+									)
+
+									defer imageManager.CleanupImages(packageName)
+									assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
+
+									assertImage.NotExistsLocally(packageName)
+									assertImage.CanBePulledFromRegistry(packageName)
+
+									assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(packageName)
+									h.AssertRemoteImageIndex(t, packageName, types.OCIImageIndex, 2)
+								})
+							})
+						})
+					})
+
+					when("new multi-platform folder structure is used", func() {
+						var packageName string
+
+						it.Before(func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.MultiPlatformBuildersAndBuildPackages), "multi-platform builders and buildpack packages are available since 0.34.0")
+							packageName = registryConfig.RepoName("simple-multi-platform-buildpack" + h.RandString(8))
+						})
+
+						when("simple buildpack on disk", func() {
+							var path string
+
+							it.Before(func() {
+								// create a simple buildpack on disk
+								sourceDir := filepath.Join("testdata", "mock_buildpacks")
+								path = filepath.Join(tmpDir, "multi-platform-buildpack")
+								err := buildpacks.MultiPlatformFolderBP.Prepare(sourceDir, tmpDir)
+								h.AssertNil(t, err)
+							})
+
+							it("publishes images for each target specified in buildpack.toml to the registry and creates an image index", func() {
+								output := pack.RunSuccessfully(
+									"buildpack", "package", packageName,
+									"--path", path,
+									"--publish", "--verbose",
+								)
+
+								defer imageManager.CleanupImages(packageName)
+								assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
+
+								assertImage.NotExistsLocally(packageName)
+								assertImage.CanBePulledFromRegistry(packageName)
+
+								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(packageName)
+								h.AssertRemoteImageIndex(t, packageName, types.OCIImageIndex, 2)
+							})
+						})
 					})
 				})
 
@@ -3101,6 +3292,185 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 								"contents-after-1",
 								"contents-after-2",
 							)
+						})
+					})
+				})
+			})
+
+			when("multi-platform", func() {
+				var (
+					tmpDir                    string
+					multiArchBuildpackPackage string
+					builderTomlPath           string
+					remoteRunImage            string
+					remoteBuildImage          string
+					err                       error
+				)
+
+				it.Before(func() {
+					h.SkipIf(t, !pack.SupportsFeature(invoke.MultiPlatformBuildersAndBuildPackages), "multi-platform builders and buildpack packages are available since 0.34.0")
+
+					tmpDir, err = os.MkdirTemp("", "multi-platform-builder-create-tests")
+					assert.Nil(err)
+
+					// used to avoid authentication issues with the local registry
+					os.Setenv("DOCKER_CONFIG", registryConfig.DockerConfigDir)
+
+					// create a multi-platform buildpack and push it to a registry
+					multiArchBuildpackPackage = registryConfig.RepoName("simple-multi-platform-buildpack" + h.RandString(8))
+					sourceDir := filepath.Join("testdata", "mock_buildpacks")
+					path := filepath.Join(tmpDir, "simple-layers-buildpack")
+					err = buildpacks.BpFolderSimpleLayers.Prepare(sourceDir, tmpDir)
+					h.AssertNil(t, err)
+
+					output := pack.RunSuccessfully(
+						"buildpack", "package", multiArchBuildpackPackage,
+						"--path", path,
+						"--publish",
+						"--target", "linux/amd64",
+						"--target", "windows/amd64",
+					)
+					assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(multiArchBuildpackPackage)
+					assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(multiArchBuildpackPackage)
+					h.AssertRemoteImageIndex(t, multiArchBuildpackPackage, types.OCIImageIndex, 2)
+
+					// runImage and buildImage are saved in the daemon, for this test we want them to be available in a registry
+					remoteRunImage = registryConfig.RepoName(runImage + h.RandString(8))
+					remoteBuildImage = registryConfig.RepoName(buildImage + h.RandString(8))
+
+					imageManager.TagImage(runImage, remoteRunImage)
+					imageManager.TagImage(buildImage, remoteBuildImage)
+
+					h.AssertNil(t, h.PushImage(dockerCli, remoteRunImage, registryConfig))
+					h.AssertNil(t, h.PushImage(dockerCli, remoteBuildImage, registryConfig))
+				})
+
+				it.After(func() {
+					imageManager.CleanupImages(remoteBuildImage)
+					imageManager.CleanupImages(remoteRunImage)
+					os.RemoveAll(tmpDir)
+				})
+
+				generateMultiPlatformBuilderToml := func(template, buildpackURI, buildImage, runImage string) string {
+					t.Helper()
+					buildpackToml, err := os.CreateTemp(tmpDir, "buildpack-*.toml")
+					assert.Nil(err)
+
+					pack.FixtureManager().TemplateFixtureToFile(
+						template,
+						buildpackToml,
+						map[string]interface{}{
+							"BuildpackURI": buildpackURI,
+							"BuildImage":   buildImage,
+							"RunImage":     runImage,
+						},
+					)
+					assert.Nil(buildpackToml.Close())
+					return buildpackToml.Name()
+				}
+
+				when("builder.toml has no targets but the user provides --target", func() {
+					when("--publish", func() {
+						it.Before(func() {
+							builderName = registryConfig.RepoName("remote-multi-platform-builder" + h.RandString(8))
+
+							// We need to configure our builder.toml with image references that points to our ephemeral registry
+							builderTomlPath = generateMultiPlatformBuilderToml("builder_multi_platform-no-targets.toml", multiArchBuildpackPackage, remoteBuildImage, remoteRunImage)
+						})
+
+						it("publishes builder images for each requested target to the registry and creates an image index", func() {
+							output := pack.RunSuccessfully(
+								"builder", "create", builderName,
+								"--config", builderTomlPath,
+								"--publish",
+								"--target", "linux/amd64",
+								"--target", "windows/amd64",
+							)
+
+							defer imageManager.CleanupImages(builderName)
+							assertions.NewOutputAssertionManager(t, output).ReportsBuilderCreated(builderName)
+
+							assertImage.CanBePulledFromRegistry(builderName)
+
+							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(builderName)
+							h.AssertRemoteImageIndex(t, builderName, types.OCIImageIndex, 2)
+						})
+					})
+
+					when("--daemon", func() {
+						it.Before(func() {
+							builderName = registryConfig.RepoName("local-multi-platform-builder" + h.RandString(8))
+
+							// We need to configure our builder.toml with image references that points to our ephemeral registry
+							builderTomlPath = generateMultiPlatformBuilderToml("builder_multi_platform-no-targets.toml", multiArchBuildpackPackage, buildImage, runImage)
+						})
+
+						it("publishes builder image to the daemon for the given target", func() {
+							platform := "linux/amd64"
+							if imageManager.HostOS() == "windows" {
+								platform = "windows/amd64"
+							}
+
+							output := pack.RunSuccessfully(
+								"builder", "create", builderName,
+								"--config", builderTomlPath,
+								"--target", platform,
+							)
+
+							defer imageManager.CleanupImages(builderName)
+							assertions.NewOutputAssertionManager(t, output).ReportsBuilderCreated(builderName)
+						})
+					})
+				})
+
+				when("builder.toml has targets", func() {
+					when("--publish", func() {
+						it.Before(func() {
+							builderName = registryConfig.RepoName("remote-multi-platform-builder" + h.RandString(8))
+
+							// We need to configure our builder.toml with image references that points to our ephemeral registry
+							builderTomlPath = generateMultiPlatformBuilderToml("builder_multi_platform.toml", multiArchBuildpackPackage, remoteBuildImage, remoteRunImage)
+						})
+
+						it("publishes builder images for each configured target to the registry and creates an image index", func() {
+							output := pack.RunSuccessfully(
+								"builder", "create", builderName,
+								"--config", builderTomlPath,
+								"--publish",
+							)
+
+							defer imageManager.CleanupImages(builderName)
+							assertions.NewOutputAssertionManager(t, output).ReportsBuilderCreated(builderName)
+
+							assertImage.CanBePulledFromRegistry(builderName)
+
+							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(builderName)
+							h.AssertRemoteImageIndex(t, builderName, types.OCIImageIndex, 2)
+						})
+					})
+
+					when("--daemon", func() {
+						it.Before(func() {
+							builderName = registryConfig.RepoName("local-multi-platform-builder" + h.RandString(8))
+
+							// We need to configure our builder.toml with image references that points to our ephemeral registry
+							builderTomlPath = generateMultiPlatformBuilderToml("builder_multi_platform.toml", multiArchBuildpackPackage, buildImage, runImage)
+						})
+
+						it("publishes builder image to the daemon for the given target", func() {
+							platform := "linux/amd64"
+							if imageManager.HostOS() == "windows" {
+								platform = "windows/amd64"
+							}
+
+							output := pack.RunSuccessfully(
+								"builder", "create", builderName,
+								"--config", builderTomlPath,
+								"--target", platform,
+							)
+
+							defer imageManager.CleanupImages(builderName)
+							assertions.NewOutputAssertionManager(t, output).ReportsBuilderCreated(builderName)
 						})
 					})
 				})
