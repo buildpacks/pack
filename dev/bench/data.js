@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1716217108105,
+  "lastUpdate": 1716407290399,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -6790,6 +6790,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 50218301415,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7306444911df8a46ed96dfd9bb389c047d63f6f0",
+          "message": "Merge pull request #2086 from jjbustamante/jjbustamante/poc-multiarch-rfc\n\nImplementation of the multi-platform support for builders and buildpack packages RFC 0128",
+          "timestamp": "2024-05-22T15:46:04-04:00",
+          "tree_id": "1d959532aa142b4e6f55fb7b0c4a321b57bd2050",
+          "url": "https://github.com/buildpacks/pack/commit/7306444911df8a46ed96dfd9bb389c047d63f6f0"
+        },
+        "date": 1716407289904,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4341323644,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 920402144,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 54187426311,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
