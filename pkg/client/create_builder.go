@@ -430,10 +430,8 @@ func (c *Client) uriFromLifecycleVersion(version semver.Version, os string, arch
 	if builder.SupportedLinuxArchitecture(architecture) {
 		arch = architecture
 	} else {
-		// TODO: Do we want to fail in this case instead of a warning?
-		// I added the warning to help the buildpack authors understand if they builder ended up with a wrong
-		// lifecycle binary.
-		c.logger.Warnf("trying to download a lifecycle binary for an unsupported architecture: %s, using default %s", style.Symbol(architecture), style.Symbol(arch))
+		// FIXME: this should probably be an error case in the future, see https://github.com/buildpacks/pack/issues/2163
+		c.logger.Warnf("failed to find a lifecycle binary for requested architecture %s, defaulting to %s", style.Symbol(architecture), style.Symbol(arch))
 	}
 
 	return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+linux.%s.tgz", version.String(), version.String(), arch)

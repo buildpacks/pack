@@ -94,7 +94,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 			}
 
 			if len(multiArchCfg.Targets()) == 0 {
-				logger.Warnf("A new '--target' flag is available to set the platform")
+				logger.Infof("Pro tip: use --targets flag OR [[targets]] in builder.toml to specify the desired platform")
 			}
 
 			imageName := args[0]

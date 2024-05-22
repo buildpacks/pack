@@ -108,6 +108,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			if err != nil {
 				return err
 			}
+
 			daemon := !flags.Publish && flags.Format == ""
 			multiArchCfg, err := processMultiArchitectureConfig(logger, flags.Targets, targets, daemon)
 			if err != nil {
@@ -115,8 +116,13 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			}
 
 			if len(multiArchCfg.Targets()) == 0 {
-				logger.Warnf("A new '--target' flag is available to set the platform, using '%s' as default", bpPackageCfg.Platform.OS)
+				if isCompositeBP {
+					logger.Infof("Pro tip: use --targets flag OR [[targets]] in package.toml to specify the desired platform (os/arch/variant); using os %s", style.Symbol(bpPackageCfg.Platform.OS))
+				} else {
+					logger.Infof("Pro tip: use --targets flag OR [[targets]] in buildpack.toml to specify the desired platform (os/arch/variant); using os %s", style.Symbol(bpPackageCfg.Platform.OS))
+				}
 			} else if !isCompositeBP {
+				// FIXME: Check if we can copy the config files during layers creation.
 				filesToClean, err := multiArchCfg.CopyConfigFiles(bpPath)
 				if err != nil {
 					return err

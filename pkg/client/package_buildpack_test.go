@@ -553,47 +553,45 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("folder structure doesn't follow multi-platform convention", func() {
-					when("no errors pushing the index", func() {
-						it.Before(func() {
-							destBpPath := filepath.Join("testdata", "buildpack-multi-platform", "buildpack-old-format")
-							bpPathURI, err = paths.FilePathToURI(destBpPath, "")
+					it.Before(func() {
+						destBpPath := filepath.Join("testdata", "buildpack-multi-platform", "buildpack-old-format")
+						bpPathURI, err = paths.FilePathToURI(destBpPath, "")
 
-							prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, destBpPath)
-							prepareExpectedMultiPlaformImages(t, mockImageFactory, mockImageFetcher, repoName, dist.Target{OS: "linux", Arch: "amd64"},
-								expectedMultiPlatformImage{digest: newDigest(t, repoName, "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda34")})
-							prepareExpectedMultiPlaformImages(t, mockImageFactory, mockImageFetcher, repoName, dist.Target{OS: "linux", Arch: "arm"},
-								expectedMultiPlatformImage{digest: newDigest(t, repoName, "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda35")})
-						})
+						prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, destBpPath)
+						prepareExpectedMultiPlaformImages(t, mockImageFactory, mockImageFetcher, repoName, dist.Target{OS: "linux", Arch: "amd64"},
+							expectedMultiPlatformImage{digest: newDigest(t, repoName, "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda34")})
+						prepareExpectedMultiPlaformImages(t, mockImageFactory, mockImageFetcher, repoName, dist.Target{OS: "linux", Arch: "arm"},
+							expectedMultiPlatformImage{digest: newDigest(t, repoName, "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda35")})
+					})
 
-						it("creates a multi-platform buildpack and pushes it to a registry", func() {
-							// Define targets we want to package
-							targets = []dist.Target{{OS: "linux", Arch: "amd64"}, {OS: "linux", Arch: "arm"}}
+					it("creates a multi-platform buildpack and pushes it to a registry", func() {
+						// Define targets we want to package
+						targets = []dist.Target{{OS: "linux", Arch: "amd64"}, {OS: "linux", Arch: "arm"}}
 
-							h.AssertNil(t, subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
-								Format:          client.FormatImage,
-								Publish:         true,
-								RelativeBaseDir: "",
-								Name:            repoName,
-								Config: pubbldpkg.Config{
-									Buildpack: dist.BuildpackURI{URI: bpPathURI},
-									Targets:   []dist.Target{},
-								},
-								Targets:    targets,
-								PullPolicy: image.PullNever,
-							}))
+						h.AssertNil(t, subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+							Format:          client.FormatImage,
+							Publish:         true,
+							RelativeBaseDir: "",
+							Name:            repoName,
+							Config: pubbldpkg.Config{
+								Buildpack: dist.BuildpackURI{URI: bpPathURI},
+								Targets:   []dist.Target{},
+							},
+							Targets:    targets,
+							PullPolicy: image.PullNever,
+						}))
 
-							// index is not saved locally
-							h.AssertPathDoesNotExists(t, indexLocalPath)
+						// index is not saved locally
+						h.AssertPathDoesNotExists(t, indexLocalPath)
 
-							// Push operation was done
-							h.AssertTrue(t, index.PushCalled)
-							h.AssertTrue(t, index.PurgeOption)
+						// Push operation was done
+						h.AssertTrue(t, index.PushCalled)
+						h.AssertTrue(t, index.PurgeOption)
 
-							// index has the two expected manifests amd64 and arm
-							indexManifest, err := index.IndexManifest()
-							h.AssertNil(t, err)
-							h.AssertEq(t, len(indexManifest.Manifests), 2)
-						})
+						// index has the two expected manifests amd64 and arm
+						indexManifest, err := index.IndexManifest()
+						h.AssertNil(t, err)
+						h.AssertEq(t, len(indexManifest.Manifests), 2)
 					})
 				})
 

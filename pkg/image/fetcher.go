@@ -187,16 +187,7 @@ func (f *Fetcher) fetchRemoteImage(name string, target *dist.Target) (imgutil.Im
 	if target == nil {
 		image, err = remote.NewImage(name, f.keychain, remote.FromBaseImage(name))
 	} else {
-		platform := imgutil.Platform{OS: target.OS, Architecture: target.Arch}
-		// when targeting a registry, we need to use variant if available to hit the correct image
-		platform.Variant = target.ArchVariant
-		if len(target.Distributions) > 0 {
-			// We assumed the given target's distributions were expanded, and we are just dealing with 1 version.
-			platform.OSVersion = target.Distributions[0].Version
-			if len(target.Distributions) > 1 {
-				f.logger.Warnf("trying to fetch an image with more than one OS distribution, using %s", style.Symbol(target.Distributions[0].Version))
-			}
-		}
+		platform := imgutil.Platform{OS: target.OS, Architecture: target.Arch, Variant: target.ArchVariant}
 		image, err = remote.NewImage(name, f.keychain, remote.FromBaseImage(name), remote.WithDefaultPlatform(platform))
 	}
 

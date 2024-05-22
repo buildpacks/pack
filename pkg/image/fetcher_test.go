@@ -122,30 +122,6 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							h.AssertEq(t, osVersion, "my-version")
 						})
-
-						it("returns the remote image and logs a warn message when there is more than one os distribution", func() {
-							target = dist.Target{
-								OS:          runtime.GOOS,
-								Arch:        runtime.GOARCH,
-								ArchVariant: "v1",
-								Distributions: []dist.Distribution{
-									{Name: "some-name", Version: "my-version"},
-									{Name: "some-name", Version: "another-version"},
-								},
-							}
-
-							img, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways, Target: &target})
-							h.AssertNil(t, err)
-							h.AssertContains(t, outBuf.String(), "trying to fetch an image with more than one OS distribution")
-
-							variant, err := img.Variant()
-							h.AssertNil(t, err)
-							h.AssertEq(t, variant, "v1")
-
-							osVersion, err := img.OSVersion()
-							h.AssertNil(t, err)
-							h.AssertEq(t, osVersion, "my-version")
-						})
 					})
 				})
 

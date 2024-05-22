@@ -316,10 +316,10 @@ type imageFactory struct {
 }
 
 func (f *imageFactory) NewImage(repoName string, daemon bool, target dist.Target) (imgutil.Image, error) {
-	platform := imgutil.Platform{OS: target.OS, Architecture: target.Arch}
+	platform := imgutil.Platform{OS: target.OS, Architecture: target.Arch, Variant: target.ArchVariant}
 
-	platform.Variant = target.ArchVariant
 	if len(target.Distributions) > 0 {
+		// We need to set platform distribution information so that it will be reflected in the image config.
 		// We assume the given target's distributions were already expanded, we should be dealing with just 1 distribution name and version.
 		platform.OSVersion = target.Distributions[0].Version
 	}

@@ -173,6 +173,12 @@ func (o OutputAssertionManager) IncludesUsagePrompt() {
 	o.assert.Contains(o.output, "Run 'pack --help' for usage.")
 }
 
+func (o OutputAssertionManager) ReportsBuilderCreated(name string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "Successfully created builder image '%s'", name)
+}
+
 func (o OutputAssertionManager) ReportsSettingDefaultBuilder(name string) {
 	o.testObject.Helper()
 
