@@ -715,7 +715,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 			if header, err = advanceTarToEntryWithName(tarReader, lifecycleLayerName); err != nil {
 				return "", err
 			}
-			lifecycleLayerTar := filepath.Join(filepath.Dir(lifecycleImageTar), filepath.Dir(lifecycleLayerName)+".tar")
+			lifecycleLayerTar := filepath.Join(filepath.Dir(lifecycleImageTar), filepath.Dir(lifecycleLayerName)+".tar") // this will be either <s0m3d1g3st>/layer.tar (docker < 25.x) OR blobs/sha256.tar (docker 25.x and later OR containerd storage enabled)
+			if err = os.MkdirAll(filepath.Dir(lifecycleLayerTar), 0755); err != nil {
+				return "", err
+			}
 			lifecycleLayerWriter, err := os.OpenFile(lifecycleLayerTar, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 			if err != nil {
 				return "", err
