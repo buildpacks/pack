@@ -516,13 +516,8 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.RemoveOptions{Force: true})
 
-	builderOS, err := rawBuilderImage.OS()
-	if err != nil {
-		return fmt.Errorf("failed to get builder OS: %w", err)
-	}
-
 	if len(bldr.OrderExtensions()) > 0 || len(ephemeralBuilder.OrderExtensions()) > 0 {
-		if builderOS == "windows" {
+		if targetToUse.OS == "windows" {
 			return fmt.Errorf("builder contains image extensions which are not supported for Windows builds")
 		}
 		if !(opts.PullPolicy == image.PullAlways) {
@@ -534,7 +529,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		opts.ContainerConfig.Volumes = appendLayoutVolumes(opts.ContainerConfig.Volumes, pathsConfig)
 	}
 
-	processedVolumes, warnings, err := processVolumes(builderOS, opts.ContainerConfig.Volumes)
+	processedVolumes, warnings, err := processVolumes(targetToUse.OS, opts.ContainerConfig.Volumes)
 	if err != nil {
 		return err
 	}
@@ -1258,7 +1253,6 @@ func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir 
 	default:
 		downloadOptions := buildpack.DownloadOptions{
 			RegistryName:    registry,
-			ImageOS:         targetToUse.OS,
 			Target:          targetToUse,
 			RelativeBaseDir: relativeBaseDir,
 			Daemon:          !publish,
