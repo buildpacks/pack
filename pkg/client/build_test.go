@@ -1122,81 +1122,7 @@ api = "0.2"
 				var fakePackage *fakes.Image
 
 				it.Before(func() {
-					metaBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-						WithAPI: api.MustParse("0.3"),
-						WithInfo: dist.ModuleInfo{
-							ID:       "meta.buildpack.id",
-							Version:  "meta.buildpack.version",
-							Homepage: "http://meta.buildpack",
-						},
-						WithStacks: nil,
-						WithOrder: dist.Order{{
-							Group: []dist.ModuleRef{{
-								ModuleInfo: dist.ModuleInfo{
-									ID:      "child.buildpack.id",
-									Version: "child.buildpack.version",
-								},
-								Optional: false,
-							}},
-						}},
-					})
-
-					childBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-						WithAPI: api.MustParse("0.3"),
-						WithInfo: dist.ModuleInfo{
-							ID:       "child.buildpack.id",
-							Version:  "child.buildpack.version",
-							Homepage: "http://child.buildpack",
-						},
-						WithStacks: []dist.Stack{
-							{ID: defaultBuilderStackID},
-						},
-					})
-
-					bpLayers := dist.ModuleLayers{
-						"meta.buildpack.id": {
-							"meta.buildpack.version": {
-								API: api.MustParse("0.3"),
-								Order: dist.Order{{
-									Group: []dist.ModuleRef{{
-										ModuleInfo: dist.ModuleInfo{
-											ID:      "child.buildpack.id",
-											Version: "child.buildpack.version",
-										},
-										Optional: false,
-									}},
-								}},
-								LayerDiffID: diffIDForFile(t, metaBuildpackTar),
-							},
-						},
-						"child.buildpack.id": {
-							"child.buildpack.version": {
-								API: api.MustParse("0.3"),
-								Stacks: []dist.Stack{
-									{ID: defaultBuilderStackID},
-								},
-								LayerDiffID: diffIDForFile(t, childBuildpackTar),
-							},
-						},
-					}
-
-					md := buildpack.Metadata{
-						ModuleInfo: dist.ModuleInfo{
-							ID:      "meta.buildpack.id",
-							Version: "meta.buildpack.version",
-						},
-						Stacks: []dist.Stack{
-							{ID: defaultBuilderStackID},
-						},
-					}
-
-					fakePackage = fakes.NewImage("example.com/some/package", "", nil)
-					h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpack.layers", bpLayers))
-					h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpackage.metadata", md))
-
-					h.AssertNil(t, fakePackage.AddLayer(metaBuildpackTar))
-					h.AssertNil(t, fakePackage.AddLayer(childBuildpackTar))
-
+					fakePackage = makeFakePackage(t, tmpDir, defaultBuilderStackID)
 					fakeImageFetcher.LocalImages[fakePackage.Name()] = fakePackage
 				})
 
@@ -2265,81 +2191,7 @@ api = "0.2"
 			var fakePackage imgutil.Image
 
 			it.Before(func() {
-				metaBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-					WithAPI: api.MustParse("0.3"),
-					WithInfo: dist.ModuleInfo{
-						ID:       "meta.buildpack.id",
-						Version:  "meta.buildpack.version",
-						Homepage: "http://meta.buildpack",
-					},
-					WithStacks: nil,
-					WithOrder: dist.Order{{
-						Group: []dist.ModuleRef{{
-							ModuleInfo: dist.ModuleInfo{
-								ID:      "child.buildpack.id",
-								Version: "child.buildpack.version",
-							},
-							Optional: false,
-						}},
-					}},
-				})
-
-				childBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-					WithAPI: api.MustParse("0.3"),
-					WithInfo: dist.ModuleInfo{
-						ID:       "child.buildpack.id",
-						Version:  "child.buildpack.version",
-						Homepage: "http://child.buildpack",
-					},
-					WithStacks: []dist.Stack{
-						{ID: defaultBuilderStackID},
-					},
-				})
-
-				bpLayers := dist.ModuleLayers{
-					"meta.buildpack.id": {
-						"meta.buildpack.version": {
-							API: api.MustParse("0.3"),
-							Order: dist.Order{{
-								Group: []dist.ModuleRef{{
-									ModuleInfo: dist.ModuleInfo{
-										ID:      "child.buildpack.id",
-										Version: "child.buildpack.version",
-									},
-									Optional: false,
-								}},
-							}},
-							LayerDiffID: diffIDForFile(t, metaBuildpackTar),
-						},
-					},
-					"child.buildpack.id": {
-						"child.buildpack.version": {
-							API: api.MustParse("0.3"),
-							Stacks: []dist.Stack{
-								{ID: defaultBuilderStackID},
-							},
-							LayerDiffID: diffIDForFile(t, childBuildpackTar),
-						},
-					},
-				}
-
-				md := buildpack.Metadata{
-					ModuleInfo: dist.ModuleInfo{
-						ID:      "meta.buildpack.id",
-						Version: "meta.buildpack.version",
-					},
-					Stacks: []dist.Stack{
-						{ID: defaultBuilderStackID},
-					},
-				}
-
-				fakePackage = fakes.NewImage("example.com/some/package", "", nil)
-				h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpack.layers", bpLayers))
-				h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpackage.metadata", md))
-
-				h.AssertNil(t, fakePackage.AddLayer(metaBuildpackTar))
-				h.AssertNil(t, fakePackage.AddLayer(childBuildpackTar))
-
+				fakePackage = makeFakePackage(t, tmpDir, defaultBuilderStackID)
 				fakeImageFetcher.LocalImages[fakePackage.Name()] = fakePackage
 			})
 
@@ -3323,6 +3175,85 @@ api = "0.2"
 			})
 		})
 	})
+}
+
+func makeFakePackage(t *testing.T, tmpDir string, stackID string) *fakes.Image {
+	metaBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+		WithAPI: api.MustParse("0.3"),
+		WithInfo: dist.ModuleInfo{
+			ID:       "meta.buildpack.id",
+			Version:  "meta.buildpack.version",
+			Homepage: "http://meta.buildpack",
+		},
+		WithStacks: nil,
+		WithOrder: dist.Order{{
+			Group: []dist.ModuleRef{{
+				ModuleInfo: dist.ModuleInfo{
+					ID:      "child.buildpack.id",
+					Version: "child.buildpack.version",
+				},
+				Optional: false,
+			}},
+		}},
+	})
+
+	childBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+		WithAPI: api.MustParse("0.3"),
+		WithInfo: dist.ModuleInfo{
+			ID:       "child.buildpack.id",
+			Version:  "child.buildpack.version",
+			Homepage: "http://child.buildpack",
+		},
+		WithStacks: []dist.Stack{
+			{ID: stackID},
+		},
+	})
+
+	bpLayers := dist.ModuleLayers{
+		"meta.buildpack.id": {
+			"meta.buildpack.version": {
+				API: api.MustParse("0.3"),
+				Order: dist.Order{{
+					Group: []dist.ModuleRef{{
+						ModuleInfo: dist.ModuleInfo{
+							ID:      "child.buildpack.id",
+							Version: "child.buildpack.version",
+						},
+						Optional: false,
+					}},
+				}},
+				LayerDiffID: diffIDForFile(t, metaBuildpackTar),
+			},
+		},
+		"child.buildpack.id": {
+			"child.buildpack.version": {
+				API: api.MustParse("0.3"),
+				Stacks: []dist.Stack{
+					{ID: stackID},
+				},
+				LayerDiffID: diffIDForFile(t, childBuildpackTar),
+			},
+		},
+	}
+
+	md := buildpack.Metadata{
+		ModuleInfo: dist.ModuleInfo{
+			ID:      "meta.buildpack.id",
+			Version: "meta.buildpack.version",
+		},
+		Stacks: []dist.Stack{
+			{ID: stackID},
+		},
+	}
+
+	fakePackage := fakes.NewImage("example.com/some/package", "", nil)
+	h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpack.layers", bpLayers))
+	h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpackage.metadata", md))
+
+	h.AssertNil(t, fakePackage.AddLayer(metaBuildpackTar))
+	h.AssertNil(t, fakePackage.AddLayer(childBuildpackTar))
+
+	return fakePackage
 }
 
 func diffIDForFile(t *testing.T, path string) string {
