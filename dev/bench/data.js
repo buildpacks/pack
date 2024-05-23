@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1716475337759,
+  "lastUpdate": 1716480256713,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -6916,6 +6916,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 62041751744,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f56bca579c1065ea8d6db40ad3e614aa7d81da93",
+          "message": "Merge pull request #2165 from buildpacks/fix/extensions-docker-25\n\nFix https://github.com/buildpacks/pack/issues/2164",
+          "timestamp": "2024-05-23T12:02:47-04:00",
+          "tree_id": "12fd01ac9f2b4e2f2a34f13b585c2c82ce7cd413",
+          "url": "https://github.com/buildpacks/pack/commit/f56bca579c1065ea8d6db40ad3e614aa7d81da93"
+        },
+        "date": 1716480256077,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4068837209,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1073162337,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 54523247116,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
