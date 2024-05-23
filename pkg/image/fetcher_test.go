@@ -273,7 +273,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, img.Save())
 						})
 
-						it("retry without setting platform", func() {
+						it("retries without setting platform", func() {
 							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Target: &dist.Target{OS: osType, Arch: runtime.GOARCH}})
 							h.AssertNil(t, err)
 						})

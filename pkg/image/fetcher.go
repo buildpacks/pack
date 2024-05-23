@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 
@@ -109,17 +110,22 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		}
 	}
 
-	f.logger.Debugf("Pulling image %s", style.Symbol(name))
-
 	platform := ""
+	msg := fmt.Sprintf("Pulling image %s", style.Symbol(name))
 	if options.Target != nil {
 		platform = options.Target.ValuesAsPlatform()
+		msg = fmt.Sprintf("Pulling image %s with platform %s", style.Symbol(name), style.Symbol(platform))
 	}
-
+	f.logger.Debug(msg)
 	if err = f.pullImage(ctx, name, platform); err != nil {
-		// sample error from docker engine:
-		// image with reference <image> was found but does not match the specified platform: wanted linux/amd64, actual: linux
-		if strings.Contains(err.Error(), "does not match the specified platform") {
+		// FIXME: this matching is brittle and the fallback should be removed when https://github.com/buildpacks/pack/issues/2079
+		// has been fixed for a sufficient amount of time.
+		// Sample error from docker engine:
+		// `image with reference <image> was found but does not match the specified platform: wanted linux/amd64, actual: linux`
+		if strings.Contains(err.Error(), "does not match the specified platform") &&
+			(strings.HasSuffix(strings.TrimSpace(err.Error()), "actual: linux") ||
+				strings.HasSuffix(strings.TrimSpace(err.Error()), "actual: windows")) {
+			f.logger.Debugf(fmt.Sprintf("Pulling image %s", style.Symbol(name)))
 			err = f.pullImage(ctx, name, "")
 		}
 	}

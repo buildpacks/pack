@@ -1122,81 +1122,7 @@ api = "0.2"
 				var fakePackage *fakes.Image
 
 				it.Before(func() {
-					metaBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-						WithAPI: api.MustParse("0.3"),
-						WithInfo: dist.ModuleInfo{
-							ID:       "meta.buildpack.id",
-							Version:  "meta.buildpack.version",
-							Homepage: "http://meta.buildpack",
-						},
-						WithStacks: nil,
-						WithOrder: dist.Order{{
-							Group: []dist.ModuleRef{{
-								ModuleInfo: dist.ModuleInfo{
-									ID:      "child.buildpack.id",
-									Version: "child.buildpack.version",
-								},
-								Optional: false,
-							}},
-						}},
-					})
-
-					childBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
-						WithAPI: api.MustParse("0.3"),
-						WithInfo: dist.ModuleInfo{
-							ID:       "child.buildpack.id",
-							Version:  "child.buildpack.version",
-							Homepage: "http://child.buildpack",
-						},
-						WithStacks: []dist.Stack{
-							{ID: defaultBuilderStackID},
-						},
-					})
-
-					bpLayers := dist.ModuleLayers{
-						"meta.buildpack.id": {
-							"meta.buildpack.version": {
-								API: api.MustParse("0.3"),
-								Order: dist.Order{{
-									Group: []dist.ModuleRef{{
-										ModuleInfo: dist.ModuleInfo{
-											ID:      "child.buildpack.id",
-											Version: "child.buildpack.version",
-										},
-										Optional: false,
-									}},
-								}},
-								LayerDiffID: diffIDForFile(t, metaBuildpackTar),
-							},
-						},
-						"child.buildpack.id": {
-							"child.buildpack.version": {
-								API: api.MustParse("0.3"),
-								Stacks: []dist.Stack{
-									{ID: defaultBuilderStackID},
-								},
-								LayerDiffID: diffIDForFile(t, childBuildpackTar),
-							},
-						},
-					}
-
-					md := buildpack.Metadata{
-						ModuleInfo: dist.ModuleInfo{
-							ID:      "meta.buildpack.id",
-							Version: "meta.buildpack.version",
-						},
-						Stacks: []dist.Stack{
-							{ID: defaultBuilderStackID},
-						},
-					}
-
-					fakePackage = fakes.NewImage("example.com/some/package", "", nil)
-					h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpack.layers", bpLayers))
-					h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpackage.metadata", md))
-
-					h.AssertNil(t, fakePackage.AddLayer(metaBuildpackTar))
-					h.AssertNil(t, fakePackage.AddLayer(childBuildpackTar))
-
+					fakePackage = makeFakePackage(t, tmpDir, defaultBuilderStackID)
 					fakeImageFetcher.LocalImages[fakePackage.Name()] = fakePackage
 				})
 
@@ -2261,6 +2187,84 @@ api = "0.2"
 			})
 		})
 
+		when("Platform option", func() {
+			var fakePackage imgutil.Image
+
+			it.Before(func() {
+				fakePackage = makeFakePackage(t, tmpDir, defaultBuilderStackID)
+				fakeImageFetcher.LocalImages[fakePackage.Name()] = fakePackage
+			})
+
+			when("provided", func() {
+				it("uses the provided platform to pull the builder, run image, packages, and lifecycle image", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: defaultBuilderName,
+						Buildpacks: []string{
+							"example.com/some/package",
+						},
+						Platform:   "linux/arm64",
+						PullPolicy: image.PullAlways,
+					}))
+
+					args := fakeImageFetcher.FetchCalls[defaultBuilderName]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.PullPolicy, image.PullAlways)
+					h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/arm64")
+
+					args = fakeImageFetcher.FetchCalls["default/run"]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.PullPolicy, image.PullAlways)
+					h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/arm64")
+
+					args = fakeImageFetcher.FetchCalls[fakePackage.Name()]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.PullPolicy, image.PullAlways)
+					h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/arm64")
+
+					args = fakeImageFetcher.FetchCalls[fmt.Sprintf("%s:%s", cfg.DefaultLifecycleImageRepo, builder.DefaultLifecycleVersion)]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.PullPolicy, image.PullAlways)
+					h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/arm64")
+				})
+			})
+
+			when("not provided", func() {
+				it("defaults to builder os/arch", func() {
+					// defaultBuilderImage has linux/amd64
+
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: defaultBuilderName,
+						Buildpacks: []string{
+							"example.com/some/package",
+						},
+						PullPolicy: image.PullAlways,
+					}))
+
+					args := fakeImageFetcher.FetchCalls[defaultBuilderName]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.PullPolicy, image.PullAlways)
+					h.AssertEq(t, args.Target, (*dist.Target)(nil))
+
+					args = fakeImageFetcher.FetchCalls["default/run"]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.PullPolicy, image.PullAlways)
+					h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/amd64")
+
+					args = fakeImageFetcher.FetchCalls[fakePackage.Name()]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.PullPolicy, image.PullAlways)
+					h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/amd64")
+
+					args = fakeImageFetcher.FetchCalls[fmt.Sprintf("%s:%s", cfg.DefaultLifecycleImageRepo, builder.DefaultLifecycleVersion)]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.PullPolicy, image.PullAlways)
+					h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/amd64")
+				})
+			})
+		})
+
 		when("PullPolicy", func() {
 			when("never", func() {
 				it("uses the local builder and run images without updating", func() {
@@ -3171,6 +3175,85 @@ api = "0.2"
 			})
 		})
 	})
+}
+
+func makeFakePackage(t *testing.T, tmpDir string, stackID string) *fakes.Image {
+	metaBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+		WithAPI: api.MustParse("0.3"),
+		WithInfo: dist.ModuleInfo{
+			ID:       "meta.buildpack.id",
+			Version:  "meta.buildpack.version",
+			Homepage: "http://meta.buildpack",
+		},
+		WithStacks: nil,
+		WithOrder: dist.Order{{
+			Group: []dist.ModuleRef{{
+				ModuleInfo: dist.ModuleInfo{
+					ID:      "child.buildpack.id",
+					Version: "child.buildpack.version",
+				},
+				Optional: false,
+			}},
+		}},
+	})
+
+	childBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+		WithAPI: api.MustParse("0.3"),
+		WithInfo: dist.ModuleInfo{
+			ID:       "child.buildpack.id",
+			Version:  "child.buildpack.version",
+			Homepage: "http://child.buildpack",
+		},
+		WithStacks: []dist.Stack{
+			{ID: stackID},
+		},
+	})
+
+	bpLayers := dist.ModuleLayers{
+		"meta.buildpack.id": {
+			"meta.buildpack.version": {
+				API: api.MustParse("0.3"),
+				Order: dist.Order{{
+					Group: []dist.ModuleRef{{
+						ModuleInfo: dist.ModuleInfo{
+							ID:      "child.buildpack.id",
+							Version: "child.buildpack.version",
+						},
+						Optional: false,
+					}},
+				}},
+				LayerDiffID: diffIDForFile(t, metaBuildpackTar),
+			},
+		},
+		"child.buildpack.id": {
+			"child.buildpack.version": {
+				API: api.MustParse("0.3"),
+				Stacks: []dist.Stack{
+					{ID: stackID},
+				},
+				LayerDiffID: diffIDForFile(t, childBuildpackTar),
+			},
+		},
+	}
+
+	md := buildpack.Metadata{
+		ModuleInfo: dist.ModuleInfo{
+			ID:      "meta.buildpack.id",
+			Version: "meta.buildpack.version",
+		},
+		Stacks: []dist.Stack{
+			{ID: stackID},
+		},
+	}
+
+	fakePackage := fakes.NewImage("example.com/some/package", "", nil)
+	h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpack.layers", bpLayers))
+	h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpackage.metadata", md))
+
+	h.AssertNil(t, fakePackage.AddLayer(metaBuildpackTar))
+	h.AssertNil(t, fakePackage.AddLayer(childBuildpackTar))
+
+	return fakePackage
 }
 
 func diffIDForFile(t *testing.T, path string) string {
