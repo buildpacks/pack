@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1716480256713,
+  "lastUpdate": 1716566950413,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -6958,6 +6958,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 54523247116,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b8f5fc8dcc4d077e6155d4e6cecd97b85fda0ac6",
+          "message": "Merge pull request #2166 from buildpacks/chore/fix-macos-binaries\n\nBuilding darwin arm64 binaries by default on CI and amd64 during releases",
+          "timestamp": "2024-05-24T11:07:22-05:00",
+          "tree_id": "7f80bde542793c009960ccc83b22ec46716e3464",
+          "url": "https://github.com/buildpacks/pack/commit/b8f5fc8dcc4d077e6155d4e6cecd97b85fda0ac6"
+        },
+        "date": 1716566949333,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6851984157,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2516214173,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 54919847616,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
