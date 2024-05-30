@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1716566950413,
+  "lastUpdate": 1717094369136,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7000,6 +7000,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 54919847616,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "juan.bustamante@broadcom.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "98f0eb496f3ad524f5132bd9559642edc5923fdd",
+          "message": "Merge pull request #2171 from buildpacks/chore/fix-delivery-for-pack-0_34_0\n\nchore: updating docker base image to use go 1.22",
+          "timestamp": "2024-05-30T13:37:59-05:00",
+          "tree_id": "146eb83f9d4b39423d9723353786dbc81bac4699",
+          "url": "https://github.com/buildpacks/pack/commit/98f0eb496f3ad524f5132bd9559642edc5923fdd"
+        },
+        "date": 1717094368597,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5151666222,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1201876420,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 52551011951,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
