@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1717094369136,
+  "lastUpdate": 1717598974809,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7042,6 +7042,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 52551011951,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cffbe0b777614472a3428473e0282c52aa310273",
+          "message": "Merge pull request #2178 from edmorley/heroku-builder-24\n\nAdd `heroku/builder:24` as a trusted + suggested builder",
+          "timestamp": "2024-06-05T10:48:05-04:00",
+          "tree_id": "23d6a63baa8913e38ed6af6bb896cc2874768049",
+          "url": "https://github.com/buildpacks/pack/commit/cffbe0b777614472a3428473e0282c52aa310273"
+        },
+        "date": 1717598974090,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5222844049,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1287384485,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 50493045686,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
