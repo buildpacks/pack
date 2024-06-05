@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1717598974809,
+  "lastUpdate": 1717601505005,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7084,6 +7084,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 50493045686,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ce8db3c5d11b8e040fd565632668a697e53e4f87",
+          "message": "Merge pull request #2179 from buildpacks/fix/imgutil\n\nBump imgutil to pick up fixes for containerd and podman",
+          "timestamp": "2024-06-05T11:29:29-04:00",
+          "tree_id": "588c6627fa33b5731d3484046975e30751fb1d9e",
+          "url": "https://github.com/buildpacks/pack/commit/ce8db3c5d11b8e040fd565632668a697e53e4f87"
+        },
+        "date": 1717601504262,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5226963172,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1260516461,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 56695256574,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
