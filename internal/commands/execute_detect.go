@@ -15,16 +15,16 @@ import (
 )
 
 // Run up to the detect phase of the CNB lifecycle against a source code directory
-func Detect(logger logging.Logger, cfg config.Config, packClient PackClient) *cobra.Command {
+func ExecuteDetect(logger logging.Logger, cfg config.Config, packClient PackClient) *cobra.Command {
 	var flags BuildFlags
 	flags.DetectOnly = true
 
 	cmd := &cobra.Command{
 		Use:     "detect",
 		Args:    cobra.ExactArgs(1),
-		Short:   "Pack Detect runs the analyze and detect phases of the Cloud Native Buildpacks lifecycle to determine a group of applicable buildpacks and a build plan.",
-		Example: "pack detect --path apps/test-app --builder cnbs/sample-builder:bionic",
-		Long:    "Pack Detect uses Cloud Native Buildpacks to run the detect phase of buildpack groups against the source code.\n",
+		Short:   "Execute detect runs the analyze and detect phases of the Cloud Native Buildpacks lifecycle to determine a group of applicable buildpacks and a build plan.",
+		Example: "pack execute detect --path apps/test-app --builder cnbs/sample-builder:bionic",
+		Long:    "Execute detect uses Cloud Native Buildpacks to run the detect phase of buildpack groups against the source code.\n",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			inputImageName := client.ParseInputImageReference(args[0])
 			if err := validateBuildFlags(&flags, cfg, inputImageName, logger); err != nil {
