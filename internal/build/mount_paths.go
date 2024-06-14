@@ -73,3 +73,7 @@ func (m mountPaths) launchCacheDir() string {
 func (m mountPaths) sbomDir() string {
 	return m.join(m.volume, "layers", "sbom")
 }
+
+func (m mountPaths) groupPath() string {
+	return m.join(m.layersDir(), "group.toml")
+}

@@ -51,6 +51,7 @@ type BuildFlags struct {
 	GID                  int
 	UID                  int
 	PreviousImage        string
+	GroupDestinationDir  string
 	SBOMDestinationDir   string
 	ReportDestinationDir string
 	DateTime             string
@@ -259,6 +260,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().StringVar(&buildFlags.Workspace, "workspace", "", "Location at which to mount the app dir in the build image")
 	cmd.Flags().IntVar(&buildFlags.GID, "gid", 0, `Override GID of user's group in the stack's build and run images. The provided value must be a positive number`)
 	cmd.Flags().IntVar(&buildFlags.UID, "uid", 0, `Override UID of user in the stack's build and run images. The provided value must be a positive number`)
+	cmd.Flags().StringVar(&buildFlags.GroupDestinationDir, "detect-output-dir", "", "Path to export group.toml.")
 
 	if !buildFlags.DetectOnly {
 		cmd.Flags().Var(&buildFlags.Cache, "cache",

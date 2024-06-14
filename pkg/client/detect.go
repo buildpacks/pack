@@ -11,7 +11,7 @@ func (c *Client) Detect(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	// TODO: Cleanup
+	lifecycleOpts.GroupDestinationDir = opts.GroupDestinationDir
 
 	if err = c.lifecycleExecutor.Detect(ctx, *lifecycleOpts); err != nil {
 		return fmt.Errorf("executing detect: %w", err)

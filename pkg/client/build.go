@@ -204,6 +204,9 @@ type BuildOptions struct {
 	TrustBuilder IsTrustedBuilder
 
 	// Directory to output any SBOM artifacts
+	GroupDestinationDir string
+
+	// Directory to output any SBOM artifacts
 	SBOMDestinationDir string
 
 	// Directory to output the report.toml metadata artifact

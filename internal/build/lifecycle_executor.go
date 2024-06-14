@@ -102,6 +102,7 @@ type LifecycleOptions struct {
 	PreviousImage                   string
 	ReportDestinationDir            string
 	SBOMDestinationDir              string
+	GroupDestinationDir             string
 	CreationTime                    *time.Time
 	Keychain                        authn.Keychain
 	FetchOptions                    image.FetchOptions

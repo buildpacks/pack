@@ -54,6 +54,8 @@ func ExecuteDetect(logger logging.Logger, cfg config.Config, packClient PackClie
 			buildpacks := flags.Buildpacks
 			extensions := flags.Extensions
 
+			groupDestinationDir := flags.GroupDestinationDir
+
 			env, err := parseEnv(flags.EnvFiles, flags.Env)
 			if err != nil {
 				return err
@@ -103,15 +105,16 @@ func ExecuteDetect(logger logging.Logger, cfg config.Config, packClient PackClie
 					Network: flags.Network,
 					Volumes: flags.Volumes,
 				},
-				LifecycleImage: lifecycleImage,
-				PreBuildpacks:  flags.PreBuildpacks,
-				PostBuildpacks: flags.PostBuildpacks,
-				Buildpacks:     buildpacks,
-				Extensions:     extensions,
-				Workspace:      flags.Workspace,
-				GroupID:        gid,
-				UserID:         uid,
-				DetectOnly:     true,
+				LifecycleImage:      lifecycleImage,
+				PreBuildpacks:       flags.PreBuildpacks,
+				PostBuildpacks:      flags.PostBuildpacks,
+				Buildpacks:          buildpacks,
+				Extensions:          extensions,
+				Workspace:           flags.Workspace,
+				GroupID:             gid,
+				UserID:              uid,
+				DetectOnly:          true,
+				GroupDestinationDir: groupDestinationDir,
 			}); err != nil {
 				return errors.Wrap(err, "failed to detect")
 			}
