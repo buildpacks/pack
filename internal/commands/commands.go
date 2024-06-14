@@ -29,6 +29,7 @@ type PackClient interface {
 	NewBuildpack(context.Context, client.NewBuildpackOptions) error
 	PackageBuildpack(ctx context.Context, opts client.PackageBuildpackOptions) error
 	PackageExtension(ctx context.Context, opts client.PackageBuildpackOptions) error
+	Detect(context.Context, client.BuildOptions) error
 	Build(context.Context, client.BuildOptions) error
 	RegisterBuildpack(context.Context, client.RegisterBuildpackOptions) error
 	YankBuildpack(client.YankBuildpackOptions) error

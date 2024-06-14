@@ -452,6 +452,10 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.tmpDir))),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
 			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated"), l.tmpDir))),
+		If(l.opts.GroupDestinationDir != "", WithPostContainerRunOperations(
+			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
+			CopyOutTo(l.mountPaths.groupPath(), l.opts.GroupDestinationDir))),
+
 		envOp,
 	)
 
@@ -567,7 +571,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 	platformAPILessThan07 := l.platformAPI.LessThan("0.7")
 
 	cacheBindOp := NullOp()
-	if l.opts.ClearCache {
+	if l.opts.ClearCache || buildCache == nil {
 		if platformAPILessThan07 || l.platformAPI.AtLeast("0.9") {
 			args = prependArg("-skip-layers", args)
 		}
@@ -584,7 +588,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 	}
 
 	launchCacheBindOp := NullOp()
-	if l.platformAPI.AtLeast("0.9") {
+	if l.platformAPI.AtLeast("0.9") && launchCache != nil {
 		if !l.opts.Publish {
 			args = append([]string{"-launch-cache", l.mountPaths.launchCacheDir()}, args...)
 			launchCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", launchCache.Name(), l.mountPaths.launchCacheDir()))
@@ -999,4 +1003,26 @@ func addTags(flags, additionalTags []string) []string {
 		flags = append(flags, "-tag", tag)
 	}
 	return flags
+}
+
+func (l *LifecycleExecution) RunDetect(ctx context.Context, phaseFactoryCreator PhaseFactoryCreator) error {
+	phaseFactory := phaseFactoryCreator(l)
+
+	var dummyCache Cache
+
+	if l.platformAPI.LessThan("0.7") {
+		return errors.New("Detect needs at least platform API 0.7")
+	}
+
+	l.logger.Info(style.Step("ANALYZING"))
+	if err := l.Analyze(ctx, dummyCache, dummyCache, phaseFactory); err != nil {
+		return err
+	}
+
+	l.logger.Info(style.Step("DETECTING"))
+	if err := l.Detect(ctx, phaseFactory); err != nil {
+		return err
+	}
+
+	return nil
 }

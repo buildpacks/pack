@@ -51,11 +51,13 @@ type BuildFlags struct {
 	GID                  int
 	UID                  int
 	PreviousImage        string
+	GroupDestinationDir  string
 	SBOMDestinationDir   string
 	ReportDestinationDir string
 	DateTime             string
 	PreBuildpacks        []string
 	PostBuildpacks       []string
+	DetectOnly           bool
 }
 
 // Build an image from source code
@@ -236,18 +238,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringSliceVarP(&buildFlags.Buildpacks, "buildpack", "b", nil, "Buildpack to use. One of:\n  a buildpack by id and version in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows),\n  path/URL to a buildpack .tar or .tgz file, or\n  a packaged buildpack image name in the form of '<hostname>/<repo>[:<tag>]'"+stringSliceHelp("buildpack"))
 	cmd.Flags().StringSliceVarP(&buildFlags.Extensions, "extension", "", nil, "Extension to use. One of:\n  an extension by id and version in the form of '<extension>@<version>',\n  path to an extension directory (not supported on Windows),\n  path/URL to an extension .tar or .tgz file, or\n  a packaged extension image name in the form of '<hostname>/<repo>[:<tag>]'"+stringSliceHelp("extension"))
 	cmd.Flags().StringVarP(&buildFlags.Builder, "builder", "B", cfg.DefaultBuilder, "Builder image")
-	cmd.Flags().Var(&buildFlags.Cache, "cache",
-		`Cache options used to define cache techniques for build process.
-- Cache as bind: 'type=<build/launch>;format=bind;source=<path to directory>'
-- Cache as image (requires --publish): 'type=<build/launch>;format=image;name=<registry image name>'
-- Cache as volume: 'type=<build/launch>;format=volume;[name=<volume name>]'
-    - If no name is provided, a random name will be generated.
-`)
-	cmd.Flags().StringVar(&buildFlags.CacheImage, "cache-image", "", `Cache build layers in remote registry. Requires --publish`)
-	cmd.Flags().BoolVar(&buildFlags.ClearCache, "clear-cache", false, "Clear image's associated cache before building")
-	cmd.Flags().StringVar(&buildFlags.DateTime, "creation-time", "", "Desired create time in the output image config. Accepted values are Unix timestamps (e.g., '1641013200'), or 'now'. Platform API version must be at least 0.9 to use this feature.")
 	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
-	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", `Set the default process type. (default "web")`)
 	cmd.Flags().StringArrayVarP(&buildFlags.Env, "env", "e", []string{}, "Build-time environment variable, in the form 'VAR=VALUE' or 'VAR'.\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed.\nThis flag may be specified multiple times and will override\n  individual values defined by --env-file."+stringArrayHelp("env")+"\nNOTE: These are NOT available at image runtime.")
 	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed\nNOTE: These are NOT available at image runtime.\"")
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
@@ -265,20 +256,35 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
 	cmd.Flags().StringVarP(&buildFlags.Registry, "buildpack-registry", "r", cfg.DefaultRegistryName, "Buildpack Registry by name")
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
-	cmd.Flags().StringSliceVarP(&buildFlags.AdditionalTags, "tag", "t", nil, "Additional tags to push the output image to.\nTags should be in the format 'image:tag' or 'repository/image:tag'."+stringSliceHelp("tag"))
-	cmd.Flags().BoolVar(&buildFlags.TrustBuilder, "trust-builder", false, "Trust the provided builder.\nAll lifecycle phases will be run in a single container.\nFor more on trusted builders, and when to trust or untrust a builder, check out our docs here: https://buildpacks.io/docs/tools/pack/concepts/trusted_builders")
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<options>]'.\n- 'host path': Name of the volume or absolute directory path to mount.\n- 'target path': The path where the file or directory is available in the container.\n- 'options' (default \"ro\"): An optional comma separated list of mount options.\n    - \"ro\", volume contents are read-only.\n    - \"rw\", volume contents are readable and writeable.\n    - \"volume-opt=<key>=<value>\", can be specified more than once, takes a key-value pair consisting of the option name and its value."+stringArrayHelp("volume"))
 	cmd.Flags().StringVar(&buildFlags.Workspace, "workspace", "", "Location at which to mount the app dir in the build image")
 	cmd.Flags().IntVar(&buildFlags.GID, "gid", 0, `Override GID of user's group in the stack's build and run images. The provided value must be a positive number`)
 	cmd.Flags().IntVar(&buildFlags.UID, "uid", 0, `Override UID of user in the stack's build and run images. The provided value must be a positive number`)
-	cmd.Flags().StringVar(&buildFlags.PreviousImage, "previous-image", "", "Set previous image to a particular tag reference, digest reference, or (when performing a daemon build) image ID")
-	cmd.Flags().StringVar(&buildFlags.SBOMDestinationDir, "sbom-output-dir", "", "Path to export SBoM contents.\nOmitting the flag will yield no SBoM content.")
-	cmd.Flags().StringVar(&buildFlags.ReportDestinationDir, "report-output-dir", "", "Path to export build report.toml.\nOmitting the flag yield no report file.")
-	cmd.Flags().BoolVar(&buildFlags.Interactive, "interactive", false, "Launch a terminal UI to depict the build process")
-	cmd.Flags().BoolVar(&buildFlags.Sparse, "sparse", false, "Use this flag to avoid saving on disk the run-image layers when the application image is exported to OCI layout format")
-	if !cfg.Experimental {
-		cmd.Flags().MarkHidden("interactive")
-		cmd.Flags().MarkHidden("sparse")
+	cmd.Flags().StringVar(&buildFlags.GroupDestinationDir, "detect-output-dir", "", "Path to export group.toml.")
+
+	if !buildFlags.DetectOnly {
+		cmd.Flags().Var(&buildFlags.Cache, "cache",
+			`Cache options used to define cache techniques for build process.
+- Cache as bind: 'type=<build/launch>;format=bind;source=<path to directory>'
+- Cache as image (requires --publish): 'type=<build/launch>;format=image;name=<registry image name>'
+- Cache as volume: 'type=<build/launch>;format=volume;[name=<volume name>]'
+    - If no name is provided, a random name will be generated.
+`)
+		cmd.Flags().StringVar(&buildFlags.CacheImage, "cache-image", "", `Cache build layers in remote registry. Requires --publish`)
+		cmd.Flags().BoolVar(&buildFlags.ClearCache, "clear-cache", false, "Clear image's associated cache before building")
+		cmd.Flags().StringVar(&buildFlags.DateTime, "creation-time", "", "Desired create time in the output image config. Accepted values are Unix timestamps (e.g., '1641013200'), or 'now'. Platform API version must be at least 0.9 to use this feature.")
+		cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", `Set the default process type. (default "web")`)
+		cmd.Flags().StringSliceVarP(&buildFlags.AdditionalTags, "tag", "t", nil, "Additional tags to push the output image to.\nTags should be in the format 'image:tag' or 'repository/image:tag'."+stringSliceHelp("tag"))
+		cmd.Flags().BoolVar(&buildFlags.TrustBuilder, "trust-builder", false, "Trust the provided builder.\nAll lifecycle phases will be run in a single container.\nFor more on trusted builders, and when to trust or untrust a builder, check out our docs here: https://buildpacks.io/docs/tools/pack/concepts/trusted_builders")
+		cmd.Flags().StringVar(&buildFlags.PreviousImage, "previous-image", "", "Set previous image to a particular tag reference, digest reference, or (when performing a daemon build) image ID")
+		cmd.Flags().StringVar(&buildFlags.SBOMDestinationDir, "sbom-output-dir", "", "Path to export SBoM contents.\nOmitting the flag will yield no SBoM content.")
+		cmd.Flags().StringVar(&buildFlags.ReportDestinationDir, "report-output-dir", "", "Path to export build report.toml.\nOmitting the flag yield no report file.")
+		cmd.Flags().BoolVar(&buildFlags.Interactive, "interactive", false, "Launch a terminal UI to depict the build process")
+		cmd.Flags().BoolVar(&buildFlags.Sparse, "sparse", false, "Use this flag to avoid saving on disk the run-image layers when the application image is exported to OCI layout format")
+		if !cfg.Experimental {
+			cmd.Flags().MarkHidden("interactive")
+			cmd.Flags().MarkHidden("sparse")
+		}
 	}
 }
 

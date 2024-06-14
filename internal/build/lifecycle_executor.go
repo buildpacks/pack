@@ -16,6 +16,7 @@ import (
 	"github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -101,8 +102,10 @@ type LifecycleOptions struct {
 	PreviousImage                   string
 	ReportDestinationDir            string
 	SBOMDestinationDir              string
+	GroupDestinationDir             string
 	CreationTime                    *time.Time
 	Keychain                        authn.Keychain
+	FetchOptions                    image.FetchOptions
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker DockerClient) *LifecycleExecutor {
@@ -129,4 +132,19 @@ func (l *LifecycleExecutor) Execute(ctx context.Context, opts LifecycleOptions) 
 		defer lifecycleExec.Cleanup()
 		lifecycleExec.Run(ctx, NewDefaultPhaseFactory)
 	})
+}
+
+func (l *LifecycleExecutor) Detect(ctx context.Context, opts LifecycleOptions) error {
+	tmpDir, err := os.MkdirTemp("", "pack.tmp")
+	if err != nil {
+		return err
+	}
+
+	lifecycleExec, err := NewLifecycleExecution(l.logger, l.docker, tmpDir, opts)
+	if err != nil {
+		return err
+	}
+
+	defer lifecycleExec.Cleanup()
+	return lifecycleExec.RunDetect(ctx, NewDefaultPhaseFactory)
 }
