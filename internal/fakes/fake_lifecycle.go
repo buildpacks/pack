@@ -14,3 +14,8 @@ func (f *FakeLifecycle) Execute(ctx context.Context, opts build.LifecycleOptions
 	f.Opts = opts
 	return nil
 }
+
+func (f *FakeLifecycle) Detect(ctx context.Context, opts build.LifecycleOptions) error {
+	f.Opts = opts
+	return nil
+}

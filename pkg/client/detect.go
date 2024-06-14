@@ -3,8 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-
-	"github.com/docker/docker/api/types"
 )
 
 func (c *Client) Detect(ctx context.Context, opts BuildOptions) error {
@@ -13,8 +11,7 @@ func (c *Client) Detect(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	defer c.docker.ImageRemove(context.Background(), lifecycleOpts.LifecycleImage, types.ImageRemoveOptions{Force: true})
-	defer c.docker.ImageRemove(context.Background(), lifecycleOpts.Builder.Name(), types.ImageRemoveOptions{Force: true})
+	// TODO: Cleanup
 
 	if err = c.lifecycleExecutor.Detect(ctx, *lifecycleOpts); err != nil {
 		return fmt.Errorf("executing detect: %w", err)

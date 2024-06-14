@@ -284,7 +284,6 @@ This option may set DOCKER_HOST environment variable for the build container if 
 			cmd.Flags().MarkHidden("sparse")
 		}
 	}
-
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, inputImageRef client.InputImageReference, logger logging.Logger) error {
