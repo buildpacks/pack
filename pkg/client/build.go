@@ -22,7 +22,6 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/platform/files"
-	types "github.com/docker/docker/api/types/image"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
@@ -72,6 +71,9 @@ type LifecycleExecutor interface {
 	// Execute is responsible for invoking each of these binaries
 	// with the desired configuration.
 	Execute(ctx context.Context, opts build.LifecycleOptions) error
+
+	// Detect runs only up the detect binary
+	Detect(ctx context.Context, opts build.LifecycleOptions) error
 }
 
 type IsTrustedBuilder func(string) bool
@@ -212,6 +214,9 @@ type BuildOptions struct {
 
 	// Configuration to export to OCI layout format
 	LayoutConfig *LayoutConfig
+
+	// States if the whole lifecycle or only the detect binary should be run
+	DetectOnly bool
 }
 
 func (b *BuildOptions) Layout() bool {
@@ -291,328 +296,18 @@ var IsTrustedBuilderFunc = func(b string) bool {
 // If any configuration is deemed invalid, or if any lifecycle phases fail,
 // an error will be returned and no image produced.
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
-	var pathsConfig layoutPathConfig
-
-	imageRef, err := c.parseReference(opts)
-	if err != nil {
-		return errors.Wrapf(err, "invalid image name '%s'", opts.Image)
-	}
-	imgRegistry := imageRef.Context().RegistryStr()
-	imageName := imageRef.Name()
-
-	if opts.Layout() {
-		pathsConfig, err = c.processLayoutPath(opts.LayoutConfig.InputImage, opts.LayoutConfig.PreviousInputImage)
-		if err != nil {
-			if opts.LayoutConfig.PreviousInputImage != nil {
-				return errors.Wrapf(err, "invalid layout paths image name '%s' or previous-image name '%s'", opts.LayoutConfig.InputImage.Name(),
-					opts.LayoutConfig.PreviousInputImage.Name())
-			}
-			return errors.Wrapf(err, "invalid layout paths image name '%s'", opts.LayoutConfig.InputImage.Name())
-		}
-	}
-
-	appPath, err := c.processAppPath(opts.AppPath)
-	if err != nil {
-		return errors.Wrapf(err, "invalid app path '%s'", opts.AppPath)
-	}
-
-	proxyConfig := c.processProxyConfig(opts.ProxyConfig)
-
-	builderRef, err := c.processBuilderName(opts.Builder)
-	if err != nil {
-		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
-	}
-
-	requestedTarget := func() *dist.Target {
-		if opts.Platform == "" {
-			return nil
-		}
-		parts := strings.Split(opts.Platform, "/")
-		switch len(parts) {
-		case 0:
-			return nil
-		case 1:
-			return &dist.Target{OS: parts[0]}
-		case 2:
-			return &dist.Target{OS: parts[0], Arch: parts[1]}
-		default:
-			return &dist.Target{OS: parts[0], Arch: parts[1], ArchVariant: parts[2]}
-		}
-	}()
-
-	rawBuilderImage, err := c.imageFetcher.Fetch(
-		ctx,
-		builderRef.Name(),
-		image.FetchOptions{
-			Daemon:     true,
-			Target:     requestedTarget,
-			PullPolicy: opts.PullPolicy},
-	)
-	if err != nil {
-		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
-	}
-
-	var targetToUse *dist.Target
-	if requestedTarget != nil {
-		targetToUse = requestedTarget
-	} else {
-		targetToUse, err = getTargetFromBuilder(rawBuilderImage)
-		if err != nil {
-			return err
-		}
-	}
-
-	bldr, err := c.getBuilder(rawBuilderImage)
-	if err != nil {
-		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
-	}
-
-	fetchOptions := image.FetchOptions{
-		Daemon:     !opts.Publish,
-		PullPolicy: opts.PullPolicy,
-		Target:     targetToUse,
-	}
-	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish, fetchOptions)
-
-	if opts.Layout() {
-		targetRunImagePath, err := layout.ParseRefToPath(runImageName)
-		if err != nil {
-			return err
-		}
-		hostRunImagePath := filepath.Join(opts.LayoutConfig.LayoutRepoDir, targetRunImagePath)
-		targetRunImagePath = filepath.Join(paths.RootDir, "layout-repo", targetRunImagePath)
-		fetchOptions.LayoutOption = image.LayoutOption{
-			Path:   hostRunImagePath,
-			Sparse: opts.LayoutConfig.Sparse,
-		}
-		fetchOptions.Daemon = false
-		pathsConfig.targetRunImagePath = targetRunImagePath
-		pathsConfig.hostRunImagePath = hostRunImagePath
-	}
-	runImage, err := c.validateRunImage(ctx, runImageName, fetchOptions, bldr.StackID)
-	if err != nil {
-		return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
-	}
-
-	var runMixins []string
-	if _, err := dist.GetLabel(runImage, stack.MixinsLabel, &runMixins); err != nil {
-		return err
-	}
-
-	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Buildpacks(), bldr.Order(), bldr.StackID, opts, targetToUse)
+	lifecycleOpts, err := c.ResolveLifecycleOptions(ctx, opts)
 	if err != nil {
 		return err
 	}
 
-	fetchedExs, orderExtensions, err := c.processExtensions(ctx, bldr.Extensions(), opts, targetToUse)
-	if err != nil {
-		return err
-	}
-
-	// Default mode: if the TrustBuilder option is not set, trust the suggested builders.
-	if opts.TrustBuilder == nil {
-		opts.TrustBuilder = IsTrustedBuilderFunc
-	}
-
-	// Ensure the builder's platform APIs are supported
-	var builderPlatformAPIs builder.APISet
-	builderPlatformAPIs = append(builderPlatformAPIs, bldr.LifecycleDescriptor().APIs.Platform.Deprecated...)
-	builderPlatformAPIs = append(builderPlatformAPIs, bldr.LifecycleDescriptor().APIs.Platform.Supported...)
-	if !supportsPlatformAPI(builderPlatformAPIs) {
-		c.logger.Debugf("pack %s supports Platform API(s): %s", c.version, strings.Join(build.SupportedPlatformAPIVersions.AsStrings(), ", "))
-		c.logger.Debugf("Builder %s supports Platform API(s): %s", style.Symbol(opts.Builder), strings.Join(builderPlatformAPIs.AsStrings(), ", "))
-		return errors.Errorf("Builder %s is incompatible with this version of pack", style.Symbol(opts.Builder))
-	}
-
-	// Get the platform API version to use
-	lifecycleVersion := bldr.LifecycleDescriptor().Info.Version
-	useCreator := supportsCreator(lifecycleVersion) && opts.TrustBuilder(opts.Builder)
-	var (
-		lifecycleOptsLifecycleImage string
-		lifecycleAPIs               []string
-	)
-	if !(useCreator) {
-		// fetch the lifecycle image
-		if supportsLifecycleImage(lifecycleVersion) {
-			lifecycleImageName := opts.LifecycleImage
-			if lifecycleImageName == "" {
-				lifecycleImageName = fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, lifecycleVersion.String())
-			}
-
-			lifecycleImage, err := c.imageFetcher.Fetch(
-				ctx,
-				lifecycleImageName,
-				image.FetchOptions{
-					Daemon:     true,
-					PullPolicy: opts.PullPolicy,
-					Target:     targetToUse,
-				},
-			)
-			if err != nil {
-				return fmt.Errorf("fetching lifecycle image: %w", err)
-			}
-
-			// if lifecyle container os isn't windows, use ephemeral lifecycle to add /workspace with correct ownership
-			imageOS, err := lifecycleImage.OS()
-			if err != nil {
-				return errors.Wrap(err, "getting lifecycle image OS")
-			}
-			if imageOS != "windows" {
-				// obtain uid/gid from builder to use when extending lifecycle image
-				uid, gid, err := userAndGroupIDs(rawBuilderImage)
-				if err != nil {
-					return fmt.Errorf("obtaining build uid/gid from builder image: %w", err)
-				}
-
-				c.logger.Debugf("Creating ephemeral lifecycle from %s with uid %d and gid %d. With workspace dir %s", lifecycleImage.Name(), uid, gid, opts.Workspace)
-				// extend lifecycle image with mountpoints, and use it instead of current lifecycle image
-				lifecycleImage, err = c.createEphemeralLifecycle(lifecycleImage, opts.Workspace, uid, gid)
-				if err != nil {
-					return err
-				}
-				c.logger.Debugf("Selecting ephemeral lifecycle image %s for build", lifecycleImage.Name())
-				// cleanup the extended lifecycle image when done
-				defer c.docker.ImageRemove(context.Background(), lifecycleImage.Name(), types.RemoveOptions{Force: true})
-			}
-
-			lifecycleOptsLifecycleImage = lifecycleImage.Name()
-			labels, err := lifecycleImage.Labels()
-			if err != nil {
-				return fmt.Errorf("reading labels of lifecycle image: %w", err)
-			}
-
-			lifecycleAPIs, err = extractSupportedLifecycleApis(labels)
-			if err != nil {
-				return fmt.Errorf("reading api versions of lifecycle image: %w", err)
-			}
-		}
-	}
-
-	usingPlatformAPI, err := build.FindLatestSupported(append(
-		bldr.LifecycleDescriptor().APIs.Platform.Deprecated,
-		bldr.LifecycleDescriptor().APIs.Platform.Supported...),
-		lifecycleAPIs)
-	if err != nil {
-		return fmt.Errorf("finding latest supported Platform API: %w", err)
-	}
-	if usingPlatformAPI.LessThan("0.12") {
-		if err = c.validateMixins(fetchedBPs, bldr, runImageName, runMixins); err != nil {
-			return fmt.Errorf("validating stack mixins: %w", err)
-		}
-	}
-
-	buildEnvs := map[string]string{}
-	for _, envVar := range opts.ProjectDescriptor.Build.Env {
-		buildEnvs[envVar.Name] = envVar.Value
-	}
-
-	for k, v := range opts.Env {
-		buildEnvs[k] = v
-	}
-
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, orderExtensions, fetchedExs, usingPlatformAPI.LessThan("0.12"), opts.RunImage)
-	if err != nil {
-		return err
-	}
-	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.RemoveOptions{Force: true})
-
-	if len(bldr.OrderExtensions()) > 0 || len(ephemeralBuilder.OrderExtensions()) > 0 {
-		if targetToUse.OS == "windows" {
-			return fmt.Errorf("builder contains image extensions which are not supported for Windows builds")
-		}
-		if !(opts.PullPolicy == image.PullAlways) {
-			return fmt.Errorf("pull policy must be 'always' when builder contains image extensions")
-		}
-	}
-
-	if opts.Layout() {
-		opts.ContainerConfig.Volumes = appendLayoutVolumes(opts.ContainerConfig.Volumes, pathsConfig)
-	}
-
-	processedVolumes, warnings, err := processVolumes(targetToUse.OS, opts.ContainerConfig.Volumes)
-	if err != nil {
-		return err
-	}
-
-	for _, warning := range warnings {
-		c.logger.Warn(warning)
-	}
-
-	fileFilter, err := getFileFilter(opts.ProjectDescriptor)
-	if err != nil {
-		return err
-	}
-
-	runImageName, err = pname.TranslateRegistry(runImageName, c.registryMirrors, c.logger)
-	if err != nil {
-		return err
-	}
-
-	projectMetadata := files.ProjectMetadata{}
-	if c.experimental {
-		version := opts.ProjectDescriptor.Project.Version
-		sourceURL := opts.ProjectDescriptor.Project.SourceURL
-		if version != "" || sourceURL != "" {
-			projectMetadata.Source = &files.ProjectSource{
-				Type:     "project",
-				Version:  map[string]interface{}{"declared": version},
-				Metadata: map[string]interface{}{"url": sourceURL},
-			}
-		} else {
-			projectMetadata.Source = v02.GitMetadata(opts.AppPath)
-		}
-	}
-
-	lifecycleOpts := build.LifecycleOptions{
-		AppPath:                  appPath,
-		Image:                    imageRef,
-		Builder:                  ephemeralBuilder,
-		BuilderImage:             builderRef.Name(),
-		LifecycleImage:           ephemeralBuilder.Name(),
-		RunImage:                 runImageName,
-		ProjectMetadata:          projectMetadata,
-		ClearCache:               opts.ClearCache,
-		Publish:                  opts.Publish,
-		TrustBuilder:             opts.TrustBuilder(opts.Builder),
-		UseCreator:               useCreator,
-		UseCreatorWithExtensions: supportsCreatorWithExtensions(lifecycleVersion),
-		DockerHost:               opts.DockerHost,
-		Cache:                    opts.Cache,
-		CacheImage:               opts.CacheImage,
-		HTTPProxy:                proxyConfig.HTTPProxy,
-		HTTPSProxy:               proxyConfig.HTTPSProxy,
-		NoProxy:                  proxyConfig.NoProxy,
-		Network:                  opts.ContainerConfig.Network,
-		AdditionalTags:           opts.AdditionalTags,
-		Volumes:                  processedVolumes,
-		DefaultProcessType:       opts.DefaultProcessType,
-		FileFilter:               fileFilter,
-		Workspace:                opts.Workspace,
-		GID:                      opts.GroupID,
-		UID:                      opts.UserID,
-		PreviousImage:            opts.PreviousImage,
-		Interactive:              opts.Interactive,
-		Termui:                   termui.NewTermui(imageName, ephemeralBuilder, runImageName),
-		ReportDestinationDir:     opts.ReportDestinationDir,
-		SBOMDestinationDir:       opts.SBOMDestinationDir,
-		CreationTime:             opts.CreationTime,
-		Layout:                   opts.Layout(),
-		Keychain:                 c.keychain,
-	}
-
-	switch {
-	case useCreator:
-		lifecycleOpts.UseCreator = true
-	case supportsLifecycleImage(lifecycleVersion):
-		lifecycleOpts.LifecycleImage = lifecycleOptsLifecycleImage
-		lifecycleOpts.LifecycleApis = lifecycleAPIs
-	case !opts.TrustBuilder(opts.Builder):
-		return errors.Errorf("Lifecycle %s does not have an associated lifecycle image. Builder must be trusted.", lifecycleVersion.String())
-	}
+	// cleanup the extended lifecycle image when done
+	// defer c.docker.ImageRemove(context.Background(), lifecycleImage.Name(), types.RemoveOptions{Force: true})
+	// defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.RemoveOptions{Force: true})
 
 	lifecycleOpts.FetchRunImageWithLifecycleLayer = func(runImageName string) (string, error) {
 		ephemeralRunImageName := fmt.Sprintf("pack.local/run-image/%x:latest", randString(10))
-		runImage, err := c.imageFetcher.Fetch(ctx, runImageName, fetchOptions)
+		runImage, err := c.imageFetcher.Fetch(ctx, runImageName, lifecycleOpts.FetchOptions)
 		if err != nil {
 			return "", err
 		}
@@ -757,10 +452,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return ephemeralRunImageName, nil
 	}
 
-	if err = c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
+	if err = c.lifecycleExecutor.Execute(ctx, *lifecycleOpts); err != nil {
 		return fmt.Errorf("executing lifecycle: %w", err)
 	}
-	return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
+	return c.logImageNameAndSha(ctx, opts.Publish, lifecycleOpts.Image)
 }
 
 func getTargetFromBuilder(builderImage imgutil.Image) (*dist.Target, error) {
@@ -1684,4 +1379,324 @@ func readOnlyVolume(hostPath, targetPath string) string {
 		tp = filepath.Join(string(filepath.Separator), targetPath)
 	}
 	return fmt.Sprintf("%s:%s", hostPath, tp)
+}
+
+func (c *Client) ResolveLifecycleOptions(ctx context.Context, opts BuildOptions) (*build.LifecycleOptions, error) {
+	var pathsConfig layoutPathConfig
+
+	imageRef, err := c.parseReference(opts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invalid image name '%s'", opts.Image)
+	}
+	imgRegistry := imageRef.Context().RegistryStr()
+	imageName := imageRef.Name()
+
+	if opts.Layout() {
+		pathsConfig, err = c.processLayoutPath(opts.LayoutConfig.InputImage, opts.LayoutConfig.PreviousInputImage)
+		if err != nil {
+			if opts.LayoutConfig.PreviousInputImage != nil {
+				return nil, errors.Wrapf(err, "invalid layout paths image name '%s' or previous-image name '%s'", opts.LayoutConfig.InputImage.Name(),
+					opts.LayoutConfig.PreviousInputImage.Name())
+			}
+			return nil, errors.Wrapf(err, "invalid layout paths image name '%s'", opts.LayoutConfig.InputImage.Name())
+		}
+	}
+
+	appPath, err := c.processAppPath(opts.AppPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invalid app path '%s'", opts.AppPath)
+	}
+
+	proxyConfig := c.processProxyConfig(opts.ProxyConfig)
+
+	builderRef, err := c.processBuilderName(opts.Builder)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
+	}
+
+	requestedTarget := func() *dist.Target {
+		if opts.Platform == "" {
+			return nil
+		}
+		parts := strings.Split(opts.Platform, "/")
+		switch len(parts) {
+		case 0:
+			return nil
+		case 1:
+			return &dist.Target{OS: parts[0]}
+		case 2:
+			return &dist.Target{OS: parts[0], Arch: parts[1]}
+		default:
+			return &dist.Target{OS: parts[0], Arch: parts[1], ArchVariant: parts[2]}
+		}
+	}()
+
+	rawBuilderImage, err := c.imageFetcher.Fetch(
+		ctx,
+		builderRef.Name(),
+		image.FetchOptions{
+			Daemon:     true,
+			Target:     requestedTarget,
+			PullPolicy: opts.PullPolicy},
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
+	}
+
+	var targetToUse *dist.Target
+	if requestedTarget != nil {
+		targetToUse = requestedTarget
+	} else {
+		targetToUse, err = getTargetFromBuilder(rawBuilderImage)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	bldr, err := c.getBuilder(rawBuilderImage)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
+	}
+
+	fetchOptions := image.FetchOptions{
+		Daemon:     !opts.Publish,
+		PullPolicy: opts.PullPolicy,
+		Target:     targetToUse,
+	}
+	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish, fetchOptions)
+
+	if opts.Layout() {
+		targetRunImagePath, err := layout.ParseRefToPath(runImageName)
+		if err != nil {
+			return nil, err
+		}
+		hostRunImagePath := filepath.Join(opts.LayoutConfig.LayoutRepoDir, targetRunImagePath)
+		targetRunImagePath = filepath.Join(paths.RootDir, "layout-repo", targetRunImagePath)
+		fetchOptions.LayoutOption = image.LayoutOption{
+			Path:   hostRunImagePath,
+			Sparse: opts.LayoutConfig.Sparse,
+		}
+		fetchOptions.Daemon = false
+		pathsConfig.targetRunImagePath = targetRunImagePath
+		pathsConfig.hostRunImagePath = hostRunImagePath
+	}
+	runImage, err := c.validateRunImage(ctx, runImageName, fetchOptions, bldr.StackID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invalid run-image '%s'", runImageName)
+	}
+
+	var runMixins []string
+	if _, err := dist.GetLabel(runImage, stack.MixinsLabel, &runMixins); err != nil {
+		return nil, err
+	}
+
+	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Buildpacks(), bldr.Order(), bldr.StackID, opts, targetToUse)
+	if err != nil {
+		return nil, err
+	}
+
+	fetchedExs, orderExtensions, err := c.processExtensions(ctx, bldr.Extensions(), opts, targetToUse)
+	if err != nil {
+		return nil, err
+	}
+
+	// Default mode: if the TrustBuilder option is not set, trust the suggested builders.
+	if opts.TrustBuilder == nil {
+		opts.TrustBuilder = IsTrustedBuilderFunc
+	}
+
+	// Ensure the builder's platform APIs are supported
+	var builderPlatformAPIs builder.APISet
+	builderPlatformAPIs = append(builderPlatformAPIs, bldr.LifecycleDescriptor().APIs.Platform.Deprecated...)
+	builderPlatformAPIs = append(builderPlatformAPIs, bldr.LifecycleDescriptor().APIs.Platform.Supported...)
+	if !supportsPlatformAPI(builderPlatformAPIs) {
+		c.logger.Debugf("pack %s supports Platform API(s): %s", c.version, strings.Join(build.SupportedPlatformAPIVersions.AsStrings(), ", "))
+		c.logger.Debugf("Builder %s supports Platform API(s): %s", style.Symbol(opts.Builder), strings.Join(builderPlatformAPIs.AsStrings(), ", "))
+		return nil, errors.Errorf("Builder %s is incompatible with this version of pack", style.Symbol(opts.Builder))
+	}
+
+	// Get the platform API version to use
+	lifecycleVersion := bldr.LifecycleDescriptor().Info.Version
+	useCreator := supportsCreator(lifecycleVersion) && opts.TrustBuilder(opts.Builder)
+	var (
+		lifecycleOptsLifecycleImage string
+		lifecycleAPIs               []string
+	)
+	if !(useCreator) {
+		// fetch the lifecycle image
+		if supportsLifecycleImage(lifecycleVersion) {
+			lifecycleImageName := opts.LifecycleImage
+			if lifecycleImageName == "" {
+				lifecycleImageName = fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, lifecycleVersion.String())
+			}
+
+			lifecycleImage, err := c.imageFetcher.Fetch(
+				ctx,
+				lifecycleImageName,
+				image.FetchOptions{
+					Daemon:     true,
+					PullPolicy: opts.PullPolicy,
+					Target:     targetToUse,
+				},
+			)
+			if err != nil {
+				return nil, fmt.Errorf("fetching lifecycle image: %w", err)
+			}
+
+			// if lifecyle container os isn't windows, use ephemeral lifecycle to add /workspace with correct ownership
+			imageOS, err := lifecycleImage.OS()
+			if err != nil {
+				return nil, errors.Wrap(err, "getting lifecycle image OS")
+			}
+			if imageOS != "windows" {
+				// obtain uid/gid from builder to use when extending lifecycle image
+				uid, gid, err := userAndGroupIDs(rawBuilderImage)
+				if err != nil {
+					return nil, fmt.Errorf("obtaining build uid/gid from builder image: %w", err)
+				}
+
+				c.logger.Debugf("Creating ephemeral lifecycle from %s with uid %d and gid %d. With workspace dir %s", lifecycleImage.Name(), uid, gid, opts.Workspace)
+				// extend lifecycle image with mountpoints, and use it instead of current lifecycle image
+				lifecycleImage, err = c.createEphemeralLifecycle(lifecycleImage, opts.Workspace, uid, gid)
+				if err != nil {
+					return nil, err
+				}
+				c.logger.Debugf("Selecting ephemeral lifecycle image %s for build", lifecycleImage.Name())
+			}
+
+			lifecycleOptsLifecycleImage = lifecycleImage.Name()
+			labels, err := lifecycleImage.Labels()
+			if err != nil {
+				return nil, fmt.Errorf("reading labels of lifecycle image: %w", err)
+			}
+
+			lifecycleAPIs, err = extractSupportedLifecycleApis(labels)
+			if err != nil {
+				return nil, fmt.Errorf("reading api versions of lifecycle image: %w", err)
+			}
+		}
+	}
+
+	usingPlatformAPI, err := build.FindLatestSupported(append(
+		bldr.LifecycleDescriptor().APIs.Platform.Deprecated,
+		bldr.LifecycleDescriptor().APIs.Platform.Supported...),
+		lifecycleAPIs)
+	if err != nil {
+		return nil, fmt.Errorf("finding latest supported Platform API: %w", err)
+	}
+	if usingPlatformAPI.LessThan("0.12") {
+		if err = c.validateMixins(fetchedBPs, bldr, runImageName, runMixins); err != nil {
+			return nil, fmt.Errorf("validating stack mixins: %w", err)
+		}
+	}
+
+	buildEnvs := map[string]string{}
+	for _, envVar := range opts.ProjectDescriptor.Build.Env {
+		buildEnvs[envVar.Name] = envVar.Value
+	}
+
+	for k, v := range opts.Env {
+		buildEnvs[k] = v
+	}
+
+	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, orderExtensions, fetchedExs, usingPlatformAPI.LessThan("0.12"), opts.RunImage)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(bldr.OrderExtensions()) > 0 || len(ephemeralBuilder.OrderExtensions()) > 0 {
+		if targetToUse.OS == "windows" {
+			return nil, fmt.Errorf("builder contains image extensions which are not supported for Windows builds")
+		}
+		if !(opts.PullPolicy == image.PullAlways) {
+			return nil, fmt.Errorf("pull policy must be 'always' when builder contains image extensions")
+		}
+	}
+
+	if opts.Layout() {
+		opts.ContainerConfig.Volumes = appendLayoutVolumes(opts.ContainerConfig.Volumes, pathsConfig)
+	}
+
+	processedVolumes, warnings, err := processVolumes(targetToUse.OS, opts.ContainerConfig.Volumes)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, warning := range warnings {
+		c.logger.Warn(warning)
+	}
+
+	fileFilter, err := getFileFilter(opts.ProjectDescriptor)
+	if err != nil {
+		return nil, err
+	}
+
+	runImageName, err = pname.TranslateRegistry(runImageName, c.registryMirrors, c.logger)
+	if err != nil {
+		return nil, err
+	}
+
+	projectMetadata := files.ProjectMetadata{}
+	if c.experimental {
+		version := opts.ProjectDescriptor.Project.Version
+		sourceURL := opts.ProjectDescriptor.Project.SourceURL
+		if version != "" || sourceURL != "" {
+			projectMetadata.Source = &files.ProjectSource{
+				Type:     "project",
+				Version:  map[string]interface{}{"declared": version},
+				Metadata: map[string]interface{}{"url": sourceURL},
+			}
+		} else {
+			projectMetadata.Source = v02.GitMetadata(opts.AppPath)
+		}
+	}
+
+	lifecycleOpts := build.LifecycleOptions{
+		AppPath:                  appPath,
+		Image:                    imageRef,
+		Builder:                  ephemeralBuilder,
+		BuilderImage:             builderRef.Name(),
+		LifecycleImage:           ephemeralBuilder.Name(),
+		RunImage:                 runImageName,
+		ProjectMetadata:          projectMetadata,
+		ClearCache:               opts.ClearCache,
+		Publish:                  opts.Publish,
+		TrustBuilder:             opts.TrustBuilder(opts.Builder),
+		UseCreator:               useCreator,
+		UseCreatorWithExtensions: supportsCreatorWithExtensions(lifecycleVersion),
+		DockerHost:               opts.DockerHost,
+		Cache:                    opts.Cache,
+		CacheImage:               opts.CacheImage,
+		HTTPProxy:                proxyConfig.HTTPProxy,
+		HTTPSProxy:               proxyConfig.HTTPSProxy,
+		NoProxy:                  proxyConfig.NoProxy,
+		Network:                  opts.ContainerConfig.Network,
+		AdditionalTags:           opts.AdditionalTags,
+		Volumes:                  processedVolumes,
+		DefaultProcessType:       opts.DefaultProcessType,
+		FileFilter:               fileFilter,
+		Workspace:                opts.Workspace,
+		GID:                      opts.GroupID,
+		UID:                      opts.UserID,
+		PreviousImage:            opts.PreviousImage,
+		Interactive:              opts.Interactive,
+		Termui:                   termui.NewTermui(imageName, ephemeralBuilder, runImageName),
+		ReportDestinationDir:     opts.ReportDestinationDir,
+		SBOMDestinationDir:       opts.SBOMDestinationDir,
+		CreationTime:             opts.CreationTime,
+		Layout:                   opts.Layout(),
+		Keychain:                 c.keychain,
+	}
+
+	switch {
+	case useCreator:
+		lifecycleOpts.UseCreator = true
+	case supportsLifecycleImage(lifecycleVersion):
+		lifecycleOpts.LifecycleImage = lifecycleOptsLifecycleImage
+		lifecycleOpts.LifecycleApis = lifecycleAPIs
+	case !opts.TrustBuilder(opts.Builder):
+		return nil, errors.Errorf("Lifecycle %s does not have an associated lifecycle image. Builder must be trusted.", lifecycleVersion.String())
+	}
+
+	return &lifecycleOpts, nil
 }

@@ -7,6 +7,9 @@ benchmarks.test
 # Jetbrains Goland
 .idea/
 
+# Visual Studio Code
+.vscode/
+
 # Build outputs
 artifacts/
 .DS_Store
