@@ -23,7 +23,10 @@ type Config struct {
 	LifecycleImage      string            `toml:"lifecycle-image,omitempty"`
 	RegistryMirrors     map[string]string `toml:"registry-mirrors,omitempty"`
 	LayoutRepositoryDir string            `toml:"layout-repo-dir,omitempty"`
-	VolumeKeys          map[string]string `toml:"volume-keys,omitempty"` // TODO: move to own struct
+}
+
+type VolumeConfig struct {
+	VolumeKeys map[string]string `toml:"volume-keys,omitempty"`
 }
 
 type Registry struct {
@@ -88,7 +91,16 @@ func Read(path string) (Config, error) {
 	return cfg, nil
 }
 
-func Write(cfg Config, path string) error {
+func ReadVolumeKeys(path string) (VolumeConfig, error) {
+	cfg := VolumeConfig{}
+	_, err := toml.DecodeFile(path, &cfg)
+	if err != nil && !os.IsNotExist(err) {
+		return VolumeConfig{}, errors.Wrapf(err, "failed to read config file at path %s", path)
+	}
+	return cfg, nil
+}
+
+func Write(cfg interface{}, path string) error {
 	if err := MkdirAll(filepath.Dir(path)); err != nil {
 		return err
 	}

@@ -22,12 +22,12 @@ type VolumeCache struct {
 	volume string
 }
 
-func NewVolumeCache(imageRef name.Reference, cacheType CacheInfo, suffix string, dockerClient DockerClient) *VolumeCache {
+func NewVolumeCache(imageRef name.Reference, cacheType CacheInfo, suffix string, dockerClient DockerClient) (*VolumeCache, error) {
 	var volumeName string
 	if cacheType.Source == "" {
 		volumeKey, err := getVolumeKey(imageRef)
 		if err != nil {
-			// TODO
+			return nil, err
 		}
 		sum := sha256.Sum256([]byte(imageRef.Name() + volumeKey)) // TODO: investigate if there are better ways to do this
 		vol := paths.FilterReservedNames(fmt.Sprintf("%s-%x", sanitizedRef(imageRef), sum[:6]))
@@ -39,7 +39,7 @@ func NewVolumeCache(imageRef name.Reference, cacheType CacheInfo, suffix string,
 	return &VolumeCache{
 		volume: volumeName,
 		docker: dockerClient,
-	}
+	}, nil
 }
 
 func getVolumeKey(imageRef name.Reference) (string, error) {
@@ -58,7 +58,7 @@ func getVolumeKey(imageRef name.Reference) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	cfg, err := config.Read(volumeKeysPath)
+	cfg, err := config.ReadVolumeKeys(volumeKeysPath)
 	if err != nil {
 		return "", err
 	}
