@@ -2,9 +2,12 @@ package cache_test
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/pkg/cache"
 
 	"github.com/docker/docker/api/types/filters"
@@ -24,7 +27,7 @@ func TestVolumeCache(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 
-	spec.Run(t, "VolumeCache", testCache, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "VolumeCache", testCache, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testCache(t *testing.T, when spec.G, it spec.S) {
@@ -117,6 +120,72 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertContains(t, subject.Name(), "fedora_httpd_version1.0")
 				h.AssertTrue(t, names.RestrictedNamePattern.MatchString(subject.Name()))
+			})
+
+			when("PACK_VOLUME_KEY", func() {
+				when("is set", func() {
+					it.After(func() {
+						h.AssertNil(t, os.Unsetenv("PACK_VOLUME_KEY"))
+					})
+
+					it("uses it to construct the volume name", func() {
+						ref, err := name.ParseReference("my/repo:some-tag", name.WeakValidation)
+						h.AssertNil(t, err)
+
+						nameFromNewKey := cache.NewVolumeCache(ref, cache.CacheInfo{}, "some-suffix", dockerClient) // sources a new key
+						h.AssertNil(t, os.Setenv("PACK_VOLUME_KEY", "some-volume-key"))
+						nameFromEnvKey := cache.NewVolumeCache(ref, cache.CacheInfo{}, "some-suffix", dockerClient) // sources key from env
+						h.AssertNotEq(t, nameFromNewKey.Name(), nameFromEnvKey.Name())
+					})
+				})
+
+				when("is unset", func() {
+					var tmpPackHome string
+
+					it.Before(func() {
+						var err error
+						tmpPackHome, err = os.MkdirTemp("", "")
+						h.AssertNil(t, err)
+						h.AssertNil(t, os.Setenv("PACK_HOME", tmpPackHome))
+					})
+
+					it.After(func() {
+						h.AssertNil(t, os.RemoveAll(tmpPackHome))
+					})
+
+					when("~/.pack/volume-keys.toml contains key for repo name", func() {
+						it("sources the key from ~/.pack/volume-keys.toml", func() {
+							ref, err := name.ParseReference("my/repo:some-tag", name.WeakValidation)
+							h.AssertNil(t, err)
+
+							nameFromNewKey := cache.NewVolumeCache(ref, cache.CacheInfo{}, "some-suffix", dockerClient) // sources a new key
+
+							cfgContents := `
+[volume-keys]
+"index.docker.io/my/repo:some-tag" = "SOME_VOLUME_KEY"
+`
+							h.AssertNil(t, os.WriteFile(filepath.Join(tmpPackHome, "volume-keys.toml"), []byte(cfgContents), 0755)) // overrides the key that was set
+
+							nameFromConfigKey := cache.NewVolumeCache(ref, cache.CacheInfo{}, "some-suffix", dockerClient) // sources key from config
+							h.AssertNotEq(t, nameFromNewKey.Name(), nameFromConfigKey.Name())
+						})
+					})
+
+					when("~/.pack/volume-keys.toml missing key for repo name", func() {
+						it("generates a new key and saves it to ~/.pack/volume-keys.toml", func() {
+							ref, err := name.ParseReference("my/repo:some-tag", name.WeakValidation)
+							h.AssertNil(t, err)
+
+							nameFromNewKey := cache.NewVolumeCache(ref, cache.CacheInfo{}, "some-suffix", dockerClient)    // sources a new key
+							nameFromConfigKey := cache.NewVolumeCache(ref, cache.CacheInfo{}, "some-suffix", dockerClient) // sources same key from config
+							h.AssertEq(t, nameFromNewKey.Name(), nameFromConfigKey.Name())
+
+							cfg, err := config.Read(filepath.Join(tmpPackHome, "volume-keys.toml"))
+							h.AssertNil(t, err)
+							h.AssertNotNil(t, cfg.VolumeKeys["index.docker.io/my/repo:some-tag"])
+						})
+					})
+				})
 			})
 		})
 

@@ -2,15 +2,20 @@ package cache
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/paths"
 )
+
+const EnvVolumeKey = "PACK_VOLUME_KEY"
 
 type VolumeCache struct {
 	docker DockerClient
@@ -20,7 +25,11 @@ type VolumeCache struct {
 func NewVolumeCache(imageRef name.Reference, cacheType CacheInfo, suffix string, dockerClient DockerClient) *VolumeCache {
 	var volumeName string
 	if cacheType.Source == "" {
-		sum := sha256.Sum256([]byte(imageRef.Name()))
+		volumeKey, err := getVolumeKey(imageRef)
+		if err != nil {
+			// TODO
+		}
+		sum := sha256.Sum256([]byte(imageRef.Name() + volumeKey)) // TODO: investigate if there are better ways to do this
 		vol := paths.FilterReservedNames(fmt.Sprintf("%s-%x", sanitizedRef(imageRef), sum[:6]))
 		volumeName = fmt.Sprintf("pack-cache-%s.%s", vol, suffix)
 	} else {
@@ -31,6 +40,59 @@ func NewVolumeCache(imageRef name.Reference, cacheType CacheInfo, suffix string,
 		volume: volumeName,
 		docker: dockerClient,
 	}
+}
+
+func getVolumeKey(imageRef name.Reference) (string, error) {
+	var foundKey string
+
+	// first, look for key in env
+
+	foundKey = os.Getenv(EnvVolumeKey)
+	if foundKey != "" {
+		return foundKey, nil
+	}
+
+	// then, look for key in existing config
+
+	volumeKeysPath, err := config.DefaultVolumeKeysPath()
+	if err != nil {
+		return "", err
+	}
+	cfg, err := config.Read(volumeKeysPath)
+	if err != nil {
+		return "", err
+	}
+
+	foundKey = cfg.VolumeKeys[imageRef.Name()]
+	if foundKey != "" {
+		return foundKey, nil
+	}
+
+	// finally, create new key and store it in config
+
+	newKey := randString(20)
+	if cfg.VolumeKeys == nil {
+		cfg.VolumeKeys = make(map[string]string)
+	}
+	cfg.VolumeKeys[imageRef.Name()] = newKey
+	if err = config.Write(cfg, volumeKeysPath); err != nil {
+		return "", err
+	}
+
+	return newKey, nil
+}
+
+// Returns a string iwith lowercase a-z, of length n
+func randString(n int) string {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
+	for i := range b {
+		b[i] = 'a' + (b[i] % 26)
+	}
+	return string(b)
 }
 
 func (c *VolumeCache) Name() string {

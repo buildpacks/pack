@@ -23,6 +23,7 @@ type Config struct {
 	LifecycleImage      string            `toml:"lifecycle-image,omitempty"`
 	RegistryMirrors     map[string]string `toml:"registry-mirrors,omitempty"`
 	LayoutRepositoryDir string            `toml:"layout-repo-dir,omitempty"`
+	VolumeKeys          map[string]string `toml:"volume-keys,omitempty"` // TODO: move to own struct
 }
 
 type Registry struct {
@@ -56,6 +57,14 @@ func DefaultConfigPath() (string, error) {
 		return "", errors.Wrap(err, "getting pack home")
 	}
 	return filepath.Join(home, "config.toml"), nil
+}
+
+func DefaultVolumeKeysPath() (string, error) {
+	home, err := PackHome()
+	if err != nil {
+		return "", errors.Wrap(err, "getting pack home")
+	}
+	return filepath.Join(home, "volume-keys.toml"), nil
 }
 
 func PackHome() (string, error) {
