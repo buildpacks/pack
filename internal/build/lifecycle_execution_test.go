@@ -16,6 +16,7 @@ import (
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -777,6 +778,46 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 				})
+			})
+		})
+
+		when("network is not provided", func() {
+			it("creates an ephemeral bridge network", func() {
+				beforeNetworks := func() int {
+					networks, err := docker.NetworkList(context.Background(), types.NetworkListOptions{})
+					h.AssertNil(t, err)
+					return len(networks)
+				}()
+
+				opts := build.LifecycleOptions{
+					Image:   imageName,
+					Builder: fakeBuilder,
+					Termui:  fakeTermui,
+				}
+
+				lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
+				h.AssertNil(t, err)
+
+				err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+					return fakePhaseFactory
+				})
+				h.AssertNil(t, err)
+
+				for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+					h.AssertContains(t, string(entry.HostConfig().NetworkMode), "pack.local/network/")
+					h.AssertEq(t, entry.HostConfig().NetworkMode.IsDefault(), false)
+					h.AssertEq(t, entry.HostConfig().NetworkMode.IsHost(), false)
+					h.AssertEq(t, entry.HostConfig().NetworkMode.IsNone(), false)
+					h.AssertEq(t, entry.HostConfig().NetworkMode.IsPrivate(), true)
+					h.AssertEq(t, entry.HostConfig().NetworkMode.IsUserDefined(), true)
+				}
+
+				afterNetworks := func() int {
+					networks, err := docker.NetworkList(context.Background(), types.NetworkListOptions{})
+					h.AssertNil(t, err)
+					return len(networks)
+				}()
+				h.AssertEq(t, beforeNetworks, afterNetworks)
 			})
 		})
 
