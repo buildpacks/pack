@@ -523,7 +523,12 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	if err != nil {
 		return err
 	}
-	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.RemoveOptions{Force: true})
+	defer func() {
+		if ephemeralBuilder.Name() == rawBuilderImage.Name() {
+			return
+		}
+		_, _ = c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.RemoveOptions{Force: true})
+	}()
 
 	if len(bldr.OrderExtensions()) > 0 || len(ephemeralBuilder.OrderExtensions()) > 0 {
 		if targetToUse.OS == "windows" {
