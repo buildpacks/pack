@@ -150,6 +150,18 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Build", func() {
+		when("ephemeral builder is not needed", func() {
+			it("does not create one", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Builder: defaultBuilderName,
+					Image:   "example.com/some/repo:tag",
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderName)
+				bldr := fakeLifecycle.Opts.Builder.(*builder.Builder)
+				h.AssertNotNil(t, bldr.Save(logger, builder.CreatorMetadata{})) // it shouldn't be possible to save this builder, as that would overwrite the original builder
+			})
+		})
+
 		when("Workspace option", func() {
 			it("uses the specified dir", func() {
 				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
