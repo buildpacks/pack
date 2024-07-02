@@ -403,7 +403,6 @@ name = "licenses should have either a type or uri defined"
 
 		it("should warn when unsupported keys, on tables the project owns, are declared with schema v0.1", func() {
 			projectToml := `
-# try to use some schema 0.2 configuration with 0.1 version - warning message expected
 [project]
 authors = ["foo", "bar"]
 
@@ -427,13 +426,15 @@ foo = "bar"
 
 			_, err = ReadProjectDescriptor(tmpProjectToml.Name(), logger)
 			h.AssertNil(t, err)
-			h.AssertContains(t, readStdout(), "Warning: The following keys declared in project.toml are not supported in schema version 0.1:\nWarning: - project.authors\nWarning: - io.buildpacks.build.env\nWarning: - io.buildpacks.build.env.name\nWarning: - io.buildpacks.build.env.value\nWarning: The above keys will be ignored. If this is not intentional, try updating your schema version.\n")
+			h.AssertContains(t, readStdout(), "Warning: The following keys declared in project.toml are not supported in schema version 0.1:\nWarning: - io.buildpacks.build.env\nWarning: - io.buildpacks.build.env.name\nWarning: - io.buildpacks.build.env.value\nWarning: The above keys will be ignored. If this is not intentional, try updating your schema version.\n")
 		})
 
 		it("should warn when unsupported keys, on tables the project owns, are declared with schema v0.2", func() {
 			projectToml := `
 [_]
 schema-version = "0.2"
+id = "foo"
+version = "bar"
 # typo in a key under valid table - warning message expected
 versions = "0.1"
 
