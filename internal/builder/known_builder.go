@@ -12,7 +12,7 @@ var KnownBuilders = []KnownBuilder{
 	{
 		Vendor:             "Google",
 		Image:              "gcr.io/buildpacks/builder:google-22",
-		DefaultDescription: "GCP Builder for all runtimes",
+		DefaultDescription: "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java, Node.js, PHP, Python, and Ruby",
 		Suggested:          true,
 		Trusted:            true,
 	},
