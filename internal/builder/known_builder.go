@@ -11,7 +11,7 @@ type KnownBuilder struct {
 var KnownBuilders = []KnownBuilder{
 	{
 		Vendor:             "Google",
-		Image:              "gcr.io/buildpacks/builder:v1",
+		Image:              "gcr.io/buildpacks/builder:google-22",
 		DefaultDescription: "GCP Builder for all runtimes",
 		Suggested:          true,
 		Trusted:            true,
