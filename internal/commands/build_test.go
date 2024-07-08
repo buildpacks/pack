@@ -143,7 +143,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			when("the builder is not trusted", func() {
 				it("warns the user that the builder is untrusted", func() {
 					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithImage("org/builder:unknown", "image")).
+						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(false)).
 						Return(nil)
 
 					logger.WantVerbose(true)
@@ -1062,7 +1062,7 @@ func EqBuildOptionsWithTrustedBuilder(trustBuilder bool) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Trust Builder=%t", trustBuilder),
 		equals: func(o client.BuildOptions) bool {
-			return o.TrustBuilder(o.Builder)
+			return o.TrustBuilder(o.Builder) == trustBuilder
 		},
 	}
 }
