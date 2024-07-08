@@ -85,6 +85,7 @@ type Builder struct {
 	order                dist.Order
 	orderExtensions      dist.Order
 	validateMixins       bool
+	saveProhibited       bool
 }
 
 type orderTOML struct {
@@ -102,14 +103,22 @@ type moduleWithDiffID struct {
 type BuilderOption func(*options) error
 
 type options struct {
-	toFlatten buildpack.FlattenModuleInfos
-	labels    map[string]string
-	runImage  string
+	toFlatten      buildpack.FlattenModuleInfos
+	labels         map[string]string
+	runImage       string
+	saveProhibited bool
 }
 
 func WithRunImage(name string) BuilderOption {
 	return func(o *options) error {
 		o.runImage = name
+		return nil
+	}
+}
+
+func WithoutSave() BuilderOption {
+	return func(o *options) error {
+		o.saveProhibited = true
 		return nil
 	}
 }
@@ -149,8 +158,7 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 	}
 
 	if opts.runImage != "" {
-		// Do we need to look for available mirrors? for now the mirrors are gone if you override the run-image
-		// create an issue if you want to preserve the mirrors
+		// FIXME: for now the mirrors are gone if you override the run-image (open an issue if preserving the mirrors is desired)
 		metadata.RunImages = []RunImageMetadata{{Image: opts.runImage}}
 		metadata.Stack.RunImage = RunImageMetadata{Image: opts.runImage}
 	}
@@ -173,6 +181,7 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 		validateMixins:       true,
 		additionalBuildpacks: buildpack.NewManagedCollectionV2(opts.toFlatten),
 		additionalExtensions: buildpack.NewManagedCollectionV2(opts.toFlatten),
+		saveProhibited:       opts.saveProhibited,
 	}
 
 	if err := addImgLabelsToBuildr(bldr); err != nil {
@@ -435,6 +444,10 @@ func (b *Builder) SetValidateMixins(to bool) {
 
 // Save saves the builder
 func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) error {
+	if b.saveProhibited {
+		return fmt.Errorf("failed to save builder %s as saving is not allowed", b.Name())
+	}
+
 	logger.Debugf("Creating builder with the following buildpacks:")
 	for _, bpInfo := range b.metadata.Buildpacks {
 		logger.Debugf("-> %s", style.Symbol(bpInfo.FullName()))

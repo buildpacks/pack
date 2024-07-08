@@ -510,11 +510,25 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		buildEnvs[k] = v
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, orderExtensions, fetchedExs, usingPlatformAPI.LessThan("0.12"), opts.RunImage)
+	ephemeralBuilder, err := c.createEphemeralBuilder(
+		rawBuilderImage,
+		buildEnvs,
+		order,
+		fetchedBPs,
+		orderExtensions,
+		fetchedExs,
+		usingPlatformAPI.LessThan("0.12"),
+		opts.RunImage,
+	)
 	if err != nil {
 		return err
 	}
-	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.RemoveOptions{Force: true})
+	defer func() {
+		if ephemeralBuilder.Name() == rawBuilderImage.Name() {
+			return
+		}
+		_, _ = c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.RemoveOptions{Force: true})
+	}()
 
 	if len(bldr.OrderExtensions()) > 0 || len(ephemeralBuilder.OrderExtensions()) > 0 {
 		if targetToUse.OS == "windows" {
@@ -1502,6 +1516,10 @@ func (c *Client) createEphemeralBuilder(
 	validateMixins bool,
 	runImage string,
 ) (*builder.Builder, error) {
+	if !ephemeralBuilderNeeded(env, order, buildpacks, orderExtensions, extensions, runImage) {
+		return builder.New(rawBuilderImage, rawBuilderImage.Name(), builder.WithoutSave())
+	}
+
 	origBuilderName := rawBuilderImage.Name()
 	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)), builder.WithRunImage(runImage))
 	if err != nil {
@@ -1535,6 +1553,35 @@ func (c *Client) createEphemeralBuilder(
 		return nil, err
 	}
 	return bldr, nil
+}
+
+func ephemeralBuilderNeeded(
+	env map[string]string,
+	order dist.Order,
+	buildpacks []buildpack.BuildModule,
+	orderExtensions dist.Order,
+	extensions []buildpack.BuildModule,
+	runImage string,
+) bool {
+	if len(env) > 0 {
+		return true
+	}
+	if len(order) > 0 && len(order[0].Group) > 0 {
+		return true
+	}
+	if len(buildpacks) > 0 {
+		return true
+	}
+	if len(orderExtensions) > 0 && len(orderExtensions[0].Group) > 0 {
+		return true
+	}
+	if len(extensions) > 0 {
+		return true
+	}
+	if runImage != "" {
+		return true
+	}
+	return false
 }
 
 // Returns a string iwith lowercase a-z, of length n
