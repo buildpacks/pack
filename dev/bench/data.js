@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1720385029363,
+  "lastUpdate": 1720453758215,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7168,6 +7168,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 54852297623,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2fa3260e1acaf9dbdaef2befa1273d58857e9ca9",
+          "message": "Merge pull request #2197 from buildpacks/fix/warning-project-toml\n\nWhen parsing project.toml, don't warn about unexpected keys that are actually expected",
+          "timestamp": "2024-07-08T11:26:28-04:00",
+          "tree_id": "678fd6bcf57dd83f41cd44191b1ba036ae0e5859",
+          "url": "https://github.com/buildpacks/pack/commit/2fa3260e1acaf9dbdaef2befa1273d58857e9ca9"
+        },
+        "date": 1720453757539,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4872747845,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1273906118,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 55902027826,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
