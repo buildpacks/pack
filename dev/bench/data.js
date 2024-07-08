@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1720453758215,
+  "lastUpdate": 1720461946598,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7210,6 +7210,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 55902027826,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "98c98da526589bc9061cbd509e19c7ee2db445d9",
+          "message": "Merge pull request #2196 from buildpacks/lazy-ephemeral-builder\n\nDon't create an ephemeral builder if it isn't truly needed",
+          "timestamp": "2024-07-08T14:00:40-04:00",
+          "tree_id": "baa8169fa91439eeb7837779fedeae25993261ce",
+          "url": "https://github.com/buildpacks/pack/commit/98c98da526589bc9061cbd509e19c7ee2db445d9"
+        },
+        "date": 1720461945638,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7048070217,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2479207126,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 59581456725,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
