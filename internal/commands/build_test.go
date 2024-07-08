@@ -114,7 +114,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("the builder is known to be trusted", func() {
+			when("the builder is known to be trusted and suggested", func() {
 				it("sets the trust builder option", func() {
 					mockClient.EXPECT().
 						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(true)).
@@ -124,6 +124,19 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					command.SetArgs([]string{"image", "--builder", "heroku/builder:24"})
 					h.AssertNil(t, command.Execute())
 					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:24' is trusted")
+				})
+			})
+
+			when("the builder is known to be trusted but not suggested", func() {
+				it("sets the trust builder option", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(true)).
+						Return(nil)
+
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"image", "--builder", "heroku/builder:22"})
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:22' is trusted")
 				})
 			})
 
