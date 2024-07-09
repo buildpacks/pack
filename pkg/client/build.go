@@ -277,15 +277,6 @@ type layoutPathConfig struct {
 	targetRunImagePath      string
 }
 
-var IsTrustedBuilderFunc = func(b string) bool {
-	for _, knownBuilder := range builder.KnownBuilders {
-		if b == knownBuilder.Image && knownBuilder.Trusted {
-			return true
-		}
-	}
-	return false
-}
-
 // Build configures settings for the build container(s) and lifecycle.
 // It then invokes the lifecycle to build an app image.
 // If any configuration is deemed invalid, or if any lifecycle phases fail,
@@ -409,9 +400,9 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	// Default mode: if the TrustBuilder option is not set, trust the suggested builders.
+	// Default mode: if the TrustBuilder option is not set, trust the known trusted builders.
 	if opts.TrustBuilder == nil {
-		opts.TrustBuilder = IsTrustedBuilderFunc
+		opts.TrustBuilder = builder.IsKnownTrustedBuilder
 	}
 
 	// Ensure the builder's platform APIs are supported

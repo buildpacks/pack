@@ -66,3 +66,12 @@ var KnownBuilders = []KnownBuilder{
 		Trusted:            true,
 	},
 }
+
+var IsKnownTrustedBuilder = func(b string) bool {
+	for _, knownBuilder := range KnownBuilders {
+		if b == knownBuilder.Image && knownBuilder.Trusted {
+			return true
+		}
+	}
+	return false
+}
