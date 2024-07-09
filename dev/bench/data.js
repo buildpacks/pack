@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1720543633138,
+  "lastUpdate": 1720555388786,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7378,6 +7378,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 55713945036,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cbc880a9b0716a7a49e428b3d0437c6f77dcde71",
+          "message": "Merge pull request #2211 from buildpacks/bump-deps\n\nBump deps",
+          "timestamp": "2024-07-09T16:01:02-04:00",
+          "tree_id": "24b8c5758c9ff834b036769f93f1e1fdaec8575a",
+          "url": "https://github.com/buildpacks/pack/commit/cbc880a9b0716a7a49e428b3d0437c6f77dcde71"
+        },
+        "date": 1720555388150,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4712573905,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1198020327,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 55373342120,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
