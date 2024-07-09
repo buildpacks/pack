@@ -1,8 +1,8 @@
 # Arch Linux
 
-There are 3 maintained packages:
+There are two maintained packages by us and one official archlinux package:
 
-- [pack-cli](https://aur.archlinux.org/packages/pack-cli/): The latest release of `pack`, compiled from source.
+- [pack-cli](https://archlinux.org/packages/extra/x86_64/pack-cli/): Official Archlinux package in the 'Extra' repo.
 - [pack-cli-bin](https://aur.archlinux.org/packages/pack-cli-bin/): The latest release of `pack`, precompiled.
 - [pack-cli-git](https://aur.archlinux.org/packages/pack-cli-git/): An unreleased version of `pack`, compiled from source of the `main` branch.
 
