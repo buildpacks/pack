@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1720542682671,
+  "lastUpdate": 1720543633138,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7336,6 +7336,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 60722191431,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "21a8d81e51b7c8756d021a7fdf02eb711643f6b9",
+          "message": "Merge pull request #2188 from anjannath/issue_2181\n\nRemove github actions job for pack-cli arch package",
+          "timestamp": "2024-07-09T12:44:35-04:00",
+          "tree_id": "adabbacd0f4d6b3e363cd96e0e1bd2319cc362cc",
+          "url": "https://github.com/buildpacks/pack/commit/21a8d81e51b7c8756d021a7fdf02eb711643f6b9"
+        },
+        "date": 1720543632761,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3658427619,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 926238658,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 55713945036,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
