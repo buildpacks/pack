@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1720540538515,
+  "lastUpdate": 1720542682671,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7294,6 +7294,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 57044338608,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0b0614b2dfe2a46eec896ad806b1aa94da357ffd",
+          "message": "Merge pull request #2203 from hhiroshell/fix-pack-2199\n\nUpdate the Google builder in the list of known builders.",
+          "timestamp": "2024-07-09T12:23:27-04:00",
+          "tree_id": "40780e275a1acfdd5957d7918853339254f17748",
+          "url": "https://github.com/buildpacks/pack/commit/0b0614b2dfe2a46eec896ad806b1aa94da357ffd"
+        },
+        "date": 1720542682191,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3993552338,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 873542892,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 60722191431,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
