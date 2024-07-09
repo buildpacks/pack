@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1720461946598,
+  "lastUpdate": 1720540538515,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7252,6 +7252,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 59581456725,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7d3a810d73d1821cec445cc099b3d0ea8c83f873",
+          "message": "Merge pull request #2205 from colincasey/fix_trusting_of_trusted_builders\n\nTrusted builders fix",
+          "timestamp": "2024-07-09T11:42:54-04:00",
+          "tree_id": "53435ba348cb181ffbbd9e0acdd62e5c13550700",
+          "url": "https://github.com/buildpacks/pack/commit/7d3a810d73d1821cec445cc099b3d0ea8c83f873"
+        },
+        "date": 1720540537922,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4862727710,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1164529653,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 57044338608,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
