@@ -11,8 +11,8 @@ type KnownBuilder struct {
 var KnownBuilders = []KnownBuilder{
 	{
 		Vendor:             "Google",
-		Image:              "gcr.io/buildpacks/builder:v1",
-		DefaultDescription: "GCP Builder for all runtimes",
+		Image:              "gcr.io/buildpacks/builder:google-22",
+		DefaultDescription: "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java, Node.js, PHP, Python, and Ruby",
 		Suggested:          true,
 		Trusted:            true,
 	},
@@ -65,4 +65,13 @@ var KnownBuilders = []KnownBuilder{
 		Suggested:          true,
 		Trusted:            true,
 	},
+}
+
+var IsKnownTrustedBuilder = func(b string) bool {
+	for _, knownBuilder := range KnownBuilders {
+		if b == knownBuilder.Image && knownBuilder.Trusted {
+			return true
+		}
+	}
+	return false
 }

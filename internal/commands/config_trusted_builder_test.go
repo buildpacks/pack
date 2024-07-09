@@ -56,7 +56,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, command.Execute())
 			h.AssertContainsAllInOrder(t,
 				outBuf,
-				"gcr.io/buildpacks/builder:v1",
+				"gcr.io/buildpacks/builder:google-22",
 				"heroku/builder:20",
 				"heroku/builder:22",
 				"heroku/builder:24",
@@ -71,7 +71,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, command.Execute())
 			h.AssertContainsAllInOrder(t,
 				outBuf,
-				"gcr.io/buildpacks/builder:v1",
+				"gcr.io/buildpacks/builder:google-22",
 				"heroku/builder:20",
 				"heroku/builder:22",
 				"heroku/builder:24",
@@ -93,7 +93,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNotContains(t, outBuf.String(), builderName)
 			h.AssertContainsAllInOrder(t,
 				outBuf,
-				"gcr.io/buildpacks/builder:v1",
+				"gcr.io/buildpacks/builder:google-22",
 				"heroku/builder:20",
 				"heroku/builder:22",
 				"heroku/builder:24",
@@ -110,7 +110,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 			h.AssertContainsAllInOrder(t,
 				outBuf,
-				"gcr.io/buildpacks/builder:v1",
+				"gcr.io/buildpacks/builder:google-22",
 				builderName,
 				"heroku/builder:20",
 				"heroku/builder:22",
@@ -275,7 +275,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs(append(args, builder))
 
 				err := command.Execute()
-				h.AssertError(t, err, fmt.Sprintf("Builder %s is a suggested builder, and is trusted by default", style.Symbol(builder)))
+				h.AssertError(t, err, fmt.Sprintf("Builder %s is a known trusted builder. Currently pack doesn't support making these builders untrusted", style.Symbol(builder)))
 			})
 		})
 	})
