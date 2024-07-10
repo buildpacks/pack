@@ -276,7 +276,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			fakeBuilder *fakes.FakeBuilder
 			outBuf      bytes.Buffer
 			logger      *logging.LogWithWriters
-			docker      *client.Client
+			docker      *fakeDockerClient
 			fakeTermui  *fakes.FakeTermui
 		)
 
@@ -290,7 +290,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			fakeBuilder, err = fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.3")}))
 			h.AssertNil(t, err)
 			logger = logging.NewLogWithWriters(&outBuf, &outBuf)
-			docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+			docker = &fakeDockerClient{}
 			h.AssertNil(t, err)
 			fakePhaseFactory = fakes.NewFakePhaseFactory()
 		})
@@ -2695,6 +2695,26 @@ type fakeImageFetcher struct {
 func (f *fakeImageFetcher) fetchRunImage(name string) error {
 	f.calledWithArgAtCall[f.callCount] = name
 	f.callCount++
+	return nil
+}
+
+type fakeDockerClient struct {
+	nNetworks int
+	build.DockerClient
+}
+
+func (f *fakeDockerClient) NetworkList(ctx context.Context, opts types.NetworkListOptions) ([]types.NetworkResource, error) {
+	ret := make([]types.NetworkResource, f.nNetworks)
+	return ret, nil
+}
+
+func (f *fakeDockerClient) NetworkCreate(ctx context.Context, name string, options types.NetworkCreate) (types.NetworkCreateResponse, error) {
+	f.nNetworks++
+	return types.NetworkCreateResponse{}, nil
+}
+
+func (f *fakeDockerClient) NetworkRemove(ctx context.Context, network string) error {
+	f.nNetworks--
 	return nil
 }
 
