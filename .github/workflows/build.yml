@@ -23,7 +23,8 @@ jobs:
         config: [macos, linux, windows-lcow, windows-wcow]
         include:
           - config: macos
-            os: macos
+            # since macos-14 the latest runner is arm64
+            os: macos-arm64
             runner: macos-latest
             no_docker: "true"
             pack_bin: pack
@@ -170,8 +171,9 @@ jobs:
           - name: linux-arm64
             goarch: arm64
             goos: linux
-          - name: macos-arm64
-            goarch: arm64
+          - name: macos
+            # since macos-14 default runner is arm, we need to build for intel architecture later
+            goarch: amd64
             goos: darwin
           - name: linux-s390x
             goarch: s390x

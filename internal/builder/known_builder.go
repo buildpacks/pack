@@ -11,22 +11,29 @@ type KnownBuilder struct {
 var KnownBuilders = []KnownBuilder{
 	{
 		Vendor:             "Google",
-		Image:              "gcr.io/buildpacks/builder:v1",
-		DefaultDescription: "GCP Builder for all runtimes",
+		Image:              "gcr.io/buildpacks/builder:google-22",
+		DefaultDescription: "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java, Node.js, PHP, Python, and Ruby",
+		Suggested:          true,
+		Trusted:            true,
+	},
+	{
+		Vendor:             "Heroku",
+		Image:              "heroku/builder:24",
+		DefaultDescription: "Ubuntu 24.04 AMD64+ARM64 base image with buildpacks for Go, Java, Node.js, PHP, Python, Ruby & Scala.",
 		Suggested:          true,
 		Trusted:            true,
 	},
 	{
 		Vendor:             "Heroku",
 		Image:              "heroku/builder:22",
-		DefaultDescription: "Heroku-22 (Ubuntu 22.04) base image with buildpacks for Go, Java, Node.js, PHP, Python, Ruby & Scala",
-		Suggested:          true,
+		DefaultDescription: "Ubuntu 22.04 AMD64 base image with buildpacks for Go, Java, Node.js, PHP, Python, Ruby & Scala.",
+		Suggested:          false,
 		Trusted:            true,
 	},
 	{
 		Vendor:             "Heroku",
 		Image:              "heroku/builder:20",
-		DefaultDescription: "Heroku-20 (Ubuntu 20.04) base image with buildpacks for Go, Java, Node.js, PHP, Python, Ruby & Scala",
+		DefaultDescription: "Ubuntu 20.04 AMD64 base image with buildpacks for Go, Java, Node.js, PHP, Python, Ruby & Scala.",
 		Suggested:          false,
 		Trusted:            true,
 	},
@@ -58,4 +65,13 @@ var KnownBuilders = []KnownBuilder{
 		Suggested:          true,
 		Trusted:            true,
 	},
+}
+
+var IsKnownTrustedBuilder = func(b string) bool {
+	for _, knownBuilder := range KnownBuilders {
+		if b == knownBuilder.Image && knownBuilder.Trusted {
+			return true
+		}
+	}
+	return false
 }

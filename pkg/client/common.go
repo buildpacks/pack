@@ -1,9 +1,11 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
+	"github.com/buildpacks/imgutil"
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/builder"
@@ -13,6 +15,21 @@ import (
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
 )
+
+func (c *Client) addManifestToIndex(ctx context.Context, repoName string, index imgutil.ImageIndex) error {
+	imageRef, err := name.ParseReference(repoName, name.WeakValidation)
+	if err != nil {
+		return fmt.Errorf("'%s' is not a valid manifest reference: %s", style.Symbol(repoName), err)
+	}
+
+	imageToAdd, err := c.imageFetcher.Fetch(ctx, imageRef.Name(), image.FetchOptions{Daemon: false})
+	if err != nil {
+		return err
+	}
+
+	index.AddManifest(imageToAdd.UnderlyingImage())
+	return nil
+}
 
 func (c *Client) parseTagReference(imageName string) (name.Reference, error) {
 	if imageName == "" {
