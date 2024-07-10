@@ -79,7 +79,7 @@ func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 		return nil, err
 	}
 	if len(undecodedKeys) > 0 {
-		logger.Warnf("Ignoring unexpected key(s) in descriptor for buildpack %s: %s", descriptor.EscapedID(), strings.Join(undecodedKeys, ","))
+		logger.Warnf("Ignoring unexpected key(s) in descriptor for buildpack %s: %s", descriptor.EscapedID(), strings.Join(undecodedKeys, ", "))
 	}
 	if err := detectPlatformSpecificValues(&descriptor, blob); err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 		return nil, err
 	}
 	if len(undecodedKeys) > 0 {
-		logger.Warnf("Ignoring unexpected key(s) in descriptor for extension %s: %s", descriptor.EscapedID(), strings.Join(undecodedKeys, ","))
+		logger.Warnf("Ignoring unexpected key(s) in descriptor for extension %s: %s", descriptor.EscapedID(), strings.Join(undecodedKeys, ", "))
 	}
 	if err := validateExtensionDescriptor(descriptor); err != nil {
 		return nil, err
@@ -130,6 +130,13 @@ func readDescriptor(kind string, descriptor interface{}, blob Blob) (undecodedKe
 
 	undecoded := md.Undecoded()
 	for _, k := range undecoded {
+		// FIXME: we should ideally update dist.ModuleInfo to expect sbom-formats, but this breaks other tests;
+		// it isn't possible to make [metadata] a decoded key because its type is undefined in the buildpack spec.
+		if k.String() == "metadata" || strings.HasPrefix(k.String(), "metadata.") ||
+			k.String() == "buildpack.sbom-formats" {
+			// buildpack.toml & extension.toml can contain [metadata] which is arbitrary
+			continue
+		}
 		undecodedKeys = append(undecodedKeys, k.String())
 	}
 

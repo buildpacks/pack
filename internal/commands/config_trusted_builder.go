@@ -80,9 +80,9 @@ func removeTrustedBuilder(args []string, logger logging.Logger, cfg config.Confi
 
 	// Builder is not in the trusted builder list
 	if len(existingTrustedBuilders) == len(cfg.TrustedBuilders) {
-		if isSuggestedBuilder(builder) {
-			// Attempted to untrust a suggested builder
-			return errors.Errorf("Builder %s is a suggested builder, and is trusted by default. Currently pack doesn't support making these builders untrusted", style.Symbol(builder))
+		if bldr.IsKnownTrustedBuilder(builder) {
+			// Attempted to untrust a known trusted builder
+			return errors.Errorf("Builder %s is a known trusted builder. Currently pack doesn't support making these builders untrusted", style.Symbol(builder))
 		}
 
 		logger.Infof("Builder %s wasn't trusted", style.Symbol(builder))

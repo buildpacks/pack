@@ -114,7 +114,20 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("the builder is suggested", func() {
+			when("the builder is known to be trusted and suggested", func() {
+				it("sets the trust builder option", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(true)).
+						Return(nil)
+
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"image", "--builder", "heroku/builder:24"})
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:24' is trusted")
+				})
+			})
+
+			when("the builder is known to be trusted but not suggested", func() {
 				it("sets the trust builder option", func() {
 					mockClient.EXPECT().
 						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(true)).
@@ -124,6 +137,19 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					command.SetArgs([]string{"image", "--builder", "heroku/builder:22"})
 					h.AssertNil(t, command.Execute())
 					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:22' is trusted")
+				})
+			})
+
+			when("the builder is not trusted", func() {
+				it("warns the user that the builder is untrusted", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(false)).
+						Return(nil)
+
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"image", "--builder", "org/builder:unknown"})
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Builder 'org/builder:unknown' is untrusted")
 				})
 			})
 		})
@@ -144,6 +170,17 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					Return(nil)
 
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--network", "my-network"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
+		when("--platform", func() {
+			it("sets platform", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithPlatform("linux/amd64")).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--platform", "linux/amd64"})
 				h.AssertNil(t, command.Execute())
 			})
 		})
@@ -958,6 +995,15 @@ func EqBuildOptionsDefaultProcess(defaultProc string) gomock.Matcher {
 	}
 }
 
+func EqBuildOptionsWithPlatform(platform string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Platform=%s", platform),
+		equals: func(o client.BuildOptions) bool {
+			return o.Platform == platform
+		},
+	}
+}
+
 func EqBuildOptionsWithPullPolicy(policy image.PullPolicy) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("PullPolicy=%s", policy),
@@ -1016,7 +1062,7 @@ func EqBuildOptionsWithTrustedBuilder(trustBuilder bool) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Trust Builder=%t", trustBuilder),
 		equals: func(o client.BuildOptions) bool {
-			return o.TrustBuilder(o.Builder)
+			return o.TrustBuilder(o.Builder) == trustBuilder
 		},
 	}
 }
