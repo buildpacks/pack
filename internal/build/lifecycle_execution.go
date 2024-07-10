@@ -200,12 +200,16 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 
 	if l.opts.Network == "" {
 		// start an ephemeral bridge network
+		driver := "bridge"
+		if l.os == "windows" {
+			driver = "nat"
+		}
 		networkName := fmt.Sprintf("pack.local/network/%x", randString(10))
 		resp, err := l.docker.NetworkCreate(ctx, networkName, types.NetworkCreate{
-			Driver: "bridge",
+			Driver: driver,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to create ephemeral bridge network: %w", err)
+			return fmt.Errorf("failed to create ephemeral %s network: %w", driver, err)
 		}
 		defer func() {
 			_ = l.docker.NetworkRemove(ctx, networkName)
