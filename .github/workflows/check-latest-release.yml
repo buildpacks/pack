@@ -72,7 +72,7 @@ jobs:
         id: scan-image
         uses: anchore/scan-action@v3
         with:
-          image: buildpacksio/pack:${{ steps.read-go.outputs.latest-release-version }}
+          image: docker.io/buildpacksio/pack:${{ steps.read-go.outputs.latest-release-version }}
       - name: Create issue if needed
         if: failure() && steps.scan-image.outcome == 'failure'
         env:
@@ -91,7 +91,7 @@ jobs:
             search_output=$(gh issue list --search "$title" --label "$label")
 
             GITHUB_WORKFLOW_URL=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
-            body="Latest buildpacksio/pack v${{ steps.read-go.outputs.latest-release-version }} triggered CVE(s) from Grype. For further details, see: $GITHUB_WORKFLOW_URL"
+            body="Latest docker.io/buildpacksio/pack v${{ steps.read-go.outputs.latest-release-version }} triggered CVE(s) from Grype. For further details, see: $GITHUB_WORKFLOW_URL"
 
             if [ -z "${search_output// }" ]
             then
