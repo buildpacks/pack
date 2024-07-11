@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/docker/docker/api/types"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -165,6 +166,7 @@ func (l *LifecycleExecution) PrevImageName() string {
 
 func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseFactoryCreator) error {
 	phaseFactory := phaseFactoryCreator(l)
+
 	var buildCache Cache
 	if l.opts.CacheImage != "" || (l.opts.Cache.Build.Format == cache.CacheImage) {
 		cacheImageName := l.opts.CacheImage
@@ -195,6 +197,29 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 	}
 
 	launchCache := cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Launch, "launch", l.docker)
+
+	if l.opts.Network == "" {
+		// start an ephemeral bridge network
+		driver := "bridge"
+		if l.os == "windows" {
+			driver = "nat"
+		}
+		networkName := fmt.Sprintf("pack.local/network/%x", randString(10))
+		resp, err := l.docker.NetworkCreate(ctx, networkName, types.NetworkCreate{
+			Driver: driver,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create ephemeral %s network: %w", driver, err)
+		}
+		defer func() {
+			_ = l.docker.NetworkRemove(ctx, networkName)
+		}()
+		l.logger.Debugf("Created ephemeral bridge network %s with ID %s", networkName, resp.ID)
+		if resp.Warning != "" {
+			l.logger.Warn(resp.Warning)
+		}
+		l.opts.Network = networkName
+	}
 
 	if !l.opts.UseCreator {
 		if l.platformAPI.LessThan("0.7") {
