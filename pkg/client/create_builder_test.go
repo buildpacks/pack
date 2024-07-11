@@ -218,8 +218,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should fail when the stack ID from the builder config does not match the stack ID from the build image", func() {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(fakeBuildImage, nil)
 				h.AssertNil(t, fakeBuildImage.SetLabel("io.buildpacks.stack.id", "other.stack.id"))
+				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
 
 				err := subject.CreateBuilder(context.TODO(), opts)
@@ -471,7 +471,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						prepareFetcherWithRunImages()
 
 						h.AssertNil(t, fakeBuildImage.SetOS("windows"))
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(fakeBuildImage, nil)
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any()).Return(fakeBuildImage, nil)
 
 						err := subject.CreateBuilder(context.TODO(), opts)
 						h.AssertError(t, err, "failed to create builder: Windows containers support is currently experimental.")
@@ -860,7 +860,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz", gomock.Any()).DoAndReturn(
 						func(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error) {
 							// test options
-							h.AssertEq(t, opts.Platform, "linux/amd64")
+							h.AssertEq(t, opts.Target.ValuesAsPlatform(), "linux/amd64")
 							return bp, bpDependencies, nil
 						})
 
@@ -870,7 +870,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/ext-one-with-api-9.tgz", gomock.Any()).DoAndReturn(
 						func(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error) {
 							// test options
-							h.AssertEq(t, opts.Platform, "linux/amd64")
+							h.AssertEq(t, opts.Target.ValuesAsPlatform(), "linux/amd64")
 							return extension, nil, nil
 						})
 

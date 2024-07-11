@@ -244,12 +244,9 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			ephemeralRunImage string
 			err               error
 		)
-		currentRunImage := l.runImageAfterExtensions()
 		if l.runImageChanged() || l.hasExtensionsForRun() {
-			if currentRunImage == "" { // sanity check
-				return nil
-			}
-			if ephemeralRunImage, err = l.opts.FetchRunImageWithLifecycleLayer(currentRunImage); err != nil {
+			// Pull the run image by name in case we fail to pull it by identifier later.
+			if ephemeralRunImage, err = l.opts.FetchRunImageWithLifecycleLayer(l.runImageNameAfterExtensions()); err != nil {
 				return err
 			}
 		}
@@ -261,11 +258,21 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			return err
 		}
 
+		if l.runImageChanged() || l.hasExtensionsForRun() {
+			if newEphemeralRunImage, err := l.opts.FetchRunImageWithLifecycleLayer(l.runImageIdentifierAfterExtensions()); err == nil {
+				// If the run image was switched by extensions, the run image reference as written by the __restorer__ will be a digest reference
+				// that is pullable from a registry.
+				// However, if the run image is only extended (not switched), the run image reference as written by the __analyzer__ may be an image identifier
+				// (in the daemon case), and will not be pullable.
+				ephemeralRunImage = newEphemeralRunImage
+			}
+		}
+
 		group, _ := errgroup.WithContext(context.TODO())
 		if l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild() {
 			group.Go(func() error {
 				l.logger.Info(style.Step("EXTENDING (BUILD)"))
-				return l.ExtendBuild(ctx, kanikoCache, phaseFactory)
+				return l.ExtendBuild(ctx, kanikoCache, phaseFactory, l.extensionsAreExperimental())
 			})
 		} else {
 			group.Go(func() error {
@@ -277,7 +284,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {
 			group.Go(func() error {
 				l.logger.Info(style.Step("EXTENDING (RUN)"))
-				return l.ExtendRun(ctx, kanikoCache, phaseFactory, ephemeralRunImage)
+				return l.ExtendRun(ctx, kanikoCache, phaseFactory, ephemeralRunImage, l.extensionsAreExperimental())
 			})
 		}
 
@@ -424,7 +431,7 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 
 	envOp := NullOp()
 	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() {
-		envOp = WithEnv("CNB_EXPERIMENTAL_MODE=warn")
+		envOp = If(l.extensionsAreExperimental(), WithEnv("CNB_EXPERIMENTAL_MODE=warn"))
 	}
 
 	configProvider := NewPhaseConfigProvider(
@@ -444,13 +451,17 @@ func (l *LifecycleExecution) Detect(ctx context.Context, phaseFactory PhaseFacto
 		If(l.hasExtensions(), WithPostContainerRunOperations(
 			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.tmpDir))),
 		If(l.hasExtensions(), WithPostContainerRunOperations(
-			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated", "build"), l.tmpDir))),
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "generated"), l.tmpDir))),
 		envOp,
 	)
 
 	detect := phaseFactory.New(configProvider)
 	defer detect.Cleanup()
 	return detect.Run(ctx)
+}
+
+func (l *LifecycleExecution) extensionsAreExperimental() bool {
+	return l.PlatformAPI().AtLeast("0.10") && l.platformAPI.LessThan("0.13")
 }
 
 func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kanikoCache Cache, phaseFactory PhaseFactory) error {
@@ -490,7 +501,7 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 			registryImages = append(registryImages, l.opts.BuilderImage)
 		}
 		if l.runImageChanged() || l.hasExtensionsForRun() {
-			registryImages = append(registryImages, l.runImageAfterExtensions())
+			registryImages = append(registryImages, l.runImageNameAfterExtensions())
 		}
 		if l.hasExtensionsForBuild() || l.hasExtensionsForRun() {
 			kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir()))
@@ -541,6 +552,8 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 		registryOp,
 		layoutOp,
 		layoutBindOp,
+		If(l.hasExtensions(), WithPostContainerRunOperations(
+			CopyOutToMaybe(filepath.Join(l.mountPaths.layersDir(), "analyzed.toml"), l.tmpDir))),
 	)
 
 	restore := phaseFactory.New(configProvider)
@@ -709,7 +722,7 @@ func (l *LifecycleExecution) Build(ctx context.Context, phaseFactory PhaseFactor
 	return build.Run(ctx)
 }
 
-func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory, experimental bool) error {
 	flags := []string{"-app", l.mountPaths.appDir()}
 
 	configProvider := NewPhaseConfigProvider(
@@ -718,7 +731,7 @@ func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache,
 		WithLogPrefix("extender (build)"),
 		WithArgs(l.withLogLevel()...),
 		WithBinds(l.opts.Volumes...),
-		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
+		If(experimental, WithEnv("CNB_EXPERIMENTAL_MODE=warn")),
 		WithFlags(flags...),
 		WithNetwork(l.opts.Network),
 		WithRoot(),
@@ -730,7 +743,7 @@ func (l *LifecycleExecution) ExtendBuild(ctx context.Context, kanikoCache Cache,
 	return extend.Run(ctx)
 }
 
-func (l *LifecycleExecution) ExtendRun(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory, runImageName string) error {
+func (l *LifecycleExecution) ExtendRun(ctx context.Context, kanikoCache Cache, phaseFactory PhaseFactory, runImageName string, experimental bool) error {
 	flags := []string{"-app", l.mountPaths.appDir(), "-kind", "run"}
 
 	configProvider := NewPhaseConfigProvider(
@@ -739,7 +752,7 @@ func (l *LifecycleExecution) ExtendRun(ctx context.Context, kanikoCache Cache, p
 		WithLogPrefix("extender (run)"),
 		WithArgs(l.withLogLevel()...),
 		WithBinds(l.opts.Volumes...),
-		WithEnv("CNB_EXPERIMENTAL_MODE=warn"),
+		If(experimental, WithEnv("CNB_EXPERIMENTAL_MODE=warn")),
 		WithFlags(flags...),
 		WithNetwork(l.opts.Network),
 		WithRoot(),
@@ -775,7 +788,7 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 	} else {
 		flags = append(flags, "-run", l.mountPaths.runPath())
 		if l.hasExtensionsForRun() {
-			expEnv = WithEnv("CNB_EXPERIMENTAL_MODE=warn")
+			expEnv = If(l.extensionsAreExperimental(), WithEnv("CNB_EXPERIMENTAL_MODE=warn"))
 			kanikoCacheBindOp = WithBinds(fmt.Sprintf("%s:%s", kanikoCache.Name(), l.mountPaths.kanikoCacheDir()))
 		}
 	}
@@ -890,12 +903,25 @@ func (l *LifecycleExecution) hasExtensionsForBuild() bool {
 	if !l.hasExtensions() {
 		return false
 	}
-	// the directory is <layers>/generated/build inside the build container, but `CopyOutTo` only copies the directory
-	fis, err := os.ReadDir(filepath.Join(l.tmpDir, "build"))
+	generatedDir := filepath.Join(l.tmpDir, "generated")
+	fis, err := os.ReadDir(filepath.Join(generatedDir, "build"))
+	if err == nil && len(fis) > 0 {
+		// on older platforms, we need to find a file such as <layers>/generated/build/<buildpack-id>/Dockerfile
+		// on newer platforms, <layers>/generated/build doesn't exist
+		return true
+	}
+	// on newer platforms, we need to find a file such as <layers>/generated/<buildpack-id>/build.Dockerfile
+	fis, err = os.ReadDir(generatedDir)
 	if err != nil {
+		l.logger.Warnf("failed to read generated directory, assuming no build image extensions: %s", err)
 		return false
 	}
-	return len(fis) > 0
+	for _, fi := range fis {
+		if _, err := os.Stat(filepath.Join(generatedDir, fi.Name(), "build.Dockerfile")); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (l *LifecycleExecution) hasExtensionsForRun() bool {
@@ -915,25 +941,42 @@ func (l *LifecycleExecution) hasExtensionsForRun() bool {
 	return amd.RunImage.Extend
 }
 
-func (l *LifecycleExecution) runImageAfterExtensions() string {
+func (l *LifecycleExecution) runImageIdentifierAfterExtensions() string {
 	if !l.hasExtensions() {
 		return l.opts.RunImage
 	}
 	var amd files.Analyzed
 	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
-		l.logger.Warnf("failed to parse analyzed.toml file, assuming run image did not change: %s", err)
+		l.logger.Warnf("failed to parse analyzed.toml file, assuming run image identifier did not change: %s", err)
+		return l.opts.RunImage
+	}
+	if amd.RunImage == nil || amd.RunImage.Reference == "" {
+		// this shouldn't be reachable
+		l.logger.Warnf("found no run image in analyzed.toml file, assuming run image identifier did not change...")
+		return l.opts.RunImage
+	}
+	return amd.RunImage.Reference
+}
+
+func (l *LifecycleExecution) runImageNameAfterExtensions() string {
+	if !l.hasExtensions() {
+		return l.opts.RunImage
+	}
+	var amd files.Analyzed
+	if _, err := toml.DecodeFile(filepath.Join(l.tmpDir, "analyzed.toml"), &amd); err != nil {
+		l.logger.Warnf("failed to parse analyzed.toml file, assuming run image name did not change: %s", err)
 		return l.opts.RunImage
 	}
 	if amd.RunImage == nil || amd.RunImage.Image == "" {
 		// this shouldn't be reachable
-		l.logger.Warnf("found no run image in analyzed.toml file, assuming run image did not change...")
+		l.logger.Warnf("found no run image in analyzed.toml file, assuming run image name did not change...")
 		return l.opts.RunImage
 	}
 	return amd.RunImage.Image
 }
 
 func (l *LifecycleExecution) runImageChanged() bool {
-	currentRunImage := l.runImageAfterExtensions()
+	currentRunImage := l.runImageNameAfterExtensions()
 	return currentRunImage != "" && currentRunImage != l.opts.RunImage
 }
 

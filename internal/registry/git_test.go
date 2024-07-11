@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/go-git/go-git/v5"
@@ -42,7 +43,10 @@ func testGit(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		h.AssertNil(t, os.RemoveAll(tmpDir))
+		if runtime.GOOS != "windows" {
+			h.AssertNil(t, os.RemoveAll(tmpDir))
+		}
+		os.RemoveAll(tmpDir)
 	})
 
 	when("#GitCommit", func() {
