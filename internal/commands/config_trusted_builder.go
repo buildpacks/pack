@@ -98,9 +98,7 @@ func removeTrustedBuilder(args []string, logger logging.Logger, cfg config.Confi
 	return nil
 }
 
-func listTrustedBuilders(args []string, logger logging.Logger, cfg config.Config) {
-	logger.Info("Trusted Builders:")
-
+func getTrustedBuilders(cfg config.Config) []string {
 	var trustedBuilders []string
 	for _, knownBuilder := range bldr.KnownBuilders {
 		if knownBuilder.Trusted {
@@ -113,7 +111,13 @@ func listTrustedBuilders(args []string, logger logging.Logger, cfg config.Config
 	}
 
 	sort.Strings(trustedBuilders)
+	return trustedBuilders
+}
 
+func listTrustedBuilders(args []string, logger logging.Logger, cfg config.Config) {
+	logger.Info("Trusted Builders:")
+
+	trustedBuilders := getTrustedBuilders(cfg)
 	for _, builder := range trustedBuilders {
 		logger.Infof("  %s", builder)
 	}
