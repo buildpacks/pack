@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GoogleContainerTools/kaniko/pkg/util/proc"
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layout"
@@ -54,6 +55,10 @@ const (
 	minLifecycleVersionSupportingImage                 = "0.7.5"
 	minLifecycleVersionSupportingCreatorWithExtensions = "0.19.0"
 )
+
+var RunningInContainer = func() bool {
+	return proc.GetContainerRuntime(0, 0) != proc.RuntimeNotFound
+}
 
 // LifecycleExecutor executes the lifecycle which satisfies the Cloud Native Buildpacks Lifecycle specification.
 // Implementations of the Lifecycle must execute the following phases by calling the
@@ -283,6 +288,13 @@ type layoutPathConfig struct {
 // an error will be returned and no image produced.
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	var pathsConfig layoutPathConfig
+
+	if RunningInContainer() && !(opts.PullPolicy == image.PullAlways) {
+		c.logger.Warnf("Detected pack is running in a container; if using a shared docker host, failing to pull build inputs from a remote registry is insecure - " +
+			"other tenants may have compromised build inputs stored in the daemon." +
+			"This configuration is insecure and may become unsupported in the future." +
+			"Re-run with '--pull-policy=always' to silence this warning.")
+	}
 
 	imageRef, err := c.parseReference(opts)
 	if err != nil {

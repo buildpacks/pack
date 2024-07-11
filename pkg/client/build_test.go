@@ -2379,6 +2379,38 @@ api = "0.2"
 				})
 			})
 
+			when("containerized pack", func() {
+				it.Before(func() {
+					RunningInContainer = func() bool {
+						return true
+					}
+				})
+
+				when("--pull-policy=always", func() {
+					it("does not warn", func() {
+						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							PullPolicy: image.PullAlways,
+						}))
+
+						h.AssertNotContains(t, outBuf.String(), "failing to pull build inputs from a remote registry is insecure")
+					})
+				})
+
+				when("not --pull-policy=always", func() {
+					it("warns", func() {
+						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							PullPolicy: image.PullNever,
+						}))
+
+						h.AssertContains(t, outBuf.String(), "failing to pull build inputs from a remote registry is insecure")
+					})
+				})
+			})
+
 			when("always", func() {
 				it("uses pulls the builder and run image before using them", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
