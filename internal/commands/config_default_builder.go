@@ -2,6 +2,10 @@ package commands
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -48,7 +52,7 @@ func ConfigDefaultBuilder(logger logging.Logger, cfg config.Config, cfgPath stri
 				return nil
 			default:
 				imageName := args[0]
-				if err := validateBuilderExists(logger, imageName, client); err != nil {
+				if err := ValidateBuilderExists(logger, imageName, client); err != nil {
 					return errors.Wrapf(err, "validating that builder %s exists", style.Symbol(imageName))
 				}
 
@@ -68,24 +72,44 @@ func ConfigDefaultBuilder(logger logging.Logger, cfg config.Config, cfgPath stri
 	return cmd
 }
 
-func validateBuilderExists(logger logging.Logger, imageName string, client PackClient) error {
-	logger.Debug("Verifying local image...")
-	info, err := client.InspectBuilder(imageName, true)
-	if err != nil {
-		return err
-	}
+func ValidateBuilderExists(logger logging.Logger, imageName string, client PackClient) error {
 
-	if info == nil {
-		logger.Debug("Verifying remote image...")
-		info, err := client.InspectBuilder(imageName, false)
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	resultChan := make(chan error, 1)
+
+	go func() {
+		logger.Debug("Verifying local image...")
+		info, err := client.InspectBuilder(imageName, true)
 		if err != nil {
-			return errors.Wrapf(err, "failed to inspect remote image %s", style.Symbol(imageName))
+			resultChan <- err
+			return
 		}
 
 		if info == nil {
-			return fmt.Errorf("builder %s not found", style.Symbol(imageName))
-		}
-	}
+			logger.Debug("Verifying remote image...")
+			info, err = client.InspectBuilder(imageName, false)
+			if err != nil {
+				resultChan <- errors.Wrapf(err, "failed to inspect remote image %s", style.Symbol(imageName))
+				return
+			}
 
-	return nil
+			if info == nil {
+				resultChan <- fmt.Errorf("builder %s not found", style.Symbol(imageName))
+				return
+			}
+		}
+
+		resultChan <- nil
+	}()
+
+	select {
+	case err := <-resultChan:
+		return err
+	case <-sigChan:
+		return fmt.Errorf("operation aborted")
+	case <-time.After(30 * time.Second):
+		return fmt.Errorf("operation timed out")
+	}
 }
