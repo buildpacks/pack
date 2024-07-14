@@ -73,7 +73,6 @@ func ConfigDefaultBuilder(logger logging.Logger, cfg config.Config, cfgPath stri
 }
 
 func ValidateBuilderExists(logger logging.Logger, imageName string, client PackClient) error {
-
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 

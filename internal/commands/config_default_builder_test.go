@@ -227,7 +227,6 @@ func testConfigDefaultBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertContains(t, outBuf.String(), "operation aborted")
 				})
 			})
-
 		})
 	})
 }
