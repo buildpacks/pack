@@ -218,8 +218,9 @@ func testConfigDefaultBuilder(t *testing.T, when spec.G, it spec.S) {
 					time.Sleep(2 * time.Second)
 
 					p, err := os.FindProcess(os.Getpid())
+					h.AssertNil(t, err) 
+					err = p.Signal(syscall.SIGINT)
 					h.AssertNil(t, err)
-					p.Signal(syscall.SIGINT)
 
 					err = <-done
 
