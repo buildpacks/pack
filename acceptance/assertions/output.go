@@ -209,7 +209,7 @@ func (o OutputAssertionManager) IncludesTrustedBuildersHeading() {
 	o.assert.Contains(o.output, "Trusted Builders:")
 }
 
-const googleBuilder = "gcr.io/buildpacks/builder:v1"
+const googleBuilder = "gcr.io/buildpacks/builder:google-22"
 
 func (o OutputAssertionManager) IncludesGoogleBuilder() {
 	o.testObject.Helper()

@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GoogleContainerTools/kaniko/pkg/util/proc"
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/layout"
@@ -54,6 +55,10 @@ const (
 	minLifecycleVersionSupportingImage                 = "0.7.5"
 	minLifecycleVersionSupportingCreatorWithExtensions = "0.19.0"
 )
+
+var RunningInContainer = func() bool {
+	return proc.GetContainerRuntime(0, 0) != proc.RuntimeNotFound
+}
 
 // LifecycleExecutor executes the lifecycle which satisfies the Cloud Native Buildpacks Lifecycle specification.
 // Implementations of the Lifecycle must execute the following phases by calling the
@@ -277,21 +282,19 @@ type layoutPathConfig struct {
 	targetRunImagePath      string
 }
 
-var IsTrustedBuilderFunc = func(b string) bool {
-	for _, knownBuilder := range builder.KnownBuilders {
-		if b == knownBuilder.Image && knownBuilder.Trusted {
-			return true
-		}
-	}
-	return false
-}
-
 // Build configures settings for the build container(s) and lifecycle.
 // It then invokes the lifecycle to build an app image.
 // If any configuration is deemed invalid, or if any lifecycle phases fail,
 // an error will be returned and no image produced.
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	var pathsConfig layoutPathConfig
+
+	if RunningInContainer() && !(opts.PullPolicy == image.PullAlways) {
+		c.logger.Warnf("Detected pack is running in a container; if using a shared docker host, failing to pull build inputs from a remote registry is insecure - " +
+			"other tenants may have compromised build inputs stored in the daemon." +
+			"This configuration is insecure and may become unsupported in the future." +
+			"Re-run with '--pull-policy=always' to silence this warning.")
+	}
 
 	imageRef, err := c.parseReference(opts)
 	if err != nil {
@@ -399,7 +402,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Buildpacks(), bldr.Order(), bldr.StackID, opts, targetToUse)
+	fetchedBPs, nInlineBPs, order, err := c.processBuildpacks(ctx, bldr.Buildpacks(), bldr.Order(), bldr.StackID, opts, targetToUse)
 	if err != nil {
 		return err
 	}
@@ -409,9 +412,9 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	// Default mode: if the TrustBuilder option is not set, trust the suggested builders.
+	// Default mode: if the TrustBuilder option is not set, trust the known trusted builders.
 	if opts.TrustBuilder == nil {
-		opts.TrustBuilder = IsTrustedBuilderFunc
+		opts.TrustBuilder = builder.IsKnownTrustedBuilder
 	}
 
 	// Ensure the builder's platform APIs are supported
@@ -427,6 +430,19 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	// Get the platform API version to use
 	lifecycleVersion := bldr.LifecycleDescriptor().Info.Version
 	useCreator := supportsCreator(lifecycleVersion) && opts.TrustBuilder(opts.Builder)
+	hasAdditionalModules := func() bool {
+		if len(fetchedBPs) == 0 && len(fetchedExs) == 0 {
+			return false
+		}
+		if len(fetchedBPs) == nInlineBPs && len(fetchedExs) == 0 {
+			return false
+		}
+		return true
+	}()
+	if useCreator && hasAdditionalModules {
+		c.logger.Warnf("Builder is trusted but additional modules were added; using the untrusted (5 phases) build flow")
+		useCreator = false
+	}
 	var (
 		lifecycleOptsLifecycleImage string
 		lifecycleAPIs               []string
@@ -510,11 +526,25 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		buildEnvs[k] = v
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, orderExtensions, fetchedExs, usingPlatformAPI.LessThan("0.12"), opts.RunImage)
+	ephemeralBuilder, err := c.createEphemeralBuilder(
+		rawBuilderImage,
+		buildEnvs,
+		order,
+		fetchedBPs,
+		orderExtensions,
+		fetchedExs,
+		usingPlatformAPI.LessThan("0.12"),
+		opts.RunImage,
+	)
 	if err != nil {
 		return err
 	}
-	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.RemoveOptions{Force: true})
+	defer func() {
+		if ephemeralBuilder.Name() == rawBuilderImage.Name() {
+			return
+		}
+		_, _ = c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.RemoveOptions{Force: true})
+	}()
 
 	if len(bldr.OrderExtensions()) > 0 || len(ephemeralBuilder.OrderExtensions()) > 0 {
 		if targetToUse.OS == "windows" {
@@ -1135,18 +1165,21 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 //		----------
 //		- group:
 //			- A
-func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions, targetToUse *dist.Target) (fetchedBPs []buildpack.BuildModule, order dist.Order, err error) {
+func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions, targetToUse *dist.Target) (fetchedBPs []buildpack.BuildModule, nInlineBPs int, order dist.Order, err error) {
 	relativeBaseDir := opts.RelativeBaseDir
 	declaredBPs := opts.Buildpacks
 
-	// declare buildpacks provided by project descriptor when no buildpacks are declared
+	// Buildpacks from --buildpack override buildpacks from project descriptor
 	if len(declaredBPs) == 0 && len(opts.ProjectDescriptor.Build.Buildpacks) != 0 {
 		relativeBaseDir = opts.ProjectDescriptorBaseDir
 
 		for _, bp := range opts.ProjectDescriptor.Build.Buildpacks {
-			buildpackLocator, err := getBuildpackLocator(bp, stackID)
+			buildpackLocator, isInline, err := getBuildpackLocator(bp, stackID)
 			if err != nil {
-				return nil, nil, err
+				return nil, 0, nil, err
+			}
+			if isInline {
+				nInlineBPs++
 			}
 			declaredBPs = append(declaredBPs, buildpackLocator)
 		}
@@ -1156,7 +1189,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Module
 	for _, bp := range declaredBPs {
 		locatorType, err := buildpack.GetLocatorType(bp, relativeBaseDir, builderBPs)
 		if err != nil {
-			return nil, nil, err
+			return nil, 0, nil, err
 		}
 
 		switch locatorType {
@@ -1166,7 +1199,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Module
 				order = builderOrder
 			case len(order) > 1:
 				// This should only ever be possible if they are using from=builder twice which we don't allow
-				return nil, nil, errors.New("buildpacks from builder can only be defined once")
+				return nil, 0, nil, errors.New("buildpacks from builder can only be defined once")
 			default:
 				newOrder := dist.Order{}
 				groupToAdd := order[0].Group
@@ -1180,7 +1213,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Module
 		default:
 			newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderBPs, opts, buildpack.KindBuildpack, targetToUse)
 			if err != nil {
-				return fetchedBPs, order, err
+				return fetchedBPs, 0, order, err
 			}
 			fetchedBPs = append(fetchedBPs, newFetchedBPs...)
 			order = appendBuildpackToOrder(order, *moduleInfo)
@@ -1190,20 +1223,28 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Module
 	if (len(order) == 0 || len(order[0].Group) == 0) && len(builderOrder) > 0 {
 		preBuildpacks := opts.PreBuildpacks
 		postBuildpacks := opts.PostBuildpacks
+		// Pre-buildpacks from --pre-buildpack override pre-buildpacks from project descriptor
 		if len(preBuildpacks) == 0 && len(opts.ProjectDescriptor.Build.Pre.Buildpacks) > 0 {
 			for _, bp := range opts.ProjectDescriptor.Build.Pre.Buildpacks {
-				buildpackLocator, err := getBuildpackLocator(bp, stackID)
+				buildpackLocator, isInline, err := getBuildpackLocator(bp, stackID)
 				if err != nil {
-					return nil, nil, errors.Wrap(err, "get pre-buildpack locator")
+					return nil, 0, nil, errors.Wrap(err, "get pre-buildpack locator")
+				}
+				if isInline {
+					nInlineBPs++
 				}
 				preBuildpacks = append(preBuildpacks, buildpackLocator)
 			}
 		}
+		// Post-buildpacks from --post-buildpack override post-buildpacks from project descriptor
 		if len(postBuildpacks) == 0 && len(opts.ProjectDescriptor.Build.Post.Buildpacks) > 0 {
 			for _, bp := range opts.ProjectDescriptor.Build.Post.Buildpacks {
-				buildpackLocator, err := getBuildpackLocator(bp, stackID)
+				buildpackLocator, isInline, err := getBuildpackLocator(bp, stackID)
 				if err != nil {
-					return nil, nil, errors.Wrap(err, "get post-buildpack locator")
+					return nil, 0, nil, errors.Wrap(err, "get post-buildpack locator")
+				}
+				if isInline {
+					nInlineBPs++
 				}
 				postBuildpacks = append(postBuildpacks, buildpackLocator)
 			}
@@ -1214,7 +1255,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Module
 			for _, bp := range preBuildpacks {
 				newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderBPs, opts, buildpack.KindBuildpack, targetToUse)
 				if err != nil {
-					return fetchedBPs, order, err
+					return fetchedBPs, 0, order, err
 				}
 				fetchedBPs = append(fetchedBPs, newFetchedBPs...)
 				order = prependBuildpackToOrder(order, *moduleInfo)
@@ -1223,7 +1264,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Module
 			for _, bp := range postBuildpacks {
 				newFetchedBPs, moduleInfo, err := c.fetchBuildpack(ctx, bp, relativeBaseDir, builderBPs, opts, buildpack.KindBuildpack, targetToUse)
 				if err != nil {
-					return fetchedBPs, order, err
+					return fetchedBPs, 0, order, err
 				}
 				fetchedBPs = append(fetchedBPs, newFetchedBPs...)
 				order = appendBuildpackToOrder(order, *moduleInfo)
@@ -1231,7 +1272,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Module
 		}
 	}
 
-	return fetchedBPs, order, nil
+	return fetchedBPs, nInlineBPs, order, nil
 }
 
 func (c *Client) fetchBuildpack(ctx context.Context, bp string, relativeBaseDir string, builderBPs []dist.ModuleInfo, opts BuildOptions, kind string, targetToUse *dist.Target) ([]buildpack.BuildModule, *dist.ModuleInfo, error) {
@@ -1310,26 +1351,26 @@ func (c *Client) fetchBuildpackDependencies(ctx context.Context, bp string, pack
 	return nil, err
 }
 
-func getBuildpackLocator(bp projectTypes.Buildpack, stackID string) (string, error) {
+func getBuildpackLocator(bp projectTypes.Buildpack, stackID string) (locator string, isInline bool, err error) {
 	switch {
 	case bp.ID != "" && bp.Script.Inline != "" && bp.URI == "":
 		if bp.Script.API == "" {
-			return "", errors.New("Missing API version for inline buildpack")
+			return "", false, errors.New("Missing API version for inline buildpack")
 		}
 
 		pathToInlineBuildpack, err := createInlineBuildpack(bp, stackID)
 		if err != nil {
-			return "", errors.Wrap(err, "Could not create temporary inline buildpack")
+			return "", false, errors.Wrap(err, "Could not create temporary inline buildpack")
 		}
-		return pathToInlineBuildpack, nil
+		return pathToInlineBuildpack, true, nil
 	case bp.URI != "":
-		return bp.URI, nil
+		return bp.URI, false, nil
 	case bp.ID != "" && bp.Version != "":
-		return fmt.Sprintf("%s@%s", bp.ID, bp.Version), nil
+		return fmt.Sprintf("%s@%s", bp.ID, bp.Version), false, nil
 	case bp.ID != "" && bp.Version == "":
-		return bp.ID, nil
+		return bp.ID, false, nil
 	default:
-		return "", errors.New("Invalid buildpack definition")
+		return "", false, errors.New("Invalid buildpack definition")
 	}
 }
 
@@ -1502,6 +1543,10 @@ func (c *Client) createEphemeralBuilder(
 	validateMixins bool,
 	runImage string,
 ) (*builder.Builder, error) {
+	if !ephemeralBuilderNeeded(env, order, buildpacks, orderExtensions, extensions, runImage) {
+		return builder.New(rawBuilderImage, rawBuilderImage.Name(), builder.WithoutSave())
+	}
+
 	origBuilderName := rawBuilderImage.Name()
 	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)), builder.WithRunImage(runImage))
 	if err != nil {
@@ -1535,6 +1580,35 @@ func (c *Client) createEphemeralBuilder(
 		return nil, err
 	}
 	return bldr, nil
+}
+
+func ephemeralBuilderNeeded(
+	env map[string]string,
+	order dist.Order,
+	buildpacks []buildpack.BuildModule,
+	orderExtensions dist.Order,
+	extensions []buildpack.BuildModule,
+	runImage string,
+) bool {
+	if len(env) > 0 {
+		return true
+	}
+	if len(order) > 0 && len(order[0].Group) > 0 {
+		return true
+	}
+	if len(buildpacks) > 0 {
+		return true
+	}
+	if len(orderExtensions) > 0 && len(orderExtensions[0].Group) > 0 {
+		return true
+	}
+	if len(extensions) > 0 {
+		return true
+	}
+	if runImage != "" {
+		return true
+	}
+	return false
 }
 
 // Returns a string iwith lowercase a-z, of length n

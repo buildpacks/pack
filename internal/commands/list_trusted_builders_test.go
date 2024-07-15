@@ -64,7 +64,7 @@ func testListTrustedBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNotContains(t, outBuf.String(), builderName)
 			h.AssertContainsAllInOrder(t,
 				outBuf,
-				"gcr.io/buildpacks/builder:v1",
+				"gcr.io/buildpacks/builder:google-22",
 				"heroku/builder:20",
 				"heroku/builder:22",
 				"heroku/builder:24",
@@ -86,7 +86,7 @@ func testListTrustedBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 
 			h.AssertContainsAllInOrder(t,
 				outBuf,
-				"gcr.io/buildpacks/builder:v1",
+				"gcr.io/buildpacks/builder:google-22",
 				builderName,
 				"heroku/builder:20",
 				"heroku/builder:22",

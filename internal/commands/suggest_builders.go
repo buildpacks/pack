@@ -92,13 +92,3 @@ func getBuilderDescription(builder bldr.KnownBuilder, inspector BuilderInspector
 
 	return builder.DefaultDescription
 }
-
-func isSuggestedBuilder(builder string) bool {
-	for _, knownBuilder := range bldr.KnownBuilders {
-		if builder == knownBuilder.Image && knownBuilder.Suggested {
-			return true
-		}
-	}
-
-	return false
-}

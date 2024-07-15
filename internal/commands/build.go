@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -141,6 +142,11 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 					return errors.Wrapf(err, "parsing lifecycle image %s", flags.LifecycleImage)
 				}
 				lifecycleImage = ref.Name()
+			}
+
+			err = isForbiddenTag(cfg, inputImageName.Name(), lifecycleImage, builder)
+			if err != nil {
+				return errors.Wrapf(err, "forbidden image name")
 			}
 
 			var gid = -1
@@ -384,4 +390,58 @@ func parseProjectToml(appPath, descriptorPath string, logger logging.Logger) (pr
 
 	descriptor, err := project.ReadProjectDescriptor(actualPath, logger)
 	return descriptor, actualPath, err
+}
+
+func isForbiddenTag(cfg config.Config, input, lifecycle, builder string) error {
+	inputImage, err := name.ParseReference(input)
+	if err != nil {
+		return errors.Wrapf(err, "invalid image name %s", input)
+	}
+
+	if builder != "" {
+		builderImage, err := name.ParseReference(builder)
+		if err != nil {
+			return errors.Wrapf(err, "parsing builder image %s", builder)
+		}
+		if inputImage.Context().RepositoryStr() == builderImage.Context().RepositoryStr() {
+			return fmt.Errorf("name must not match builder image name")
+		}
+	}
+
+	if lifecycle != "" {
+		lifecycleImage, err := name.ParseReference(lifecycle)
+		if err != nil {
+			return errors.Wrapf(err, "parsing lifecycle image %s", lifecycle)
+		}
+		if inputImage.Context().RepositoryStr() == lifecycleImage.Context().RepositoryStr() {
+			return fmt.Errorf("name must not match lifecycle image name")
+		}
+	}
+
+	trustedBuilders := getTrustedBuilders(cfg)
+	for _, trustedBuilder := range trustedBuilders {
+		builder, err := name.ParseReference(trustedBuilder)
+		if err != nil {
+			return err
+		}
+		if inputImage.Context().RepositoryStr() == builder.Context().RepositoryStr() {
+			return fmt.Errorf("name must not match trusted builder name")
+		}
+	}
+
+	if inputImage.Context().RepositoryStr() == config.DefaultLifecycleImageRepo {
+		return fmt.Errorf("name must not match default lifecycle image name")
+	}
+
+	if cfg.DefaultBuilder != "" {
+		defaultBuilderImage, err := name.ParseReference(cfg.DefaultBuilder)
+		if err != nil {
+			return errors.Wrapf(err, "parsing default builder %s", cfg.DefaultBuilder)
+		}
+		if inputImage.Context().RepositoryStr() == defaultBuilderImage.Context().RegistryStr() {
+			return fmt.Errorf("name must not match default builder image name")
+		}
+	}
+
+	return nil
 }

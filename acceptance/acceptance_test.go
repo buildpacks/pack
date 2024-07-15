@@ -1627,6 +1627,7 @@ func testAcceptance(
 
 						it.Before(func() {
 							h.SkipIf(t, os.Getenv("DOCKER_HOST") != "", "cannot mount volume when DOCKER_HOST is set")
+							h.SkipIf(t, imageManager.HostOS() == "windows", "These tests are broken on Windows Containers on Windows when not using the creator; see https://github.com/buildpacks/pack/issues/2147")
 
 							if imageManager.HostOS() == "windows" {
 								volumeRoot = `c:\`
