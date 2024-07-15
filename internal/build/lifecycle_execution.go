@@ -182,7 +182,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		switch l.opts.Cache.Build.Format {
 		case cache.CacheVolume:
 			var err error
-			buildCache, err = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Build, "build", l.docker)
+			buildCache, err = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Build, "build", l.docker, l.logger)
 			if err != nil {
 				return err
 			}
@@ -200,7 +200,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		l.logger.Debugf("Build cache %s cleared", style.Symbol(buildCache.Name()))
 	}
 
-	launchCache, err := cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Launch, "launch", l.docker)
+	launchCache, err := cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Launch, "launch", l.docker, l.logger)
 	if err != nil {
 		return err
 	}
@@ -256,7 +256,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			// lifecycle 0.17.0 (introduces support for Platform API 0.12) and above will ensure that
 			// this volume is owned by the CNB user,
 			// and hence the restorer (after dropping privileges) will be able to write to it.
-			kanikoCache, err = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Kaniko, "kaniko", l.docker)
+			kanikoCache, err = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Kaniko, "kaniko", l.docker, l.logger)
 			if err != nil {
 				return err
 			}
@@ -271,7 +271,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 				return fmt.Errorf("build cache must be volume cache when building with extensions")
 			default:
 				// The kaniko cache is unused, so it doesn't matter that it's not usable.
-				kanikoCache, err = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Kaniko, "kaniko", l.docker)
+				kanikoCache, err = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Kaniko, "kaniko", l.docker, l.logger)
 				if err != nil {
 					return err
 				}

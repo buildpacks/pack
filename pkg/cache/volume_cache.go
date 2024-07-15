@@ -8,11 +8,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/GoogleContainerTools/kaniko/pkg/util/proc"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/paths"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 const EnvVolumeKey = "PACK_VOLUME_KEY"
@@ -22,14 +24,14 @@ type VolumeCache struct {
 	volume string
 }
 
-func NewVolumeCache(imageRef name.Reference, cacheType CacheInfo, suffix string, dockerClient DockerClient) (*VolumeCache, error) {
+func NewVolumeCache(imageRef name.Reference, cacheType CacheInfo, suffix string, dockerClient DockerClient, logger logging.Logger) (*VolumeCache, error) {
 	var volumeName string
 	if cacheType.Source == "" {
-		volumeKey, err := getVolumeKey(imageRef)
+		volumeKey, err := getVolumeKey(imageRef, logger)
 		if err != nil {
 			return nil, err
 		}
-		sum := sha256.Sum256([]byte(imageRef.Name() + volumeKey)) // TODO: investigate if there are better ways to do this
+		sum := sha256.Sum256([]byte(imageRef.Name() + volumeKey))
 		vol := paths.FilterReservedNames(fmt.Sprintf("%s-%x", sanitizedRef(imageRef), sum[:6]))
 		volumeName = fmt.Sprintf("pack-cache-%s.%s", vol, suffix)
 	} else {
@@ -42,7 +44,7 @@ func NewVolumeCache(imageRef name.Reference, cacheType CacheInfo, suffix string,
 	}, nil
 }
 
-func getVolumeKey(imageRef name.Reference) (string, error) {
+func getVolumeKey(imageRef name.Reference, logger logging.Logger) (string, error) {
 	var foundKey string
 
 	// first, look for key in env
@@ -69,6 +71,12 @@ func getVolumeKey(imageRef name.Reference) (string, error) {
 	}
 
 	// finally, create new key and store it in config
+
+	// if we're running in a container, we should log a warning
+	// so that we don't always re-create the cache
+	if RunningInContainer() {
+		logger.Warnf("%s is unset; set this environment variable to a secret value to avoid creating a new volume cache on every build", EnvVolumeKey)
+	}
 
 	newKey := randString(20)
 	if cfg.VolumeKeys == nil {
@@ -117,4 +125,8 @@ func sanitizedRef(ref name.Reference) string {
 	result := strings.TrimPrefix(ref.Context().String(), ref.Context().RegistryStr()+"/")
 	result = strings.ReplaceAll(result, "/", "_")
 	return fmt.Sprintf("%s_%s", result, ref.Identifier())
+}
+
+var RunningInContainer = func() bool {
+	return proc.GetContainerRuntime(0, 0) != proc.RuntimeNotFound
 }
