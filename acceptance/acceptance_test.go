@@ -38,6 +38,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/cache"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -1162,8 +1163,9 @@ func testAcceptance(
 							ref, err := name.ParseReference(repoName, name.WeakValidation)
 							assert.Nil(err)
 							cacheImage := cache.NewImageCache(ref, dockerCli)
-							buildCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "build", dockerCli)
-							launchCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "launch", dockerCli)
+							logger := logging.NewSimpleLogger(&bytes.Buffer{})
+							buildCacheVolume, _ := cache.NewVolumeCache(ref, cache.CacheInfo{}, "build", dockerCli, logger)
+							launchCacheVolume, _ := cache.NewVolumeCache(ref, cache.CacheInfo{}, "launch", dockerCli, logger)
 							cacheImage.Clear(context.TODO())
 							buildCacheVolume.Clear(context.TODO())
 							launchCacheVolume.Clear(context.TODO())
@@ -1282,8 +1284,9 @@ func testAcceptance(
 					ref, err := name.ParseReference(repoName, name.WeakValidation)
 					assert.Nil(err)
 					cacheImage := cache.NewImageCache(ref, dockerCli)
-					buildCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "build", dockerCli)
-					launchCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "launch", dockerCli)
+					logger := logging.NewSimpleLogger(&bytes.Buffer{})
+					buildCacheVolume, _ := cache.NewVolumeCache(ref, cache.CacheInfo{}, "build", dockerCli, logger)
+					launchCacheVolume, _ := cache.NewVolumeCache(ref, cache.CacheInfo{}, "launch", dockerCli, logger)
 					cacheImage.Clear(context.TODO())
 					buildCacheVolume.Clear(context.TODO())
 					launchCacheVolume.Clear(context.TODO())
@@ -3168,8 +3171,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					imageManager.CleanupImages(origID, repoName, runBefore)
 					ref, err := name.ParseReference(repoName, name.WeakValidation)
 					assert.Nil(err)
-					buildCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "build", dockerCli)
-					launchCacheVolume := cache.NewVolumeCache(ref, cache.CacheInfo{}, "launch", dockerCli)
+					logger := logging.NewSimpleLogger(&bytes.Buffer{})
+					buildCacheVolume, _ := cache.NewVolumeCache(ref, cache.CacheInfo{}, "build", dockerCli, logger)
+					launchCacheVolume, _ := cache.NewVolumeCache(ref, cache.CacheInfo{}, "launch", dockerCli, logger)
 					assert.Succeeds(buildCacheVolume.Clear(context.TODO()))
 					assert.Succeeds(launchCacheVolume.Clear(context.TODO()))
 				})
