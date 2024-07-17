@@ -140,6 +140,33 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("the image name matches a builder name", func() {
+				it("refuses to build", func() {
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"heroku/builder:test", "--builder", "heroku/builder:24"})
+					h.AssertNotNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "name must not match builder image name")
+				})
+			})
+
+			when("the image name matches a trusted-builder name", func() {
+				it("refuses to build", func() {
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"heroku/builder:test", "--builder", "test", "--trust-builder"})
+					h.AssertNotNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "name must not match trusted builder name")
+				})
+			})
+
+			when("the image name matches a lifecycle image name", func() {
+				it("refuses to build", func() {
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"buildpacksio/lifecycle:test", "--builder", "test", "--trust-builder"})
+					h.AssertNotNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "name must not match default lifecycle image name")
+				})
+			})
+
 			when("the builder is not trusted", func() {
 				it("warns the user that the builder is untrusted", func() {
 					mockClient.EXPECT().
@@ -803,13 +830,9 @@ builder = "my-builder"
 		when("previous-image flag is provided", func() {
 			when("image is invalid", func() {
 				it("error must be thrown", func() {
-					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithPreviousImage("previous-image")).
-						Return(errors.New(""))
-
 					command.SetArgs([]string{"--builder", "my-builder", "/x@/y/?!z", "--previous-image", "previous-image"})
 					err := command.Execute()
-					h.AssertError(t, err, "failed to build")
+					h.AssertError(t, err, "forbidden image name")
 				})
 			})
 
