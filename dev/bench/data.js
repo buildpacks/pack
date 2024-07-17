@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1720555388786,
+  "lastUpdate": 1721228530947,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7420,6 +7420,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 55373342120,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f6b450fc1ae5c3706cd5359a688cb80266950171",
+          "message": "Merge pull request #2217 from buildpacks/security-fixes\n\nFixes from security review",
+          "timestamp": "2024-07-17T10:58:31-04:00",
+          "tree_id": "80725ff5a650f39486768ce1c8202c3482ce834f",
+          "url": "https://github.com/buildpacks/pack/commit/f6b450fc1ae5c3706cd5359a688cb80266950171"
+        },
+        "date": 1721228530560,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4595686232,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1133476416,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 57283637496,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
