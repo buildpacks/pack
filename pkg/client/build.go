@@ -203,8 +203,16 @@ type BuildOptions struct {
 	// TrustBuilder when true optimizes builds by running
 	// all lifecycle phases in a single container.
 	// This places registry credentials on the builder's build image.
-	// Only trust builders from reputable sources.
+	// Only trust builders from reputable sources.  The optimized
+	// build happens only when both builder and buildpacks are
+	// trusted
 	TrustBuilder IsTrustedBuilder
+
+	// TrustAdditionalBuildpacks when true optimizes builds by running
+	// all lifecycle phases in a single container.  The optimized
+	// build happens only when both builder and buildpacks are
+	// trusted
+	TrustAdditionalBuildpacks bool
 
 	// Directory to output any SBOM artifacts
 	SBOMDestinationDir string
@@ -430,16 +438,17 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	// Get the platform API version to use
 	lifecycleVersion := bldr.LifecycleDescriptor().Info.Version
 	useCreator := supportsCreator(lifecycleVersion) && opts.TrustBuilder(opts.Builder)
-	hasAdditionalModules := func() bool {
-		if len(fetchedBPs) == 0 && len(fetchedExs) == 0 {
-			return false
-		}
-		if len(fetchedBPs) == nInlineBPs && len(fetchedExs) == 0 {
-			return false
-		}
-		return true
+	hasAdditionalBuildpacks := func() bool {
+		return len(fetchedBPs) != nInlineBPs
 	}()
-	if useCreator && hasAdditionalModules {
+	hasExtensions := func() bool {
+		return len(fetchedExs) != 0
+	}()
+	if hasExtensions {
+		c.logger.Warnf("Builder is trusted but additional modules were added; using the untrusted (5 phases) build flow")
+		useCreator = false
+	}
+	if hasAdditionalBuildpacks && !opts.TrustAdditionalBuildpacks {
 		c.logger.Warnf("Builder is trusted but additional modules were added; using the untrusted (5 phases) build flow")
 		useCreator = false
 	}

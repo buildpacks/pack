@@ -2091,6 +2091,28 @@ api = "0.2"
 						})
 
 						when("additional buildpacks were added", func() {
+							it("uses creator when additional buildpacks are provided and TrustAdditionalBuildpacks is set", func() {
+								additionalBP := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+									WithAPI: api.MustParse("0.3"),
+									WithInfo: dist.ModuleInfo{
+										ID:      "buildpack.add.1.id",
+										Version: "buildpack.add.1.version",
+									},
+									WithStacks: []dist.Stack{{ID: defaultBuilderStackID}},
+									WithOrder:  nil,
+								})
+
+								h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+									Image:                     "some/app",
+									Builder:                   defaultBuilderName,
+									Publish:                   true,
+									TrustBuilder:              func(string) bool { return true },
+									TrustAdditionalBuildpacks: true,
+									Buildpacks:                []string{additionalBP},
+								}))
+								h.AssertEq(t, fakeLifecycle.Opts.UseCreator, true)
+							})
+
 							it("uses the 5 phases with the lifecycle image", func() {
 								additionalBP := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 									WithAPI: api.MustParse("0.3"),
