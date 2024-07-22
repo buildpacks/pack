@@ -2091,7 +2091,7 @@ api = "0.2"
 						})
 
 						when("additional buildpacks were added", func() {
-							it("uses creator when additional buildpacks are provided and TrustAdditionalBuildpacks is set", func() {
+							it("uses creator when additional buildpacks are provided and TrustExtraBuildpacks is set", func() {
 								additionalBP := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 									WithAPI: api.MustParse("0.3"),
 									WithInfo: dist.ModuleInfo{
@@ -2103,12 +2103,12 @@ api = "0.2"
 								})
 
 								h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-									Image:                     "some/app",
-									Builder:                   defaultBuilderName,
-									Publish:                   true,
-									TrustBuilder:              func(string) bool { return true },
-									TrustAdditionalBuildpacks: true,
-									Buildpacks:                []string{additionalBP},
+									Image:                "some/app",
+									Builder:              defaultBuilderName,
+									Publish:              true,
+									TrustBuilder:         func(string) bool { return true },
+									TrustExtraBuildpacks: true,
+									Buildpacks:           []string{additionalBP},
 								}))
 								h.AssertEq(t, fakeLifecycle.Opts.UseCreator, true)
 							})

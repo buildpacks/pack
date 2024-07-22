@@ -24,40 +24,40 @@ import (
 )
 
 type BuildFlags struct {
-	Publish                   bool
-	ClearCache                bool
-	TrustBuilder              bool
-	TrustAdditionalBuildpacks bool
-	Interactive               bool
-	Sparse                    bool
-	DockerHost                string
-	CacheImage                string
-	Cache                     cache.CacheOpts
-	AppPath                   string
-	Builder                   string
-	Registry                  string
-	RunImage                  string
-	Platform                  string
-	Policy                    string
-	Network                   string
-	DescriptorPath            string
-	DefaultProcessType        string
-	LifecycleImage            string
-	Env                       []string
-	EnvFiles                  []string
-	Buildpacks                []string
-	Extensions                []string
-	Volumes                   []string
-	AdditionalTags            []string
-	Workspace                 string
-	GID                       int
-	UID                       int
-	PreviousImage             string
-	SBOMDestinationDir        string
-	ReportDestinationDir      string
-	DateTime                  string
-	PreBuildpacks             []string
-	PostBuildpacks            []string
+	Publish              bool
+	ClearCache           bool
+	TrustBuilder         bool
+	TrustExtraBuildpacks bool
+	Interactive          bool
+	Sparse               bool
+	DockerHost           string
+	CacheImage           string
+	Cache                cache.CacheOpts
+	AppPath              string
+	Builder              string
+	Registry             string
+	RunImage             string
+	Platform             string
+	Policy               string
+	Network              string
+	DescriptorPath       string
+	DefaultProcessType   string
+	LifecycleImage       string
+	Env                  []string
+	EnvFiles             []string
+	Buildpacks           []string
+	Extensions           []string
+	Volumes              []string
+	AdditionalTags       []string
+	Workspace            string
+	GID                  int
+	UID                  int
+	PreviousImage        string
+	SBOMDestinationDir   string
+	ReportDestinationDir string
+	DateTime             string
+	PreBuildpacks        []string
+	PostBuildpacks       []string
 }
 
 // Build an image from source code
@@ -181,9 +181,9 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				TrustBuilder: func(string) bool {
 					return trustBuilder
 				},
-				TrustAdditionalBuildpacks: flags.TrustAdditionalBuildpacks,
-				Buildpacks:                buildpacks,
-				Extensions:                extensions,
+				TrustExtraBuildpacks: flags.TrustExtraBuildpacks,
+				Buildpacks:           buildpacks,
+				Extensions:           extensions,
 				ContainerConfig: client.ContainerConfig{
 					Network: flags.Network,
 					Volumes: flags.Volumes,
@@ -275,7 +275,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
 	cmd.Flags().StringSliceVarP(&buildFlags.AdditionalTags, "tag", "t", nil, "Additional tags to push the output image to.\nTags should be in the format 'image:tag' or 'repository/image:tag'."+stringSliceHelp("tag"))
 	cmd.Flags().BoolVar(&buildFlags.TrustBuilder, "trust-builder", false, "Trust the provided builder.\nAll lifecycle phases will be run in a single container.\nFor more on trusted builders, and when to trust or untrust a builder, check out our docs here: https://buildpacks.io/docs/tools/pack/concepts/trusted_builders")
-	cmd.Flags().BoolVar(&buildFlags.TrustAdditionalBuildpacks, "trust-additional-buildpacks", false, "Trust buildpacks that are provided in addition to the buildpacks on the builder")
+	cmd.Flags().BoolVar(&buildFlags.TrustExtraBuildpacks, "trust-extra-buildpacks", false, "Trust buildpacks that are provided in addition to the buildpacks on the builder")
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<options>]'.\n- 'host path': Name of the volume or absolute directory path to mount.\n- 'target path': The path where the file or directory is available in the container.\n- 'options' (default \"ro\"): An optional comma separated list of mount options.\n    - \"ro\", volume contents are read-only.\n    - \"rw\", volume contents are readable and writeable.\n    - \"volume-opt=<key>=<value>\", can be specified more than once, takes a key-value pair consisting of the option name and its value."+stringArrayHelp("volume"))
 	cmd.Flags().StringVar(&buildFlags.Workspace, "workspace", "", "Location at which to mount the app dir in the build image")
 	cmd.Flags().IntVar(&buildFlags.GID, "gid", 0, `Override GID of user's group in the stack's build and run images. The provided value must be a positive number`)

@@ -208,11 +208,11 @@ type BuildOptions struct {
 	// trusted
 	TrustBuilder IsTrustedBuilder
 
-	// TrustAdditionalBuildpacks when true optimizes builds by running
+	// TrustExtraBuildpacks when true optimizes builds by running
 	// all lifecycle phases in a single container.  The optimized
 	// build happens only when both builder and buildpacks are
 	// trusted
-	TrustAdditionalBuildpacks bool
+	TrustExtraBuildpacks bool
 
 	// Directory to output any SBOM artifacts
 	SBOMDestinationDir string
@@ -448,7 +448,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		c.logger.Warnf("Builder is trusted but additional modules were added; using the untrusted (5 phases) build flow")
 		useCreator = false
 	}
-	if hasAdditionalBuildpacks && !opts.TrustAdditionalBuildpacks {
+	if hasAdditionalBuildpacks && !opts.TrustExtraBuildpacks {
 		c.logger.Warnf("Builder is trusted but additional modules were added; using the untrusted (5 phases) build flow")
 		useCreator = false
 	}
