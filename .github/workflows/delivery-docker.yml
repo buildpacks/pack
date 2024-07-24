@@ -16,8 +16,9 @@ on:
         default: false
 
 env:
+  REPO_NAME: 'index.docker.io'
+  USER_NAME: 'buildpacksio'
   IMG_NAME: 'pack'
-  USERNAME: 'buildpacksio'
 
 jobs:
   deliver-docker:
@@ -52,7 +53,7 @@ jobs:
         with:
           ref: v${{ steps.version.outputs.result }}
       - name: Determine App Name
-        run: 'echo "IMG_NAME=${{ env.USERNAME }}/${{ env.IMG_NAME }}" >> $GITHUB_ENV'
+        run: 'echo "IMG_NAME=${{ env.REPO_NAME }}/${{ env.USERNAME }}/${{ env.IMG_NAME }}" >> $GITHUB_ENV'
       - name: Login to Dockerhub
         uses: docker/login-action@v3
         with:
