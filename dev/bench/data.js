@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1722268080822,
+  "lastUpdate": 1722279534346,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7546,6 +7546,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 70326346787,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c253591be97afc59eafe7b78589a8a274d3c02ff",
+          "message": "Merge pull request #2238 from anthonydahanne/2237-workspace-sensitive\n\nFix #2237: consider /workspace as a sensitive dir",
+          "timestamp": "2024-07-29T14:57:20-04:00",
+          "tree_id": "a2770f2e4ac0570a04f097fc1432d225d2dfdc61",
+          "url": "https://github.com/buildpacks/pack/commit/c253591be97afc59eafe7b78589a8a274d3c02ff"
+        },
+        "date": 1722279533939,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3971825874,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1126465736,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 55940879825,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
