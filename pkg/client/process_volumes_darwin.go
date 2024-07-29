@@ -17,7 +17,7 @@ func processVolumes(imgOS string, volumes []string) (processed []string, warning
 		if err != nil {
 			return nil, nil, err
 		}
-		sensitiveDirs := []string{"/cnb", "/layers"}
+		sensitiveDirs := []string{"/cnb", "/layers", "/workspace"}
 		if imgOS == "windows" {
 			sensitiveDirs = []string{`c:/cnb`, `c:\cnb`, `c:/layers`, `c:\layers`}
 		}

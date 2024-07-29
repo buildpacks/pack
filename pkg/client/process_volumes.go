@@ -29,9 +29,9 @@ func processVolumes(imgOS string, volumes []string) (processed []string, warning
 			return nil, nil, errors.Wrapf(err, "platform volume %q has invalid format", v)
 		}
 
-		sensitiveDirs := []string{"/cnb", "/layers"}
+		sensitiveDirs := []string{"/cnb", "/layers", "/workspace"}
 		if imgOS == "windows" {
-			sensitiveDirs = []string{`c:/cnb`, `c:\cnb`, `c:/layers`, `c:\layers`}
+			sensitiveDirs = []string{`c:/cnb`, `c:\cnb`, `c:/layers`, `c:\layers`, `c:/workspace`, `c:\workspace`}
 		}
 		for _, p := range sensitiveDirs {
 			if strings.HasPrefix(strings.ToLower(volume.Spec.Target), p) {
