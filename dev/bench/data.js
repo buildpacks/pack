@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1721918435638,
+  "lastUpdate": 1722268080822,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7504,6 +7504,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 65729591495,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "39027493898bba8957324ad347fc8ad9e028a62b",
+          "message": "Merge pull request #2235 from hhiroshell/fix-pack-2111-1\n\nAdd a helper script for testing GitHub Actions on forked repositories",
+          "timestamp": "2024-07-29T11:46:06-04:00",
+          "tree_id": "5639e9b16137eb5328c323c102209ff68e87cb16",
+          "url": "https://github.com/buildpacks/pack/commit/39027493898bba8957324ad347fc8ad9e028a62b"
+        },
+        "date": 1722268079850,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6915679910,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2442658605,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 70326346787,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
