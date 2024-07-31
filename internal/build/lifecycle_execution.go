@@ -211,7 +211,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		if l.os == "windows" {
 			driver = "nat"
 		}
-		networkName := fmt.Sprintf("pack.local/network/%x", randString(10))
+		networkName := fmt.Sprintf("pack.local-network-%x", randString(10))
 		resp, err := l.docker.NetworkCreate(ctx, networkName, types.NetworkCreate{
 			Driver: driver,
 		})
