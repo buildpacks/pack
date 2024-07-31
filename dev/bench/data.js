@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1722290924316,
+  "lastUpdate": 1722446666106,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7630,6 +7630,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 57425554814,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "004deb640457d5eb4ac78c3b2a11de8ac5d9a8ab",
+          "message": "Merge pull request #2240 from hhiroshell/fix-pack-2111-2\n\nMake the docker Image `pack:base` built on the same base image as `pack:x.x.x-base`",
+          "timestamp": "2024-07-31T13:22:28-04:00",
+          "tree_id": "feb0ff398b9856fc58042f5a32a9d314c3793a26",
+          "url": "https://github.com/buildpacks/pack/commit/004deb640457d5eb4ac78c3b2a11de8ac5d9a8ab"
+        },
+        "date": 1722446664984,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7220315046,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2587520647,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 71699905927,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
