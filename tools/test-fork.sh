@@ -53,7 +53,7 @@ sed -i '' "/- config: windows-lcow/,+4d" $wfdir/build.yml
 
 echo "Replacing the registry account with owned one (assumes DOCKER_PASSWORD and DOCKER_USERNAME have been added to GitHub secrets, if not using ghcr.io)"
 sed -i '' "s/buildpacksio\/pack/$registry\/$username\/$reponame/g" $wfdir/check-latest-release.yml
-sed -i '' "/REPO_NAME: 'index.docker.io'/ s/index.docker.io/$registry/g" $wfdir/delivery-docker.yml
+sed -i '' "/REGISTRY_NAME: 'index.docker.io'/ s/index.docker.io/$registry/g" $wfdir/delivery-docker.yml
 sed -i '' "/USER_NAME: 'buildpacksio'/ s/buildpacksio/$username/g" $wfdir/delivery-docker.yml
 
 if [[ $registry != "index.docker.io" ]]; then
