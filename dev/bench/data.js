@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1722454358652,
+  "lastUpdate": 1722873839600,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7714,6 +7714,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 58702734986,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a22a7ffef9e69b33ba32fcbfbe6491a09d5397c",
+          "message": "Merge pull request #2241 from buildpacks/fix/network-name\n\nFix ephemeral bridge network name for podman",
+          "timestamp": "2024-08-05T12:02:05-04:00",
+          "tree_id": "18ddc3aca325f328d214f4232f5661abf0923d82",
+          "url": "https://github.com/buildpacks/pack/commit/3a22a7ffef9e69b33ba32fcbfbe6491a09d5397c"
+        },
+        "date": 1722873838517,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7461850859,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2612231779,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 70245102819,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
