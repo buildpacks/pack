@@ -1,0 +1,3 @@
+ignore:
+  - vulnerability: CVE-2015-5237 # false positive, see https://github.com/anchore/grype/issues/558
+  - vulnerability: CVE-2021-22570 # false positive, see https://github.com/anchore/grype/issues/558
