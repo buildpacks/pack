@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	// "io"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"syscall"
 
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/pack/internal/build"
@@ -21,11 +25,17 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
+	gwClient "github.com/moby/buildkit/frontend/gateway/client"
+	"github.com/moby/buildkit/solver/pb"
+	"github.com/moby/buildkit/util/entitlements"
+	"github.com/moby/buildkit/util/progress/progresswriter"
+	"github.com/tonistiigi/fsutil"
 )
 
 func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, buildCache, launchCache build.Cache) error {
 	// TODO: move mounter into [l.[*builder.Builder[state.State]]]
-	mounter := mountpaths.MountPathsForOS(runtime.GOOS, l.opts.Workspace) // we are going to run a single container i.e the container with the current target's OS 
+	mounter := mountpaths.MountPathsForOS(runtime.GOOS, l.opts.Workspace) // we are going to run a single container i.e the container with the current target's OS
+	fmt.Printf("using %q as workspace\n", mounter.AppDir())
 	flags := addTags([]string{
 		"-app", mounter.AppDir(),
 		"-cache-dir", mounter.CacheDir(),
@@ -96,30 +106,205 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, build
 	l.Entrypoint("/cnb/lifecycle/creator").
 		Network(l.opts.Network).
 		Mkdir(mounter.CacheDir(), fs.ModeDir, llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID())). // create `/cache` dir
-		Mkdir(l.opts.Workspace, fs.ModeDir, llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID())). // create `/workspace` dir
+		Mkdir(l.opts.Workspace, fs.ModePerm, llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID())).   // create `/workspace` dir
 		Mkdir(
 			mounter.LayersDir(), // create `/layers` dir for future reference
-			fs.ModeDir, 
+			fs.ModeDir,
 			llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID()), // add uid and gid for for the given `layers` dir
 		).
-		MkFile(mounter.ProjectPath(), fs.ModePerm, projectMetadata, llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID())).
-		Mkdir(mounter.AppDir(), fs.ModeDir, llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID()))
-		// Use Add, cause: The AppPath can be either a directory or a tar file!
-		// The [Add] command is responsible for extracting tar
-		// TODO: CopyOutTo(mounter.SbomDir(), l.opts.SBOMDestinationDir)
-		// TODO: CopyOutTo(mounter.ReportPath(), l.opts.ReportDestinationDir)
-		// TODO: CopyOut(l.opts.Termui.ReadLayers, mounter.LayersDir(), mounter.AppDir())))
+		MkFile(mounter.ProjectPath(), fs.ModePerm, projectMetadata, llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID()))
+		// Mkdir(mounter.AppDir(), fs.ModeDir, llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID()))
+	// Use Add, cause: The AppPath can be either a directory or a tar file!
+	// The [Add] command is responsible for extracting tar
+	// TODO: CopyOutTo(mounter.SbomDir(), l.opts.SBOMDestinationDir)
+	// TODO: CopyOutTo(mounter.ReportPath(), l.opts.ReportDestinationDir)
+	// TODO: CopyOut(l.opts.Termui.ReadLayers, mounter.LayersDir(), mounter.AppDir())))
 
-	l.UID(fmt.Sprintf("%d", l.opts.Builder.UID())).
-		GID(fmt.Sprintf("%d", l.opts.Builder.GID())).
-		AppSource(l.opts.AppPath, mounter.AppDir())
+	fmt.Printf("copying files by chown: %d:%d\n", l.opts.Builder.UID(), l.opts.Builder.GID())
+	pw, err := progresswriter.NewPrinter(context.TODO(), os.Stderr, "plain")
+	if err != nil {
+		return err
+	}
+	mw := progresswriter.NewMultiWriter(pw)
+
+	// creating a llb.State by copying app src code by creating a new stage
+	appSrc := llb.Local(l.opts.AppPath, llb.WithCustomNamef("Mounting Volume: %s", l.opts.AppPath))
+	// var mode *os.FileMode
+	// p, err := strconv.ParseUint(fmt.Sprintf("777"/*"%d:%d", l.opts.Builder.UID(), l.opts.Builder.GID()), 777, 32*/)
+	// if err == nil {
+	// 	perm := os.FileMode(p)
+	// 	mode = &perm
+	// }
+
+	// FROM scratch as APPSRC
+	// COPY / /
+
+	// FROM paketobuildpacks/builder-jammy-tiny:0.0.250
+	// COPY --from=APPSRC . /workspace
+
+	var fmode = fs.ModePerm
+	appScrCopy := llb.Copy(
+		appSrc,
+		"/", // copy root of appSrc
+		mounter.AppDir(), // `/workspace`
+		&llb.CopyInfo{
+			Mode: &fmode,
+			// IncludePatterns: []string{"/*"},
+			FollowSymlinks: true,
+			AttemptUnpack: true,
+			CreateDestPath: true,
+			AllowWildcard: true,
+			AllowEmptyWildcard: true,
+			CopyDirContentsOnly: true,
+			ChownOpt: &llb.ChownOpt{
+				// User: &llb.UserOpt{},
+				// Group: &llb.UserOpt{Name: "cnb"},
+				User: &llb.UserOpt{UID: 1000},
+				Group: &llb.UserOpt{UID: 1001},
+			},
+		},
+		llb.WithUIDGID(l.opts.Builder.UID(), l.opts.Builder.GID()),
+	)
+	llbState := llb.Image("paketobuildpacks/builder-jammy-tiny:0.0.250", llb.WithCustomName("pulling builder"))
+	llbState = llbState.File(
+		appScrCopy,
+		llb.WithCustomNamef("COPY %s %s", l.opts.AppPath, mounter.AppDir()),
+	)
+	// llbState = llbState.File(
+	// 	appScrCopy,
+	// 	llb.WithCustomNamef("COPY %s %s", l.opts.AppPath, mounter.AppDir()),
+	// )
+
+	def, err := llbState.Marshal(ctx)
+	if err != nil {
+		return err
+	}
+
+	workspaceLocalMount, err := fsutil.NewFS(l.opts.AppPath)
+	if err != nil {
+		return err
+	}
+
+	var statFile func(ref gwClient.Reference, path string) error
+	statFile = func(ref gwClient.Reference, path string) error {
+		stat, err := ref.ReadDir(ctx, gwClient.ReadDirRequest{
+			Path: path,
+		})
+		if err != nil {
+			return err
+		}
+
+		if len(stat) == 0 {
+			l.logger.Errorf("no files found in %s directory", path)
+		}
+
+		for _, f := range stat {
+			if f.IsDir() {
+				if err := statFile(ref, filepath.Join(path, f.GetPath())); err != nil {
+					return err
+				}
+			}
+			l.logger.Warnf("found %+v \n", f.GetPath(), f.GetSize_(), f)
+		}
+		return nil
+	}
+
+	fmt.Printf("exporting docker image with name: %s\n\n", l.opts.Image.Name())
+	_, err = c.Build(ctx, client.SolveOpt{
+		// Exports: []client.ExportEntry{
+		// 	{
+		// 		Type: client.ExporterDocker,
+		// 		Output: func(m map[string]string) (io.WriteCloser, error) {
+		// 			return os.Create(filepath.Join(l.opts.AppPath, "exports", fmt.Sprintf("%s.tar", l.opts.Image.Identifier())))
+		// 		},
+		// 	},
+		// },
+		LocalMounts: map[string]fsutil.FS{
+			l.opts.AppPath: workspaceLocalMount,
+		},
+		AllowedEntitlements: []entitlements.Entitlement{entitlements.EntitlementNetworkHost},
+	}, "", func(ctx context.Context, c gwClient.Client) (*gwClient.Result, error) {
+		res, err := c.Solve(ctx, gwClient.SolveRequest{
+			Evaluate:   true,
+			Definition: def.ToPB(),
+		})
+		if err != nil {
+			return res, err
+		}
+
+		ref, err := res.SingleRef()
+		if err != nil {
+			return res, err
+		}
+
+		if err = statFile(ref, mounter.AppDir()); err != nil {
+			return res, err
+		}
+
+		ctr, err := c.NewContainer(ctx, gwClient.NewContainerRequest{
+			Mounts: []gwClient.Mount{
+				{
+					Dest:      "/",
+					Ref:       res.Ref,
+					MountType: pb.MountType_BIND,
+				},
+			},
+		})
+		if err != nil {
+			return res, err
+		}
+
+		defer ctr.Release(ctx)
+		pid, err := ctr.Start(ctx, gwClient.StartRequest{
+			Env: []string{
+				// // "CNB_USER_ID=1002",
+				// // "CNB_GROUP_ID=1000",
+				"CNB_PLATFORM_API=0.12",
+				"CNB_STACK_ID=io.buildpacks.stacks.jammy.tiny",
+				// // "BP_PROCFILE_DEFAULT_PROCESS=web",
+				// "BP_IMAGE_LABELS=alpha=bravo charlie=\"delta echo\"",
+				// "BP_OCI_AUTHORS=paketo",
+				// "BP_OCI_CREATED=2024-05-17T00:49:01Z",
+				// "BP_OCI_DESCRIPTION=distroless-like jammy",
+				// "BP_OCI_DOCUMENTATION=docs",
+				// "BP_OCI_LICENSES=MIT",
+				// "BP_OCI_REF_NAME=ttl.sh/wygin/buildkit:1d",
+				// "BP_OCI_REVISION=1",
+				// "BP_OCI_SOURCE=src",
+				// "BP_OCI_TITLE=buildkit-test",
+				// "BP_OCI_URL=https://github.com/paketo-buildpacks/jammy-tiny-stack",
+				// "BP_OCI_VENDOR=Paketo Buildpacks",
+				// "BP_OCI_VERSION=22.04",
+			},
+			// User: "root",
+			Stdout: os.Stdout,
+			Stderr: os.Stderr,
+			Args: /*[]string{"ls", "-la", "workspace"},*/ []string{"/cnb/lifecycle/creator", "-app", "/workspace", "-run-image", "index.docker.io/paketobuildpacks/run-jammy-tiny:latest", "ttl.sh/wygin/react-yarn:1d"},
+		})
+
+		if err := pid.Wait(); err != nil {
+			if err := pid.Signal(ctx, syscall.SIGKILL); err != nil {
+				l.logger.Warn("test container failed to kill")
+			}
+			return res, err
+		}
+
+		return res, err
+	}, progresswriter.ResetTime(mw.WithPrefix("test: ", true)).Status())
+	if err != nil {
+		return err
+	}
+
+	// l.UID(fmt.Sprintf("%d", l.opts.Builder.UID())).
+	// 	GID(fmt.Sprintf("%d", l.opts.Builder.GID())).
+	// 	AppSource(l.opts.AppPath, mounter.AppDir())
 
 	layoutDir := filepath.Join(paths.RootDir, "layout-repo")
 	if l.opts.Layout {
 		l.AddEnv("CNB_USE_LAYOUT", "true").
 			AddEnv("CNB_LAYOUT_DIR", layoutDir).
 			AddEnv("CNB_EXPERIMENTAL_MODE", "WARN")
-			// Mkdir(layoutDir, fs.ModeDir) // also create `layoutDir`
+		// Mkdir(layoutDir, fs.ModeDir) // also create `layoutDir`
 	}
 
 	if l.opts.Publish || l.opts.Layout {
@@ -130,7 +315,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, c *client.Client, build
 
 		fmt.Printf("using auth config for push image: %s\n", authConfig)
 		// can we use SecretAsEnv, cause The ENV is exposed in ConfigFile whereas SecretAsEnv not! But are we using DinD?
-		// shall we add secret to builder instead of remodifying existing builder to add `CNB_REGISTRY_AUTH` 
+		// shall we add secret to builder instead of remodifying existing builder to add `CNB_REGISTRY_AUTH`
 		// we can also reference a file as secret!
 		l.User(state.RootUser(runtime.GOOS)).
 			AddEnv(fmt.Sprintf("CNB_REGISTRY_AUTH=%s", authConfig))
