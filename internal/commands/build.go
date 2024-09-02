@@ -8,14 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/buildpacks/pack/pkg/cache"
-
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -326,6 +325,11 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, inputImageRef clie
 
 	if inputImageRef.Layout() && !cfg.Experimental {
 		return client.NewExperimentError("Exporting to OCI layout is currently experimental.")
+	}
+
+	if !inputImageRef.Layout() && flags.AppPath == "" {
+		logger.Warnf("You are building an image named '%s'. If you mean it as an app directory path, run 'pack build <args> --path %s'",
+			inputImageRef.Name(), inputImageRef.Name())
 	}
 
 	return nil

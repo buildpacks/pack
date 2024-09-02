@@ -17,11 +17,10 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/paths"
-
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -77,6 +76,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 
 				command.SetArgs([]string{"--builder", "my-builder", "image"})
 				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Warning: You are building an image named 'image'. If you mean it as an app directory path, run 'pack build <args> --path image'")
 			})
 
 			it("builds an image with a builder short command arg", func() {
@@ -968,6 +968,7 @@ builder = "my-builder"
 				command.SetArgs([]string{"oci:image", "--builder", "my-builder"})
 				err := command.Execute()
 				h.AssertNil(t, err)
+				h.AssertNotContainsMatch(t, outBuf.String(), `Warning: You are building an image named '([^']+)'\. If you mean it as an app directory path, run 'pack build <args> --path ([^']+)'`)
 			})
 		})
 
@@ -982,6 +983,7 @@ builder = "my-builder"
 				command.SetArgs([]string{"oci:image", "--previous-image", "oci:my-previous-image", "--builder", "my-builder"})
 				err := command.Execute()
 				h.AssertNil(t, err)
+				h.AssertNotContainsMatch(t, outBuf.String(), `Warning: You are building an image named '([^']+)'\. If you mean it as an app directory path, run 'pack build <args> --path ([^']+)'`)
 			})
 		})
 
@@ -995,6 +997,7 @@ builder = "my-builder"
 				command.SetArgs([]string{"oci:image", "--sparse", "--builder", "my-builder"})
 				err := command.Execute()
 				h.AssertNil(t, err)
+				h.AssertNotContainsMatch(t, outBuf.String(), `Warning: You are building an image named '([^']+)'\. If you mean it as an app directory path, run 'pack build <args> --path ([^']+)'`)
 			})
 		})
 	})
