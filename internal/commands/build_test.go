@@ -931,6 +931,19 @@ builder = "my-builder"
 			})
 		})
 
+		when("path to app dir or zip-formatted file is provided", func() {
+			it("builds with the specified path"+
+				"and doesn't warn that the positional argument will not be treated as the source path", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithPath("my-source")).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--path", "my-source"})
+				h.AssertNil(t, command.Execute())
+				h.AssertNotContainsMatch(t, outBuf.String(), `Warning: You are building an image named '([^']+)'\. If you mean it as an app directory path, run 'pack build <args> --path ([^']+)'`)
+			})
+		})
+
 		when("export to OCI layout is expected but experimental isn't set in the config", func() {
 			it("errors with a descriptive message", func() {
 				command.SetArgs([]string{"oci:image", "--builder", "my-builder"})
@@ -1174,6 +1187,15 @@ func EqBuildOptionsWithDateTime(t *time.Time) interface{} {
 				return o.CreationTime == nil
 			}
 			return o.CreationTime.Sub(*t) < 5*time.Second && t.Sub(*o.CreationTime) < 5*time.Second
+		},
+	}
+}
+
+func EqBuildOptionsWithPath(path string) interface{} {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("AppPath=%s", path),
+		equals: func(o client.BuildOptions) bool {
+			return o.AppPath == path
 		},
 	}
 }
