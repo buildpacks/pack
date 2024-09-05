@@ -69,7 +69,8 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("a builder and image are set", func() {
-			it("builds an image with a builder", func() {
+			it("builds an image with a builder"+
+				"and warns that the positional argument will not be treated as the source path", func() {
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "image")).
 					Return(nil)
@@ -972,7 +973,8 @@ builder = "my-builder"
 		})
 
 		when("path to save the image is provided", func() {
-			it("build is called with oci layout configuration", func() {
+			it("builds with oci layout configuration"+
+				"and it doesn't warn that the positional argument will not be treated as the source path", func() {
 				sparse = false
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsWithLayoutConfig("image", previousImage, sparse, layoutDir)).
@@ -986,7 +988,8 @@ builder = "my-builder"
 		})
 
 		when("previous-image flag is provided", func() {
-			it("build is called with oci layout configuration", func() {
+			it("builds with oci layout configuration"+
+				"and it doesn't warn that the positional argument will not be treated as the source path", func() {
 				sparse = false
 				previousImage = "my-previous-image"
 				mockClient.EXPECT().
@@ -1001,7 +1004,8 @@ builder = "my-builder"
 		})
 
 		when("-sparse flag is provided", func() {
-			it("build is called with oci layout configuration and sparse true", func() {
+			it("build with oci layout configuration and sparse true"+
+				"and it doesn't warn that the positional argument will not be treated as the source path", func() {
 				sparse = true
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsWithLayoutConfig("image", previousImage, sparse, layoutDir)).
