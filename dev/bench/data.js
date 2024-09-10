@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1722885977869,
+  "lastUpdate": 1726001635085,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7798,6 +7798,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 58605681435,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "86b4bf3bfc18659c694321c4caed135dc4492796",
+          "message": "Merge pull request #2245 from keshavdalmia10/cache_flag_case_sensitivity_2229\n\nhandled case sensitivity",
+          "timestamp": "2024-09-10T16:52:01-04:00",
+          "tree_id": "baf73584df9287def42f54329257aa20db1a1c2c",
+          "url": "https://github.com/buildpacks/pack/commit/86b4bf3bfc18659c694321c4caed135dc4492796"
+        },
+        "date": 1726001634669,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4262104533,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1103478270,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 63111702544,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
