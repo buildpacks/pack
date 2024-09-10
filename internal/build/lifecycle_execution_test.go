@@ -804,7 +804,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 
 				for _, entry := range fakePhaseFactory.NewCalledWithProvider {
-					h.AssertContains(t, string(entry.HostConfig().NetworkMode), "pack.local/network/")
+					h.AssertContains(t, string(entry.HostConfig().NetworkMode), "pack.local-network-")
 					h.AssertEq(t, entry.HostConfig().NetworkMode.IsDefault(), false)
 					h.AssertEq(t, entry.HostConfig().NetworkMode.IsHost(), false)
 					h.AssertEq(t, entry.HostConfig().NetworkMode.IsNone(), false)
