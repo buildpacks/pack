@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1726073080261,
+  "lastUpdate": 1726091215029,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7882,6 +7882,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 61031068145,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e545151a8718bffd7e9d587493e09c1eed679828",
+          "message": "Merge pull request #2260 from buildpacks/fix/delete-ephemeral-builder\n\nFix deletion of ephemeral builder",
+          "timestamp": "2024-09-11T17:45:07-04:00",
+          "tree_id": "c0916dcc2e52c8a72322ec4749666e396a977248",
+          "url": "https://github.com/buildpacks/pack/commit/e545151a8718bffd7e9d587493e09c1eed679828"
+        },
+        "date": 1726091214610,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4224248316,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1358959801,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 56930864609,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
