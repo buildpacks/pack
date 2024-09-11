@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1726001635085,
+  "lastUpdate": 1726073080261,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -7840,6 +7840,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 63111702544,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "df70f4cd1f9c1415e1aba972eab4afc11c952842",
+          "message": "Merge pull request #2261 from fumblehool/fix/warning-buildpack-toml\n\nDon't warn about clear-env key while parsing buildpack.toml as this is actually expected.",
+          "timestamp": "2024-09-11T12:42:49-04:00",
+          "tree_id": "7bc59c1e967c4142d134b1da4f6a8a2fe202f762",
+          "url": "https://github.com/buildpacks/pack/commit/df70f4cd1f9c1415e1aba972eab4afc11c952842"
+        },
+        "date": 1726073079800,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4253118759,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1202910210,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 61031068145,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
