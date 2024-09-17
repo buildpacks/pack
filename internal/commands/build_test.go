@@ -941,7 +941,7 @@ builder = "my-builder"
 			})
 		})
 
-		when("a path with the same name as the image exists locally", func() {
+		when("a local path with the same string as the specified image name exists", func() {
 			var dir string
 
 			it.Before(func() {
