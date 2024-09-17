@@ -69,15 +69,13 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("a builder and image are set", func() {
-			it("builds an image with a builder"+
-				"and warns that the positional argument will not be treated as the source path", func() {
+			it("builds an image with a builder", func() {
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "image")).
 					Return(nil)
 
 				command.SetArgs([]string{"--builder", "my-builder", "image"})
 				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), "Warning: You are building an image named 'image'. If you mean it as an app directory path, run 'pack build <args> --path image'")
 			})
 
 			it("builds an image with a builder short command arg", func() {
@@ -933,15 +931,51 @@ builder = "my-builder"
 		})
 
 		when("path to app dir or zip-formatted file is provided", func() {
-			it("builds with the specified path"+
-				"and doesn't warn that the positional argument will not be treated as the source path", func() {
+			it("builds with the specified path", func() {
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsWithPath("my-source")).
 					Return(nil)
 
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--path", "my-source"})
 				h.AssertNil(t, command.Execute())
-				h.AssertNotContainsMatch(t, outBuf.String(), `Warning: You are building an image named '([^']+)'\. If you mean it as an app directory path, run 'pack build <args> --path ([^']+)'`)
+			})
+		})
+
+		when("a path with the same name as the image exists locally", func() {
+			var dir string
+
+			it.Before(func() {
+				var err error
+				dir, err = os.MkdirTemp("", "my-app-dir")
+				h.AssertNil(t, err)
+			})
+
+			it.After(func() {
+				h.AssertNil(t, os.RemoveAll(dir))
+			})
+
+			when("an app path is specified", func() {
+				it("doesn't warn that the positional argument will not be treated as the source path", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", dir)).
+						Return(nil)
+
+					command.SetArgs([]string{dir, "--builder", "my-builder", "--path", "my-source"})
+					h.AssertNil(t, command.Execute())
+					h.AssertNotContainsMatch(t, outBuf.String(), `Warning: You are building an image named '([^']+)'\. If you mean it as an app directory path, run 'pack build <args> --path ([^']+)'`)
+				})
+			})
+
+			when("no app path is specified", func() {
+				it("warns that the positional argument will not be treated as the source path", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", dir)).
+						Return(nil)
+
+					command.SetArgs([]string{dir, "--builder", "my-builder"})
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Warning: You are building an image named '"+dir+"'. If you mean it as an app directory path, run 'pack build <args> --path "+dir+"'")
+				})
 			})
 		})
 
@@ -973,8 +1007,7 @@ builder = "my-builder"
 		})
 
 		when("path to save the image is provided", func() {
-			it("builds with oci layout configuration"+
-				"and it doesn't warn that the positional argument will not be treated as the source path", func() {
+			it("build is called with oci layout configuration", func() {
 				sparse = false
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsWithLayoutConfig("image", previousImage, sparse, layoutDir)).
@@ -983,13 +1016,11 @@ builder = "my-builder"
 				command.SetArgs([]string{"oci:image", "--builder", "my-builder"})
 				err := command.Execute()
 				h.AssertNil(t, err)
-				h.AssertNotContainsMatch(t, outBuf.String(), `Warning: You are building an image named '([^']+)'\. If you mean it as an app directory path, run 'pack build <args> --path ([^']+)'`)
 			})
 		})
 
 		when("previous-image flag is provided", func() {
-			it("builds with oci layout configuration"+
-				"and it doesn't warn that the positional argument will not be treated as the source path", func() {
+			it("build is called with oci layout configuration", func() {
 				sparse = false
 				previousImage = "my-previous-image"
 				mockClient.EXPECT().
@@ -999,13 +1030,11 @@ builder = "my-builder"
 				command.SetArgs([]string{"oci:image", "--previous-image", "oci:my-previous-image", "--builder", "my-builder"})
 				err := command.Execute()
 				h.AssertNil(t, err)
-				h.AssertNotContainsMatch(t, outBuf.String(), `Warning: You are building an image named '([^']+)'\. If you mean it as an app directory path, run 'pack build <args> --path ([^']+)'`)
 			})
 		})
 
 		when("-sparse flag is provided", func() {
-			it("build with oci layout configuration and sparse true"+
-				"and it doesn't warn that the positional argument will not be treated as the source path", func() {
+			it("build is called with oci layout configuration and sparse true", func() {
 				sparse = true
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsWithLayoutConfig("image", previousImage, sparse, layoutDir)).
@@ -1014,7 +1043,6 @@ builder = "my-builder"
 				command.SetArgs([]string{"oci:image", "--sparse", "--builder", "my-builder"})
 				err := command.Execute()
 				h.AssertNil(t, err)
-				h.AssertNotContainsMatch(t, outBuf.String(), `Warning: You are building an image named '([^']+)'\. If you mean it as an app directory path, run 'pack build <args> --path ([^']+)'`)
 			})
 		})
 	})

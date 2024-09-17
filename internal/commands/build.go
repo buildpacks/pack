@@ -327,7 +327,7 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, inputImageRef clie
 		return client.NewExperimentError("Exporting to OCI layout is currently experimental.")
 	}
 
-	if !inputImageRef.Layout() && flags.AppPath == "" {
+	if _, err := os.Stat(inputImageRef.Name()); err == nil && flags.AppPath == "" {
 		logger.Warnf("You are building an image named '%s'. If you mean it as an app directory path, run 'pack build <args> --path %s'",
 			inputImageRef.Name(), inputImageRef.Name())
 	}
