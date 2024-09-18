@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle/api"
@@ -164,6 +165,8 @@ func (l *LifecycleExecution) PrevImageName() string {
 	return l.opts.PreviousImage
 }
 
+const maxNetworkRemoveRetries = 2
+
 func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseFactoryCreator) error {
 	phaseFactory := phaseFactoryCreator(l)
 
@@ -211,7 +214,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		if l.os == "windows" {
 			driver = "nat"
 		}
-		networkName := fmt.Sprintf("pack.local/network/%x", randString(10))
+		networkName := fmt.Sprintf("pack.local-network-%x", randString(10))
 		resp, err := l.docker.NetworkCreate(ctx, networkName, types.NetworkCreate{
 			Driver: driver,
 		})
@@ -219,7 +222,13 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			return fmt.Errorf("failed to create ephemeral %s network: %w", driver, err)
 		}
 		defer func() {
-			_ = l.docker.NetworkRemove(ctx, networkName)
+			for i := 0; i <= maxNetworkRemoveRetries; i++ {
+				time.Sleep(100 * time.Duration(i) * time.Millisecond) // wait if retrying
+				if err = l.docker.NetworkRemove(ctx, networkName); err != nil {
+					continue
+				}
+				break
+			}
 		}()
 		l.logger.Debugf("Created ephemeral bridge network %s with ID %s", networkName, resp.ID)
 		if resp.Warning != "" {
