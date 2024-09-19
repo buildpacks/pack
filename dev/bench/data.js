@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1726710033704,
+  "lastUpdate": 1726711897719,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -8008,6 +8008,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 60937845386,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4ffdb5e09c7c1c42f0d1d17de65d0f39bc8d517f",
+          "message": "Merge pull request #2246 from buildpacks/dependabot/go_modules/github.com/docker/docker-26.1.5incompatible\n\nbuild(deps): bump github.com/docker/docker from 26.1.4+incompatible to 26.1.5+incompatible",
+          "timestamp": "2024-09-18T21:09:25-05:00",
+          "tree_id": "df5334289c83081cc7400fd076de7bc077d1ce37",
+          "url": "https://github.com/buildpacks/pack/commit/4ffdb5e09c7c1c42f0d1d17de65d0f39bc8d517f"
+        },
+        "date": 1726711897098,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4326031878,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1217111400,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 57480830934,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
