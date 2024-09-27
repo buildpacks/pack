@@ -535,6 +535,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		buildEnvs[k] = v
 	}
 
+	origBuilderName := rawBuilderImage.Name()
 	ephemeralBuilder, err := c.createEphemeralBuilder(
 		rawBuilderImage,
 		buildEnvs,
@@ -549,7 +550,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 	defer func() {
-		if ephemeralBuilder.Name() == rawBuilderImage.Name() {
+		if ephemeralBuilder.Name() == origBuilderName {
 			return
 		}
 		_, _ = c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.RemoveOptions{Force: true})

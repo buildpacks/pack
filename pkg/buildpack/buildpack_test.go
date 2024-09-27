@@ -514,6 +514,7 @@ id = "bp.one"
 version = "1.2.3"
 homepage = "http://geocities.com/cool-bp"
 sbom-formats = ["this should not warn"]
+clear-env = true
 
 [[targets]]
 os = "some-os"
