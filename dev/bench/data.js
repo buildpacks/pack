@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1726711897719,
+  "lastUpdate": 1729874522454,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -8050,6 +8050,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 57480830934,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "270eb1ed67c8c7643b845c409b4e35f927a77d21",
+          "message": "Merge pull request #2256 from hhiroshell/fix-pack-2231\n\nMake the `pack build` warn that the positional argument will not be treated as the source directory path",
+          "timestamp": "2024-10-25T12:39:30-04:00",
+          "tree_id": "ed80e50d530f3a4d5dbad6d450089fb01d89eef5",
+          "url": "https://github.com/buildpacks/pack/commit/270eb1ed67c8c7643b845c409b4e35f927a77d21"
+        },
+        "date": 1729874521387,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 8115438917,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2469540178,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 70305160242,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
