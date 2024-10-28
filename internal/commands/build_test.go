@@ -17,11 +17,10 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/paths"
-
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -931,6 +930,43 @@ builder = "my-builder"
 			})
 		})
 
+		when("path to app dir or zip-formatted file is provided", func() {
+			it("builds with the specified path", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithPath("my-source")).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--path", "my-source"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
+		when("a local path with the same string as the specified image name exists", func() {
+			when("an app path is specified", func() {
+				it("doesn't warn that the positional argument will not be treated as the source path", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "testdata")).
+						Return(nil)
+
+					command.SetArgs([]string{"testdata", "--builder", "my-builder", "--path", "my-source"})
+					h.AssertNil(t, command.Execute())
+					h.AssertNotContainsMatch(t, outBuf.String(), `Warning: You are building an image named '([^']+)'\. If you mean it as an app directory path, run 'pack build <args> --path ([^']+)'`)
+				})
+			})
+
+			when("no app path is specified", func() {
+				it("warns that the positional argument will not be treated as the source path", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "testdata")).
+						Return(nil)
+
+					command.SetArgs([]string{"testdata", "--builder", "my-builder"})
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Warning: You are building an image named 'testdata'. If you mean it as an app directory path, run 'pack build <args> --path testdata'")
+				})
+			})
+		})
+
 		when("export to OCI layout is expected but experimental isn't set in the config", func() {
 			it("errors with a descriptive message", func() {
 				command.SetArgs([]string{"oci:image", "--builder", "my-builder"})
@@ -1171,6 +1207,15 @@ func EqBuildOptionsWithDateTime(t *time.Time) interface{} {
 				return o.CreationTime == nil
 			}
 			return o.CreationTime.Sub(*t) < 5*time.Second && t.Sub(*o.CreationTime) < 5*time.Second
+		},
+	}
+}
+
+func EqBuildOptionsWithPath(path string) interface{} {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("AppPath=%s", path),
+		equals: func(o client.BuildOptions) bool {
+			return o.AppPath == path
 		},
 	}
 }
