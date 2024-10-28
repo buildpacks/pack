@@ -1,6 +1,9 @@
 package dist
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/style"
@@ -18,6 +21,7 @@ type ModuleInfo struct {
 	Homepage    string    `toml:"homepage,omitempty" json:"homepage,omitempty" yaml:"homepage,omitempty"`
 	Keywords    []string  `toml:"keywords,omitempty" json:"keywords,omitempty" yaml:"keywords,omitempty"`
 	Licenses    []License `toml:"licenses,omitempty" json:"licenses,omitempty" yaml:"licenses,omitempty"`
+	ClearEnv    bool      `toml:"clear-env,omitempty" json:"clear-env,omitempty" yaml:"clear-env,omitempty"`
 }
 
 func (b ModuleInfo) FullName() string {
@@ -57,6 +61,66 @@ type Target struct {
 	Arch          string         `json:"arch" toml:"arch"`
 	ArchVariant   string         `json:"variant,omitempty" toml:"variant,omitempty"`
 	Distributions []Distribution `json:"distros,omitempty" toml:"distros,omitempty"`
+}
+
+// ValuesAsSlice converts the internal representation of a target (os, arch, variant, etc.) into a string slice,
+// where each value included in the final array must be not empty.
+func (t *Target) ValuesAsSlice() []string {
+	var targets []string
+	if t.OS != "" {
+		targets = append(targets, t.OS)
+	}
+	if t.Arch != "" {
+		targets = append(targets, t.Arch)
+	}
+	if t.ArchVariant != "" {
+		targets = append(targets, t.ArchVariant)
+	}
+
+	for _, d := range t.Distributions {
+		targets = append(targets, fmt.Sprintf("%s@%s", d.Name, d.Version))
+	}
+	return targets
+}
+
+func (t *Target) ValuesAsPlatform() string {
+	return strings.Join(t.ValuesAsSlice(), "/")
+}
+
+// ExpandTargetsDistributions expands each provided target (with multiple distribution versions) to multiple targets (each with a single distribution version).
+// For example, given an array with ONE target with the format:
+//
+//	[
+//	  {OS:"linux", Distributions: []dist.Distribution{{Name: "ubuntu", Version: "18.01"},{Name: "ubuntu", Version: "21.01"}}}
+//	]
+//
+// it returns an array with TWO targets each with the format:
+//
+//	[
+//	 {OS:"linux",Distributions: []dist.Distribution{{Name: "ubuntu", Version: "18.01"}}},
+//	 {OS:"linux",Distributions: []dist.Distribution{{Name: "ubuntu", Version: "21.01"}}}
+//	]
+func ExpandTargetsDistributions(targets ...Target) []Target {
+	var expandedTargets []Target
+	for _, target := range targets {
+		expandedTargets = append(expandedTargets, expandTargetDistributions(target)...)
+	}
+	return expandedTargets
+}
+
+func expandTargetDistributions(target Target) []Target {
+	var expandedTargets []Target
+	if (len(target.Distributions)) > 1 {
+		originalDistros := target.Distributions
+		for _, distro := range originalDistros {
+			copyTarget := target
+			copyTarget.Distributions = []Distribution{distro}
+			expandedTargets = append(expandedTargets, copyTarget)
+		}
+	} else {
+		expandedTargets = append(expandedTargets, target)
+	}
+	return expandedTargets
 }
 
 type Distribution struct {

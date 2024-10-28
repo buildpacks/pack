@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 
@@ -23,6 +24,7 @@ import (
 	pname "github.com/buildpacks/pack/internal/name"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/internal/term"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -62,7 +64,7 @@ type Fetcher struct {
 
 type FetchOptions struct {
 	Daemon       bool
-	Platform     string
+	Target       *dist.Target
 	PullPolicy   PullPolicy
 	LayoutOption LayoutOption
 }
@@ -94,7 +96,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 	}
 
 	if !options.Daemon {
-		return f.fetchRemoteImage(name)
+		return f.fetchRemoteImage(name, options.Target)
 	}
 
 	switch options.PullPolicy {
@@ -108,11 +110,22 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		}
 	}
 
-	f.logger.Debugf("Pulling image %s", style.Symbol(name))
-	if err = f.pullImage(ctx, name, options.Platform); err != nil {
-		// sample error from docker engine:
-		// image with reference <image> was found but does not match the specified platform: wanted linux/amd64, actual: linux
-		if strings.Contains(err.Error(), "does not match the specified platform") {
+	platform := ""
+	msg := fmt.Sprintf("Pulling image %s", style.Symbol(name))
+	if options.Target != nil {
+		platform = options.Target.ValuesAsPlatform()
+		msg = fmt.Sprintf("Pulling image %s with platform %s", style.Symbol(name), style.Symbol(platform))
+	}
+	f.logger.Debug(msg)
+	if err = f.pullImage(ctx, name, platform); err != nil {
+		// FIXME: this matching is brittle and the fallback should be removed when https://github.com/buildpacks/pack/issues/2079
+		// has been fixed for a sufficient amount of time.
+		// Sample error from docker engine:
+		// `image with reference <image> was found but does not match the specified platform: wanted linux/amd64, actual: linux`
+		if strings.Contains(err.Error(), "does not match the specified platform") &&
+			(strings.HasSuffix(strings.TrimSpace(err.Error()), "actual: linux") ||
+				strings.HasSuffix(strings.TrimSpace(err.Error()), "actual: windows")) {
+			f.logger.Debugf(fmt.Sprintf("Pulling image %s", style.Symbol(name)))
 			err = f.pullImage(ctx, name, "")
 		}
 	}
@@ -171,8 +184,19 @@ func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 	return image, nil
 }
 
-func (f *Fetcher) fetchRemoteImage(name string) (imgutil.Image, error) {
-	image, err := remote.NewImage(name, f.keychain, remote.FromBaseImage(name))
+func (f *Fetcher) fetchRemoteImage(name string, target *dist.Target) (imgutil.Image, error) {
+	var (
+		image imgutil.Image
+		err   error
+	)
+
+	if target == nil {
+		image, err = remote.NewImage(name, f.keychain, remote.FromBaseImage(name))
+	} else {
+		platform := imgutil.Platform{OS: target.OS, Architecture: target.Arch, Variant: target.ArchVariant}
+		image, err = remote.NewImage(name, f.keychain, remote.FromBaseImage(name), remote.WithDefaultPlatform(platform))
+	}
+
 	if err != nil {
 		return nil, err
 	}

@@ -80,9 +80,9 @@ func removeTrustedBuilder(args []string, logger logging.Logger, cfg config.Confi
 
 	// Builder is not in the trusted builder list
 	if len(existingTrustedBuilders) == len(cfg.TrustedBuilders) {
-		if isSuggestedBuilder(builder) {
-			// Attempted to untrust a suggested builder
-			return errors.Errorf("Builder %s is a suggested builder, and is trusted by default. Currently pack doesn't support making these builders untrusted", style.Symbol(builder))
+		if bldr.IsKnownTrustedBuilder(builder) {
+			// Attempted to untrust a known trusted builder
+			return errors.Errorf("Builder %s is a known trusted builder. Currently pack doesn't support making these builders untrusted", style.Symbol(builder))
 		}
 
 		logger.Infof("Builder %s wasn't trusted", style.Symbol(builder))
@@ -98,9 +98,7 @@ func removeTrustedBuilder(args []string, logger logging.Logger, cfg config.Confi
 	return nil
 }
 
-func listTrustedBuilders(args []string, logger logging.Logger, cfg config.Config) {
-	logger.Info("Trusted Builders:")
-
+func getTrustedBuilders(cfg config.Config) []string {
 	var trustedBuilders []string
 	for _, knownBuilder := range bldr.KnownBuilders {
 		if knownBuilder.Trusted {
@@ -113,7 +111,13 @@ func listTrustedBuilders(args []string, logger logging.Logger, cfg config.Config
 	}
 
 	sort.Strings(trustedBuilders)
+	return trustedBuilders
+}
 
+func listTrustedBuilders(args []string, logger logging.Logger, cfg config.Config) {
+	logger.Info("Trusted Builders:")
+
+	trustedBuilders := getTrustedBuilders(cfg)
 	for _, builder := range trustedBuilders {
 		logger.Infof("  %s", builder)
 	}

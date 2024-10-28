@@ -239,6 +239,8 @@ const (
 	FlattenBuilderCreationV2
 	FixesRunImageMetadata
 	ManifestCommands
+	PlatformOption
+	MultiPlatformBuildersAndBuildPackages
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -276,6 +278,12 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 		return i.atLeast("v0.34.0")
 	},
 	ManifestCommands: func(i *PackInvoker) bool {
+		return i.atLeast("v0.34.0")
+	},
+	PlatformOption: func(i *PackInvoker) bool {
+		return i.atLeast("v0.34.0")
+	},
+	MultiPlatformBuildersAndBuildPackages: func(i *PackInvoker) bool {
 		return i.atLeast("v0.34.0")
 	},
 }

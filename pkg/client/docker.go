@@ -32,4 +32,6 @@ type DockerClient interface {
 	ContainerWait(ctx context.Context, container string, condition containertypes.WaitCondition) (<-chan containertypes.WaitResponse, <-chan error)
 	ContainerAttach(ctx context.Context, container string, options containertypes.AttachOptions) (types.HijackedResponse, error)
 	ContainerStart(ctx context.Context, container string, options containertypes.StartOptions) error
+	NetworkCreate(ctx context.Context, name string, options types.NetworkCreate) (types.NetworkCreateResponse, error)
+	NetworkRemove(ctx context.Context, network string) error
 }

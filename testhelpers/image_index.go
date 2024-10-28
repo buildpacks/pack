@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -188,4 +189,17 @@ type FakeWithRandomUnderlyingImage struct {
 
 func (t *FakeWithRandomUnderlyingImage) UnderlyingImage() v1.Image {
 	return t.underlyingImage
+}
+
+func (t *FakeWithRandomUnderlyingImage) GetLayer(sha string) (io.ReadCloser, error) {
+	hash, err := v1.NewHash(sha)
+	if err != nil {
+		return nil, err
+	}
+
+	layer, err := t.UnderlyingImage().LayerByDiffID(hash)
+	if err != nil {
+		return nil, err
+	}
+	return layer.Uncompressed()
 }

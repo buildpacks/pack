@@ -7,13 +7,18 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/buildpacks/pack/internal/builder"
+
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/internal/target"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -102,14 +107,14 @@ func getMirrors(config config.Config) map[string][]string {
 	return mirrors
 }
 
-func isTrustedBuilder(cfg config.Config, builder string) bool {
+func isTrustedBuilder(cfg config.Config, builderName string) bool {
 	for _, trustedBuilder := range cfg.TrustedBuilders {
-		if builder == trustedBuilder.Name {
+		if builderName == trustedBuilder.Name {
 			return true
 		}
 	}
 
-	return isSuggestedBuilder(builder)
+	return builder.IsKnownTrustedBuilder(builderName)
 }
 
 func deprecationWarning(logger logging.Logger, oldCmd, replacementCmd string) {
@@ -127,4 +132,28 @@ func parseFormatFlag(value string) (types.MediaType, error) {
 		return format, errors.Errorf("%s invalid media type format", value)
 	}
 	return format, nil
+}
+
+// processMultiArchitectureConfig takes an array of targets with format: [os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]
+// and a list of targets defined in a configuration file (buildpack.toml or package.toml) and creates a multi-architecture configuration
+func processMultiArchitectureConfig(logger logging.Logger, userTargets []string, configTargets []dist.Target, daemon bool) (*buildpack.MultiArchConfig, error) {
+	var (
+		expectedTargets []dist.Target
+		err             error
+	)
+	if len(userTargets) > 0 {
+		if expectedTargets, err = target.ParseTargets(userTargets, logger); err != nil {
+			return &buildpack.MultiArchConfig{}, err
+		}
+		if len(expectedTargets) > 1 && daemon {
+			// when we are exporting to daemon, only 1 target is allow
+			return &buildpack.MultiArchConfig{}, errors.Errorf("when exporting to daemon only one target is allowed")
+		}
+	}
+
+	multiArchCfg, err := buildpack.NewMultiArchConfig(configTargets, expectedTargets, logger)
+	if err != nil {
+		return &buildpack.MultiArchConfig{}, err
+	}
+	return multiArchCfg, nil
 }

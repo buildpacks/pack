@@ -54,6 +54,6 @@ func (f *fetcher) Fetch(_ context.Context, imageName string, _ image.FetchOption
 	return nil, errors.New("not implemented")
 }
 
-func (f *fetcher) CheckReadAccess(_ string, _ FetchOptions) bool {
+func (f *fetcher) CheckReadAccess(_ string, _ image.FetchOptions) bool {
 	return true
 }
