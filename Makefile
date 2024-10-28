@@ -164,8 +164,8 @@ install-golangci-lint:
 
 ## mod-tidy: Tidy Go modules
 mod-tidy:
-	$(GOCMD) mod tidy  -compat=1.22
-	cd tools && $(GOCMD) mod tidy -compat=1.22
+	$(GOCMD) mod tidy  -compat=1.23
+	cd tools && $(GOCMD) mod tidy -compat=1.23
 
 ## tidy: Tidy modules and format the code
 tidy: mod-tidy format
