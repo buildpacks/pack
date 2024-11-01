@@ -289,7 +289,7 @@ jobs:
           milestone: ${{ env.PACK_MILESTONE }}
       - name: Create Pre-Release
         if: ${{ env.PACK_VERSION != env.PACK_MILESTONE }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -370,7 +370,7 @@ jobs:
 
       - name: Create Beta Release
         if: ${{ env.PACK_VERSION == env.PACK_MILESTONE }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
