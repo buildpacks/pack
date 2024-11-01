@@ -144,4 +144,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
+replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.3.2
+
 go 1.23
