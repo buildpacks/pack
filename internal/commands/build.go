@@ -12,6 +12,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	bldr "github.com/buildpacks/pack/internal/builder"
+
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/cache"
@@ -110,7 +112,11 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				return err
 			}
 
-			trustBuilder := isTrustedBuilder(cfg, builder) || flags.TrustBuilder
+			isTrusted, err := bldr.IsTrustedBuilder(cfg, builder)
+			if err != nil {
+				return err
+			}
+			trustBuilder := isTrusted || bldr.IsKnownTrustedBuilder(builder) || flags.TrustBuilder
 			if trustBuilder {
 				logger.Debugf("Builder %s is trusted", style.Symbol(builder))
 				if flags.LifecycleImage != "" {
