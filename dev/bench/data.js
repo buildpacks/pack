@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1730813462030,
+  "lastUpdate": 1731448183602,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -8176,6 +8176,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 55807444731,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "93b5d66f861a7353eba2d4dcc45e439bb8fb5ece",
+          "message": "Merge pull request #2279 from buildpacks/dependabot/github_actions/buildpacks/github-actions-5.8.1\n\nbuild(deps): bump buildpacks/github-actions from 5.8.0 to 5.8.1",
+          "timestamp": "2024-11-12T16:48:00-05:00",
+          "tree_id": "98f3aa56ff76fd506c3e17b6e127991701238e8a",
+          "url": "https://github.com/buildpacks/pack/commit/93b5d66f861a7353eba2d4dcc45e439bb8fb5ece"
+        },
+        "date": 1731448182900,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4990557962,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1532908321,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 61724635065,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
