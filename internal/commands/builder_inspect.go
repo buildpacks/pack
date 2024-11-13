@@ -8,6 +8,8 @@ import (
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/logging"
+
+	bldr "github.com/buildpacks/pack/internal/builder"
 )
 
 type BuilderInspector interface {
@@ -61,10 +63,15 @@ func inspectBuilder(
 	inspector BuilderInspector,
 	writerFactory writer.BuilderWriterFactory,
 ) error {
+	isTrusted, err := bldr.IsTrustedBuilder(cfg, imageName)
+	if err != nil {
+		return err
+	}
+
 	builderInfo := writer.SharedBuilderInfo{
 		Name:      imageName,
 		IsDefault: imageName == cfg.DefaultBuilder,
-		Trusted:   isTrustedBuilder(cfg, imageName),
+		Trusted:   isTrusted,
 	}
 
 	localInfo, localErr := inspector.InspectBuilder(imageName, true, client.WithDetectionOrderDepth(flags.Depth))
