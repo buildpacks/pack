@@ -16,7 +16,7 @@ on:
         default: false
 
 env:
-  REGISTRY_NAME: 'index.docker.io'
+  REGISTRY_NAME: 'docker.io'
   USER_NAME: 'buildpacksio'
   IMG_NAME: 'pack'
 
