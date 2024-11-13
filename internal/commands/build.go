@@ -442,7 +442,12 @@ func isForbiddenTag(cfg config.Config, input, lifecycle, builder string) error {
 		}
 	}
 
-	if inputImage.Context().RepositoryStr() == config.DefaultLifecycleImageRepo {
+	defaultLifecycleImageRef, err := name.ParseReference(config.DefaultLifecycleImageRepo)
+	if err != nil {
+		return errors.Wrapf(err, "parsing default lifecycle image %s", config.DefaultLifecycleImageRepo)
+	}
+
+	if inputImage.Context().RepositoryStr() == defaultLifecycleImageRef.Context().RepositoryStr() {
 		return fmt.Errorf("name must not match default lifecycle image name")
 	}
 
