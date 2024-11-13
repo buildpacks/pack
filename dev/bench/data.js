@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1731518322548,
+  "lastUpdate": 1731521157947,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -8302,6 +8302,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 62444857115,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "08abcc433e51b139d7d717d9591e037759ca2ff0",
+          "message": "Merge pull request #2185 from hhiroshell/fix-pack-1218\n\nUpdate image references to use fully qualified names.",
+          "timestamp": "2024-11-13T13:04:20-05:00",
+          "tree_id": "1dcff79e762c8cd95ed92505dd29b4218e8620c3",
+          "url": "https://github.com/buildpacks/pack/commit/08abcc433e51b139d7d717d9591e037759ca2ff0"
+        },
+        "date": 1731521157530,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4327040760,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1185524895,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 58374360240,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
