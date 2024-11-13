@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1731448183602,
+  "lastUpdate": 1731502485193,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -8218,6 +8218,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 61724635065,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "466439d7ea4035288605c8d36862cae540c89460",
+          "message": "Merge pull request #2266 from sap-contributions/match-trusted-builders\n\nAllow trusted builders by repo or tag",
+          "timestamp": "2024-11-13T07:52:39-05:00",
+          "tree_id": "d84c59ebcc51dfeca051380947e3b0331fd21d6c",
+          "url": "https://github.com/buildpacks/pack/commit/466439d7ea4035288605c8d36862cae540c89460"
+        },
+        "date": 1731502484159,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7523100643,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2814975323,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 65314508662,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
