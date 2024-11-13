@@ -103,7 +103,7 @@ func prepareSSHServer(t *testing.T) (sshServer *SSHServer, stopSSH func(), err e
 
 	sshTCPListener, err := net.Listen("tcp4", "localhost:0")
 	if err != nil {
-		return
+		return sshServer, stopSSH, err
 	}
 
 	hasIPv6 := true
@@ -115,11 +115,11 @@ func prepareSSHServer(t *testing.T) (sshServer *SSHServer, stopSSH func(), err e
 
 	host, p, err := net.SplitHostPort(sshTCPListener.Addr().String())
 	if err != nil {
-		return
+		return sshServer, stopSSH, err
 	}
 	port, err := strconv.ParseInt(p, 10, 32)
 	if err != nil {
-		return
+		return sshServer, stopSSH, err
 	}
 	sshServer.hostIPv4 = host
 	sshServer.portIPv4 = int(port)
@@ -127,11 +127,11 @@ func prepareSSHServer(t *testing.T) (sshServer *SSHServer, stopSSH func(), err e
 	if hasIPv6 {
 		host, p, err = net.SplitHostPort(sshTCP6Listener.Addr().String())
 		if err != nil {
-			return
+			return sshServer, stopSSH, err
 		}
 		port, err = strconv.ParseInt(p, 10, 32)
 		if err != nil {
-			return
+			return sshServer, stopSSH, err
 		}
 		sshServer.hostIPv6 = host
 		sshServer.portIPv6 = int(port)
@@ -231,12 +231,12 @@ func setupServerAuth(conf *ssh.ServerConfig) (err error) {
 		var bs []byte
 		bs, err = os.ReadFile(keyFileName)
 		if err != nil {
-			return
+			return err
 		}
 		var pk ssh.PublicKey
 		pk, _, _, _, err = ssh.ParseAuthorizedKey(bs)
 		if err != nil {
-			return
+			return err
 		}
 
 		bs = pk.Marshal()
@@ -266,12 +266,12 @@ func setupServerAuth(conf *ssh.ServerConfig) (err error) {
 		var b []byte
 		b, err = os.ReadFile(keyFileName)
 		if err != nil {
-			return
+			return err
 		}
 		var signer ssh.Signer
 		signer, err = ssh.ParsePrivateKey(b)
 		if err != nil {
-			return
+			return err
 		}
 		conf.AddHostKey(signer)
 	}
