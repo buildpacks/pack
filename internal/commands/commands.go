@@ -7,6 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/buildpacks/pack/internal/builder"
+
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -105,14 +107,14 @@ func getMirrors(config config.Config) map[string][]string {
 	return mirrors
 }
 
-func isTrustedBuilder(cfg config.Config, builder string) bool {
+func isTrustedBuilder(cfg config.Config, builderName string) bool {
 	for _, trustedBuilder := range cfg.TrustedBuilders {
-		if builder == trustedBuilder.Name {
+		if builderName == trustedBuilder.Name {
 			return true
 		}
 	}
 
-	return isSuggestedBuilder(builder)
+	return builder.IsKnownTrustedBuilder(builderName)
 }
 
 func deprecationWarning(logger logging.Logger, oldCmd, replacementCmd string) {

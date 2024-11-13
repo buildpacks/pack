@@ -16,6 +16,7 @@ import (
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -275,7 +276,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			fakeBuilder *fakes.FakeBuilder
 			outBuf      bytes.Buffer
 			logger      *logging.LogWithWriters
-			docker      *client.Client
+			docker      *fakeDockerClient
 			fakeTermui  *fakes.FakeTermui
 		)
 
@@ -289,7 +290,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			fakeBuilder, err = fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.3")}))
 			h.AssertNil(t, err)
 			logger = logging.NewLogWithWriters(&outBuf, &outBuf)
-			docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+			docker = &fakeDockerClient{}
 			h.AssertNil(t, err)
 			fakePhaseFactory = fakes.NewFakePhaseFactory()
 		})
@@ -777,6 +778,46 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 				})
+			})
+		})
+
+		when("network is not provided", func() {
+			it("creates an ephemeral bridge network", func() {
+				beforeNetworks := func() int {
+					networks, err := docker.NetworkList(context.Background(), types.NetworkListOptions{})
+					h.AssertNil(t, err)
+					return len(networks)
+				}()
+
+				opts := build.LifecycleOptions{
+					Image:   imageName,
+					Builder: fakeBuilder,
+					Termui:  fakeTermui,
+				}
+
+				lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
+				h.AssertNil(t, err)
+
+				err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+					return fakePhaseFactory
+				})
+				h.AssertNil(t, err)
+
+				for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+					h.AssertContains(t, string(entry.HostConfig().NetworkMode), "pack.local-network-")
+					h.AssertEq(t, entry.HostConfig().NetworkMode.IsDefault(), false)
+					h.AssertEq(t, entry.HostConfig().NetworkMode.IsHost(), false)
+					h.AssertEq(t, entry.HostConfig().NetworkMode.IsNone(), false)
+					h.AssertEq(t, entry.HostConfig().NetworkMode.IsPrivate(), true)
+					h.AssertEq(t, entry.HostConfig().NetworkMode.IsUserDefined(), true)
+				}
+
+				afterNetworks := func() int {
+					networks, err := docker.NetworkList(context.Background(), types.NetworkListOptions{})
+					h.AssertNil(t, err)
+					return len(networks)
+				}()
+				h.AssertEq(t, beforeNetworks, afterNetworks)
 			})
 		})
 
@@ -2654,6 +2695,26 @@ type fakeImageFetcher struct {
 func (f *fakeImageFetcher) fetchRunImage(name string) error {
 	f.calledWithArgAtCall[f.callCount] = name
 	f.callCount++
+	return nil
+}
+
+type fakeDockerClient struct {
+	nNetworks int
+	build.DockerClient
+}
+
+func (f *fakeDockerClient) NetworkList(ctx context.Context, opts types.NetworkListOptions) ([]types.NetworkResource, error) {
+	ret := make([]types.NetworkResource, f.nNetworks)
+	return ret, nil
+}
+
+func (f *fakeDockerClient) NetworkCreate(ctx context.Context, name string, options types.NetworkCreate) (types.NetworkCreateResponse, error) {
+	f.nNetworks++
+	return types.NetworkCreateResponse{}, nil
+}
+
+func (f *fakeDockerClient) NetworkRemove(ctx context.Context, network string) error {
+	f.nNetworks--
 	return nil
 }
 

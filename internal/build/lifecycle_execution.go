@@ -7,11 +7,13 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/docker/docker/api/types"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -163,8 +165,11 @@ func (l *LifecycleExecution) PrevImageName() string {
 	return l.opts.PreviousImage
 }
 
+const maxNetworkRemoveRetries = 2
+
 func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseFactoryCreator) error {
 	phaseFactory := phaseFactoryCreator(l)
+
 	var buildCache Cache
 	if l.opts.CacheImage != "" || (l.opts.Cache.Build.Format == cache.CacheImage) {
 		cacheImageName := l.opts.CacheImage
@@ -179,7 +184,11 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 	} else {
 		switch l.opts.Cache.Build.Format {
 		case cache.CacheVolume:
-			buildCache = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Build, "build", l.docker)
+			var err error
+			buildCache, err = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Build, "build", l.docker, l.logger)
+			if err != nil {
+				return err
+			}
 			l.logger.Debugf("Using build cache volume %s", style.Symbol(buildCache.Name()))
 		case cache.CacheBind:
 			buildCache = cache.NewBindCache(l.opts.Cache.Build, l.docker)
@@ -194,7 +203,39 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		l.logger.Debugf("Build cache %s cleared", style.Symbol(buildCache.Name()))
 	}
 
-	launchCache := cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Launch, "launch", l.docker)
+	launchCache, err := cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Launch, "launch", l.docker, l.logger)
+	if err != nil {
+		return err
+	}
+
+	if l.opts.Network == "" {
+		// start an ephemeral bridge network
+		driver := "bridge"
+		if l.os == "windows" {
+			driver = "nat"
+		}
+		networkName := fmt.Sprintf("pack.local-network-%x", randString(10))
+		resp, err := l.docker.NetworkCreate(ctx, networkName, types.NetworkCreate{
+			Driver: driver,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create ephemeral %s network: %w", driver, err)
+		}
+		defer func() {
+			for i := 0; i <= maxNetworkRemoveRetries; i++ {
+				time.Sleep(100 * time.Duration(i) * time.Millisecond) // wait if retrying
+				if err = l.docker.NetworkRemove(ctx, networkName); err != nil {
+					continue
+				}
+				break
+			}
+		}()
+		l.logger.Debugf("Created ephemeral bridge network %s with ID %s", networkName, resp.ID)
+		if resp.Warning != "" {
+			l.logger.Warn(resp.Warning)
+		}
+		l.opts.Network = networkName
+	}
 
 	if !l.opts.UseCreator {
 		if l.platformAPI.LessThan("0.7") {
@@ -224,7 +265,10 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			// lifecycle 0.17.0 (introduces support for Platform API 0.12) and above will ensure that
 			// this volume is owned by the CNB user,
 			// and hence the restorer (after dropping privileges) will be able to write to it.
-			kanikoCache = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Kaniko, "kaniko", l.docker)
+			kanikoCache, err = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Kaniko, "kaniko", l.docker, l.logger)
+			if err != nil {
+				return err
+			}
 		} else {
 			switch {
 			case buildCache.Type() == cache.Volume:
@@ -236,7 +280,10 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 				return fmt.Errorf("build cache must be volume cache when building with extensions")
 			default:
 				// The kaniko cache is unused, so it doesn't matter that it's not usable.
-				kanikoCache = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Kaniko, "kaniko", l.docker)
+				kanikoCache, err = cache.NewVolumeCache(l.opts.Image, l.opts.Cache.Kaniko, "kaniko", l.docker, l.logger)
+				if err != nil {
+					return err
+				}
 			}
 		}
 

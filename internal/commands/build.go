@@ -1,13 +1,12 @@
 package commands
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/buildpacks/pack/pkg/cache"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -26,6 +26,7 @@ type BuildFlags struct {
 	Publish              bool
 	ClearCache           bool
 	TrustBuilder         bool
+	TrustExtraBuildpacks bool
 	Interactive          bool
 	Sparse               bool
 	DockerHost           string
@@ -143,6 +144,11 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				lifecycleImage = ref.Name()
 			}
 
+			err = isForbiddenTag(cfg, inputImageName.Name(), lifecycleImage, builder)
+			if err != nil {
+				return errors.Wrapf(err, "forbidden image name")
+			}
+
 			var gid = -1
 			if cmd.Flags().Changed("gid") {
 				gid = flags.GID
@@ -174,8 +180,9 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				TrustBuilder: func(string) bool {
 					return trustBuilder
 				},
-				Buildpacks: buildpacks,
-				Extensions: extensions,
+				TrustExtraBuildpacks: flags.TrustExtraBuildpacks,
+				Buildpacks:           buildpacks,
+				Extensions:           extensions,
 				ContainerConfig: client.ContainerConfig{
 					Network: flags.Network,
 					Volumes: flags.Volumes,
@@ -267,6 +274,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
 	cmd.Flags().StringSliceVarP(&buildFlags.AdditionalTags, "tag", "t", nil, "Additional tags to push the output image to.\nTags should be in the format 'image:tag' or 'repository/image:tag'."+stringSliceHelp("tag"))
 	cmd.Flags().BoolVar(&buildFlags.TrustBuilder, "trust-builder", false, "Trust the provided builder.\nAll lifecycle phases will be run in a single container.\nFor more on trusted builders, and when to trust or untrust a builder, check out our docs here: https://buildpacks.io/docs/tools/pack/concepts/trusted_builders")
+	cmd.Flags().BoolVar(&buildFlags.TrustExtraBuildpacks, "trust-extra-buildpacks", false, "Trust buildpacks that are provided in addition to the buildpacks on the builder")
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<options>]'.\n- 'host path': Name of the volume or absolute directory path to mount.\n- 'target path': The path where the file or directory is available in the container.\n- 'options' (default \"ro\"): An optional comma separated list of mount options.\n    - \"ro\", volume contents are read-only.\n    - \"rw\", volume contents are readable and writeable.\n    - \"volume-opt=<key>=<value>\", can be specified more than once, takes a key-value pair consisting of the option name and its value."+stringArrayHelp("volume"))
 	cmd.Flags().StringVar(&buildFlags.Workspace, "workspace", "", "Location at which to mount the app dir in the build image")
 	cmd.Flags().IntVar(&buildFlags.GID, "gid", 0, `Override GID of user's group in the stack's build and run images. The provided value must be a positive number`)
@@ -317,6 +325,11 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, inputImageRef clie
 
 	if inputImageRef.Layout() && !cfg.Experimental {
 		return client.NewExperimentError("Exporting to OCI layout is currently experimental.")
+	}
+
+	if _, err := os.Stat(inputImageRef.Name()); err == nil && flags.AppPath == "" {
+		logger.Warnf("You are building an image named '%s'. If you mean it as an app directory path, run 'pack build <args> --path %s'",
+			inputImageRef.Name(), inputImageRef.Name())
 	}
 
 	return nil
@@ -384,4 +397,58 @@ func parseProjectToml(appPath, descriptorPath string, logger logging.Logger) (pr
 
 	descriptor, err := project.ReadProjectDescriptor(actualPath, logger)
 	return descriptor, actualPath, err
+}
+
+func isForbiddenTag(cfg config.Config, input, lifecycle, builder string) error {
+	inputImage, err := name.ParseReference(input)
+	if err != nil {
+		return errors.Wrapf(err, "invalid image name %s", input)
+	}
+
+	if builder != "" {
+		builderImage, err := name.ParseReference(builder)
+		if err != nil {
+			return errors.Wrapf(err, "parsing builder image %s", builder)
+		}
+		if inputImage.Context().RepositoryStr() == builderImage.Context().RepositoryStr() {
+			return fmt.Errorf("name must not match builder image name")
+		}
+	}
+
+	if lifecycle != "" {
+		lifecycleImage, err := name.ParseReference(lifecycle)
+		if err != nil {
+			return errors.Wrapf(err, "parsing lifecycle image %s", lifecycle)
+		}
+		if inputImage.Context().RepositoryStr() == lifecycleImage.Context().RepositoryStr() {
+			return fmt.Errorf("name must not match lifecycle image name")
+		}
+	}
+
+	trustedBuilders := getTrustedBuilders(cfg)
+	for _, trustedBuilder := range trustedBuilders {
+		builder, err := name.ParseReference(trustedBuilder)
+		if err != nil {
+			return err
+		}
+		if inputImage.Context().RepositoryStr() == builder.Context().RepositoryStr() {
+			return fmt.Errorf("name must not match trusted builder name")
+		}
+	}
+
+	if inputImage.Context().RepositoryStr() == config.DefaultLifecycleImageRepo {
+		return fmt.Errorf("name must not match default lifecycle image name")
+	}
+
+	if cfg.DefaultBuilder != "" {
+		defaultBuilderImage, err := name.ParseReference(cfg.DefaultBuilder)
+		if err != nil {
+			return errors.Wrapf(err, "parsing default builder %s", cfg.DefaultBuilder)
+		}
+		if inputImage.Context().RepositoryStr() == defaultBuilderImage.Context().RegistryStr() {
+			return fmt.Errorf("name must not match default builder image name")
+		}
+	}
+
+	return nil
 }

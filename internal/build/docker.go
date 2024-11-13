@@ -23,6 +23,8 @@ type DockerClient interface {
 	ContainerInspect(ctx context.Context, container string) (types.ContainerJSON, error)
 	ContainerRemove(ctx context.Context, container string, options containertypes.RemoveOptions) error
 	CopyToContainer(ctx context.Context, container, path string, content io.Reader, options types.CopyToContainerOptions) error
+	NetworkCreate(ctx context.Context, name string, options types.NetworkCreate) (types.NetworkCreateResponse, error)
+	NetworkRemove(ctx context.Context, network string) error
 }
 
 var _ DockerClient = dockerClient.CommonAPIClient(nil)

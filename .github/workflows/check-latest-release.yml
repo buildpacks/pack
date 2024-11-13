@@ -70,7 +70,7 @@ jobs:
           fi
       - name: Scan latest release image
         id: scan-image
-        uses: anchore/scan-action@v3
+        uses: anchore/scan-action@v4
         with:
           image: docker.io/buildpacksio/pack:${{ steps.read-go.outputs.latest-release-version }}
       - name: Create issue if needed
