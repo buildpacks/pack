@@ -51,7 +51,11 @@ func addTrustedBuilder(args []string, logger logging.Logger, cfg config.Config, 
 	imageName := args[0]
 	builderToTrust := config.TrustedBuilder{Name: imageName}
 
-	if isTrustedBuilder(cfg, imageName) {
+	isTrusted, err := bldr.IsTrustedBuilder(cfg, imageName)
+	if err != nil {
+		return err
+	}
+	if isTrusted || bldr.IsKnownTrustedBuilder(imageName) {
 		logger.Infof("Builder %s is already trusted", style.Symbol(imageName))
 		return nil
 	}
