@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1731521157947,
+  "lastUpdate": 1731530037318,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -8344,6 +8344,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 58374360240,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ddc3fd345f7f37044064e31859b6ee02d76714fb",
+          "message": "Merge pull request #2282 from buildpacks/fix/lcow-acceptance\n\nCleanup after running acceptance tests",
+          "timestamp": "2024-11-13T15:31:53-05:00",
+          "tree_id": "69c66cec5bb8db4aa2f5c975e7e996ee582f8825",
+          "url": "https://github.com/buildpacks/pack/commit/ddc3fd345f7f37044064e31859b6ee02d76714fb"
+        },
+        "date": 1731530035741,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7650696590,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 3015351309,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 66016525230,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
