@@ -114,7 +114,7 @@ func (o OutputAssertionManager) ReportsRunImageStackNotMatchingBuilder(runImageS
 
 	o.assert.Contains(
 		o.output,
-		fmt.Sprintf("run-image stack id '%s' does not match builder stack '%s'", runImageStack, builderStack),
+		fmt.Sprintf("Warning: run-image stack id '%s' does not match builder stack '%s' (deprecated usage of stack)", runImageStack, builderStack),
 	)
 }
 
