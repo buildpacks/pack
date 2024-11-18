@@ -19,7 +19,7 @@ env:
   REGISTRY_NAME: 'docker.io'
   USER_NAME: 'buildpacksio'
   IMG_NAME: 'pack'
-  ARCHITECTURES: ["arm64", "amd64", "s390x", "ppc64le"]
+  ARCHITECTURES: arm64,amd64,s390x,ppc64le
 
 jobs:
   deliver-docker:
@@ -58,7 +58,7 @@ jobs:
       - name: Setup Docker Build Environment
         run: |
           echo "IMG_NAME=${{ env.REGISTRY_NAME }}/${{ env.USER_NAME }}/${{ env.IMG_NAME }}" >> $GITHUB_ENV
-          echo "${{ env.ARCHITECTURES }}" | jq -r '.[]' > architectures.txt
+          echo "${{ env.ARCHITECTURES }}" | tr ',' '\n' > architectures.txt
       - name: Login to Dockerhub
         uses: docker/login-action@v3
         with:
