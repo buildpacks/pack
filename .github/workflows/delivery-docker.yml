@@ -77,19 +77,20 @@ jobs:
             --provenance=false \
             --push
           echo "IMG_DIGEST=$(crane digest ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }}${{ matrix.suffix }})" >> $GITHUB_ENV
-      - name: Install cosign
-        uses: sigstore/cosign-installer@v3
-      - name: Download and Attach SBOMs
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download SBOMs
         run: |
           while IFS= read -r arch; do
             pattern=$([ "$arch" = "amd64" ] && echo "pack-v${{ steps.version.outputs.result }}-linux-sbom.cdx.json" || echo "pack-v${{ steps.version.outputs.result }}-linux-${arch}-sbom.cdx.json")
             gh release download --pattern "${pattern}" ${{ github.event.release.tag_name }} &
           done < architectures.txt
           wait
-
-          sign_and_verify() {
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+      - name: Attach SBOMs, Sign and Verify Images using cosign
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          secure_image_release() {
             local tag=$1
             local alias=${2:-}
 
@@ -97,6 +98,7 @@ jobs:
               sbom_json_file=$([ "$arch" = "amd64" ] && echo "pack-v${{ steps.version.outputs.result }}-linux-sbom.cdx.json" || echo "pack-v${{ steps.version.outputs.result }}-linux-${arch}-sbom.cdx.json")
 
               cosign attach sbom --sbom "$sbom_json_file" \
+                --type cyclonedx \
                 --platform "linux/${arch}" \
                 "$tag@${IMG_DIGEST}"
             done < architectures.txt
@@ -118,16 +120,16 @@ jobs:
               "$tag@${IMG_DIGEST}"
           }
 
-          sign_and_verify "${{ env.IMG_NAME }}:${{ steps.version.outputs.result }}${{ matrix.suffix }}"
+          secure_image_release "${{ env.IMG_NAME }}:${{ steps.version.outputs.result }}${{ matrix.suffix }}"
 
-          # Conditionally tag and sign as base
-          if [[ ("${{ github.event.release }}" != "" || "${{ github.event.inputs.tag_latest }}" == "true") && "${{ matrix.config }}" == "base" ]]; then
-            crane copy ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }}${{ matrix.suffix }} ${{ env.IMG_NAME }}:base
-            sign_and_verify "${{ env.IMG_NAME }}:base" "base"
-          fi
+          if [[ ("${{ github.event.release }}" != "" || "${{ github.event.inputs.tag_latest }}" == "true") ]]; then            
+            if [[ "${{ matrix.config }}" == "base" ]]; then
+              crane copy ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }}${{ matrix.suffix }} ${{ env.IMG_NAME }}:base
+              secure_image_release "${{ env.IMG_NAME }}:base" "base"
+            fi
 
-          # Conditionally tag and sign as latest
-          if [[ ("${{ github.event.release }}" != "" || "${{ github.event.inputs.tag_latest }}" == "true") && "${{ matrix.config }}" != "base" ]]; then
-            crane copy ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }}${{ matrix.suffix }} ${{ env.IMG_NAME }}:latest
-            sign_and_verify "${{ env.IMG_NAME }}:latest" "latest"
+            if [[ "${{ matrix.config }}" != "base" ]]; then            
+              crane copy ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }}${{ matrix.suffix }} ${{ env.IMG_NAME }}:latest
+              secure_image_release "${{ env.IMG_NAME }}:latest" "latest"
+            fi
           fi
