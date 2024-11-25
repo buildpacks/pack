@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1731609729358,
+  "lastUpdate": 1732542331230,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -8470,6 +8470,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 72332386781,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "narellano@vmware.com",
+            "name": "Natalie Arellano",
+            "username": "natalieparellano"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "92bc87b297695e4ac6baf559bad2efd55aecec1f",
+          "message": "Merge pull request #2284 from buildpacks/log/containerd\n\nEmit a performance warning if containerd is enabled and we're exporting to the daemon",
+          "timestamp": "2024-11-14T13:40:02-05:00",
+          "tree_id": "4b098056d0a51b3a1bf38cb8662c4f928cdee9d7",
+          "url": "https://github.com/buildpacks/pack/commit/92bc87b297695e4ac6baf559bad2efd55aecec1f"
+        },
+        "date": 1732542330744,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4248634816,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1087067222,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 60849111557,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
