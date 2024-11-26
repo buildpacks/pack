@@ -29,6 +29,86 @@ func testExtensionDescriptor(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("validating against run image target", func() {
+		it("succeeds with no distribution", func() {
+			ext := dist.ExtensionDescriptor{
+				WithInfo: dist.ModuleInfo{
+					ID:      "some.extension.id",
+					Version: "some.extension.version",
+				},
+				WithTargets: []dist.Target{{
+					OS:   "fake-os",
+					Arch: "fake-arch",
+				}},
+			}
+
+			h.AssertNil(t, ext.EnsureTargetSupport("fake-os", "fake-arch", "fake-distro", "0.0"))
+		})
+
+		it("succeeds with no target and bin/build.exe", func() {
+			ext := dist.ExtensionDescriptor{
+				WithInfo: dist.ModuleInfo{
+					ID:      "some.extension.id",
+					Version: "some.extension.version",
+				},
+				WithWindowsBuild: true,
+			}
+
+			h.AssertNil(t, ext.EnsureTargetSupport("windows", "amd64", "fake-distro", "0.0"))
+		})
+
+		it("succeeds with no target and bin/build", func() {
+			ext := dist.ExtensionDescriptor{
+				WithInfo: dist.ModuleInfo{
+					ID:      "some.extension.id",
+					Version: "some.extension.version",
+				},
+				WithLinuxBuild: true,
+			}
+
+			h.AssertNil(t, ext.EnsureTargetSupport("linux", "amd64", "fake-distro", "0.0"))
+		})
+
+		it("succeeds with distribution", func() {
+			ext := dist.ExtensionDescriptor{
+				WithInfo: dist.ModuleInfo{
+					ID:      "some.extension.id",
+					Version: "some.extension.version",
+				},
+				WithTargets: []dist.Target{{
+					OS:   "fake-os",
+					Arch: "fake-arch",
+					Distributions: []dist.Distribution{
+						{
+							Name:     "fake-distro",
+							Versions: []string{"0.1"},
+						},
+						{
+							Name:     "another-distro",
+							Versions: []string{"0.22"},
+						},
+					},
+				}},
+			}
+
+			h.AssertNil(t, ext.EnsureTargetSupport("fake-os", "fake-arch", "fake-distro", "0.1"))
+		})
+
+		it("succeeds with missing arch", func() {
+			ext := dist.ExtensionDescriptor{
+				WithInfo: dist.ModuleInfo{
+					ID:      "some.extension.id",
+					Version: "some.extension.version",
+				},
+				WithTargets: []dist.Target{{
+					OS: "fake-os",
+				}},
+			}
+
+			h.AssertNil(t, ext.EnsureTargetSupport("fake-os", "fake-arch", "fake-distro", "0.1"))
+		})
+	})
+
 	when("#Kind", func() {
 		it("returns 'extension'", func() {
 			extDesc := dist.ExtensionDescriptor{}
