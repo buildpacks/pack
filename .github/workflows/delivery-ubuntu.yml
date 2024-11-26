@@ -20,7 +20,7 @@ jobs:
       strategy:
         fail-fast: false
         matrix:
-          target: [bionic, focal, jammy, lunar]
+          target: [bionic, focal, jammy, noble]
       runs-on: ubuntu-20.04
       steps:
           - name: Checkout code
@@ -103,9 +103,9 @@ jobs:
               GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
               PACKAGE_VERSION: ${{ steps.version.outputs.result }}
 
-          - name: Deliver lunar
-            if: matrix.target == 'lunar'
-            uses: docker://ubuntu:lunar
+          - name: Deliver noble
+            if: matrix.target == 'noble'
+            uses: docker://ubuntu:noble
             with:
               entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
             env:

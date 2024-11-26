@@ -23,7 +23,8 @@ jobs:
         config: [macos, linux, windows-lcow, windows-wcow]
         include:
           - config: macos
-            os: macos
+            # since macos-14 the latest runner is arm64
+            os: macos-arm64
             runner: macos-latest
             no_docker: "true"
             pack_bin: pack
@@ -72,10 +73,10 @@ jobs:
           }
         shell: powershell
       - name: Set up go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
           check-latest: true
+          go-version-file: 'go.mod'
       - name: Set up go env for Unix
         if: runner.os != 'Windows'
         run: |
@@ -156,7 +157,7 @@ jobs:
         env:
           PACK_BUILD: ${{ github.run_number }}
         shell: powershell
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: matrix.config != 'windows-lcow'
         with:
           name: pack-${{ matrix.os }}
@@ -170,28 +171,32 @@ jobs:
           - name: linux-arm64
             goarch: arm64
             goos: linux
-          - name: macos-arm64
-            goarch: arm64
+          - name: macos
+            # since macos-14 default runner is arm, we need to build for intel architecture later
+            goarch: amd64
             goos: darwin
           - name: linux-s390x
             goarch: s390x
+            goos: linux
+          - name: linux-ppc64le
+            goarch: ppc64le
             goos: linux
     needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
           check-latest: true
+          go-version-file: 'go.mod'
       - name: Build
         run: |
           [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]} || version=0.0.0
           env PACK_VERSION=${version} GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} make build
         env:
           PACK_BUILD: ${{ github.run_number }}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: pack-${{ matrix.name }}
           path: out/${{ env.PACK_BIN }}
@@ -220,7 +225,7 @@ jobs:
 
           echo "PACK_MILESTONE=${milestone}" >> $GITHUB_ENV
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
       - name: Package artifacts - macos
         run: |
           chmod +x pack-macos/pack
@@ -238,6 +243,12 @@ jobs:
           chmod +x pack-linux-s390x/pack
           filename=pack-v${{ env.PACK_VERSION }}-linux-s390x.tgz
           tar -C pack-linux-s390x -vzcf $filename pack
+          shasum -a 256 $filename > $filename.sha256
+      - name: Package artifacts - linux-ppc64le
+        run: |
+          chmod +x pack-linux-ppc64le/pack
+          filename=pack-v${{ env.PACK_VERSION }}-linux-ppc64le.tgz
+          tar -C pack-linux-ppc64le -vzcf $filename pack
           shasum -a 256 $filename > $filename.sha256
       - name: Package artifacts - macos-arm64
         run: |
@@ -278,7 +289,7 @@ jobs:
           milestone: ${{ env.PACK_MILESTONE }}
       - name: Create Pre-Release
         if: ${{ env.PACK_VERSION != env.PACK_MILESTONE }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -313,6 +324,11 @@ jobs:
 
             ```bash
             (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux-s390x.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
+            ##### PPC64LE
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux-ppc64le.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
             ```
 
             #### MacOS
@@ -354,7 +370,7 @@ jobs:
 
       - name: Create Beta Release
         if: ${{ env.PACK_VERSION == env.PACK_MILESTONE }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

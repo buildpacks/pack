@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -46,6 +45,9 @@ type RebaseOptions struct {
 	// Pass-through force flag to lifecycle rebase command to skip target data
 	// validated (will not have any effect if API < 0.12).
 	Force bool
+
+	// Image reference to use as the previous image for rebase.
+	PreviousImage string
 }
 
 // Rebase updates the run image layers in an app image.
@@ -56,7 +58,13 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.RepoName)
 	}
 
-	appImage, err := c.imageFetcher.Fetch(ctx, opts.RepoName, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
+	repoName := opts.RepoName
+
+	if opts.PreviousImage != "" {
+		repoName = opts.PreviousImage
+	}
+
+	appImage, err := c.imageFetcher.Fetch(ctx, repoName, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
 	if err != nil {
 		return err
 	}
@@ -89,6 +97,14 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 			Mirrors: md.Stack.RunImage.Mirrors,
 		}
 	}
+
+	target := &dist.Target{OS: appOS, Arch: appArch}
+	fetchOptions := image.FetchOptions{
+		Daemon:     !opts.Publish,
+		PullPolicy: opts.PullPolicy,
+		Target:     target,
+	}
+
 	runImageName := c.resolveRunImage(
 		opts.RunImage,
 		imageRef.Context().RegistryStr(),
@@ -96,25 +112,21 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		runImageMD,
 		opts.AdditionalMirrors,
 		opts.Publish,
-		c.accessChecker,
+		fetchOptions,
 	)
 
 	if runImageName == "" {
 		return errors.New("run image must be specified")
 	}
 
-	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, image.FetchOptions{
-		Daemon:     !opts.Publish,
-		PullPolicy: opts.PullPolicy,
-		Platform:   fmt.Sprintf("%s/%s", appOS, appArch),
-	})
+	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, fetchOptions)
 	if err != nil {
 		return err
 	}
 
 	c.logger.Infof("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
 	rebaser := &phase.Rebaser{Logger: c.logger, PlatformAPI: build.SupportedPlatformAPIVersions.Latest(), Force: opts.Force}
-	report, err := rebaser.Rebase(appImage, baseImage, appImage.Name(), nil)
+	report, err := rebaser.Rebase(appImage, baseImage, opts.RepoName, nil)
 	if err != nil {
 		return err
 	}

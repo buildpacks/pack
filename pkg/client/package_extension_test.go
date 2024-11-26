@@ -10,7 +10,7 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/system"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -130,7 +130,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 			it("creates package image based on daemon OS", func() {
 				for _, daemonOS := range []string{"linux", "windows"} {
 					localMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
-					localMockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: daemonOS}, nil).AnyTimes()
+					localMockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: daemonOS}, nil).AnyTimes()
 
 					packClientWithExperimental, err := client.NewClient(
 						client.WithDockerClient(localMockDockerClient),
@@ -141,7 +141,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					fakeImage := fakes.NewImage("basic/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true, daemonOS).Return(fakeImage, nil)
+					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true, dist.Target{OS: daemonOS}).Return(fakeImage, nil)
 
 					fakeBlob := blob.NewBlob(filepath.Join("testdata", "empty-file"))
 					exURL := fmt.Sprintf("https://example.com/ex.%s.tgz", h.RandString(12))
@@ -183,7 +183,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 
 			it("fails for mismatched platform and daemon os", func() {
 				windowsMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
-				windowsMockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "windows"}, nil).AnyTimes()
+				windowsMockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "windows"}, nil).AnyTimes()
 
 				packClientWithoutExperimental, err := client.NewClient(
 					client.WithDockerClient(windowsMockDockerClient),
@@ -213,7 +213,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 
 				for _, imageOS := range []string{"linux", "windows"} {
 					localMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
-					localMockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: imageOS}, nil).AnyTimes()
+					localMockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: imageOS}, nil).AnyTimes()
 
 					packClientWithExperimental, err := client.NewClient(
 						client.WithDockerClient(localMockDockerClient),
@@ -247,7 +247,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 
 	when("unknown format is provided", func() {
 		it("should error", func() {
-			mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
+			mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
 
 			err := subject.PackageExtension(context.TODO(), client.PackageBuildpackOptions{
 				Name:   "some-extension",

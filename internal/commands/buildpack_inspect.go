@@ -42,7 +42,7 @@ func BuildpackInspect(logger logging.Logger, cfg config.Config, client PackClien
 	return cmd
 }
 
-func buildpackInspect(logger logging.Logger, buildpackName, registryName string, flags BuildpackInspectFlags, cfg config.Config, pack PackClient) error {
+func buildpackInspect(logger logging.Logger, buildpackName, registryName string, flags BuildpackInspectFlags, _ config.Config, pack PackClient) error {
 	logger.Infof("Inspecting buildpack: %s\n", style.Symbol(buildpackName))
 
 	inspectedBuildpacksOutput, err := inspectAllBuildpacks(

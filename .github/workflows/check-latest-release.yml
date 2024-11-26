@@ -11,7 +11,7 @@ jobs:
       - ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
       - name: Read go versions
@@ -25,7 +25,7 @@ jobs:
           
           LATEST_GO_VERSION=$(go version | cut -d ' ' -f 3)
           
-          LATEST_RELEASE_VERSION=$(gh release list -L 1 | cut -d $'\t' -f 1 | cut -d ' ' -f 2)
+          LATEST_RELEASE_VERSION=$(gh release list --exclude-drafts --exclude-pre-releases -L 1 | cut -d $'\t' -f 1 | cut -d ' ' -f 2)
           
           wget https://github.com/$GITHUB_REPOSITORY/releases/download/$LATEST_RELEASE_VERSION/pack-$LATEST_RELEASE_VERSION-linux.tgz -O out.tgz
           tar xzf out.tgz
@@ -70,9 +70,9 @@ jobs:
           fi
       - name: Scan latest release image
         id: scan-image
-        uses: anchore/scan-action@v3
+        uses: anchore/scan-action@v5
         with:
-          image: buildpacksio/pack:${{ steps.read-go.outputs.latest-release-version }}
+          image: docker.io/buildpacksio/pack:${{ steps.read-go.outputs.latest-release-version }}
       - name: Create issue if needed
         if: failure() && steps.scan-image.outcome == 'failure'
         env:
@@ -91,7 +91,7 @@ jobs:
             search_output=$(gh issue list --search "$title" --label "$label")
 
             GITHUB_WORKFLOW_URL=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
-            body="Latest buildpacksio/pack v${{ steps.read-go.outputs.latest-release-version }} triggered CVE(s) from Grype. For further details, see: $GITHUB_WORKFLOW_URL"
+            body="Latest docker.io/buildpacksio/pack v${{ steps.read-go.outputs.latest-release-version }} triggered CVE(s) from Grype. For further details, see: $GITHUB_WORKFLOW_URL"
 
             if [ -z "${search_output// }" ]
             then

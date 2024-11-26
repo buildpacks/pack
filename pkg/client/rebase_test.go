@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -28,7 +29,6 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 	when("#Rebase", func() {
 		var (
 			fakeImageFetcher   *ifakes.FakeImageFetcher
-			fakeAccessChecker  *ifakes.FakeAccessChecker
 			subject            *Client
 			fakeAppImage       *fakes.Image
 			fakeRunImage       *fakes.Image
@@ -38,7 +38,6 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			fakeImageFetcher = ifakes.NewFakeImageFetcher()
-			fakeAccessChecker = ifakes.NewFakeAccessChecker()
 
 			fakeAppImage = fakes.NewImage("some/app", "", &fakeIdentifier{name: "app-image"})
 			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata",
@@ -54,11 +53,14 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, fakeRunImageMirror.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.jammy"))
 			fakeImageFetcher.LocalImages["example.com/some/run"] = fakeRunImageMirror
 
+			keychain, err := auth.DefaultKeychain("pack-test/dummy")
+			h.AssertNil(t, err)
+
 			fakeLogger := logging.NewLogWithWriters(&out, &out)
 			subject = &Client{
-				logger:        fakeLogger,
-				imageFetcher:  fakeImageFetcher,
-				accessChecker: fakeAccessChecker,
+				logger:       fakeLogger,
+				imageFetcher: fakeImageFetcher,
+				keychain:     keychain,
 			}
 		})
 
@@ -262,9 +264,41 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
 							h.AssertContains(t, lbl, `"runImage":{"topLayer":"remote-top-layer-sha","reference":"remote-digest"`)
 							args := fakeImageFetcher.FetchCalls["some/run"]
-							h.AssertEq(t, args.Platform, "linux/amd64")
+							h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/amd64")
 						})
 					})
+				})
+			})
+			when("previous image is provided", func() {
+				it("fetches the image using the previous image name", func() {
+					h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
+						RepoName:      "new/app",
+						PreviousImage: "some/app",
+					}))
+					args := fakeImageFetcher.FetchCalls["some/app"]
+					h.AssertNotNil(t, args)
+					h.AssertEq(t, args.Daemon, true)
+				})
+			})
+
+			when("previous image is set to new image name", func() {
+				it("returns error if Fetch function fails", func() {
+					err := subject.Rebase(context.TODO(), RebaseOptions{
+						RepoName:      "some/app",
+						PreviousImage: "new/app",
+					})
+					h.AssertError(t, err, "image 'new/app' does not exist on the daemon: not found")
+				})
+			})
+
+			when("previous image is not provided", func() {
+				it("fetches the image using the repo name", func() {
+					h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
+						RepoName: "some/app",
+					}))
+					args := fakeImageFetcher.FetchCalls["some/app"]
+					h.AssertNotNil(t, args)
+					h.AssertEq(t, args.Daemon, true)
 				})
 			})
 		})
