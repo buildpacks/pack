@@ -2185,19 +2185,16 @@ func testAcceptance(
 								imageManager.CleanupImages(runImageName)
 							})
 
-							it("fails with a message", func() {
+							it("succeeds with a warning", func() {
 								output, err := pack.Run(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--run-image", runImageName,
 								)
-								assert.NotNil(err)
+								assert.Nil(err)
 
 								assertOutput := assertions.NewOutputAssertionManager(t, output)
-								assertOutput.ReportsRunImageStackNotMatchingBuilder(
-									"other.stack.id",
-									"pack.test.stack",
-								)
+								assertOutput.ReportsRunImageStackNotMatchingBuilder()
 							})
 						})
 					})
