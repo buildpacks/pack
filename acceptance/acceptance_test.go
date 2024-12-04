@@ -2186,7 +2186,9 @@ func testAcceptance(
 							})
 
 							it("fails with a message", func() {
-								h.SkipIf(t, pack.SupportsFeature(invoke.StackWarning), "stack is validated in prior versions")
+								it.Before(func() {
+									h.SkipIf(t, pack.SupportsFeature(invoke.StackWarning), "stack is validated in prior versions")
+								})
 								output, err := pack.Run(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
@@ -2202,7 +2204,9 @@ func testAcceptance(
 							})
 
 							it("succeeds with a warning", func() {
-								h.SkipIf(t, !pack.SupportsFeature(invoke.StackWarning), "stack is no longer validated")
+								it.Before(func() {
+									h.SkipIf(t, !pack.SupportsFeature(invoke.StackWarning), "stack is no longer validated")
+								})
 								output, err := pack.Run(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
