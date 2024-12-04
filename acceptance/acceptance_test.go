@@ -2185,7 +2185,24 @@ func testAcceptance(
 								imageManager.CleanupImages(runImageName)
 							})
 
+							it("fails with a message", func() {
+								h.SkipIf(t, pack.SupportsFeature(invoke.StackWarning), "stack is validated in prior versions")
+								output, err := pack.Run(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--run-image", runImageName,
+								)
+								assert.NotNil(err)
+
+								assertOutput := assertions.NewOutputAssertionManager(t, output)
+								assertOutput.ReportsRunImageStackNotMatchingBuilder(
+									"other.stack.id",
+									"pack.test.stack",
+								)
+							})
+
 							it("succeeds with a warning", func() {
+								h.SkipIf(t, !pack.SupportsFeature(invoke.StackWarning), "stack is no longer validated")
 								output, err := pack.Run(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
@@ -2194,7 +2211,7 @@ func testAcceptance(
 								assert.Nil(err)
 
 								assertOutput := assertions.NewOutputAssertionManager(t, output)
-								assertOutput.ReportsRunImageStackNotMatchingBuilder()
+								assertOutput.ReportsDeprecatedUseOfStack()
 							})
 						})
 					})
