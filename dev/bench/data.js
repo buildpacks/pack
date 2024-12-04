@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1732542331230,
+  "lastUpdate": 1733275430092,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -8512,6 +8512,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 60849111557,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9a987fe6426e4a257d38c71d9e56fb6eec54ef9b",
+          "message": "Merge pull request #2294 from joeybrown/tests-arm-64\n\nmake sure acceptance tests pass on arm64",
+          "timestamp": "2024-12-03T20:22:04-05:00",
+          "tree_id": "f5d965bd106c73ae3f684eba07ecab24e04603a9",
+          "url": "https://github.com/buildpacks/pack/commit/9a987fe6426e4a257d38c71d9e56fb6eec54ef9b"
+        },
+        "date": 1733275429593,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4534670397,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1265755875,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 66623167698,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
