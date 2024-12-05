@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1733278667170,
+  "lastUpdate": 1733401706911,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -8638,6 +8638,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 65892929397,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "163db98749737fa921cb8ba4e2b438f70a0f565f",
+          "message": "Merge pull request #2296 from gogolok/buildpack_new_help_wording\n\nCorrect wording for `buildpack new` targets flag",
+          "timestamp": "2024-12-05T07:26:02-05:00",
+          "tree_id": "dcec6146cda960d7f94996137387bf63eacf654a",
+          "url": "https://github.com/buildpacks/pack/commit/163db98749737fa921cb8ba4e2b438f70a0f565f"
+        },
+        "date": 1733401706261,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6225269567,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1522284180,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 62118190968,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
