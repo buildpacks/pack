@@ -104,7 +104,7 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 	cmd.Flags().StringSliceVarP(&flags.Stacks, "stacks", "s", nil, "Stack(s) this buildpack will be compatible with"+stringSliceHelp("stack"))
 	cmd.Flags().MarkDeprecated("stacks", "prefer `--targets` instead: https://github.com/buildpacks/rfcs/blob/main/text/0096-remove-stacks-mixins.md")
 	cmd.Flags().StringSliceVarP(&flags.Targets, "targets", "t", nil,
-		`Targets are the list platforms that one targeting, these are generated as part of scaffolding inside buildpack.toml file. one can provide target platforms in format [os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]
+		`Targets are of the form 'os/arch/variant', for example 'linux/amd64' or 'linux/arm64/v9'. The full format for targets follows the form [os][/arch][/variant]:[distroname@osversion@anotherversion];[distroname@osversion]
 	- Base case for two different architectures :  '--targets "linux/amd64" --targets "linux/arm64"'
 	- case for distribution version: '--targets "windows/amd64:windows-nano@10.0.19041.1415"'
 	- case for different architecture with distributed versions : '--targets "linux/arm/v6:ubuntu@14.04"  --targets "linux/arm/v6:ubuntu@16.04"'
