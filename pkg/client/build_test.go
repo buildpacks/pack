@@ -287,7 +287,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						AppPath: filepath.Join("testdata", "some-app"),
 					}))
 
-					h.AssertEq(t, strings.TrimSpace(outBuf.String()), "some/app@sha256:363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4")
+					actual := strings.TrimSpace(outBuf.String())
+					h.AssertEq(t, actual, "some/app@sha256:363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4")
 				})
 			})
 		})
@@ -531,14 +532,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.id", "other.stack"))
 				})
 
-				it("errors", func() {
-					h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
+				it("warning", func() {
+					err := subject.Build(context.TODO(), BuildOptions{
 						Image:    "some/app",
 						Builder:  defaultBuilderName,
 						RunImage: "custom/run",
-					}),
-						"invalid run-image 'custom/run': run-image stack id 'other.stack' does not match builder stack 'some.stack.id'",
-					)
+					})
+					h.AssertNil(t, err)
+					h.AssertContains(t, outBuf.String(), "Warning: deprecated usage of stack")
 				})
 			})
 

@@ -118,6 +118,12 @@ func (o OutputAssertionManager) ReportsRunImageStackNotMatchingBuilder(runImageS
 	)
 }
 
+func (o OutputAssertionManager) ReportsDeprecatedUseOfStack() {
+	o.testObject.Helper()
+
+	o.assert.Contains(o.output, "Warning: deprecated usage of stack")
+}
+
 func (o OutputAssertionManager) WithoutColors() {
 	o.testObject.Helper()
 	o.testObject.Log("has no color")
