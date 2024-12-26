@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1735217750333,
+  "lastUpdate": 1735219244261,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -8890,6 +8890,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 58624729302,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "78e6a7fa01f038f73a0ab611fba8158a63e3760c",
+          "message": "Merge pull request #2307 from buildpacks/deps/issue-2304\n\n(deps): Update x/net library to v0.33.0",
+          "timestamp": "2024-12-26T08:18:26-05:00",
+          "tree_id": "57e0d6addc4f82852a5f7e5642e6f057a9b0433c",
+          "url": "https://github.com/buildpacks/pack/commit/78e6a7fa01f038f73a0ab611fba8158a63e3760c"
+        },
+        "date": 1735219243795,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3934517658,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 830509104,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 54555014506,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
