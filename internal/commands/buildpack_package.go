@@ -117,9 +117,9 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 
 			if len(multiArchCfg.Targets()) == 0 {
 				if isCompositeBP {
-					logger.Infof("Pro tip: use --targets flag OR [[targets]] in package.toml to specify the desired platform (os/arch/variant); using os %s", style.Symbol(bpPackageCfg.Platform.OS))
+					logger.Infof("Pro tip: use --target flag OR [[targets]] in package.toml to specify the desired platform (os/arch/variant); using os %s", style.Symbol(bpPackageCfg.Platform.OS))
 				} else {
-					logger.Infof("Pro tip: use --targets flag OR [[targets]] in buildpack.toml to specify the desired platform (os/arch/variant); using os %s", style.Symbol(bpPackageCfg.Platform.OS))
+					logger.Infof("Pro tip: use --target flag OR [[targets]] in buildpack.toml to specify the desired platform (os/arch/variant); using os %s", style.Symbol(bpPackageCfg.Platform.OS))
 				}
 			} else if !isCompositeBP {
 				// FIXME: Check if we can copy the config files during layers creation.
