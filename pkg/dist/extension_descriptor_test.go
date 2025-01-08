@@ -74,4 +74,18 @@ func testExtensionDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, extDesc.Stacks(), empty)
 		})
 	})
+
+	when("#Targets", func() {
+		it("returns the api", func() {
+			targets := []dist.Target{{
+				OS:   "fake-os",
+				Arch: "fake-arch",
+			}}
+			extDesc := dist.ExtensionDescriptor{
+				WithTargets: targets,
+			}
+			h.AssertEq(t, extDesc.Targets(), targets)
+		})
+	})
+
 }
