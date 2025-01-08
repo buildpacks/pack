@@ -123,7 +123,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				}
 			} else if !isCompositeBP {
 				// FIXME: Check if we can copy the config files during layers creation.
-				filesToClean, err := multiArchCfg.CopyConfigFiles(bpPath)
+				filesToClean, err := multiArchCfg.CopyConfigFiles(bpPath, "buildpack")
 				if err != nil {
 					return err
 				}
