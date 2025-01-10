@@ -177,6 +177,7 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 						Email: "john@doe.org",
 						When:  time.Now(),
 					},
+					AllowEmptyCommits: true,
 				})
 				h.AssertNil(t, err)
 
