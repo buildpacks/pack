@@ -79,4 +79,33 @@ func testTranslateRegistry(t *testing.T, when spec.G, it spec.S) {
 			assert.Equal(output, expected)
 		})
 	})
+
+	// {
+	//					OS:          "linux",
+	//					Arch:        "arm",
+	//					ArchVariant: "v6",
+	//				}
+
+	when("#AppendSuffix", func() {
+		when("Arch is provided", func() {
+			when("Variant is provided", func() {
+
+			})
+			when("Tag is provided", func() {
+				// my.registry.com/my-repo/my-image:some-tag
+			})
+			when("Tag is NOT provided", func() {
+				// my.registry.com/my-repo/my-image
+			})
+		})
+
+		when("Arch is NOT provided", func() {
+			when("Tag is provided", func() {
+				// my.registry.com/my-repo/my-image:some-tag
+			})
+			when("Tag is NOT provided", func() {
+				// my.registry.com/my-repo/my-image
+			})
+		})
+	})
 }

@@ -2,6 +2,7 @@ package name
 
 import (
 	"fmt"
+	"github.com/buildpacks/pack/pkg/dist"
 	"strings"
 
 	gname "github.com/google/go-containerregistry/pkg/name"
@@ -47,6 +48,15 @@ func TranslateRegistry(name string, registryMirrors map[string]string, logger Lo
 
 	logger.Infof("Using mirror %s for %s", style.Symbol(refName), name)
 	return refName, nil
+}
+
+func AppendSuffix(name string, target dist.Target) string {
+	if target.Arch != "" {
+		name = fmt.Sprintf("%s:%s-%s", name, target.OS, target.Arch)
+	} else {
+		name = fmt.Sprintf("%s:%s", name, target.OS)
+	}
+	return name
 }
 
 func getMirror(repo gname.Repository, registryMirrors map[string]string) (string, bool) {
