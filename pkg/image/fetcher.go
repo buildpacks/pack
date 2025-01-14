@@ -123,8 +123,8 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		// Sample error from docker engine:
 		// `image with reference <image> was found but does not match the specified platform: wanted linux/amd64, actual: linux`
 		if strings.Contains(err.Error(), "does not match the specified platform") &&
-			(strings.HasSuffix(strings.TrimSpace(err.Error()), "actual: linux") ||
-				strings.HasSuffix(strings.TrimSpace(err.Error()), "actual: windows")) {
+			(strings.Contains(strings.TrimSpace(err.Error()), "its platform (linux)") ||
+				strings.Contains(strings.TrimSpace(err.Error()), "its platform (windows)")) {
 			f.logger.Debugf(fmt.Sprintf("Pulling image %s", style.Symbol(name)))
 			err = f.pullImage(ctx, name, "")
 		}
