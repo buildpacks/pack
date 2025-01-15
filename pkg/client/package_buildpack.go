@@ -3,8 +3,9 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/buildpacks/pack/internal/name"
 	"path/filepath"
+
+	"github.com/buildpacks/pack/internal/name"
 
 	"github.com/pkg/errors"
 

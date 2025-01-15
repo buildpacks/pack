@@ -2,8 +2,9 @@ package name
 
 import (
 	"fmt"
-	"github.com/buildpacks/pack/pkg/dist"
 	"strings"
+
+	"github.com/buildpacks/pack/pkg/dist"
 
 	gname "github.com/google/go-containerregistry/pkg/name"
 

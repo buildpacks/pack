@@ -3,9 +3,10 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/buildpacks/pack/internal/name"
 	"sort"
 	"strings"
+
+	"github.com/buildpacks/pack/internal/name"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
