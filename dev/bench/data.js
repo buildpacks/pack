@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1736540706533,
+  "lastUpdate": 1736904960722,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -9184,6 +9184,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 61610411559,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0adeb451bd8bb55603a5a04440f200c2231ded82",
+          "message": "Merge pull request #2318 from buildpacks/jjbustamante/fix-pack-2315\n\nUpdate hardcoded error message to pull images without architecture",
+          "timestamp": "2025-01-14T20:34:23-05:00",
+          "tree_id": "8d2c94f28f79422650456a8b25e21b67fde406d4",
+          "url": "https://github.com/buildpacks/pack/commit/0adeb451bd8bb55603a5a04440f200c2231ded82"
+        },
+        "date": 1736904960246,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4072640288,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 969110956,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 64172645984,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
