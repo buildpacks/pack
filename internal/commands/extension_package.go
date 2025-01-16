@@ -39,7 +39,7 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 		Use:     "package <name> --config <config-path>",
 		Short:   "Package an extension in OCI format",
 		Args:    cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
-		Example: "pack extension package /output/file.cnb --path /extracted/from/tgz/folder --format file\npack extension package registy/image-name --path  /extracted/from/tgz/folder --format image --publish",
+		Example: "pack extension package /output/file.cnb --path /extracted/from/tgz/folder --format file\npack extension package registry/image-name --path  /extracted/from/tgz/folder --format image --publish",
 		Long: "extension package allows users to package (an) extension(s) into OCI format, which can then to be hosted in " +
 			"image repositories or persisted on disk as a '.cnb' file." +
 			"Packaged extensions can be used as inputs to `pack build` (using the `--extension` flag), " +

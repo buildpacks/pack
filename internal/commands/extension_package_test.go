@@ -366,10 +366,3 @@ func withExtensionClientConfig(clientCfg config.Config) packageExtensionCommandO
 		config.clientConfig = clientCfg
 	}
 }
-
-func whereReadExtensionDescriptor(descriptor dist.ExtensionDescriptor, err error) func(*fakes.FakePackageConfigReader) {
-	return func(r *fakes.FakePackageConfigReader) {
-		r.ReadExtensionDescriptorReturn = descriptor
-		r.ReadBuildpackDescriptorReturnError = err
-	}
-}

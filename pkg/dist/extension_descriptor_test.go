@@ -87,5 +87,4 @@ func testExtensionDescriptor(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, extDesc.Targets(), targets)
 		})
 	})
-
 }
