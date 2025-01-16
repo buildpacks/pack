@@ -4,6 +4,8 @@ import (
 	"io"
 	"testing"
 
+	"github.com/buildpacks/pack/pkg/dist"
+
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -80,31 +82,109 @@ func testTranslateRegistry(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	// {
-	//					OS:          "linux",
-	//					Arch:        "arm",
-	//					ArchVariant: "v6",
-	//				}
-
 	when("#AppendSuffix", func() {
-		when("Arch is provided", func() {
-			when("Variant is provided", func() {
+		when("[os] is provided", func() {
+			when("[arch]] is provided", func() {
+				when("[arch-variant] is provided", func() {
+					when("tag is provided", func() {
+						it("append [os]-[arch]-[arch-variant] to the given tag", func() {
+							input := "my.registry.com/my-repo/my-image:some-tag"
+							target := dist.Target{
+								OS:          "linux",
+								Arch:        "amd64",
+								ArchVariant: "v6",
+							}
 
+							result, err := name.AppendSuffix(input, target)
+							assert.Nil(err)
+							assert.Equal(result, "my.registry.com/my-repo/my-image:some-tag-linux-amd64-v6")
+						})
+					})
+					when("tag is not provided", func() {
+						it("add tag: [os]-[arch]-[arch-variant] to the given <image>", func() {
+							input := "my.registry.com/my-repo/my-image"
+							target := dist.Target{
+								OS:          "linux",
+								Arch:        "amd64",
+								ArchVariant: "v6",
+							}
+
+							result, err := name.AppendSuffix(input, target)
+							assert.Nil(err)
+							assert.Equal(result, "my.registry.com/my-repo/my-image:linux-amd64-v6")
+						})
+					})
+				})
+				when("[arch-variant] is not provided", func() {
+					when("tag is provided", func() {
+						// my.registry.com/my-repo/my-image:some-tag
+						it("append [os]-[arch] to the given tag", func() {
+							input := "my.registry.com/my-repo/my-image:some-tag"
+							target := dist.Target{
+								OS:   "linux",
+								Arch: "amd64",
+							}
+
+							result, err := name.AppendSuffix(input, target)
+							assert.Nil(err)
+							assert.Equal(result, "my.registry.com/my-repo/my-image:some-tag-linux-amd64")
+						})
+					})
+					when("tag is NOT provided", func() {
+						// my.registry.com/my-repo/my-image
+						it("add tag: [os]-[arch] to the given <image>", func() {
+							input := "my.registry.com/my-repo/my-image"
+							target := dist.Target{
+								OS:   "linux",
+								Arch: "amd64",
+							}
+
+							result, err := name.AppendSuffix(input, target)
+							assert.Nil(err)
+							assert.Equal(result, "my.registry.com/my-repo/my-image:linux-amd64")
+						})
+					})
+				})
 			})
-			when("Tag is provided", func() {
-				// my.registry.com/my-repo/my-image:some-tag
-			})
-			when("Tag is NOT provided", func() {
-				// my.registry.com/my-repo/my-image
+
+			when("[arch] is not provided", func() {
+				when("tag is provided", func() {
+					// my.registry.com/my-repo/my-image:some-tag
+					it("append [os] to the given tag", func() {
+						input := "my.registry.com/my-repo/my-image:some-tag"
+						target := dist.Target{
+							OS: "linux",
+						}
+
+						result, err := name.AppendSuffix(input, target)
+						assert.Nil(err)
+						assert.Equal(result, "my.registry.com/my-repo/my-image:some-tag-linux")
+					})
+				})
+				when("tag is not provided", func() {
+					// my.registry.com/my-repo/my-image
+					it("add tag: [os] to the given <image>", func() {
+						input := "my.registry.com/my-repo/my-image"
+						target := dist.Target{
+							OS: "linux",
+						}
+
+						result, err := name.AppendSuffix(input, target)
+						assert.Nil(err)
+						assert.Equal(result, "my.registry.com/my-repo/my-image:linux")
+					})
+				})
 			})
 		})
 
-		when("Arch is NOT provided", func() {
-			when("Tag is provided", func() {
-				// my.registry.com/my-repo/my-image:some-tag
-			})
-			when("Tag is NOT provided", func() {
-				// my.registry.com/my-repo/my-image
+		when("[os] is not provided", func() {
+			it("doesn't append anything and return the same <image> name", func() {
+				input := "my.registry.com/my-repo/my-image"
+				target := dist.Target{}
+
+				result, err := name.AppendSuffix(input, target)
+				assert.Nil(err)
+				assert.Equal(result, input)
 			})
 		})
 	})

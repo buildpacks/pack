@@ -200,7 +200,10 @@ func (c *Client) packageBuildpackTarget(ctx context.Context, opts PackageBuildpa
 	case FormatImage:
 		packageName := opts.Name
 		if multiArch && opts.AppendImageNameSuffix {
-			packageName = name.AppendSuffix(packageName, target)
+			packageName, err = name.AppendSuffix(packageName, target)
+			if err != nil {
+				return "", errors.Wrap(err, "invalid image name")
+			}
 		}
 		img, err := packageBuilder.SaveAsImage(packageName, opts.Publish, target, opts.Labels)
 		if err != nil {

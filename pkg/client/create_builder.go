@@ -221,7 +221,10 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 
 	builderName := opts.BuilderName
 	if multiArch && opts.AppendImageNameSuffix {
-		builderName = name.AppendSuffix(builderName, *target)
+		builderName, err = name.AppendSuffix(builderName, *target)
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid image name")
+		}
 	}
 
 	bldr, err := builder.New(baseImage, builderName, builderOpts...)
