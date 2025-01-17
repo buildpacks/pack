@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1736904960722,
+  "lastUpdate": 1737123416387,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -9226,6 +9226,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 64172645984,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c7f5b1cc88cae6599463a98dcd9fd35c0ca5d67c",
+          "message": "Merge pull request #2314 from buildpacks/jjbustamante/fix-pack-2299\n\nAdd new flag `--append-image-name-suffix` to append suffix to the image name when pushing a multi-arch buildpack or builder",
+          "timestamp": "2025-01-17T09:15:15-05:00",
+          "tree_id": "db2cc41286e44c1a6e13cff7eb68475e7ce5beb0",
+          "url": "https://github.com/buildpacks/pack/commit/c7f5b1cc88cae6599463a98dcd9fd35c0ca5d67c"
+        },
+        "date": 1737123415924,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3965149247,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 967538996,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 65667310385,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
