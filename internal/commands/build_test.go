@@ -982,6 +982,41 @@ builder = "my-builder"
 				h.AssertError(t, err, "Exporting to OCI layout is currently experimental.")
 			})
 		})
+
+		when("--exec-env", func() {
+			when("is not provided", func() {
+				it("set 'production' as default value", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithExecEnv("production")).
+						Return(nil)
+
+					command.SetArgs([]string{"image", "--builder", "my-builder"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+
+			when("is provided", func() {
+				when("contains valid characters", func() {
+					it("forwards the exec-value into the client", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithExecEnv("something")).
+							Return(nil)
+
+						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "something"})
+						h.AssertNil(t, command.Execute())
+					})
+				})
+
+				when("contains invalid characters", func() {
+					it("errors with a descriptive message", func() {
+						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "$production"})
+						err := command.Execute()
+						h.AssertNotNil(t, err)
+						h.AssertError(t, err, "exec-env MUST only contain numbers, letters, and the characters: . or -")
+					})
+				})
+			})
+		})
 	})
 
 	when("export to OCI layout is expected", func() {
@@ -1239,6 +1274,15 @@ func EqBuildOptionsWithLayoutConfig(image, previousImage string, sparse bool, la
 				return result && o.LayoutConfig.Sparse == sparse && o.LayoutConfig.LayoutRepoDir == layoutDir
 			}
 			return false
+		},
+	}
+}
+
+func EqBuildOptionsWithExecEnv(s string) interface{} {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("exec-env=%s", s),
+		equals: func(o client.BuildOptions) bool {
+			return o.CNBExecutionEnv == s
 		},
 	}
 }
