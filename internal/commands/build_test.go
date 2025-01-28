@@ -997,12 +997,57 @@ builder = "my-builder"
 
 			when("is provided", func() {
 				when("contains valid characters", func() {
-					it("forwards the exec-value into the client", func() {
+					it("forwards the exec-value (only letters) into the client", func() {
 						mockClient.EXPECT().
 							Build(gomock.Any(), EqBuildOptionsWithExecEnv("something")).
 							Return(nil)
 
 						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "something"})
+						h.AssertNil(t, command.Execute())
+					})
+
+					it("forwards the exec-value (only numbers) into the client", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithExecEnv("1234")).
+							Return(nil)
+
+						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "1234"})
+						h.AssertNil(t, command.Execute())
+					})
+
+					it("forwards the exec-value (mix letters and numbers) into the client", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithExecEnv("env1")).
+							Return(nil)
+
+						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "env1"})
+						h.AssertNil(t, command.Execute())
+					})
+
+					it("forwards the exec-value (mix letters, numbers and .) into the client", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithExecEnv("env1.1")).
+							Return(nil)
+
+						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "env1.1"})
+						h.AssertNil(t, command.Execute())
+					})
+
+					it("forwards the exec-value (mix letters, numbers and -) into the client", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithExecEnv("env-1")).
+							Return(nil)
+
+						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "env-1"})
+						h.AssertNil(t, command.Execute())
+					})
+
+					it("forwards the exec-value (mix letters, numbers, . and  -) into the client", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithExecEnv("env-1.1")).
+							Return(nil)
+
+						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "env-1.1"})
 						h.AssertNil(t, command.Execute())
 					})
 				})
