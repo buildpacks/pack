@@ -110,7 +110,6 @@ value = "-Xmx300m"
 				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
 					expectedVersion, projectDescriptor.SchemaVersion)
 			}
-
 		})
 
 		it("should parse a valid v0.2 project.toml file", func() {
