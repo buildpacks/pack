@@ -343,6 +343,7 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, inputImageRef clie
 	}
 
 	if flags.ExecutionEnv != "" && flags.ExecutionEnv != "production" && flags.ExecutionEnv != "test" {
+		// RFC: the / character is reserved in case we need to introduce namespacing in the future.
 		var executionEnvRegex = regexp.MustCompile(`^[a-zA-Z0-9.-]+$`)
 		if ok := executionEnvRegex.MatchString(flags.ExecutionEnv); !ok {
 			return errors.New("exec-env MUST only contain numbers, letters, and the characters: . or -")

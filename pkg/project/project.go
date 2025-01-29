@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	v03 "github.com/buildpacks/pack/pkg/project/v03"
+
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
@@ -26,6 +28,7 @@ type VersionDescriptor struct {
 var parsers = map[string]func(string) (types.Descriptor, toml.MetaData, error){
 	"0.1": v01.NewDescriptor,
 	"0.2": v02.NewDescriptor,
+	"0.3": v03.NewDescriptor,
 }
 
 func ReadProjectDescriptor(pathToFile string, logger logging.Logger) (types.Descriptor, error) {
@@ -91,6 +94,8 @@ func unsupportedKey(keyName, schemaVersion string) bool {
 	} else if schemaVersion == "0.2" {
 		// filter out any keys from [_.metadata] and any other custom table defined by end-users
 		return strings.Contains(keyName, "io.buildpacks") || (strings.HasPrefix(keyName, "_.") && !strings.HasPrefix(keyName, "_.metadata"))
+	} else if schemaVersion == "0.3" {
+		return strings.Contains(keyName, "io.buildpacks.env.build")
 	}
 	return true
 }
