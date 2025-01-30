@@ -1,11 +1,12 @@
 package project
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/buildpacks/pack/pkg/project/types"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"
@@ -38,78 +39,36 @@ func testProject(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#ReadProjectDescriptor", func() {
-		it("should parse a valid v0.3 project.toml file", func() {
-			projectToml := `
+		when("valid 0.3 project.toml file is provided", func() {
+			it("should exec-env on [[io.buildpacks.group]]", func() {
+				projectToml := `
 [_]
 name = "gallant 0.3"
 schema-version = "0.3"
 
 [[io.buildpacks.group]]
-id = "buildpacks/ruby"
-version = "latest"
-
-[[io.buildpacks.group]]
-id = "buildpacks/nodejs"
-version = "latest"
-exec-env = ["production", "test"]
-
-[[io.buildpacks.group]]
 id = "buildpacks/metrics-agent"
 version = "latest"
 exec-env = ["production"]
-
-[[io.buildpacks.group]]
-id = "buildpacks/headless-chrome"
-version = "latest"
-exec-env = ["test"]
-
-[[io.buildpacks.post.group]]
-id = "buildpacks/procfile"
-version = "latest"
-
-[[io.buildpacks.build.env]]
-name = "RAILS_ENV"
-value = "production"
-exec-env = ["production"]
-
-[[io.buildpacks.build.env]]
-name = "RAILS_ENV"
-value = "test"
-exec-env = ["test"]
-
-[[io.buildpacks.build.env]]
-name = "PARALLEL_WORKERS"
-value = "4"
-exec-env = ["production"]
-
-[[io.buildpacks.env.build]]
-name = "JAVA_OPTS"
-value = "-Xmx300m"
 `
-			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
-			if err != nil {
-				t.Fatal(err)
-			}
+				tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+				if err != nil {
+					t.Fatal(err)
+				}
 
-			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name(), logger)
-			if err != nil {
-				t.Fatal(err)
-			}
+				projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name(), logger)
+				if err != nil {
+					t.Fatal(err)
+				}
 
-			var expected string
-			fmt.Println(readStdout())
+				assertProjectName(t, "gallant 0.3", projectDescriptor)
+				assertSchemaVersion(t, api.MustParse("0.3"), projectDescriptor)
 
-			expected = "gallant 0.3"
-			if projectDescriptor.Project.Name != expected {
-				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
-					expected, projectDescriptor.Project.Name)
-			}
-
-			expectedVersion := api.MustParse("0.3")
-			if !reflect.DeepEqual(expectedVersion, projectDescriptor.SchemaVersion) {
-				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
-					expectedVersion, projectDescriptor.SchemaVersion)
-			}
+				expectedNumberOfBuildPacks := 1
+				expectedNumberOfExecEnvs := 1
+				atIndex := 0
+				assertExecEnv(t, "production", expectedNumberOfBuildPacks, expectedNumberOfExecEnvs, atIndex, projectDescriptor)
+			})
 		})
 
 		it("should parse a valid v0.2 project.toml file", func() {
@@ -565,6 +524,29 @@ buzz = ["a", "b", "c"]
 			)
 		})
 	})
+}
+
+func assertProjectName(t *testing.T, expected string, projectDescriptor types.Descriptor) {
+	if projectDescriptor.Project.Name != expected {
+		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+			expected, projectDescriptor.Project.Name)
+	}
+}
+
+func assertSchemaVersion(t *testing.T, expected *api.Version, projectDescriptor types.Descriptor) {
+	if !reflect.DeepEqual(expected, projectDescriptor.SchemaVersion) {
+		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+			expected, projectDescriptor.SchemaVersion)
+	}
+}
+
+func assertExecEnv(t *testing.T, expected string, bpLength int, execEnvLength int, atIndex int, projectDescriptor types.Descriptor) {
+	h.AssertTrue(t, len(projectDescriptor.Build.Buildpacks) == bpLength)
+	h.AssertTrue(t, len(projectDescriptor.Build.Buildpacks[atIndex].ExecEnv) == execEnvLength)
+	if !reflect.DeepEqual(expected, projectDescriptor.Build.Buildpacks[atIndex].ExecEnv[atIndex]) {
+		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+			expected, projectDescriptor.Build.Buildpacks[atIndex].ExecEnv[atIndex])
+	}
 }
 
 func createTmpProjectTomlFile(projectToml string) (*os.File, error) {
