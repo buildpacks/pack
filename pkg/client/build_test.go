@@ -533,6 +533,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("warning", func() {
+					subject.version = "0.37.0"
 					err := subject.Build(context.TODO(), BuildOptions{
 						Image:    "some/app",
 						Builder:  defaultBuilderName,
