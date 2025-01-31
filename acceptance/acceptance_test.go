@@ -2185,38 +2185,45 @@ func testAcceptance(
 								imageManager.CleanupImages(runImageName)
 							})
 
-							it("fails with a message", func() {
+							when("should validate stack", func() {
 								it.Before(func() {
 									h.SkipIf(t, pack.SupportsFeature(invoke.StackWarning), "stack is validated in prior versions")
 								})
-								output, err := pack.Run(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--run-image", runImageName,
-								)
-								assert.NotNil(err)
+								it("fails with a message", func() {
 
-								assertOutput := assertions.NewOutputAssertionManager(t, output)
-								assertOutput.ReportsRunImageStackNotMatchingBuilder(
-									"other.stack.id",
-									"pack.test.stack",
-								)
+									output, err := pack.Run(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--run-image", runImageName,
+									)
+									assert.NotNil(err)
+
+									assertOutput := assertions.NewOutputAssertionManager(t, output)
+									assertOutput.ReportsRunImageStackNotMatchingBuilder(
+										"other.stack.id",
+										"pack.test.stack",
+									)
+								})
 							})
 
-							it("succeeds with a warning", func() {
+							when("should not validate stack", func() {
 								it.Before(func() {
 									h.SkipIf(t, !pack.SupportsFeature(invoke.StackWarning), "stack is no longer validated")
 								})
-								output, err := pack.Run(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--run-image", runImageName,
-								)
-								assert.Nil(err)
+								it("succeeds with a warning", func() {
 
-								assertOutput := assertions.NewOutputAssertionManager(t, output)
-								assertOutput.ReportsDeprecatedUseOfStack()
+									output, err := pack.Run(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--run-image", runImageName,
+									)
+									assert.Nil(err)
+
+									assertOutput := assertions.NewOutputAssertionManager(t, output)
+									assertOutput.ReportsDeprecatedUseOfStack()
+								})
 							})
+
 						})
 					})
 

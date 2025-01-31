@@ -405,6 +405,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		pathsConfig.targetRunImagePath = targetRunImagePath
 		pathsConfig.hostRunImagePath = hostRunImagePath
 	}
+
 	runImage, warnings, err := c.validateRunImage(ctx, runImageName, fetchOptions, bldr.StackID)
 	if err != nil {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
@@ -954,10 +955,22 @@ func (c *Client) validateRunImage(context context.Context, name string, opts ima
 	if err != nil {
 		return nil, nil, err
 	}
+
 	if stackID != expectedStack {
-		warnings = append(warnings, "deprecated usage of stack")
+		v, err := semver.NewVersion(c.Version())
+		if err != nil {
+			return nil, nil, fmt.Errorf("error parsing pack client version: %w", err)
+		}
+		shouldValidateStack := v.LessThan(semver.MustParse("0.37.0"))
+		if shouldValidateStack {
+			err = fmt.Errorf("run-image stack id '%s' does not match builder stack '%s'", stackID, expectedStack)
+		} else {
+			warnings = append(warnings, "deprecated usage of stack")
+		}
+		return img, warnings, err
 	}
-	return img, warnings, nil
+
+	return img, warnings, err
 }
 
 func (c *Client) validateMixins(additionalBuildpacks []buildpack.BuildModule, bldr *builder.Builder, runImageName string, runMixins []string) error {
