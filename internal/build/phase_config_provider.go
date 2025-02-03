@@ -58,8 +58,8 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 
 	ops = append(ops,
 		WithEnv(fmt.Sprintf("%s=%s", platformAPIEnvVar, lifecycleExec.platformAPI.String())),
-		// TODO If(lifecycleExec.platformAPI.AtLeast("0.15") ??? add the corresponding API version
-		WithEnv(fmt.Sprintf("%s=%s", executionEnvVar, lifecycleExec.opts.ExecutionEnvironment)),
+		// TODO: replace the Platform API Version for the correct value
+		If(lifecycleExec.platformAPI.AtLeast("0.14"), WithEnv(fmt.Sprintf("%s=%s", executionEnvVar, lifecycleExec.opts.ExecutionEnvironment))),
 		WithLifecycleProxy(lifecycleExec),
 		WithBinds([]string{
 			fmt.Sprintf("%s:%s", lifecycleExec.layersVolume, lifecycleExec.mountPaths.layersDir()),

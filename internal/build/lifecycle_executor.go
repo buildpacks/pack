@@ -33,6 +33,8 @@ var (
 		api.MustParse("0.11"),
 		api.MustParse("0.12"),
 		api.MustParse("0.13"),
+		// TODO: we still do not support 0.14, check Platform API release.
+		api.MustParse("0.14"),
 	}
 )
 
