@@ -957,17 +957,7 @@ func (c *Client) validateRunImage(context context.Context, name string, opts ima
 	}
 
 	if stackID != expectedStack {
-		v, err := semver.NewVersion(c.Version())
-		if err != nil {
-			return nil, nil, fmt.Errorf("error parsing pack client version: %w", err)
-		}
-		shouldValidateStack := v.LessThan(semver.MustParse("0.37.0"))
-		if shouldValidateStack {
-			err = fmt.Errorf("run-image stack id '%s' does not match builder stack '%s'", stackID, expectedStack)
-		} else {
-			warnings = append(warnings, "deprecated usage of stack")
-		}
-		return img, warnings, err
+		warnings = append(warnings, "deprecated usage of stack")
 	}
 
 	return img, warnings, err
