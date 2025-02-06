@@ -531,14 +531,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.id", "other.stack"))
 				})
 
-				it("errors", func() {
-					h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
+				it("warning", func() {
+					err := subject.Build(context.TODO(), BuildOptions{
 						Image:    "some/app",
 						Builder:  defaultBuilderName,
 						RunImage: "custom/run",
-					}),
-						"invalid run-image 'custom/run': run-image stack id 'other.stack' does not match builder stack 'some.stack.id'",
-					)
+					})
+					h.AssertNil(t, err)
+					h.AssertContains(t, outBuf.String(), "Warning: deprecated usage of stack")
 				})
 			})
 
