@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1738859676161,
+  "lastUpdate": 1738950334103,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -9436,6 +9436,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 62048559928,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3ce022a8185540a7696b404f588f13132a682478",
+          "message": "Merge pull request #2295 from joeybrown/stack-warning\n\nRemoving validation of deprecated io.buildpacks.stack.id",
+          "timestamp": "2025-02-06T11:29:24-05:00",
+          "tree_id": "d26af4e4cdeb38fcef59f009cd5bdaac635d3a12",
+          "url": "https://github.com/buildpacks/pack/commit/3ce022a8185540a7696b404f588f13132a682478"
+        },
+        "date": 1738950332970,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6587219421,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2303998531,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 74671061883,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
