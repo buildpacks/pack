@@ -3,6 +3,7 @@ package commands_test
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/heroku/color"
@@ -192,6 +193,39 @@ func testExtensionPackageCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("a path is specified", func() {
+			when("no multi-platform", func() {
+				it("creates a default config with the appropriate path", func() {
+					cmd := packageExtensionCommand(withExtensionPackager(fakeExtensionPackager))
+					cmd.SetArgs([]string{"some-name", "-p", ".."})
+					h.AssertNil(t, cmd.Execute())
+					bpPath, _ := filepath.Abs("..")
+					receivedOptions := fakeExtensionPackager.CreateCalledWithOptions
+					h.AssertEq(t, receivedOptions.Config.Extension.URI, bpPath)
+				})
+			})
+
+			when("multi-platform", func() {
+				var targets []dist.Target
+
+				when("single extension", func() {
+					it.Before(func() {
+						targets = []dist.Target{
+							{OS: "linux", Arch: "amd64"},
+							{OS: "windows", Arch: "amd64"},
+						}
+					})
+
+					it("creates a multi-platform extension package", func() {
+						cmd := packageExtensionCommand(withExtensionPackager(fakeExtensionPackager))
+						cmd.SetArgs([]string{"some-name", "-p", "some-path", "--target", "linux/amd64", "--target", "windows/amd64", "--format", "image", "--publish"})
+						h.AssertNil(t, cmd.Execute())
+						h.AssertEq(t, fakeExtensionPackager.CreateCalledWithOptions.Targets, targets)
+					})
+				})
+			})
+		})
 	})
 
 	when("invalid flags", func() {
@@ -247,6 +281,20 @@ func testExtensionPackageCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				h.AssertError(t, cmd.Execute(), "parsing pull policy")
+			})
+		})
+
+		when("--target cannot be parsed", func() {
+			it("errors with a descriptive message", func() {
+				cmd := packageCommand()
+				cmd.SetArgs([]string{
+					"some-image-name", "--config", "/path/to/some/file",
+					"--target", "something/wrong", "--publish",
+				})
+
+				err := cmd.Execute()
+				h.AssertNotNil(t, err)
+				h.AssertError(t, err, "unknown target: 'something/wrong'")
 			})
 		})
 	})

@@ -12,6 +12,7 @@ type FakePackageConfigReader struct {
 
 	ReadBuildpackDescriptorCalledWithArg string
 	ReadBuildpackDescriptorReturn        dist.BuildpackDescriptor
+	ReadExtensionDescriptorReturn        dist.ExtensionDescriptor
 	ReadBuildpackDescriptorReturnError   error
 }
 
