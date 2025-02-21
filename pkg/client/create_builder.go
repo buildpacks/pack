@@ -16,6 +16,7 @@ import (
 
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/buildpack"
@@ -284,14 +285,20 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 			return nil, errors.Wrapf(err, "%s must be a valid semver", style.Symbol("lifecycle.version"))
 		}
 
-		uri = c.uriFromLifecycleVersion(*v, os, architecture)
+		uri, err = c.uriFromLifecycleVersion(*v, os, architecture)
+		if err != nil {
+			return nil, errors.Wrap(err, "determine lifecycle")
+		}
 	case config.URI != "":
 		uri, err = paths.FilePathToURI(config.URI, relativeBaseDir)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "determine lifecycle")
 		}
 	default:
-		uri = c.uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion), os, architecture)
+		uri, err = c.uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion), os, architecture)
+		if err != nil {
+			return nil, errors.Wrap(err, "determine lifecycle")
+		}
 	}
 
 	blob, err := c.downloader.Download(ctx, uri)
@@ -434,19 +441,22 @@ func validateModule(kind string, module buildpack.BuildModule, source, expectedI
 	return nil
 }
 
-func (c *Client) uriFromLifecycleVersion(version semver.Version, os string, architecture string) string {
-	arch := "x86-64"
+func (c *Client) uriFromLifecycleVersion(version semver.Version, os string, architecture string) (string, error) {
+	image, _ := c.indexFactory.FetchIndex(config.DefaultLifecycleImageRepo, imgutil.FromBaseIndex(config.DefaultLifecycleImageRepo))
+	manifest, _ := image.IndexManifest()
 
-	if os == "windows" {
-		return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+windows.%s.tgz", version.String(), version.String(), arch)
+	for _, m := range manifest.Manifests {
+		if m.Platform.OS == os && m.Platform.Architecture == architecture {
+			return lifecycleDownloadURL(version, os, architecture), nil
+		}
 	}
 
-	if builder.SupportedLinuxArchitecture(architecture) {
-		arch = architecture
-	} else {
-		// FIXME: this should probably be an error case in the future, see https://github.com/buildpacks/pack/issues/2163
-		c.logger.Warnf("failed to find a lifecycle binary for requested architecture %s, defaulting to %s", style.Symbol(architecture), style.Symbol(arch))
-	}
+	return "", fmt.Errorf("could not determine lifecyle, unsupported os/arch: %s/%s", os, architecture)
+}
 
-	return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+linux.%s.tgz", version.String(), version.String(), arch)
+func lifecycleDownloadURL(version semver.Version, os, architecture string) string {
+	if architecture == "amd64" {
+		architecture = "x86-64"
+	}
+	return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+%s.%s.tgz", version.String(), version.String(), os, architecture)
 }
