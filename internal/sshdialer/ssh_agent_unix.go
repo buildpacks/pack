@@ -1,4 +1,4 @@
-//go:build aix || darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris
+//go:build unix
 
 package sshdialer
 
