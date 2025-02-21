@@ -227,6 +227,20 @@ func (mr *MockPackClientMockRecorder) NewBuildpack(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewBuildpack", reflect.TypeOf((*MockPackClient)(nil).NewBuildpack), arg0, arg1)
 }
 
+// NewExtension mocks base method.
+func (m *MockPackClient) NewExtension(arg0 context.Context, arg1 client.NewExtensionOptions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewExtension", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// NewExtension indicates an expected call of NewExtension.
+func (mr *MockPackClientMockRecorder) NewExtension(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewExtension", reflect.TypeOf((*MockPackClient)(nil).NewExtension), arg0, arg1)
+}
+
 // PackageBuildpack mocks base method.
 func (m *MockPackClient) PackageBuildpack(arg0 context.Context, arg1 client.PackageBuildpackOptions) error {
 	m.ctrl.T.Helper()
