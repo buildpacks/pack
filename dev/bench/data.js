@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1739361681615,
+  "lastUpdate": 1740141319258,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -9520,6 +9520,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 64462600759,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "85d4a7c5feff11db02aa0a695971242bdce310e6",
+          "message": "Merge pull request #2337 from gogolok/remove_obsolete_build_lines\n\nRemove obsolete // +build lines",
+          "timestamp": "2025-02-21T07:32:43-05:00",
+          "tree_id": "dda668137e613c1683972d2775aecc50a036bcd3",
+          "url": "https://github.com/buildpacks/pack/commit/85d4a7c5feff11db02aa0a695971242bdce310e6"
+        },
+        "date": 1740141318773,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3778667501,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 914784255,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 64091822168,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
