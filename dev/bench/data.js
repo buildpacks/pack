@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1740141319258,
+  "lastUpdate": 1740146297222,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -9562,6 +9562,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 64091822168,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4cbc1c8d26970df34e8a083867792e9f2af7cbe1",
+          "message": "Merge pull request #2335 from buildpacks/dependabot/go_modules/go-dependencies-37a50384ab\n\nbuild(deps): bump github.com/spf13/cobra from 1.8.1 to 1.9.1 in the go-dependencies group",
+          "timestamp": "2025-02-21T08:55:54-05:00",
+          "tree_id": "2852fb29e5a9bae10c11dbbb20089c96ef5d18fb",
+          "url": "https://github.com/buildpacks/pack/commit/4cbc1c8d26970df34e8a083867792e9f2af7cbe1"
+        },
+        "date": 1740146296710,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3647439300,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 928475268,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 61241291998,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
