@@ -195,11 +195,11 @@ func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 func (f *Fetcher) fetchRemoteImage(name string, target *dist.Target) (imgutil.Image, error) {
 	var (
 		image   imgutil.Image
-    options []remote.ImageOption
+		options []imgutil.ImageOption
 		err     error
 	)
-  
-  if len(f.insecureRegistries) > 0 {
+
+	if len(f.insecureRegistries) > 0 {
 		for _, registry := range f.insecureRegistries {
 			options = append(options, remote.WithRegistrySetting(registry, true))
 		}
@@ -209,7 +209,7 @@ func (f *Fetcher) fetchRemoteImage(name string, target *dist.Target) (imgutil.Im
 		image, err = remote.NewImage(name, f.keychain, append(options, remote.FromBaseImage(name))...)
 	} else {
 		platform := imgutil.Platform{OS: target.OS, Architecture: target.Arch, Variant: target.ArchVariant}
-    image, err = remote.NewImage(name, f.keychain, append(append(options, remote.FromBaseImage(name))...), remote.WithDefaultPlatform(platform))...)
+		image, err = remote.NewImage(name, f.keychain, append(append(options, remote.FromBaseImage(name)), remote.WithDefaultPlatform(platform))...)
 	}
 
 	if err != nil {
