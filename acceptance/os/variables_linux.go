@@ -1,5 +1,4 @@
 //go:build acceptance && linux
-// +build acceptance,linux
 
 package os
 

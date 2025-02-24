@@ -221,12 +221,12 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 					Arch: "fake-arch",
 					Distributions: []dist.Distribution{
 						{
-							Name:     "fake-distro",
-							Versions: []string{"0.1"},
+							Name:    "fake-distro",
+							Version: "0.1",
 						},
 						{
-							Name:     "another-distro",
-							Versions: []string{"0.22"},
+							Name:    "another-distro",
+							Version: "0.22",
 						},
 					},
 				}},
@@ -247,12 +247,12 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 					Arch: "fake-arch",
 					Distributions: []dist.Distribution{
 						{
-							Name:     "fake-distro",
-							Versions: []string{"0.1"},
+							Name:    "fake-distro",
+							Version: "0.1",
 						},
 						{
-							Name:     "another-distro",
-							Versions: []string{"0.22"},
+							Name:    "another-distro",
+							Version: "0.22",
 						},
 					},
 				}},
@@ -260,7 +260,7 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 
 			h.AssertNil(t, bp.EnsureStackSupport("some.stack.id", []string{}, true))
 			h.AssertError(t, bp.EnsureTargetSupport("some-other-os", "fake-arch", "fake-distro", "0.0"),
-				`unable to satisfy target os/arch constraints; build image: {"os":"some-other-os","arch":"fake-arch","distribution":{"name":"fake-distro","version":"0.0"}}, buildpack 'some.buildpack.id@some.buildpack.version': [{"os":"fake-os","arch":"fake-arch","distributions":[{"name":"fake-distro","versions":["0.1"]},{"name":"another-distro","versions":["0.22"]}]}]`)
+				`unable to satisfy target os/arch constraints; build image: {"os":"some-other-os","arch":"fake-arch","distribution":{"name":"fake-distro","version":"0.0"}}, buildpack 'some.buildpack.id@some.buildpack.version': [{"os":"fake-os","arch":"fake-arch","distros":[{"name":"fake-distro","version":"0.1"},{"name":"another-distro","version":"0.22"}]}]`)
 		})
 
 		it("succeeds with missing arch", func() {

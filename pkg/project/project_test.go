@@ -142,6 +142,7 @@ value = "this-should-get-overridden-because-its-deprecated"
 					expected, projectDescriptor.Metadata["pipeline"])
 			}
 		})
+
 		it("should be backwards compatible with older v0.2 project.toml file", func() {
 			projectToml := `
 [_]
@@ -175,6 +176,7 @@ value = "-Xmx300m"
 					expected, projectDescriptor.Build.Env[0].Value)
 			}
 		})
+
 		it("should parse a valid v0.1 project.toml file", func() {
 			projectToml := `
 [project]
@@ -401,13 +403,23 @@ name = "licenses should have either a type or uri defined"
 			h.AssertContains(t, readStdout(), "Warning: No schema version declared in project.toml, defaulting to schema version 0.1\n")
 		})
 
-		it("should warn when unsupported keys are declared with schema v0.1", func() {
+		it("should warn when unsupported keys, on tables the project owns, are declared with schema v0.1", func() {
 			projectToml := `
-[_]
-schema-version = "0.1"
+[project]
+authors = ["foo", "bar"]
 
-[unsupported-table]
-unsupported-key = "some value"
+# try to use buildpack.io table with version 0.1 - warning message expected
+[[io.buildpacks.build.env]]
+name = "JAVA_OPTS"
+value = "-Xmx1g"
+
+# something else defined by end-users - no warning message expected
+[io.docker]
+file = "./Dockerfile"
+
+# some metadata - no warning message expected
+[metadata]
+foo = "bar"
 `
 			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
 			if err != nil {
@@ -416,17 +428,46 @@ unsupported-key = "some value"
 
 			_, err = ReadProjectDescriptor(tmpProjectToml.Name(), logger)
 			h.AssertNil(t, err)
-
-			h.AssertContains(t, readStdout(), "Warning: The following keys declared in project.toml are not supported in schema version 0.1:\nWarning: - unsupported-table\nWarning: - unsupported-table.unsupported-key\nWarning: The above keys will be ignored. If this is not intentional, maybe try updating your schema version.\n")
+			h.AssertContains(
+				t,
+				readStdout(),
+				"Warning: The following keys declared in project.toml are not supported in schema version 0.1:\n"+
+					"Warning: - io.buildpacks.build.env\n"+
+					"Warning: - io.buildpacks.build.env.name\n"+
+					"Warning: - io.buildpacks.build.env.value\n"+
+					"Warning: The above keys will be ignored. If this is not intentional, try updating your schema version.\n",
+			)
 		})
 
-		it("should warn when unsupported keys are declared with schema v0.2", func() {
+		it("should warn when unsupported keys, on tables the project owns, are declared with schema v0.2", func() {
 			projectToml := `
 [_]
 schema-version = "0.2"
+id = "foo"
+version = "bar"
+# typo in a key under valid table - warning message expected
+versions = "0.1"
 
-[unsupported-table]
-unsupported-key = "some value"
+[[_.licenses]]
+type = "foo"
+# invalid key under a valid table - warning message expected
+foo = "bar"
+
+# try to use an invalid key under io.buildpacks - warning message expected
+[[io.buildpacks.build.foo]]
+name = "something"
+
+# something else defined by end-users - no warning message expected
+[io.docker]
+file = "./Dockerfile"
+
+# some metadata defined the end-user - no warning message expected
+[_.metadata]
+foo = "bar"
+
+# more metadata defined the end-user - no warning message expected
+[_.metadata.fizz]
+buzz = ["a", "b", "c"]
 `
 			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
 			if err != nil {
@@ -436,7 +477,17 @@ unsupported-key = "some value"
 			_, err = ReadProjectDescriptor(tmpProjectToml.Name(), logger)
 			h.AssertNil(t, err)
 
-			h.AssertContains(t, readStdout(), "Warning: The following keys declared in project.toml are not supported in schema version 0.2:\nWarning: - unsupported-table\nWarning: - unsupported-table.unsupported-key\nWarning: The above keys will be ignored. If this is not intentional, maybe try updating your schema version.\n")
+			// Assert we only warn
+			h.AssertContains(
+				t,
+				readStdout(),
+				"Warning: The following keys declared in project.toml are not supported in schema version 0.2:\n"+
+					"Warning: - _.versions\n"+
+					"Warning: - _.licenses.foo\n"+
+					"Warning: - io.buildpacks.build.foo\n"+
+					"Warning: - io.buildpacks.build.foo.name\n"+
+					"Warning: The above keys will be ignored. If this is not intentional, try updating your schema version.\n",
+			)
 		})
 	})
 }

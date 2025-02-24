@@ -1,5 +1,4 @@
 //go:build acceptance
-// +build acceptance
 
 package managers
 
@@ -90,7 +89,7 @@ func (im ImageManager) ExposePortOnImage(image, containerName string) TestContai
 	}, nil, nil, containerName)
 	im.assert.Nil(err)
 
-	err = im.dockerCli.ContainerStart(ctx, ctr.ID, dockertypes.ContainerStartOptions{})
+	err = im.dockerCli.ContainerStart(ctx, ctr.ID, container.StartOptions{})
 	im.assert.Nil(err)
 	return TestContainer{
 		testObject: im.testObject,
@@ -137,7 +136,7 @@ func (t TestContainer) RunWithOutput() string {
 func (t TestContainer) Cleanup() {
 	t.testObject.Helper()
 	t.dockerCli.ContainerKill(context.Background(), t.name, "SIGKILL")
-	t.dockerCli.ContainerRemove(context.Background(), t.name, dockertypes.ContainerRemoveOptions{Force: true})
+	t.dockerCli.ContainerRemove(context.Background(), t.name, container.RemoveOptions{Force: true})
 }
 
 func (t TestContainer) WaitForResponse(duration time.Duration) string {

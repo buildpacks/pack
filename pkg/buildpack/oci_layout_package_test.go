@@ -7,6 +7,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -24,37 +25,53 @@ func TestOCILayoutPackage(t *testing.T) {
 	spec.Run(t, "Extract", testOCILayoutPackage, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
+type testCase struct {
+	mediatype string
+	file      string
+}
+
 func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 	when("#BuildpacksFromOCILayoutBlob", func() {
-		it("extracts buildpacks", func() {
-			mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
-			h.AssertNil(t, err)
-
-			h.AssertEq(t, mainBP.Descriptor().Info().ID, "io.buildpacks.samples.hello-universe")
-			h.AssertEq(t, mainBP.Descriptor().Info().Version, "0.0.1")
-			h.AssertEq(t, len(depBPs), 2)
-		})
-
-		it("provides readable blobs", func() {
-			mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
-			h.AssertNil(t, err)
-
-			for _, bp := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
-				reader, err := bp.Open()
+		for _, test := range []testCase{
+			{
+				mediatype: "application/vnd.docker.distribution.manifest.v2+json",
+				file:      "hello-universe.cnb",
+			},
+			{
+				mediatype: v1.MediaTypeImageManifest,
+				file:      "hello-universe-oci.cnb",
+			},
+		} {
+			it(fmt.Sprintf("extracts buildpacks, media type: %s", test.mediatype), func() {
+				mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", test.file)))
 				h.AssertNil(t, err)
 
-				_, contents, err := archive.ReadTarEntry(
-					reader,
-					fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml",
-						bp.Descriptor().Info().ID,
-						bp.Descriptor().Info().Version,
-					),
-				)
+				h.AssertEq(t, mainBP.Descriptor().Info().ID, "io.buildpacks.samples.hello-universe")
+				h.AssertEq(t, mainBP.Descriptor().Info().Version, "0.0.1")
+				h.AssertEq(t, len(depBPs), 2)
+			})
+
+			it(fmt.Sprintf("provides readable blobs, media type: %s", test.mediatype), func() {
+				mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", test.file)))
 				h.AssertNil(t, err)
-				h.AssertContains(t, string(contents), bp.Descriptor().Info().ID)
-				h.AssertContains(t, string(contents), bp.Descriptor().Info().Version)
-			}
-		})
+
+				for _, bp := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
+					reader, err := bp.Open()
+					h.AssertNil(t, err)
+
+					_, contents, err := archive.ReadTarEntry(
+						reader,
+						fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml",
+							bp.Descriptor().Info().ID,
+							bp.Descriptor().Info().Version,
+						),
+					)
+					h.AssertNil(t, err)
+					h.AssertContains(t, string(contents), bp.Descriptor().Info().ID)
+					h.AssertContains(t, string(contents), bp.Descriptor().Info().Version)
+				}
+			})
+		}
 	})
 
 	when("#ExtensionsFromOCILayoutBlob", func() {

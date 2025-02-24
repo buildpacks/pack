@@ -1,6 +1,7 @@
 package buildpack_test
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -54,11 +56,10 @@ func testBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 	when("#BuildpackFromRootBlob", func() {
 		it("parses the descriptor file", func() {
-			bp, err := buildpack.FromBuildpackRootBlob(
-				&readerBlob{
-					openFn: func() io.ReadCloser {
-						tarBuilder := archive.TarBuilder{}
-						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+			bp, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+				openFn: func() io.ReadCloser {
+					tarBuilder := archive.TarBuilder{}
+					tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
 api = "0.3"
 
 [buildpack]
@@ -69,11 +70,9 @@ homepage = "http://geocities.com/cool-bp"
 [[stacks]]
 id = "some.stack.id"
 `))
-						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-					},
+					return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 				},
-				archive.DefaultTarWriterFactory(),
-			)
+			}, archive.DefaultTarWriterFactory(), nil)
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, bp.Descriptor().API().String(), "0.3")
@@ -84,11 +83,10 @@ id = "some.stack.id"
 		})
 
 		it("translates blob to distribution format", func() {
-			bp, err := buildpack.FromBuildpackRootBlob(
-				&readerBlob{
-					openFn: func() io.ReadCloser {
-						tarBuilder := archive.TarBuilder{}
-						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+			bp, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+				openFn: func() io.ReadCloser {
+					tarBuilder := archive.TarBuilder{}
+					tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
 api = "0.3"
 
 [buildpack]
@@ -99,14 +97,12 @@ version = "1.2.3"
 id = "some.stack.id"
 `))
 
-						tarBuilder.AddDir("bin", 0700, time.Now())
-						tarBuilder.AddFile("bin/detect", 0700, time.Now(), []byte("detect-contents"))
-						tarBuilder.AddFile("bin/build", 0700, time.Now(), []byte("build-contents"))
-						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-					},
+					tarBuilder.AddDir("bin", 0700, time.Now())
+					tarBuilder.AddFile("bin/detect", 0700, time.Now(), []byte("detect-contents"))
+					tarBuilder.AddFile("bin/build", 0700, time.Now(), []byte("build-contents"))
+					return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 				},
-				archive.DefaultTarWriterFactory(),
-			)
+			}, archive.DefaultTarWriterFactory(), nil)
 			h.AssertNil(t, err)
 
 			h.AssertNil(t, bp.Descriptor().EnsureTargetSupport(dist.DefaultTargetOSLinux, dist.DefaultTargetArch, "", ""))
@@ -151,11 +147,10 @@ id = "some.stack.id"
 		})
 
 		it("translates blob to windows bat distribution format", func() {
-			bp, err := buildpack.FromBuildpackRootBlob(
-				&readerBlob{
-					openFn: func() io.ReadCloser {
-						tarBuilder := archive.TarBuilder{}
-						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+			bp, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+				openFn: func() io.ReadCloser {
+					tarBuilder := archive.TarBuilder{}
+					tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
 api = "0.9"
 
 [buildpack]
@@ -163,14 +158,12 @@ id = "bp.one"
 version = "1.2.3"
 `))
 
-						tarBuilder.AddDir("bin", 0700, time.Now())
-						tarBuilder.AddFile("bin/detect", 0700, time.Now(), []byte("detect-contents"))
-						tarBuilder.AddFile("bin/build.bat", 0700, time.Now(), []byte("build-contents"))
-						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-					},
+					tarBuilder.AddDir("bin", 0700, time.Now())
+					tarBuilder.AddFile("bin/detect", 0700, time.Now(), []byte("detect-contents"))
+					tarBuilder.AddFile("bin/build.bat", 0700, time.Now(), []byte("build-contents"))
+					return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 				},
-				archive.DefaultTarWriterFactory(),
-			)
+			}, archive.DefaultTarWriterFactory(), nil)
 			h.AssertNil(t, err)
 
 			bpDescriptor := bp.Descriptor().(*dist.BuildpackDescriptor)
@@ -189,11 +182,10 @@ version = "1.2.3"
 		})
 
 		it("translates blob to windows exe distribution format", func() {
-			bp, err := buildpack.FromBuildpackRootBlob(
-				&readerBlob{
-					openFn: func() io.ReadCloser {
-						tarBuilder := archive.TarBuilder{}
-						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+			bp, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+				openFn: func() io.ReadCloser {
+					tarBuilder := archive.TarBuilder{}
+					tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
 api = "0.3"
 
 [buildpack]
@@ -201,14 +193,12 @@ id = "bp.one"
 version = "1.2.3"
 `))
 
-						tarBuilder.AddDir("bin", 0700, time.Now())
-						tarBuilder.AddFile("bin/detect", 0700, time.Now(), []byte("detect-contents"))
-						tarBuilder.AddFile("bin/build.exe", 0700, time.Now(), []byte("build-contents"))
-						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-					},
+					tarBuilder.AddDir("bin", 0700, time.Now())
+					tarBuilder.AddFile("bin/detect", 0700, time.Now(), []byte("detect-contents"))
+					tarBuilder.AddFile("bin/build.exe", 0700, time.Now(), []byte("build-contents"))
+					return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 				},
-				archive.DefaultTarWriterFactory(),
-			)
+			}, archive.DefaultTarWriterFactory(), nil)
 			h.AssertNil(t, err)
 
 			bpDescriptor := bp.Descriptor().(*dist.BuildpackDescriptor)
@@ -244,13 +234,10 @@ id = "some.stack.id"
 				},
 			}
 
-			bp, err := buildpack.FromBuildpackRootBlob(
-				&errorBlob{
-					realBlob: realBlob,
-					limit:    4,
-				},
-				archive.DefaultTarWriterFactory(),
-			)
+			bp, err := buildpack.FromBuildpackRootBlob(&errorBlob{
+				realBlob: realBlob,
+				limit:    4,
+			}, archive.DefaultTarWriterFactory(), nil)
 			h.AssertNil(t, err)
 
 			bpReader, err := bp.Open()
@@ -274,17 +261,14 @@ id = "some.stack.id"
 
 			when("no exec bits set", func() {
 				it("sets to 0755 if directory", func() {
-					bp, err := buildpack.FromBuildpackRootBlob(
-						&readerBlob{
-							openFn: func() io.ReadCloser {
-								tarBuilder := archive.TarBuilder{}
-								tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
-								tarBuilder.AddDir("some-dir", 0600, time.Now())
-								return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-							},
+					bp, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+						openFn: func() io.ReadCloser {
+							tarBuilder := archive.TarBuilder{}
+							tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
+							tarBuilder.AddDir("some-dir", 0600, time.Now())
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 						},
-						archive.DefaultTarWriterFactory(),
-					)
+					}, archive.DefaultTarWriterFactory(), nil)
 					h.AssertNil(t, err)
 
 					tarPath := writeBlobToFile(bp)
@@ -299,18 +283,15 @@ id = "some.stack.id"
 
 			when("no exec bits set", func() {
 				it("sets to 0755 if 'bin/detect' or 'bin/build'", func() {
-					bp, err := buildpack.FromBuildpackRootBlob(
-						&readerBlob{
-							openFn: func() io.ReadCloser {
-								tarBuilder := archive.TarBuilder{}
-								tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
-								tarBuilder.AddFile("bin/detect", 0600, time.Now(), []byte("detect-contents"))
-								tarBuilder.AddFile("bin/build", 0600, time.Now(), []byte("build-contents"))
-								return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-							},
+					bp, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+						openFn: func() io.ReadCloser {
+							tarBuilder := archive.TarBuilder{}
+							tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
+							tarBuilder.AddFile("bin/detect", 0600, time.Now(), []byte("detect-contents"))
+							tarBuilder.AddFile("bin/build", 0600, time.Now(), []byte("build-contents"))
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 						},
-						archive.DefaultTarWriterFactory(),
-					)
+					}, archive.DefaultTarWriterFactory(), nil)
 					h.AssertNil(t, err)
 
 					bpDescriptor := bp.Descriptor().(*dist.BuildpackDescriptor)
@@ -334,17 +315,14 @@ id = "some.stack.id"
 
 			when("not directory, 'bin/detect', or 'bin/build'", func() {
 				it("sets to 0755 if ANY exec bit is set", func() {
-					bp, err := buildpack.FromBuildpackRootBlob(
-						&readerBlob{
-							openFn: func() io.ReadCloser {
-								tarBuilder := archive.TarBuilder{}
-								tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
-								tarBuilder.AddFile("some-file", 0700, time.Now(), []byte("some-data"))
-								return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-							},
+					bp, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+						openFn: func() io.ReadCloser {
+							tarBuilder := archive.TarBuilder{}
+							tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
+							tarBuilder.AddFile("some-file", 0700, time.Now(), []byte("some-data"))
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 						},
-						archive.DefaultTarWriterFactory(),
-					)
+					}, archive.DefaultTarWriterFactory(), nil)
 					h.AssertNil(t, err)
 
 					tarPath := writeBlobToFile(bp)
@@ -359,17 +337,14 @@ id = "some.stack.id"
 
 			when("not directory, 'bin/detect', or 'bin/build'", func() {
 				it("sets to 0644 if NO exec bits set", func() {
-					bp, err := buildpack.FromBuildpackRootBlob(
-						&readerBlob{
-							openFn: func() io.ReadCloser {
-								tarBuilder := archive.TarBuilder{}
-								tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
-								tarBuilder.AddFile("some-file", 0600, time.Now(), []byte("some-data"))
-								return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-							},
+					bp, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+						openFn: func() io.ReadCloser {
+							tarBuilder := archive.TarBuilder{}
+							tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
+							tarBuilder.AddFile("some-file", 0600, time.Now(), []byte("some-data"))
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 						},
-						archive.DefaultTarWriterFactory(),
-					)
+					}, archive.DefaultTarWriterFactory(), nil)
 					h.AssertNil(t, err)
 
 					tarPath := writeBlobToFile(bp)
@@ -385,37 +360,31 @@ id = "some.stack.id"
 
 		when("there is no descriptor file", func() {
 			it("returns error", func() {
-				_, err := buildpack.FromBuildpackRootBlob(
-					&readerBlob{
-						openFn: func() io.ReadCloser {
-							tarBuilder := archive.TarBuilder{}
-							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-						},
+				_, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+					openFn: func() io.ReadCloser {
+						tarBuilder := archive.TarBuilder{}
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 					},
-					archive.DefaultTarWriterFactory(),
-				)
+				}, archive.DefaultTarWriterFactory(), nil)
 				h.AssertError(t, err, "could not find entry path 'buildpack.toml'")
 			})
 		})
 
 		when("there is no api field", func() {
 			it("assumes an api version", func() {
-				bp, err := buildpack.FromBuildpackRootBlob(
-					&readerBlob{
-						openFn: func() io.ReadCloser {
-							tarBuilder := archive.TarBuilder{}
-							tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+				bp, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+					openFn: func() io.ReadCloser {
+						tarBuilder := archive.TarBuilder{}
+						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
 [buildpack]
 id = "bp.one"
 version = "1.2.3"
 
 [[stacks]]
 id = "some.stack.id"`))
-							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-						},
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 					},
-					archive.DefaultTarWriterFactory(),
-				)
+				}, archive.DefaultTarWriterFactory(), nil)
 				h.AssertNil(t, err)
 				h.AssertEq(t, bp.Descriptor().API().String(), "0.1")
 			})
@@ -423,55 +392,48 @@ id = "some.stack.id"`))
 
 		when("there is no id", func() {
 			it("returns error", func() {
-				_, err := buildpack.FromBuildpackRootBlob(
-					&readerBlob{
-						openFn: func() io.ReadCloser {
-							tarBuilder := archive.TarBuilder{}
-							tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+				_, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+					openFn: func() io.ReadCloser {
+						tarBuilder := archive.TarBuilder{}
+						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
 [buildpack]
 id = ""
 version = "1.2.3"
 
 [[stacks]]
 id = "some.stack.id"`))
-							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-						},
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 					},
-					archive.DefaultTarWriterFactory(),
-				)
+				}, archive.DefaultTarWriterFactory(), nil)
 				h.AssertError(t, err, "'buildpack.id' is required")
 			})
 		})
 
 		when("there is no version", func() {
 			it("returns error", func() {
-				_, err := buildpack.FromBuildpackRootBlob(
-					&readerBlob{
-						openFn: func() io.ReadCloser {
-							tarBuilder := archive.TarBuilder{}
-							tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+				_, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+					openFn: func() io.ReadCloser {
+						tarBuilder := archive.TarBuilder{}
+						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
 [buildpack]
 id = "bp.one"
 version = ""
 
 [[stacks]]
 id = "some.stack.id"`))
-							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-						},
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 					},
-					archive.DefaultTarWriterFactory(),
-				)
+				}, archive.DefaultTarWriterFactory(), nil)
 				h.AssertError(t, err, "'buildpack.version' is required")
 			})
 		})
 
 		when("both stacks and order are present", func() {
 			it("returns error", func() {
-				_, err := buildpack.FromBuildpackRootBlob(
-					&readerBlob{
-						openFn: func() io.ReadCloser {
-							tarBuilder := archive.TarBuilder{}
-							tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+				_, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+					openFn: func() io.ReadCloser {
+						tarBuilder := archive.TarBuilder{}
+						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
 [buildpack]
 id = "bp.one"
 version = "1.2.3"
@@ -484,31 +446,26 @@ id = "some.stack.id"
   id = "bp.nested"
   version = "bp.nested.version"
 `))
-							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-						},
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 					},
-					archive.DefaultTarWriterFactory(),
-				)
+				}, archive.DefaultTarWriterFactory(), nil)
 				h.AssertError(t, err, "cannot have both 'targets'/'stacks' and an 'order' defined")
 			})
 		})
 
 		when("missing stacks and order", func() {
 			it("does not return an error", func() {
-				_, err := buildpack.FromBuildpackRootBlob(
-					&readerBlob{
-						openFn: func() io.ReadCloser {
-							tarBuilder := archive.TarBuilder{}
-							tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+				_, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+					openFn: func() io.ReadCloser {
+						tarBuilder := archive.TarBuilder{}
+						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
 [buildpack]
 id = "bp.one"
 version = "1.2.3"
 `))
-							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
-						},
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 					},
-					archive.DefaultTarWriterFactory(),
-				)
+				}, archive.DefaultTarWriterFactory(), nil)
 				h.AssertNil(t, err)
 			})
 		})
@@ -528,10 +485,7 @@ version = "1.2.3"
 			})
 
 			it("hardlink is preserved in the output tar file", func() {
-				bp, err := buildpack.FromBuildpackRootBlob(
-					blob.NewBlob(bpRootFolder),
-					archive.DefaultTarWriterFactory(),
-				)
+				bp, err := buildpack.FromBuildpackRootBlob(blob.NewBlob(bpRootFolder), archive.DefaultTarWriterFactory(), nil)
 				h.AssertNil(t, err)
 
 				tarPath := writeBlobToFile(bp)
@@ -542,6 +496,45 @@ version = "1.2.3"
 					"/cnb/buildpacks/bp.one/1.2.3/original-file-2",
 					h.AreEquivalentHardLinks(),
 				)
+			})
+		})
+
+		when("there are wrong things in the file", func() {
+			it("warns", func() {
+				outBuf := bytes.Buffer{}
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
+				_, err := buildpack.FromBuildpackRootBlob(&readerBlob{
+					openFn: func() io.ReadCloser {
+						tarBuilder := archive.TarBuilder{}
+						tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(`
+api = "0.3"
+
+[buildpack]
+id = "bp.one"
+version = "1.2.3"
+homepage = "http://geocities.com/cool-bp"
+sbom-formats = ["this should not warn"]
+clear-env = true
+
+[[targets]]
+os = "some-os"
+arch = "some-arch"
+variant = "some-arch-variant"
+[[targets.distributions]]
+name = "some-distro-name"
+version = "some-distro-version"
+[[targets.distros]]
+name = "some-distro-name"
+versions = ["some-distro-version"]
+
+[metadata]
+this-key = "is totally allowed and should not warn"
+`))
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
+					},
+				}, archive.DefaultTarWriterFactory(), logger)
+				h.AssertNil(t, err)
+				h.AssertContains(t, outBuf.String(), "Warning: Ignoring unexpected key(s) in descriptor for buildpack bp.one: targets.distributions, targets.distributions.name, targets.distributions.version, targets.distros.versions")
 			})
 		})
 	})

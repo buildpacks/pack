@@ -1,5 +1,4 @@
 //go:build !windows && example
-// +build !windows,example
 
 package client_test
 
@@ -52,4 +51,8 @@ type fetcher struct{}
 func (f *fetcher) Fetch(_ context.Context, imageName string, _ image.FetchOptions) (imgutil.Image, error) {
 	fmt.Println("custom fetcher called")
 	return nil, errors.New("not implemented")
+}
+
+func (f *fetcher) CheckReadAccess(_ string, _ image.FetchOptions) bool {
+	return true
 }

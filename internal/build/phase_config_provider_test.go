@@ -59,6 +59,8 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			h.AssertSliceContainsMatch(t, phaseConfigProvider.HostConfig().Binds, "pack-app-.*:/workspace")
 
 			h.AssertEq(t, phaseConfigProvider.HostConfig().Isolation, container.IsolationEmpty)
+			h.AssertEq(t, phaseConfigProvider.HostConfig().UsernsMode, container.UsernsMode("host"))
+			h.AssertSliceContains(t, phaseConfigProvider.HostConfig().SecurityOpt, "no-new-privileges=true")
 		})
 
 		when("building for Windows", func() {
@@ -72,19 +74,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
 
 				h.AssertEq(t, phaseConfigProvider.HostConfig().Isolation, container.IsolationProcess)
-			})
-		})
-
-		when("mac address is set", func() {
-			it("should set MacAddress in LifecycleOptions", func() {
-				expectedMacAddress := "01:23:45:67:89:ab"
-				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithMacAddresss(expectedMacAddress))
-
-				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
-
-				// TODO fix this
-				//nolint:staticcheck
-				h.AssertEq(t, phaseConfigProvider.ContainerConfig().MacAddress, expectedMacAddress)
+				h.AssertSliceNotContains(t, phaseConfigProvider.HostConfig().SecurityOpt, "no-new-privileges=true")
 			})
 		})
 

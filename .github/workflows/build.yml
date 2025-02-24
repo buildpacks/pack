@@ -23,7 +23,8 @@ jobs:
         config: [macos, linux, windows-lcow, windows-wcow]
         include:
           - config: macos
-            os: macos
+            # since macos-14 the latest runner is arm64
+            os: macos-arm64
             runner: macos-latest
             no_docker: "true"
             pack_bin: pack
@@ -74,8 +75,8 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
           check-latest: true
+          go-version-file: 'go.mod'
       - name: Set up go env for Unix
         if: runner.os != 'Windows'
         run: |
@@ -170,8 +171,9 @@ jobs:
           - name: linux-arm64
             goarch: arm64
             goos: linux
-          - name: macos-arm64
-            goarch: arm64
+          - name: macos
+            # since macos-14 default runner is arm, we need to build for intel architecture later
+            goarch: amd64
             goos: darwin
           - name: linux-s390x
             goarch: s390x
@@ -186,8 +188,8 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
           check-latest: true
+          go-version-file: 'go.mod'
       - name: Build
         run: |
           [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]} || version=0.0.0
@@ -287,7 +289,7 @@ jobs:
           milestone: ${{ env.PACK_MILESTONE }}
       - name: Create Pre-Release
         if: ${{ env.PACK_VERSION != env.PACK_MILESTONE }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -368,7 +370,7 @@ jobs:
 
       - name: Create Beta Release
         if: ${{ env.PACK_VERSION == env.PACK_MILESTONE }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

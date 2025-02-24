@@ -34,9 +34,14 @@ type PhaseConfigProvider struct {
 }
 
 func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops ...PhaseConfigProviderOperation) *PhaseConfigProvider {
+	hostConf := new(container.HostConfig)
+	hostConf.UsernsMode = "host"
+	if lifecycleExec.os != "windows" {
+		hostConf.SecurityOpt = []string{"no-new-privileges=true"}
+	}
 	provider := &PhaseConfigProvider{
 		ctrConf:     new(container.Config),
-		hostConf:    new(container.HostConfig),
+		hostConf:    hostConf,
 		name:        name,
 		os:          lifecycleExec.os,
 		infoWriter:  logging.GetWriterForLevel(lifecycleExec.logger, logging.InfoLevel),
@@ -45,13 +50,6 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 
 	provider.ctrConf.Image = lifecycleExec.opts.Builder.Name()
 	provider.ctrConf.Labels = map[string]string{"author": "pack"}
-
-	if lifecycleExec.opts.MacAddress != "" {
-		// TODO fix this
-		//nolint:staticcheck
-		provider.ctrConf.MacAddress = lifecycleExec.opts.MacAddress
-		lifecycleExec.logger.Debugf("MAC Address: %s", style.Symbol(lifecycleExec.opts.MacAddress))
-	}
 
 	if lifecycleExec.os == "windows" {
 		provider.hostConf.Isolation = container.IsolationProcess

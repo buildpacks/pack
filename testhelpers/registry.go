@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	dockerregistry "github.com/docker/docker/api/types/registry"
 	"github.com/docker/go-connections/nat"
@@ -166,7 +165,7 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) (st
 		},
 	}, nil, nil, runRegistryName)
 	AssertNil(t, err)
-	err = dockerCli(t).CopyToContainer(ctx, ctr.ID, "/", htpasswdTar, dockertypes.CopyToContainerOptions{})
+	err = dockerCli(t).CopyToContainer(ctx, ctr.ID, "/", htpasswdTar, dockercontainer.CopyToContainerOptions{})
 	AssertNil(t, err)
 
 	err = dockerCli(t).ContainerStart(ctx, ctr.ID, dockercontainer.StartOptions{})

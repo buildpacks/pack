@@ -1,5 +1,4 @@
 //go:build acceptance
-// +build acceptance
 
 package assertions
 
@@ -60,13 +59,22 @@ func (a ImageAssertionManager) HasCreateTime(image string, expectedTime time.Tim
 	a.assert.TrueWithMessage(actualTime.Sub(expectedTime) < 5*time.Second && expectedTime.Sub(actualTime) < 5*time.Second, fmt.Sprintf("expected image create time %s to match expected time %s", actualTime, expectedTime))
 }
 
-func (a ImageAssertionManager) HasLabelWithData(image, label, data string) {
+func (a ImageAssertionManager) HasLabelContaining(image, label, data string) {
 	a.testObject.Helper()
 	inspect, err := a.imageManager.InspectLocal(image)
 	a.assert.Nil(err)
 	label, ok := inspect.Config.Labels[label]
 	a.assert.TrueWithMessage(ok, fmt.Sprintf("expected label %s to exist", label))
 	a.assert.Contains(label, data)
+}
+
+func (a ImageAssertionManager) HasLabelNotContaining(image, label, data string) {
+	a.testObject.Helper()
+	inspect, err := a.imageManager.InspectLocal(image)
+	a.assert.Nil(err)
+	label, ok := inspect.Config.Labels[label]
+	a.assert.TrueWithMessage(ok, fmt.Sprintf("expected label %s to exist", label))
+	a.assert.NotContains(label, data)
 }
 
 func (a ImageAssertionManager) HasLengthLayers(image string, length int) {

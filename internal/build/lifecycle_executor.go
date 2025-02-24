@@ -32,6 +32,7 @@ var (
 		api.MustParse("0.10"),
 		api.MustParse("0.11"),
 		api.MustParse("0.12"),
+		api.MustParse("0.13"),
 	}
 )
 
@@ -71,7 +72,7 @@ type LifecycleOptions struct {
 	Builder                         Builder
 	BuilderImage                    string // differs from Builder.Name() and Builder.Image().Name() in that it includes the registry context
 	LifecycleImage                  string
-	LifecycleApis                   []string // optional - populated only if custom lifecycle image is downloaded, from that lifecycle's container's Labels.
+	LifecycleApis                   []string // optional - populated only if custom lifecycle image is downloaded, from that lifecycle image's labels.
 	RunImage                        string
 	FetchRunImageWithLifecycleLayer func(name string) (string, error)
 	ProjectMetadata                 files.ProjectMetadata
@@ -97,7 +98,6 @@ type LifecycleOptions struct {
 	Workspace                       string
 	GID                             int
 	UID                             int
-	MacAddress                      string
 	PreviousImage                   string
 	ReportDestinationDir            string
 	SBOMDestinationDir              string

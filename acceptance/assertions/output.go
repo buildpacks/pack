@@ -1,5 +1,4 @@
 //go:build acceptance
-// +build acceptance
 
 package assertions
 
@@ -30,6 +29,42 @@ func (o OutputAssertionManager) ReportsSuccessfulImageBuild(name string) {
 	o.testObject.Helper()
 
 	o.assert.ContainsF(o.output, "Successfully built image '%s'", name)
+}
+
+func (o OutputAssertionManager) ReportsSuccessfulIndexLocallyCreated(name string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "Successfully created manifest list '%s'", name)
+}
+
+func (o OutputAssertionManager) ReportsSuccessfulIndexPushed(name string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "Successfully pushed manifest list '%s' to registry", name)
+}
+
+func (o OutputAssertionManager) ReportsSuccessfulManifestAddedToIndex(name string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "Successfully added image '%s' to index", name)
+}
+
+func (o OutputAssertionManager) ReportsSuccessfulIndexDeleted() {
+	o.testObject.Helper()
+
+	o.assert.Contains(o.output, "Successfully deleted manifest list(s) from local storage")
+}
+
+func (o OutputAssertionManager) ReportsSuccessfulIndexAnnotated(name, manifest string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "Successfully annotated image '%s' in index '%s'", name, manifest)
+}
+
+func (o OutputAssertionManager) ReportsSuccessfulRemoveManifestFromIndex(name string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "Successfully removed image(s) from index: '%s'", name)
 }
 
 func (o OutputAssertionManager) ReportSuccessfulQuietBuild(name string) {
@@ -80,6 +115,12 @@ func (o OutputAssertionManager) ReportsRunImageStackNotMatchingBuilder(runImageS
 		o.output,
 		fmt.Sprintf("run-image stack id '%s' does not match builder stack '%s'", runImageStack, builderStack),
 	)
+}
+
+func (o OutputAssertionManager) ReportsDeprecatedUseOfStack() {
+	o.testObject.Helper()
+
+	o.assert.Contains(o.output, "Warning: deprecated usage of stack")
 }
 
 func (o OutputAssertionManager) WithoutColors() {
@@ -137,6 +178,12 @@ func (o OutputAssertionManager) IncludesUsagePrompt() {
 	o.assert.Contains(o.output, "Run 'pack --help' for usage.")
 }
 
+func (o OutputAssertionManager) ReportsBuilderCreated(name string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "Successfully created builder image '%s'", name)
+}
+
 func (o OutputAssertionManager) ReportsSettingDefaultBuilder(name string) {
 	o.testObject.Helper()
 
@@ -167,7 +214,7 @@ func (o OutputAssertionManager) IncludesTrustedBuildersHeading() {
 	o.assert.Contains(o.output, "Trusted Builders:")
 }
 
-const googleBuilder = "gcr.io/buildpacks/builder:v1"
+const googleBuilder = "gcr.io/buildpacks/builder:google-22"
 
 func (o OutputAssertionManager) IncludesGoogleBuilder() {
 	o.testObject.Helper()
@@ -182,7 +229,7 @@ func (o OutputAssertionManager) IncludesPrefixedGoogleBuilder() {
 }
 
 var herokuBuilders = []string{
-	"heroku/builder:22",
+	"heroku/builder:24",
 }
 
 func (o OutputAssertionManager) IncludesHerokuBuilders() {
