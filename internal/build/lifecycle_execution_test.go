@@ -16,8 +16,8 @@ import (
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform/files"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -784,7 +784,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		when("network is not provided", func() {
 			it("creates an ephemeral bridge network", func() {
 				beforeNetworks := func() int {
-					networks, err := docker.NetworkList(context.Background(), types.NetworkListOptions{})
+					networks, err := docker.NetworkList(context.Background(), network.CreateOptions{})
 					h.AssertNil(t, err)
 					return len(networks)
 				}()
@@ -813,7 +813,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				afterNetworks := func() int {
-					networks, err := docker.NetworkList(context.Background(), types.NetworkListOptions{})
+					networks, err := docker.NetworkList(context.Background(), network.CreateOptions{})
 					h.AssertNil(t, err)
 					return len(networks)
 				}()
@@ -2703,14 +2703,14 @@ type fakeDockerClient struct {
 	build.DockerClient
 }
 
-func (f *fakeDockerClient) NetworkList(ctx context.Context, opts types.NetworkListOptions) ([]types.NetworkResource, error) {
-	ret := make([]types.NetworkResource, f.nNetworks)
+func (f *fakeDockerClient) NetworkList(ctx context.Context, opts network.CreateOptions) ([]network.Inspect, error) {
+	ret := make([]network.Inspect, f.nNetworks)
 	return ret, nil
 }
 
-func (f *fakeDockerClient) NetworkCreate(ctx context.Context, name string, options types.NetworkCreate) (types.NetworkCreateResponse, error) {
+func (f *fakeDockerClient) NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (network.CreateResponse, error) {
 	f.nNetworks++
-	return types.NetworkCreateResponse{}, nil
+	return network.CreateResponse{}, nil
 }
 
 func (f *fakeDockerClient) NetworkRemove(ctx context.Context, network string) error {

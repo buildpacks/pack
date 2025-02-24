@@ -164,6 +164,13 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNotNil(t, command.Execute())
 					h.AssertContains(t, outBuf.String(), "name must not match default lifecycle image name")
 				})
+
+				it("refuses to build when using fully qualified name", func() {
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"docker.io/buildpacksio/lifecycle:test", "--builder", "test", "--trust-builder"})
+					h.AssertNotNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "name must not match default lifecycle image name")
+				})
 			})
 
 			when("the builder is not trusted", func() {

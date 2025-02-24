@@ -16,7 +16,7 @@ on:
         default: false
 
 env:
-  REGISTRY_NAME: 'index.docker.io'
+  REGISTRY_NAME: 'docker.io'
   USER_NAME: 'buildpacksio'
   IMG_NAME: 'pack'
 
@@ -61,7 +61,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
-      - uses: buildpacks/github-actions/setup-tools@v5.7.4
+      - uses: buildpacks/github-actions/setup-tools@v5.8.8
       - name: Buildx Build/Publish
         run: |
           docker buildx build . \

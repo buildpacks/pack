@@ -46,8 +46,8 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
           check-latest: true
+          go-version-file: 'go.mod'
       - name: Set up go env
         run: |
           echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
@@ -59,3 +59,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           make acceptance
+          docker network prune

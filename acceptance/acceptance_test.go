@@ -1,5 +1,4 @@
 //go:build acceptance
-// +build acceptance
 
 package acceptance
 
@@ -337,6 +336,7 @@ func testWithoutSpecificBuilderRequirement(
 									"--path", path,
 									"--publish",
 									"--target", "linux/amd64",
+									"--target", "linux/arm64",
 									"--target", "windows/amd64",
 								)
 
@@ -347,7 +347,7 @@ func testWithoutSpecificBuilderRequirement(
 								assertImage.CanBePulledFromRegistry(packageName)
 
 								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(packageName)
-								h.AssertRemoteImageIndex(t, packageName, types.OCIImageIndex, 2)
+								h.AssertRemoteImageIndex(t, packageName, types.OCIImageIndex, 3)
 							})
 						})
 
@@ -374,6 +374,7 @@ func testWithoutSpecificBuilderRequirement(
 										"--config", packageTomlPath,
 										"--publish",
 										"--target", "linux/amd64",
+										"--target", "linux/arm64",
 										"--target", "windows/amd64",
 										"--verbose",
 									)
@@ -402,6 +403,7 @@ func testWithoutSpecificBuilderRequirement(
 										"--path", depPath,
 										"--publish",
 										"--target", "linux/amd64",
+										"--target", "linux/arm64",
 										"--target", "windows/amd64",
 									)
 									assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(depPackageName)
@@ -423,6 +425,7 @@ func testWithoutSpecificBuilderRequirement(
 										"--config", packageTomlPath,
 										"--publish",
 										"--target", "linux/amd64",
+										"--target", "linux/arm64",
 										"--target", "windows/amd64",
 									)
 
@@ -433,7 +436,7 @@ func testWithoutSpecificBuilderRequirement(
 									assertImage.CanBePulledFromRegistry(packageName)
 
 									assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(packageName)
-									h.AssertRemoteImageIndex(t, packageName, types.OCIImageIndex, 2)
+									h.AssertRemoteImageIndex(t, packageName, types.OCIImageIndex, 3)
 								})
 							})
 						})
@@ -472,7 +475,7 @@ func testWithoutSpecificBuilderRequirement(
 								assertImage.CanBePulledFromRegistry(packageName)
 
 								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(packageName)
-								h.AssertRemoteImageIndex(t, packageName, types.OCIImageIndex, 2)
+								h.AssertRemoteImageIndex(t, packageName, types.OCIImageIndex, 3)
 							})
 						})
 					})
@@ -2181,20 +2184,45 @@ func testAcceptance(
 								imageManager.CleanupImages(runImageName)
 							})
 
-							it("fails with a message", func() {
-								output, err := pack.Run(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--run-image", runImageName,
-								)
-								assert.NotNil(err)
+							when("should validate stack", func() {
+								it.Before(func() {
+									h.SkipIf(t, pack.SupportsFeature(invoke.StackWarning), "stack is validated in prior versions")
+								})
+								it("fails with a message", func() {
 
-								assertOutput := assertions.NewOutputAssertionManager(t, output)
-								assertOutput.ReportsRunImageStackNotMatchingBuilder(
-									"other.stack.id",
-									"pack.test.stack",
-								)
+									output, err := pack.Run(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--run-image", runImageName,
+									)
+									assert.NotNil(err)
+
+									assertOutput := assertions.NewOutputAssertionManager(t, output)
+									assertOutput.ReportsRunImageStackNotMatchingBuilder(
+										"other.stack.id",
+										"pack.test.stack",
+									)
+								})
 							})
+
+							when("should not validate stack", func() {
+								it.Before(func() {
+									h.SkipIf(t, !pack.SupportsFeature(invoke.StackWarning), "stack is no longer validated")
+								})
+								it("succeeds with a warning", func() {
+
+									output, err := pack.Run(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--run-image", runImageName,
+									)
+									assert.Nil(err)
+
+									assertOutput := assertions.NewOutputAssertionManager(t, output)
+									assertOutput.ReportsDeprecatedUseOfStack()
+								})
+							})
+
 						})
 					})
 
@@ -3348,11 +3376,12 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						"--path", path,
 						"--publish",
 						"--target", "linux/amd64",
+						"--target", "linux/arm64",
 						"--target", "windows/amd64",
 					)
 					assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(multiArchBuildpackPackage)
 					assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(multiArchBuildpackPackage)
-					h.AssertRemoteImageIndex(t, multiArchBuildpackPackage, types.OCIImageIndex, 2)
+					h.AssertRemoteImageIndex(t, multiArchBuildpackPackage, types.OCIImageIndex, 3)
 
 					// runImage and buildImage are saved in the daemon, for this test we want them to be available in a registry
 					remoteRunImage = registryConfig.RepoName(runImage + h.RandString(8))
@@ -3404,6 +3433,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 								"--config", builderTomlPath,
 								"--publish",
 								"--target", "linux/amd64",
+								"--target", "linux/arm64",
 								"--target", "windows/amd64",
 							)
 
@@ -3413,7 +3443,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							assertImage.CanBePulledFromRegistry(builderName)
 
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexPushed(builderName)
-							h.AssertRemoteImageIndex(t, builderName, types.OCIImageIndex, 2)
+							h.AssertRemoteImageIndex(t, builderName, types.OCIImageIndex, 3)
 						})
 					})
 
