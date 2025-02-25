@@ -42,7 +42,7 @@ func (m *MultiArchConfig) Targets() []dist.Target {
 func (m *MultiArchConfig) CopyConfigFiles(baseDir string, buildpackType string) ([]string, error) {
 	var filesToClean []string
 	if buildpackType == "" {
-		buildpackType = "buildpack"
+		buildpackType = KindBuildpack
 	}
 	targets := dist.ExpandTargetsDistributions(m.Targets()...)
 	for _, target := range targets {
@@ -64,7 +64,7 @@ func CopyConfigFile(baseDir string, target dist.Target, buildpackType string) (s
 	var err error
 
 	if ok, platformRootFolder := PlatformRootFolder(baseDir, target); ok {
-		if buildpackType == "extension" {
+		if buildpackType == KindExtension {
 			path, err = copyExtensionTOML(baseDir, platformRootFolder)
 		} else {
 			path, err = copyBuildpackTOML(baseDir, platformRootFolder)

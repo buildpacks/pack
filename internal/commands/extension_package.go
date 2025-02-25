@@ -167,7 +167,7 @@ func validateExtensionPackageFlags(p *ExtensionPackageFlags) error {
 func processExtensionPackageTargets(path string, packageConfigReader PackageConfigReader, bpPackageCfg pubbldpkg.Config) ([]dist.Target, error) {
 	var targets []dist.Target
 
-	// Read targets from buildpack.toml
+	// Read targets from extension.toml
 	pathToExtensionToml := filepath.Join(path, "extension.toml")
 	if _, err := os.Stat(pathToExtensionToml); err == nil {
 		buildpackCfg, err := packageConfigReader.ReadBuildpackDescriptor(pathToExtensionToml)
