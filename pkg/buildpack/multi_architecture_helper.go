@@ -36,9 +36,10 @@ func (m *MultiArchConfig) Targets() []dist.Target {
 	return m.expectedTargets
 }
 
-// CopyConfigFiles will, given a base directory (which is expected to be the root folder of a single buildpack),
-// copy the buildpack.toml file from the base directory into the corresponding platform root folder for each target.
-// It will return an array with all the platform root folders where the buildpack.toml file was copied.
+// CopyConfigFiles will, given a base directory (which is expected to be the root folder of a single buildpack or an extension),
+// copy the buildpack.toml or the extension.toml file from the base directory into the corresponding platform root folder for each target.
+// It will return an array with all the platform root folders where the buildpack.toml or the extension.toml file was copied.
+// Whether to copy the buildpack or the extension TOML file is determined by the buildpackType parameter.
 func (m *MultiArchConfig) CopyConfigFiles(baseDir string, buildpackType string) ([]string, error) {
 	var filesToClean []string
 	if buildpackType == "" {
@@ -57,7 +58,8 @@ func (m *MultiArchConfig) CopyConfigFiles(baseDir string, buildpackType string) 
 	return filesToClean, nil
 }
 
-// CopyConfigFile will copy the buildpack.toml file from the base directory into the corresponding platform folder
+// CopyConfigFile will copy the buildpack.toml or the extension.toml file, based on the buildpackType parameter,
+// from the base directory into the corresponding platform folder
 // for the specified target and desired distribution version.
 func CopyConfigFile(baseDir string, target dist.Target, buildpackType string) (string, error) {
 	var path string
