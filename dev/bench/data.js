@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1740146297222,
+  "lastUpdate": 1740787112269,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -9604,6 +9604,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 61241291998,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "51308d4b2a4cbad0389838278527f4d101e48813",
+          "message": "Merge pull request #2320 from pacostas/extension-multi-arch\n\nImplementation of multi-arch support for extension packages",
+          "timestamp": "2025-02-28T18:56:46-05:00",
+          "tree_id": "5aaed21ffe25206fcbcaf6ae97c0ab27d13c715e",
+          "url": "https://github.com/buildpacks/pack/commit/51308d4b2a4cbad0389838278527f4d101e48813"
+        },
+        "date": 1740787111837,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3126636300,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 817625569,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 59046747626,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
