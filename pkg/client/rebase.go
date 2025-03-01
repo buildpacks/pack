@@ -67,7 +67,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		repoName = opts.PreviousImage
 	}
 
-	appImage, err := c.imageFetcher.Fetch(ctx, repoName, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
+	appImage, err := c.imageFetcher.Fetch(ctx, repoName, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy, InsecureRegistries: opts.InsecureRegistries})
 	if err != nil {
 		return err
 	}
@@ -103,9 +103,10 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 
 	target := &dist.Target{OS: appOS, Arch: appArch}
 	fetchOptions := image.FetchOptions{
-		Daemon:     !opts.Publish,
-		PullPolicy: opts.PullPolicy,
-		Target:     target,
+		Daemon:             !opts.Publish,
+		PullPolicy:         opts.PullPolicy,
+		Target:             target,
+		InsecureRegistries: opts.InsecureRegistries,
 	}
 
 	runImageName := c.resolveRunImage(
