@@ -8,7 +8,7 @@ require (
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20240605145725-186f89b2d168
 	github.com/buildpacks/lifecycle v0.20.4
-	github.com/docker/cli v27.5.1+incompatible
+	github.com/docker/cli v28.0.1+incompatible
 	github.com/docker/docker v27.5.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/dustin/go-humanize v1.0.1
@@ -141,7 +141,6 @@ require (
 	golang.org/x/net v0.35.0 // indirect
 	google.golang.org/protobuf v1.36.3 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
 replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.3.2
