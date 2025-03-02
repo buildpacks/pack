@@ -85,6 +85,12 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways})
 							h.AssertNil(t, err)
 						})
+
+						it("returns the remote image when insecure registry", func() {
+							insecureRegistry := fmt.Sprintf("%s:%s", registryConfig.RunRegistryHost, registryConfig.RunRegistryPort)
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways, InsecureRegistries: []string{insecureRegistry}})
+							h.AssertNil(t, err)
+						})
 					})
 
 					when("platform with variant and version", func() {
