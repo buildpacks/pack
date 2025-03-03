@@ -13,6 +13,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/docker/docker/api/types/system"
 	"github.com/golang/mock/gomock"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
@@ -49,10 +50,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockBuildpackDownloader *testmocks.MockBuildpackDownloader
 			mockImageFactory        *testmocks.MockImageFactory
 			mockImageFetcher        *testmocks.MockImageFetcher
+			mockIndexFactory        *testmocks.MockIndexFactory
 			mockDockerClient        *testmocks.MockCommonAPIClient
 			fakeBuildImage          *fakes.Image
 			fakeRunImage            *fakes.Image
 			fakeRunImageMirror      *fakes.Image
+			fakeLifecycleImage      *fakes.ImageIndex
 			opts                    client.CreateBuilderOptions
 			subject                 *client.Client
 			logger                  logging.Logger
@@ -66,6 +69,10 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		var prepareFetcherWithBuildImage = func() {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any()).Return(fakeBuildImage, nil)
+		}
+
+		var prepareIndexFetcherWithLifecycleImage = func() {
+			mockIndexFactory.EXPECT().FetchIndex(gomock.Any(), gomock.Any()).Return(fakeLifecycleImage, nil)
 		}
 
 		var createBuildpack = func(descriptor dist.BuildpackDescriptor) buildpack.BuildModule {
@@ -89,6 +96,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDownloader = testmocks.NewMockBlobDownloader(mockController)
 			mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
 			mockImageFactory = testmocks.NewMockImageFactory(mockController)
+			mockIndexFactory = testmocks.NewMockIndexFactory(mockController)
 			mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
 			mockBuildpackDownloader = testmocks.NewMockBuildpackDownloader(mockController)
 
@@ -100,6 +108,29 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			fakeRunImage = fakes.NewImage("some/run-image", "", nil)
 			h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
+
+			fakeLifecycleImage = &fakes.ImageIndex{
+				Manifests: []v1.Descriptor{
+					{
+						Platform: &v1.Platform{
+							OS:           "linux",
+							Architecture: "amd64",
+						},
+					},
+					{
+						Platform: &v1.Platform{
+							OS:           "linux",
+							Architecture: "arm64",
+						},
+					},
+					{
+						Platform: &v1.Platform{
+							OS:           "windows",
+							Architecture: "amd64",
+						},
+					},
+				},
+			}
 
 			fakeRunImageMirror = fakes.NewImage("localhost:5000/some/run-image", "", nil)
 			h.AssertNil(t, fakeRunImageMirror.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
@@ -124,6 +155,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				client.WithDownloader(mockDownloader),
 				client.WithImageFactory(mockImageFactory),
 				client.WithFetcher(mockImageFetcher),
+				client.WithIndexFactory(mockIndexFactory),
 				client.WithDockerClient(mockDockerClient),
 				client.WithBuildpackDownloader(mockBuildpackDownloader),
 			)
@@ -452,6 +484,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							client.WithDownloader(mockDownloader),
 							client.WithImageFactory(mockImageFactory),
 							client.WithFetcher(mockImageFetcher),
+							client.WithIndexFactory(mockIndexFactory),
 							client.WithExperimental(true),
 						)
 						h.AssertNil(t, err)
@@ -516,6 +549,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should download from predetermined uri", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				prepareIndexFetcherWithLifecycleImage()
 				opts.Config.Lifecycle.URI = ""
 				opts.Config.Lifecycle.Version = "3.4.5"
 
@@ -533,6 +567,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should download from predetermined uri for arm64", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				prepareIndexFetcherWithLifecycleImage()
 				opts.Config.Lifecycle.URI = ""
 				opts.Config.Lifecycle.Version = "3.4.5"
 				h.AssertNil(t, fakeBuildImage.SetArchitecture("arm64"))
@@ -557,12 +592,14 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						client.WithDownloader(mockDownloader),
 						client.WithImageFactory(mockImageFactory),
 						client.WithFetcher(mockImageFetcher),
+						client.WithIndexFactory(mockIndexFactory),
 						client.WithExperimental(true),
 					)
 					h.AssertNil(t, err)
 
 					prepareFetcherWithBuildImage()
 					prepareFetcherWithRunImages()
+					prepareIndexFetcherWithLifecycleImage()
 					opts.Config.Lifecycle.URI = ""
 					opts.Config.Lifecycle.Version = "3.4.5"
 					h.AssertNil(t, fakeBuildImage.SetOS("windows"))
@@ -584,6 +621,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should download default lifecycle", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				prepareIndexFetcherWithLifecycleImage()
 				opts.Config.Lifecycle.URI = ""
 				opts.Config.Lifecycle.Version = ""
 
@@ -605,6 +643,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should download default lifecycle on arm64", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				prepareIndexFetcherWithLifecycleImage()
 				opts.Config.Lifecycle.URI = ""
 				opts.Config.Lifecycle.Version = ""
 				h.AssertNil(t, fakeBuildImage.SetArchitecture("arm64"))
@@ -633,12 +672,14 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						client.WithDownloader(mockDownloader),
 						client.WithImageFactory(mockImageFactory),
 						client.WithFetcher(mockImageFetcher),
+						client.WithIndexFactory(mockIndexFactory),
 						client.WithExperimental(true),
 					)
 					h.AssertNil(t, err)
 
 					prepareFetcherWithBuildImage()
 					prepareFetcherWithRunImages()
+					prepareIndexFetcherWithLifecycleImage()
 					opts.Config.Lifecycle.URI = ""
 					opts.Config.Lifecycle.Version = ""
 					h.AssertNil(t, fakeBuildImage.SetOS("windows"))
