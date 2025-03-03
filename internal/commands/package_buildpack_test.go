@@ -129,6 +129,17 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
 					h.AssertEq(t, receivedOptions.PullPolicy, image.PullAlways)
 				})
+
+				it("pull-policy=try-always sets policy", func() {
+					args = append(args, "--pull-policy", "try-always")
+					cmd.SetArgs(args)
+
+					err := cmd.Execute()
+					h.AssertNil(t, err)
+
+					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullIfAvailable)
+				})
 				it("takes precedence over a configured pull policy", func() {
 					logger := logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
 					configReader := fakes.NewFakePackageConfigReader()

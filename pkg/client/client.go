@@ -54,6 +54,7 @@ type ImageFetcher interface {
 	//   - PullNever: try to use the daemon to return a `local.Image`.
 	//   - PullIfNotPResent: try look to use the daemon to return a `local.Image`, if none is found  fetch a remote image.
 	//   - PullAlways: it will only try to fetch a remote image.
+	//	 - PullIfAvailable: it will try to fetch a remote image, if none is found it will try to use the daemon to return a `local.Image`.
 	//
 	// These PullPolicies that these interact with the daemon argument.
 	// PullIfNotPresent and daemon = false, gives us the same behavior as PullAlways.
@@ -65,6 +66,7 @@ type ImageFetcher interface {
 	// the behavior is dictated by the pull policy, which can have the following behavior
 	//   - PullNever: returns false
 	//   - PullAlways Or PullIfNotPresent: it will check read access for the remote image.
+	//   - PullIfAvailable: it will check read access for the remote image, if the image is not found then false.
 	// When FetchOptions.Daemon is false it will check read access for the remote image.
 	CheckReadAccess(repo string, options image.FetchOptions) bool
 }
