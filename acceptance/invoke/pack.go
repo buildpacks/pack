@@ -1,5 +1,4 @@
 //go:build acceptance
-// +build acceptance
 
 package invoke
 
@@ -241,6 +240,7 @@ const (
 	ManifestCommands
 	PlatformOption
 	MultiPlatformBuildersAndBuildPackages
+	StackWarning
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -285,6 +285,9 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	},
 	MultiPlatformBuildersAndBuildPackages: func(i *PackInvoker) bool {
 		return i.atLeast("v0.34.0")
+	},
+	StackWarning: func(i *PackInvoker) bool {
+		return i.atLeast("v0.37.0")
 	},
 }
 

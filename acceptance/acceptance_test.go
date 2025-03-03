@@ -1,5 +1,4 @@
 //go:build acceptance
-// +build acceptance
 
 package acceptance
 
@@ -2185,20 +2184,45 @@ func testAcceptance(
 								imageManager.CleanupImages(runImageName)
 							})
 
-							it("fails with a message", func() {
-								output, err := pack.Run(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--run-image", runImageName,
-								)
-								assert.NotNil(err)
+							when("should validate stack", func() {
+								it.Before(func() {
+									h.SkipIf(t, pack.SupportsFeature(invoke.StackWarning), "stack is validated in prior versions")
+								})
+								it("fails with a message", func() {
 
-								assertOutput := assertions.NewOutputAssertionManager(t, output)
-								assertOutput.ReportsRunImageStackNotMatchingBuilder(
-									"other.stack.id",
-									"pack.test.stack",
-								)
+									output, err := pack.Run(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--run-image", runImageName,
+									)
+									assert.NotNil(err)
+
+									assertOutput := assertions.NewOutputAssertionManager(t, output)
+									assertOutput.ReportsRunImageStackNotMatchingBuilder(
+										"other.stack.id",
+										"pack.test.stack",
+									)
+								})
 							})
+
+							when("should not validate stack", func() {
+								it.Before(func() {
+									h.SkipIf(t, !pack.SupportsFeature(invoke.StackWarning), "stack is no longer validated")
+								})
+								it("succeeds with a warning", func() {
+
+									output, err := pack.Run(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--run-image", runImageName,
+									)
+									assert.Nil(err)
+
+									assertOutput := assertions.NewOutputAssertionManager(t, output)
+									assertOutput.ReportsDeprecatedUseOfStack()
+								})
+							})
+
 						})
 					})
 

@@ -1,5 +1,4 @@
 //go:build acceptance
-// +build acceptance
 
 package assertions
 
@@ -116,6 +115,12 @@ func (o OutputAssertionManager) ReportsRunImageStackNotMatchingBuilder(runImageS
 		o.output,
 		fmt.Sprintf("run-image stack id '%s' does not match builder stack '%s'", runImageStack, builderStack),
 	)
+}
+
+func (o OutputAssertionManager) ReportsDeprecatedUseOfStack() {
+	o.testObject.Helper()
+
+	o.assert.Contains(o.output, "Warning: deprecated usage of stack")
 }
 
 func (o OutputAssertionManager) WithoutColors() {
