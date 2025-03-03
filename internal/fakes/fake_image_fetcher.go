@@ -65,5 +65,5 @@ func shouldPull(localFound, remoteFound bool, policy image.PullPolicy) bool {
 		return true
 	}
 
-	return remoteFound && policy == image.PullAlways
+	return remoteFound && (policy == image.PullAlways || policy == image.PullIfAvailable)
 }

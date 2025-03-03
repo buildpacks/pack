@@ -34,6 +34,12 @@ func testPullPolicy(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, policy, image.PullIfNotPresent)
 		})
 
+		it("returns PullIfAvailable for try-always", func() {
+			policy, err := image.ParsePullPolicy("try-always")
+			h.AssertNil(t, err)
+			h.AssertEq(t, policy, image.PullIfAvailable)
+		})
+
 		it("defaults to PullAlways, if empty string", func() {
 			policy, err := image.ParsePullPolicy("")
 			h.AssertNil(t, err)
@@ -51,6 +57,7 @@ func testPullPolicy(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, image.PullAlways.String(), "always")
 			h.AssertEq(t, image.PullNever.String(), "never")
 			h.AssertEq(t, image.PullIfNotPresent.String(), "if-not-present")
+			h.AssertEq(t, image.PullIfAvailable.String(), "try-always")
 		})
 	})
 }

@@ -128,10 +128,13 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 			err = f.pullImage(ctx, name, "")
 		}
 	}
-	if err != nil && !errors.Is(err, ErrNotFound) {
+
+	if err != nil {
+		if errors.Is(err, ErrNotFound) && options.PullPolicy == PullIfAvailable {
+			return f.fetchDaemonImage(name)
+		}
 		return nil, err
 	}
-
 	return f.fetchDaemonImage(name)
 }
 

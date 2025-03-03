@@ -14,9 +14,11 @@ const (
 	PullNever
 	// PullIfNotPresent pulls images if they aren't present
 	PullIfNotPresent
+	// PullIfAvailable pulls images if they are available in the registry else check locally
+	PullIfAvailable
 )
 
-var nameMap = map[string]PullPolicy{"always": PullAlways, "never": PullNever, "if-not-present": PullIfNotPresent, "": PullAlways}
+var nameMap = map[string]PullPolicy{"always": PullAlways, "never": PullNever, "if-not-present": PullIfNotPresent, "try-always": PullIfAvailable, "": PullAlways}
 
 // ParsePullPolicy from string
 func ParsePullPolicy(policy string) (PullPolicy, error) {
@@ -35,6 +37,8 @@ func (p PullPolicy) String() string {
 		return "never"
 	case PullIfNotPresent:
 		return "if-not-present"
+	case PullIfAvailable:
+		return "try-always"
 	}
 
 	return ""

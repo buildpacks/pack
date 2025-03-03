@@ -155,6 +155,29 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 			})
+
+			when("PullIfAvailable", func() {
+				when("there is a remote image", func() {
+					it.Before(func() {
+						img, err := remote.NewImage(repoName, authn.DefaultKeychain)
+						h.AssertNil(t, err)
+
+						h.AssertNil(t, img.Save())
+					})
+
+					it("returns the remote image", func() {
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullIfAvailable})
+						h.AssertNil(t, err)
+					})
+				})
+
+				when("there is no remote image", func() {
+					it("returns an error", func() {
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullIfAvailable})
+						h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist in registry", repoName))
+					})
+				})
+			})
 		})
 
 		when("daemon is true", func() {
@@ -233,33 +256,6 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
-				when("there is no remote image", func() {
-					when("there is a local image", func() {
-						it.Before(func() {
-							img, err := local.NewImage(repoName, docker)
-							h.AssertNil(t, err)
-
-							h.AssertNil(t, img.Save())
-						})
-
-						it.After(func() {
-							h.DockerRmi(docker, repoName)
-						})
-
-						it("returns the local image", func() {
-							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways})
-							h.AssertNil(t, err)
-						})
-					})
-
-					when("there is no local image", func() {
-						it("returns an error", func() {
-							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways})
-							h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
-						})
-					})
-				})
-
 				when("image platform is specified", func() {
 					it("passes the platform argument to the daemon", func() {
 						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Target: &dist.Target{OS: "some-unsupported-platform"}})
@@ -276,6 +272,77 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						it("retries without setting platform", func() {
 							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Target: &dist.Target{OS: osType, Arch: runtime.GOARCH}})
 							h.AssertNil(t, err)
+						})
+					})
+				})
+			})
+
+			when("PullIfAvailable", func() {
+				when("there is a remote image", func() {
+					var (
+						logger *logging.LogWithWriters
+						output func() string
+					)
+
+					it.Before(func() {
+						// Instantiate a pull-able local image
+						// as opposed to a remote image so that the image
+						// is created with the OS of the docker daemon
+						img, err := local.NewImage(repoName, docker)
+						h.AssertNil(t, err)
+						defer h.DockerRmi(docker, repoName)
+
+						h.AssertNil(t, img.Save())
+
+						h.AssertNil(t, h.PushImage(docker, img.Name(), registryConfig))
+
+						var outCons *color.Console
+						outCons, output = h.MockWriterAndOutput()
+						logger = logging.NewLogWithWriters(outCons, outCons)
+						imageFetcher = image.NewFetcher(logger, docker)
+					})
+
+					it.After(func() {
+						h.DockerRmi(docker, repoName)
+					})
+
+					it("pull the image and return the local copy", func() {
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfAvailable})
+						h.AssertNil(t, err)
+						h.AssertNotEq(t, output(), "")
+					})
+
+					it("doesn't log anything in quiet mode", func() {
+						logger.WantQuiet(true)
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfAvailable})
+						h.AssertNil(t, err)
+						h.AssertEq(t, output(), "")
+					})
+				})
+
+				when("there is no remote image", func() {
+					when("there is a local image", func() {
+						it.Before(func() {
+							img, err := local.NewImage(repoName, docker)
+							h.AssertNil(t, err)
+
+							h.AssertNil(t, img.Save())
+						})
+
+						it.After(func() {
+							h.DockerRmi(docker, repoName)
+						})
+
+						it("returns the local image", func() {
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfAvailable})
+							h.AssertNil(t, err)
+						})
+					})
+
+					when("there is no local image", func() {
+						it("returns an error", func() {
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfAvailable})
+							h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
 						})
 					})
 				})
@@ -477,6 +544,13 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						h.AssertContains(t, outBuf.String(), "failed reading image 'pack.test/dummy' from the daemon")
 					})
 				})
+
+				when("PullIfAvailable", func() {
+					it("read access must be false", func() {
+						h.AssertFalse(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullIfAvailable}))
+						h.AssertContains(t, outBuf.String(), "failed reading image 'pack.test/dummy' from the daemon")
+					})
+				})
 			})
 
 			when("image exists only in the daemon", func() {
@@ -502,6 +576,12 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						h.AssertTrue(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullIfNotPresent}))
 					})
 				})
+
+				when("PullIfAvailable", func() {
+					it("read access must be true", func() {
+						h.AssertTrue(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullIfAvailable}))
+					})
+				})
 			})
 
 			when("image doesn't exist in the daemon but in remote", func() {
@@ -525,6 +605,12 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 				when("PullIfNotPresent", func() {
 					it("read access must be true", func() {
 						h.AssertTrue(t, imageFetcher.CheckReadAccess(repoName, image.FetchOptions{Daemon: daemon, PullPolicy: image.PullIfNotPresent}))
+					})
+				})
+
+				when("PullIfAvailable", func() {
+					it("read access must be true", func() {
+						h.AssertTrue(t, imageFetcher.CheckReadAccess(repoName, image.FetchOptions{Daemon: daemon, PullPolicy: image.PullIfAvailable}))
 					})
 				})
 			})

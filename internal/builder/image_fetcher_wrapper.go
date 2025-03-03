@@ -19,6 +19,7 @@ type ImageFetcher interface {
 	// the behavior is dictated by the pull policy, which can have the following behavior
 	//   - PullNever: returns false
 	//   - PullAlways Or PullIfNotPresent: it will check read access for the remote image.
+	//   - PullIfAvailable: it will check read access for the remote image, if the image is not found then false.
 	// When FetchOptions.Daemon is false it will check read access for the remote image.
 	CheckReadAccess(repo string, options image.FetchOptions) bool
 }
