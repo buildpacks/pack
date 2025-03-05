@@ -30,6 +30,7 @@ func testMultiArchConfig(t *testing.T, when spec.G, it spec.S) {
 		logger               *logging.LogWithWriters
 		multiArchConfig      *buildpack.MultiArchConfig
 		targetsFromBuildpack []dist.Target
+		targetsFromExtension []dist.Target
 		targetsFromFlags     []dist.Target
 		tmpDir               string
 	)
@@ -109,11 +110,36 @@ func testMultiArchConfig(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("copies the buildpack.toml to each target platform folder", func() {
-				paths, err := multiArchConfig.CopyConfigFiles(rootFolder)
+				paths, err := multiArchConfig.CopyConfigFiles(rootFolder, "buildpack")
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(paths), 2)
 				h.AssertPathExists(t, filepath.Join(rootFolder, "linux", "amd64", "buildpack.toml"))
 				h.AssertPathExists(t, filepath.Join(rootFolder, "linux", "arm64", "v8", "buildpack.toml"))
+			})
+		})
+
+		when("extension root folder exists", func() {
+			var rootFolder string
+
+			it.Before(func() {
+				rootFolder = filepath.Join(tmpDir, "some-extension")
+				targetsFromExtension = []dist.Target{{OS: "linux", Arch: "amd64"}, {OS: "linux", Arch: "arm64", ArchVariant: "v8"}}
+				multiArchConfig, err = buildpack.NewMultiArchConfig(targetsFromExtension, []dist.Target{}, logger)
+				h.AssertNil(t, err)
+
+				// dummy multi-platform extension structure
+				os.MkdirAll(filepath.Join(rootFolder, "linux", "amd64"), 0755)
+				os.MkdirAll(filepath.Join(rootFolder, "linux", "arm64", "v8"), 0755)
+				_, err = os.Create(filepath.Join(rootFolder, "extension.toml"))
+				h.AssertNil(t, err)
+			})
+
+			it("copies the extension.toml to each target platform folder", func() {
+				paths, err := multiArchConfig.CopyConfigFiles(rootFolder, "extension")
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(paths), 2)
+				h.AssertPathExists(t, filepath.Join(rootFolder, "linux", "amd64", "extension.toml"))
+				h.AssertPathExists(t, filepath.Join(rootFolder, "linux", "arm64", "v8", "extension.toml"))
 			})
 		})
 	})
