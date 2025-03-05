@@ -44,6 +44,17 @@ type OrderEntry struct {
 	Group []ModuleRef `toml:"group" json:"group"`
 }
 
+type System []SystemEntry
+
+type SystemEntry struct {
+	Pre  SystemBuildpacks `toml:"pre" json:"pre"`
+	Post SystemBuildpacks `toml:"post" json:"post"`
+}
+
+type SystemBuildpacks struct {
+	Buildpacks []ModuleRef `toml:"buildpacks" json:"buildpacks"`
+}
+
 type ModuleRef struct {
 	ModuleInfo `yaml:"buildpackinfo,inline"`
 	Optional   bool `toml:"optional,omitempty" json:"optional,omitempty" yaml:"optional,omitempty"`
