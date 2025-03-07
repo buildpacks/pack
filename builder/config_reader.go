@@ -26,7 +26,7 @@ type Config struct {
 	Run             RunConfig        `toml:"run"`
 	Build           BuildConfig      `toml:"build"`
 	Targets         []dist.Target    `toml:"targets"`
-	System          dist.SystemEntry `toml:"system"`
+	System          dist.System      `toml:"system"`
 }
 
 // ModuleCollection is a list of ModuleConfigs

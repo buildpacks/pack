@@ -44,9 +44,7 @@ type OrderEntry struct {
 	Group []ModuleRef `toml:"group" json:"group"`
 }
 
-type System []SystemEntry
-
-type SystemEntry struct {
+type System struct {
 	Pre  SystemBuildpacks `toml:"pre" json:"pre"`
 	Post SystemBuildpacks `toml:"post" json:"post"`
 }

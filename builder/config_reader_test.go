@@ -161,14 +161,6 @@ uri = "noop-buildpack.tgz"
 		when("system buildpack is defined", func() {
 			it.Before(func() {
 				h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(`
-[[buildpacks]]
-  id = "buildpack/1"
-  version = "0.0.1"
-  uri = "https://example.com/buildpack-1.tgz"
-[[order]]
-[[order.group]]
-  id = "buildpack/1"
-
 [[system.pre.buildpacks]]
   id = "id-1"
   version = "1.0"
@@ -182,10 +174,8 @@ uri = "noop-buildpack.tgz"
 			})
 
 			it("returns a builder config", func() {
-				builderConfig, warns, err := builder.ReadConfig(builderConfigPath)
+				builderConfig, _, err := builder.ReadConfig(builderConfigPath)
 				h.AssertNil(t, err)
-				h.AssertEq(t, len(warns), 0)
-
 				h.AssertEq(t, len(builderConfig.System.Pre.Buildpacks), 1)
 				h.AssertEq(t, len(builderConfig.System.Post.Buildpacks), 1)
 

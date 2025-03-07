@@ -84,6 +84,7 @@ type Builder struct {
 	replaceOrder         bool
 	order                dist.Order
 	orderExtensions      dist.Order
+	system               dist.System
 	validateMixins       bool
 	saveProhibited       bool
 }
@@ -303,6 +304,9 @@ func (b *Builder) Stack() StackMetadata {
 	return b.metadata.Stack
 }
 
+// System returns the system buildpacks configuration
+func (b *Builder) System() dist.System { return b.system }
+
 // RunImages returns all run image metadata
 func (b *Builder) RunImages() []RunImageMetadata {
 	return append(b.metadata.RunImages, b.Stack().RunImage)
@@ -423,6 +427,11 @@ func (b *Builder) SetStack(stackConfig builder.StackConfig) {
 			Mirrors: stackConfig.RunImageMirrors,
 		},
 	}
+}
+
+// SetSystem sets the system buildpacks of the builder
+func (b *Builder) SetSystem(system dist.System) {
+	b.system = system
 }
 
 // SetRunImage sets the run image of the builder
@@ -551,6 +560,25 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 			return err
 		}
 		if err := dist.SetLabel(b.image, OrderExtensionsLabel, b.orderExtensions); err != nil {
+			return err
+		}
+	}
+
+	// TODO: implement check on when to process system buildpacks
+	if false {
+		resolvedSystemBp, err := processSystem(b.metadata.Buildpacks, b.system, buildpack.KindBuildpack)
+		if err != nil {
+			return errors.Wrap(err, "processing system buildpacks")
+		}
+
+		systemTar, err := b.systemLayer(resolvedSystemBp, tmpDir)
+		if err != nil {
+			return err
+		}
+		if err := b.image.AddLayer(systemTar); err != nil {
+			return errors.Wrap(err, "adding system.tar layer")
+		}
+		if err := dist.SetLabel(b.image, SystemLabel, b.system); err != nil {
 			return err
 		}
 	}
@@ -764,6 +792,11 @@ func processOrder(modulesOnBuilder []dist.ModuleInfo, order dist.Order, kind str
 		}
 	}
 	return resolved, nil
+}
+
+func processSystem(modulesOnBuilder []dist.ModuleInfo, system dist.System, kind string) (dist.System, error) {
+	// TODO implement this
+	return dist.System{}, nil
 }
 
 func resolveRef(moduleList []dist.ModuleInfo, ref dist.ModuleRef, kind string) (dist.ModuleRef, error) {
@@ -1082,6 +1115,11 @@ func (b *Builder) orderLayer(order dist.Order, orderExt dist.Order, dest string)
 	}
 
 	return layerTar, nil
+}
+
+func (b *Builder) systemLayer(system dist.System, dest string) (string, error) {
+	// TODO implement this
+	return "", nil
 }
 
 func orderFileContents(order dist.Order, orderExt dist.Order) (string, error) {
