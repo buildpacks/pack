@@ -45,12 +45,12 @@ type OrderEntry struct {
 }
 
 type System struct {
-	Pre  SystemBuildpacks `toml:"pre" json:"pre"`
-	Post SystemBuildpacks `toml:"post" json:"post"`
+	Pre  SystemBuildpacks `toml:"pre,omitempty" json:"pre,omitempty"`
+	Post SystemBuildpacks `toml:"post,omitempty" json:"post,omitempty"`
 }
 
 type SystemBuildpacks struct {
-	Buildpacks []ModuleRef `toml:"buildpacks" json:"buildpacks"`
+	Buildpacks []ModuleRef `toml:"buildpacks,omitempty" json:"buildpacks,omitempty"`
 }
 
 type ModuleRef struct {

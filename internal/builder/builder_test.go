@@ -920,8 +920,37 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertTrue(t, strings.Contains(layers[2], h.LayerFileName(ext2v1)))
 				})
 			})
-		})
 
+			when("system buildpacks", func() {
+				it.Before(func() {
+					subject.SetLifecycle(mockLifecycle)
+					subject.AddBuildpack(bp1v1)
+					subject.SetSystem(dist.System{
+						Pre: dist.SystemBuildpacks{
+							Buildpacks: []dist.ModuleRef{
+								{ModuleInfo: dist.ModuleInfo{ID: bp1v1.Descriptor().Info().ID}}},
+						},
+					})
+				})
+
+				it("should write system buildpacks to system.toml)", func() {
+					err := subject.Save(logger, builder.CreatorMetadata{})
+					h.AssertNil(t, err)
+
+					layerTar, err := baseImage.FindLayerWithPath("/cnb/system.toml")
+					h.AssertNil(t, err)
+					h.AssertOnTarEntry(t, layerTar, "/cnb/system.toml", h.ContentEquals(`[system]
+  [system.pre]
+
+    [[system.pre.buildpacks]]
+      id = "buildpack-1-id"
+      version = "buildpack-1-version-1"
+`))
+					// TODO: do we always need to show optional = false?
+					// TODO: how do I remove [system.pre] ??
+				})
+			})
+		})
 		when("#SetLifecycle", func() {
 			it.Before(func() {
 				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))

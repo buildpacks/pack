@@ -42,6 +42,7 @@ const (
 
 	orderPath          = "/cnb/order.toml"
 	stackPath          = "/cnb/stack.toml"
+	systemPath         = "/cnb/system.toml"
 	runPath            = "/cnb/run.toml"
 	platformDir        = "/platform"
 	lifecycleDir       = "/cnb/lifecycle"
@@ -92,6 +93,10 @@ type Builder struct {
 type orderTOML struct {
 	Order    dist.Order `toml:"order,omitempty"`
 	OrderExt dist.Order `toml:"order-extensions,omitempty"`
+}
+
+type systemTOML struct {
+	System dist.System `toml:"system"`
 }
 
 // moduleWithDiffID is a Build Module which content was written on disk in a tar file and the content hash was calculated
@@ -564,8 +569,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		}
 	}
 
-	// TODO: implement check on when to process system buildpacks
-	if false {
+	if len(b.system.Pre.Buildpacks) > 0 || len(b.system.Post.Buildpacks) > 0 {
 		resolvedSystemBp, err := processSystem(b.metadata.Buildpacks, b.system, buildpack.KindBuildpack)
 		if err != nil {
 			return errors.Wrap(err, "processing system buildpacks")
@@ -795,8 +799,33 @@ func processOrder(modulesOnBuilder []dist.ModuleInfo, order dist.Order, kind str
 }
 
 func processSystem(modulesOnBuilder []dist.ModuleInfo, system dist.System, kind string) (dist.System, error) {
-	// TODO implement this
-	return dist.System{}, nil
+	resolved := dist.System{}
+
+	// Pre buildpacks
+	for _, bp := range system.Pre.Buildpacks {
+		var (
+			ref dist.ModuleRef
+			err error
+		)
+		if ref, err = resolveRef(modulesOnBuilder, bp, kind); err != nil {
+			return dist.System{}, err
+		}
+		resolved.Pre.Buildpacks = append(resolved.Pre.Buildpacks, ref)
+	}
+
+	// Post buildpacks
+	for _, bp := range system.Post.Buildpacks {
+		var (
+			ref dist.ModuleRef
+			err error
+		)
+		if ref, err = resolveRef(modulesOnBuilder, bp, kind); err != nil {
+			return dist.System{}, err
+		}
+		resolved.Post.Buildpacks = append(resolved.Post.Buildpacks, ref)
+	}
+
+	return resolved, nil
 }
 
 func resolveRef(moduleList []dist.ModuleInfo, ref dist.ModuleRef, kind string) (dist.ModuleRef, error) {
@@ -1117,16 +1146,34 @@ func (b *Builder) orderLayer(order dist.Order, orderExt dist.Order, dest string)
 	return layerTar, nil
 }
 
-func (b *Builder) systemLayer(system dist.System, dest string) (string, error) {
-	// TODO implement this
-	return "", nil
-}
-
 func orderFileContents(order dist.Order, orderExt dist.Order) (string, error) {
 	buf := &bytes.Buffer{}
 	tomlData := orderTOML{Order: order, OrderExt: orderExt}
 	if err := toml.NewEncoder(buf).Encode(tomlData); err != nil {
 		return "", errors.Wrapf(err, "failed to marshal order.toml")
+	}
+	return buf.String(), nil
+}
+
+func (b *Builder) systemLayer(system dist.System, dest string) (string, error) {
+	contents, err := systemFileContents(system)
+	if err != nil {
+		return "", err
+	}
+	layerTar := filepath.Join(dest, "system.tar")
+	err = layer.CreateSingleFileTar(layerTar, systemPath, contents, b.layerWriterFactory)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to create system.toml layer tar")
+	}
+
+	return layerTar, nil
+}
+
+func systemFileContents(system dist.System) (string, error) {
+	buf := &bytes.Buffer{}
+	tomlData := systemTOML{System: system}
+	if err := toml.NewEncoder(buf).Encode(tomlData); err != nil {
+		return "", errors.Wrapf(err, "failed to system.toml")
 	}
 	return buf.String(), nil
 }
