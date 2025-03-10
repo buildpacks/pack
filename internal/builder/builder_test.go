@@ -946,8 +946,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
       id = "buildpack-1-id"
       version = "buildpack-1-version-1"
 `))
-					// TODO: do we always need to show optional = false?
-					// TODO: how do I remove [system.pre] ??
 				})
 			})
 		})
