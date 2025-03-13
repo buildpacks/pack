@@ -147,6 +147,11 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 		return nil, fmt.Errorf("builder %s missing label %s -- try recreating builder", style.Symbol(img.Name()), style.Symbol(metadataLabel))
 	}
 
+	system := dist.System{}
+	if _, err := dist.GetLabel(img, SystemLabel, &system); err != nil {
+		return nil, errors.Wrapf(err, "getting label %s", SystemLabel)
+	}
+
 	opts := &options{}
 	for _, op := range ops {
 		if err := op(opts); err != nil {
@@ -188,6 +193,7 @@ func constructBuilder(img imgutil.Image, newName string, errOnMissingLabel bool,
 		additionalBuildpacks: buildpack.NewManagedCollectionV2(opts.toFlatten),
 		additionalExtensions: buildpack.NewManagedCollectionV2(opts.toFlatten),
 		saveProhibited:       opts.saveProhibited,
+		system:               system,
 	}
 
 	if err := addImgLabelsToBuildr(bldr); err != nil {

@@ -563,6 +563,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		usingPlatformAPI.LessThan("0.12"),
 		opts.RunImage,
 		system,
+		opts.DisableSystemBuildpacks,
 	)
 	if err != nil {
 		return err
@@ -1588,8 +1589,9 @@ func (c *Client) createEphemeralBuilder(
 	validateMixins bool,
 	runImage string,
 	system dist.System,
+	disableSystem bool,
 ) (*builder.Builder, error) {
-	if !ephemeralBuilderNeeded(env, order, buildpacks, orderExtensions, extensions, runImage) {
+	if !ephemeralBuilderNeeded(env, order, buildpacks, orderExtensions, extensions, runImage) && !disableSystem {
 		return builder.New(rawBuilderImage, rawBuilderImage.Name(), builder.WithoutSave())
 	}
 

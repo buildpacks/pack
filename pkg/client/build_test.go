@@ -56,8 +56,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		fakeLifecycle                *ifakes.FakeLifecycle
 		defaultBuilderStackID        = "some.stack.id"
 		defaultWindowsBuilderStackID = "some.windows.stack.id"
+		builderImageWithSystem       *fakes.Image
 		defaultBuilderImage          *fakes.Image
 		defaultWindowsBuilderImage   *fakes.Image
+		builderImageWithSystemName   = "example.com/default/builder-with-system:tag"
 		defaultBuilderName           = "example.com/default/builder:tag"
 		defaultWindowsBuilderName    = "example.com/windows-default/builder:tag"
 		defaultRunImageName          = "default/run"
@@ -83,14 +85,18 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		tmpDir, err = os.MkdirTemp("", "build-test")
 		h.AssertNil(t, err)
 
-		defaultBuilderImage = newFakeBuilderImage(t, tmpDir, defaultBuilderName, defaultBuilderStackID, defaultRunImageName, builder.DefaultLifecycleVersion, newLinuxImage)
+		defaultBuilderImage = newFakeBuilderImage(t, tmpDir, defaultBuilderName, defaultBuilderStackID, defaultRunImageName, builder.DefaultLifecycleVersion, newLinuxImage, false)
 		h.AssertNil(t, defaultBuilderImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
 		fakeImageFetcher.LocalImages[defaultBuilderImage.Name()] = defaultBuilderImage
 		if withExtensionsLabel {
 			h.AssertNil(t, defaultBuilderImage.SetLabel("io.buildpacks.buildpack.order-extensions", `[{"group":[{"id":"some-extension-id","version":"some-extension-version"}]}]`))
 		}
 
-		defaultWindowsBuilderImage = newFakeBuilderImage(t, tmpDir, defaultWindowsBuilderName, defaultWindowsBuilderStackID, defaultWindowsRunImageName, builder.DefaultLifecycleVersion, newWindowsImage)
+		builderImageWithSystem = newFakeBuilderImage(t, tmpDir, builderImageWithSystemName, defaultBuilderStackID, defaultRunImageName, builder.DefaultLifecycleVersion, newLinuxImage, true)
+		h.AssertNil(t, builderImageWithSystem.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
+		fakeImageFetcher.LocalImages[builderImageWithSystem.Name()] = builderImageWithSystem
+
+		defaultWindowsBuilderImage = newFakeBuilderImage(t, tmpDir, defaultWindowsBuilderName, defaultWindowsBuilderStackID, defaultWindowsRunImageName, builder.DefaultLifecycleVersion, newWindowsImage, false)
 		h.AssertNil(t, defaultWindowsBuilderImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
 		fakeImageFetcher.LocalImages[defaultWindowsBuilderImage.Name()] = defaultWindowsBuilderImage
 		if withExtensionsLabel {
@@ -142,6 +148,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 	it.After(func() {
 		h.AssertNilE(t, defaultBuilderImage.Cleanup())
+		h.AssertNilE(t, builderImageWithSystem.Cleanup())
 		h.AssertNilE(t, fakeDefaultRunImage.Cleanup())
 		h.AssertNilE(t, fakeMirror1.Cleanup())
 		h.AssertNilE(t, fakeMirror2.Cleanup())
@@ -236,6 +243,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						defaultRunImageName,
 						"0.3.0",
 						newLinuxImage,
+						false,
 					)
 					h.AssertNil(t, builderWithoutLifecycleImageOrCreator.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
 					fakeImageFetcher.LocalImages[builderWithoutLifecycleImageOrCreator.Name()] = builderWithoutLifecycleImageOrCreator
@@ -474,6 +482,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						nil,
 						nil,
 						nil,
+						dist.System{},
 						newLinuxImage,
 					)
 
@@ -2004,6 +2013,7 @@ api = "0.2"
 					defaultRunImageName,
 					"0.3.0",
 					newLinuxImage,
+					false,
 				)
 				h.AssertNil(t, builderWithoutLifecycleImageOrCreator.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
 				fakeImageFetcher.LocalImages[builderWithoutLifecycleImageOrCreator.Name()] = builderWithoutLifecycleImageOrCreator
@@ -2572,6 +2582,7 @@ api = "0.2"
 								nil,
 								nil,
 								nil,
+								dist.System{},
 								newLinuxImage,
 							)
 
@@ -2624,6 +2635,7 @@ api = "0.2"
 							nil,
 							nil,
 							nil,
+							dist.System{},
 							newLinuxImage,
 						)
 
@@ -2680,6 +2692,7 @@ api = "0.2"
 							nil,
 							nil,
 							nil,
+							dist.System{},
 							newLinuxImage,
 						)
 
@@ -2738,6 +2751,7 @@ api = "0.2"
 							nil,
 							nil,
 							nil,
+							dist.System{},
 							newLinuxImage,
 						)
 
@@ -2764,7 +2778,7 @@ api = "0.2"
 			when("use creator with extensions", func() {
 				when("lifecycle is old", func() {
 					it("false", func() {
-						oldLifecycleBuilder := newFakeBuilderImage(t, tmpDir, "example.com/old-lifecycle-builder:tag", defaultBuilderStackID, defaultRunImageName, "0.18.0", newLinuxImage)
+						oldLifecycleBuilder := newFakeBuilderImage(t, tmpDir, "example.com/old-lifecycle-builder:tag", defaultBuilderStackID, defaultRunImageName, "0.18.0", newLinuxImage, false)
 						defer oldLifecycleBuilder.Cleanup()
 						fakeImageFetcher.LocalImages[oldLifecycleBuilder.Name()] = oldLifecycleBuilder
 
@@ -2780,7 +2794,7 @@ api = "0.2"
 
 				when("lifecycle is new", func() {
 					it("true", func() {
-						newLifecycleBuilder := newFakeBuilderImage(t, tmpDir, "example.com/new-lifecycle-builder:tag", defaultBuilderStackID, defaultRunImageName, "0.19.0", newLinuxImage)
+						newLifecycleBuilder := newFakeBuilderImage(t, tmpDir, "example.com/new-lifecycle-builder:tag", defaultBuilderStackID, defaultRunImageName, "0.19.0", newLinuxImage, false)
 						defer newLifecycleBuilder.Cleanup()
 						fakeImageFetcher.LocalImages[newLifecycleBuilder.Name()] = newLifecycleBuilder
 
@@ -3320,6 +3334,49 @@ api = "0.2"
 				})
 			})
 		})
+
+		when("there are system buildpacks", func() {
+			assertSystemEquals := func(content string) {
+				t.Helper()
+
+				systemLayer, err := builderImageWithSystem.FindLayerWithPath("/cnb/system.toml")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, systemLayer, "/cnb/system.toml", h.ContentEquals(content))
+			}
+
+			it("uses the system buildpacks defined in the builder", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:   "some/app",
+					Builder: builderImageWithSystemName,
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), builderImageWithSystem.Name())
+				h.AssertTrue(t, len(fakeLifecycle.Opts.Builder.System().Pre.Buildpacks) == 1)
+				h.AssertTrue(t, len(fakeLifecycle.Opts.Builder.System().Post.Buildpacks) == 1)
+				assertSystemEquals(`[system]
+  [system.pre]
+
+    [[system.pre.buildpacks]]
+      id = "buildpack.1.id"
+      version = "buildpack.1.version"
+  [system.post]
+
+    [[system.post.buildpacks]]
+      id = "buildpack.2.id"
+      version = "buildpack.2.version"
+`)
+			})
+
+			it("removes system buildpacks from builder when --disable-system-buildpacks", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:                   "some/app",
+					Builder:                 builderImageWithSystemName,
+					DisableSystemBuildpacks: true,
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), builderImageWithSystem.Name())
+				h.AssertTrue(t, len(fakeLifecycle.Opts.Builder.System().Pre.Buildpacks) == 0)
+				h.AssertTrue(t, len(fakeLifecycle.Opts.Builder.System().Post.Buildpacks) == 0)
+			})
+		})
 	})
 }
 
@@ -3427,7 +3484,7 @@ func newWindowsImage(name, topLayerSha string, identifier imgutil.Identifier) *f
 	return result
 }
 
-func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackID, runImageName, lifecycleVersion string, osImageCreator ifakes.FakeImageCreator) *fakes.Image {
+func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackID, runImageName, lifecycleVersion string, osImageCreator ifakes.FakeImageCreator, withSystem bool) *fakes.Image {
 	var supportedBuildpackAPIs builder.APISet
 	for _, v := range api.Buildpack.Supported {
 		supportedBuildpackAPIs = append(supportedBuildpackAPIs, v)
@@ -3436,6 +3493,29 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 	for _, v := range api.Platform.Supported {
 		supportedPlatformAPIs = append(supportedPlatformAPIs, v)
 	}
+
+	system := dist.System{}
+	if withSystem {
+		system.Pre.Buildpacks = append(system.Pre.Buildpacks, []dist.ModuleRef{
+			{
+				Optional: false,
+				ModuleInfo: dist.ModuleInfo{
+					ID:      "buildpack.1.id",
+					Version: "buildpack.1.version",
+				},
+			},
+		}...)
+		system.Post.Buildpacks = append(system.Post.Buildpacks, []dist.ModuleRef{
+			{
+				Optional: false,
+				ModuleInfo: dist.ModuleInfo{
+					ID:      "buildpack.2.id",
+					Version: "buildpack.2.version",
+				},
+			},
+		}...)
+	}
+
 	return ifakes.NewFakeBuilderImage(t,
 		tmpDir,
 		builderName,
@@ -3542,6 +3622,7 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 				},
 			}},
 		}},
+		system,
 		osImageCreator,
 	)
 }

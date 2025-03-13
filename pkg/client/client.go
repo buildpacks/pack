@@ -132,23 +132,29 @@ type Client struct {
 }
 
 func (c *Client) processSystem(system dist.System, buildpacks []buildpack.BuildModule, disableSystem bool) (dist.System, error) {
-	resolved := dist.System{}
-	if !disableSystem {
-		for _, bp := range buildpacks {
-			bpInfo := bp.Descriptor().Info()
-			for _, preBp := range system.Pre.Buildpacks {
-				if bpInfo.ID == preBp.ID && bpInfo.Version == preBp.Version {
-					resolved.Pre.Buildpacks = append(resolved.Pre.Buildpacks, preBp)
-					break
-				}
-			}
+	if disableSystem {
+		return dist.System{}, nil
+	}
 
-			// Post buildpacks
-			for _, postBp := range system.Post.Buildpacks {
-				if bpInfo.ID == postBp.ID && bpInfo.Version == postBp.Version {
-					resolved.Post.Buildpacks = append(resolved.Post.Buildpacks, postBp)
-					break
-				}
+	if len(buildpacks) == 0 {
+		return system, nil
+	}
+
+	resolved := dist.System{}
+	for _, bp := range buildpacks {
+		bpInfo := bp.Descriptor().Info()
+		for _, preBp := range system.Pre.Buildpacks {
+			if bpInfo.ID == preBp.ID && bpInfo.Version == preBp.Version {
+				resolved.Pre.Buildpacks = append(resolved.Pre.Buildpacks, preBp)
+				break
+			}
+		}
+
+		// Post buildpacks
+		for _, postBp := range system.Post.Buildpacks {
+			if bpInfo.ID == postBp.ID && bpInfo.Version == postBp.Version {
+				resolved.Post.Buildpacks = append(resolved.Post.Buildpacks, postBp)
+				break
 			}
 		}
 	}
