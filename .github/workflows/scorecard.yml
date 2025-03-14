@@ -1,0 +1,59 @@
+name: OpenSSF Scorecard
+on:
+  # For Branch-Protection check. Only the default branch is supported.
+  branch_protection_rule:
+  # To guarantee Maintained check is occasionally updated.
+  schedule:
+    # Weekly on Sundays
+    - cron: '30 1 * * 0'
+  push:
+    branches: [ main ]
+
+# Declare default permissions as read only.
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed to upload the results to code-scanning dashboard.
+      security-events: write
+      # Needed to publish results and get a badge.
+      id-token: write
+      # Needed for the Branch-Protection check.
+      contents: read
+      # Needed for the CI-Tests, CII-Best-Practices, and Maintained checks.
+      actions: read
+
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+        with:
+          persist-credentials: false
+
+      - name: "Run analysis"
+        uses: ossf/scorecard-action@08b4669551908b1024bb425080c797723083c031 # v2.2.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # Publish the results for later use and to get a badge.
+          # For more details, see https://github.com/ossf/scorecard-action#publishing-results.
+          publish_results: true
+          # A read-only PAT token for the Branch-Protection check.
+          # To create the PAT, follow the steps in https://github.com/ossf/scorecard-action#authentication-with-pat.
+          # repo_token: ${{ secrets.SCORECARD_READ_TOKEN }}
+
+      # Upload the results as artifacts.
+      - name: "Upload artifact"
+        uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
+        with:
+          name: SARIF file
+          path: results.sarif
+          retention-days: 5
+
+      # Upload the results to GitHub's code scanning dashboard.
+      - name: "Upload to code-scanning"
+        uses: github/codeql-action/upload-sarif@cdcdbb579706841c47f7063dda365e292e5cad7a # v2.2.7
+        with:
+          sarif_file: results.sarif
