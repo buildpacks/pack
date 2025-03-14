@@ -146,6 +146,4 @@ require (
 
 replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.3.2
 
-go 1.23.0
-
-toolchain go1.23.3
+go 1.23.3
