@@ -241,6 +241,7 @@ const (
 	PlatformOption
 	MultiPlatformBuildersAndBuildPackages
 	StackWarning
+	WindowsSupport
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -289,6 +290,7 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	StackWarning: func(i *PackInvoker) bool {
 		return i.atLeast("v0.37.0")
 	},
+	WindowsSupport: func(i *PackInvoker) bool { return i.lessThan("v0.36.4") },
 }
 
 func (i *PackInvoker) SupportsFeature(f Feature) bool {
@@ -308,6 +310,13 @@ func (i *PackInvoker) laterThan(version string) bool {
 	providedVersion := semver.MustParse(version)
 	ver := i.semanticVersion()
 	return ver.Compare(providedVersion) > 0 || ver.Equal(semver.MustParse("0.0.0"))
+}
+
+// laterThan returns true if pack version is older than the provided version
+func (i *PackInvoker) lessThan(version string) bool {
+	providedVersion := semver.MustParse(version)
+	ver := i.semanticVersion()
+	return ver.Compare(providedVersion) <= 0 || ver.Equal(semver.MustParse("0.0.0"))
 }
 
 // atLeast returns true if pack version is the same or older than the provided version
