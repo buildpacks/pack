@@ -96,6 +96,18 @@ func testConfigPullPolicyCommand(t *testing.T, when spec.G, it spec.S) {
 					assert.Contains(outBuf.String(), "if-not-present")
 				})
 			})
+
+			when("policy set to try-always in config", func() {
+				it("lists try-always as pull policy", func() {
+					cfg.PullPolicy = "try-always"
+					command = commands.ConfigPullPolicy(logger, cfg, configFile)
+					command.SetArgs([]string{})
+
+					h.AssertNil(t, command.Execute())
+
+					assert.Contains(outBuf.String(), "try-always")
+				})
+			})
 		})
 		when("set", func() {
 			when("policy provided is the same as configured pull policy", func() {
