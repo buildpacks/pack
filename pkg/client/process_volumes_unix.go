@@ -1,3 +1,5 @@
+//go:build unix && !linux
+
 package client
 
 import (
