@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1741953638422,
+  "lastUpdate": 1742588989681,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -9772,6 +9772,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 57636478077,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8aca53e255e9df1e38d01aab7140cff567bf59ed",
+          "message": "Merge pull request #2358 from buildpacks/help-text\n\nClarify help text for append-image-name-suffix",
+          "timestamp": "2025-03-21T15:27:44-05:00",
+          "tree_id": "5642ba4ace540543557ad8a9372775025d6b3c41",
+          "url": "https://github.com/buildpacks/pack/commit/8aca53e255e9df1e38d01aab7140cff567bf59ed"
+        },
+        "date": 1742588988663,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7008421694,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2608549232,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 66205882374,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
