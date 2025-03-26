@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1742958209574,
+  "lastUpdate": 1743033595034,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -9982,6 +9982,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 67718283585,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a1edf2e9e3837c2e9eeca019b97c28896b40f778",
+          "message": "Merge pull request #2357 from gogolok/support_freebsd_build_phase\n\nSupport FreeBSD build phase",
+          "timestamp": "2025-03-26T18:57:39-05:00",
+          "tree_id": "bf139739bf2382e24cbc83c82627925d1f29e607",
+          "url": "https://github.com/buildpacks/pack/commit/a1edf2e9e3837c2e9eeca019b97c28896b40f778"
+        },
+        "date": 1743033593975,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7118599225,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2669049907,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 64835072572,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
