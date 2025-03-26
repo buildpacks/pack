@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1742956194707,
+  "lastUpdate": 1742956253597,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -9898,6 +9898,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 62621464200,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e25934f8deb3ae950d76d2e35477af983de19044",
+          "message": "Merge pull request #2359 from buildpacks/dependabot/go_modules/github.com/golang-jwt/jwt/v4-4.5.2\n\nbuild(deps): bump github.com/golang-jwt/jwt/v4 from 4.5.1 to 4.5.2",
+          "timestamp": "2025-03-25T21:28:11-05:00",
+          "tree_id": "009c3bb378cb6fdbc74a377bd4692a99a3b71a16",
+          "url": "https://github.com/buildpacks/pack/commit/e25934f8deb3ae950d76d2e35477af983de19044"
+        },
+        "date": 1742956252364,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6374185322,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2153841518,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 71378358723,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
