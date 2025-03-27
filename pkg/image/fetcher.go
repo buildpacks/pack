@@ -63,10 +63,11 @@ type Fetcher struct {
 }
 
 type FetchOptions struct {
-	Daemon       bool
-	Target       *dist.Target
-	PullPolicy   PullPolicy
-	LayoutOption LayoutOption
+	Daemon             bool
+	Target             *dist.Target
+	PullPolicy         PullPolicy
+	LayoutOption       LayoutOption
+	InsecureRegistries []string
 }
 
 func NewFetcher(logger logging.Logger, docker DockerClient, opts ...FetcherOption) *Fetcher {
@@ -96,7 +97,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 	}
 
 	if !options.Daemon {
-		return f.fetchRemoteImage(name, options.Target)
+		return f.fetchRemoteImage(name, options.Target, options.InsecureRegistries)
 	}
 
 	switch options.PullPolicy {
@@ -183,17 +184,24 @@ func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 	return image, nil
 }
 
-func (f *Fetcher) fetchRemoteImage(name string, target *dist.Target) (imgutil.Image, error) {
+func (f *Fetcher) fetchRemoteImage(name string, target *dist.Target, insecureRegistries []string) (imgutil.Image, error) {
 	var (
-		image imgutil.Image
-		err   error
+		image   imgutil.Image
+		options []imgutil.ImageOption
+		err     error
 	)
 
+	if len(insecureRegistries) > 0 {
+		for _, registry := range insecureRegistries {
+			options = append(options, remote.WithRegistrySetting(registry, true))
+		}
+	}
+
 	if target == nil {
-		image, err = remote.NewImage(name, f.keychain, remote.FromBaseImage(name))
+		image, err = remote.NewImage(name, f.keychain, append(options, remote.FromBaseImage(name))...)
 	} else {
 		platform := imgutil.Platform{OS: target.OS, Architecture: target.Arch, Variant: target.ArchVariant}
-		image, err = remote.NewImage(name, f.keychain, remote.FromBaseImage(name), remote.WithDefaultPlatform(platform))
+		image, err = remote.NewImage(name, f.keychain, append(append(options, remote.FromBaseImage(name)), remote.WithDefaultPlatform(platform))...)
 	}
 
 	if err != nil {
