@@ -1321,7 +1321,9 @@ func testAcceptance(
 					})
 
 					when("daemon", func() {
+
 						it("uses the 5 phases", func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.WindowsSupport), "Windows support was removed after before 0.37.0")
 							origLifecycle := lifecycle.Image()
 
 							output := pack.RunSuccessfully(
@@ -1340,6 +1342,7 @@ func testAcceptance(
 
 					when("--publish", func() {
 						it("uses the 5 phases", func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.WindowsSupport), "Windows support was removed after before 0.37.0")
 							origLifecycle := lifecycle.Image()
 
 							buildArgs := []string{
@@ -1366,6 +1369,7 @@ func testAcceptance(
 						var additionalRepoName string
 
 						it.Before(func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.WindowsSupport), "Windows support was removed after before 0.37.0")
 							additionalRepoName = fmt.Sprintf("%s_additional", repoName)
 						})
 						it.After(func() {
@@ -1392,6 +1396,7 @@ func testAcceptance(
 					})
 
 					it("creates a runnable, rebuildable image on daemon from app dir", func() {
+						h.SkipIf(t, !pack.SupportsFeature(invoke.WindowsSupport), "Windows support was removed after before 0.37.0")
 						appPath := filepath.Join("testdata", "mock_app")
 
 						output := pack.RunSuccessfully(
@@ -1534,6 +1539,7 @@ func testAcceptance(
 
 					when("--no-color", func() {
 						it("doesn't have color", func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.WindowsSupport), "Windows support was removed after before 0.37.0")
 							appPath := filepath.Join("testdata", "mock_app")
 
 							// --no-color is set as a default option in our tests, and doesn't need to be explicitly provided
@@ -1546,6 +1552,7 @@ func testAcceptance(
 
 					when("--quiet", func() {
 						it("only logs app name and sha", func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.WindowsSupport), "Windows support was removed after before 0.37.0")
 							appPath := filepath.Join("testdata", "mock_app")
 
 							pack.SetVerbose(false)
@@ -1725,6 +1732,7 @@ func testAcceptance(
 
 					when("--default-process", func() {
 						it("sets the default process from those in the process list", func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.WindowsSupport), "Windows support was removed after before 0.37.0")
 							pack.RunSuccessfully(
 								"build", repoName,
 								"--default-process", "hello",
@@ -1867,6 +1875,10 @@ func testAcceptance(
 								tmpDir           string
 								packageImageName string
 							)
+
+							it.Before(func() {
+								h.SkipIf(t, !pack.SupportsFeature(invoke.WindowsSupport), "Windows support was removed after before 0.37.0")
+							})
 
 							it.After(func() {
 								imageManager.CleanupImages(packageImageName)
