@@ -5,7 +5,7 @@ linters:
   disable-all: true
   enable:
     - bodyclose
-    - exportloopref
+
     - dogsled
     - gocritic
     - goimports
