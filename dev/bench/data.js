@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1743033595034,
+  "lastUpdate": 1744640135245,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10024,6 +10024,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 64835072572,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aad755c23ebb96125664f997240643004557ff0b",
+          "message": "Merge pull request #2364 from AidanDelaney/feat/bump-go-1.24\n\nBump to go 1.24",
+          "timestamp": "2025-04-14T09:10:41-05:00",
+          "tree_id": "1f5d6acd6eb683d94b016acab95a16cc6e347425",
+          "url": "https://github.com/buildpacks/pack/commit/aad755c23ebb96125664f997240643004557ff0b"
+        },
+        "date": 1744640134028,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6627667076,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2273712568,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 71762457438,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
