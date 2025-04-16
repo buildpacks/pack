@@ -97,6 +97,8 @@ github.com/buildpacks/lifecycle v0.20.8-0.20250408005930-3d23976f2daf h1:qb/P3ib
 github.com/buildpacks/lifecycle v0.20.8-0.20250408005930-3d23976f2daf/go.mod h1:dAtmEGeTC4GpOtr98PTesa8W9NkPjzMwwn+PUFr8hFY=
 github.com/buildpacks/lifecycle v0.20.8-0.20250410020811-f923ae5e075d h1:KDuk1GHk/k26nxQkxpqWi3ij8Rs9x62qVODvXtqtkc0=
 github.com/buildpacks/lifecycle v0.20.8-0.20250410020811-f923ae5e075d/go.mod h1:dAtmEGeTC4GpOtr98PTesa8W9NkPjzMwwn+PUFr8hFY=
+github.com/buildpacks/lifecycle v0.20.8-0.20250416200845-55c8b988a5ef h1:MTfEugIV9VVL7pAvLPJeDLXCEKzb8lk4swt/18WZsrg=
+github.com/buildpacks/lifecycle v0.20.8-0.20250416200845-55c8b988a5ef/go.mod h1:dAtmEGeTC4GpOtr98PTesa8W9NkPjzMwwn+PUFr8hFY=
 github.com/cenkalti/backoff/v4 v4.2.1 h1:y4OZtCnogmCPw98Zjyt5a6+QwPLGkiQsYW5oUqylYbM=
 github.com/cenkalti/backoff/v4 v4.2.1/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
