@@ -7,7 +7,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20240605145725-186f89b2d168
-	github.com/buildpacks/lifecycle v0.20.8-0.20250416200845-55c8b988a5ef
+	github.com/buildpacks/lifecycle v0.20.8-0.20250418000645-4f7f3318164f
 	github.com/docker/cli v27.5.1+incompatible
 	github.com/docker/docker v27.5.1+incompatible
 	github.com/docker/go-connections v0.5.0
