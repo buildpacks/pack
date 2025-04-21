@@ -1179,7 +1179,7 @@ func systemFileContents(system dist.System) (string, error) {
 	buf := &bytes.Buffer{}
 	tomlData := systemTOML{System: system}
 	if err := toml.NewEncoder(buf).Encode(tomlData); err != nil {
-		return "", errors.Wrapf(err, "failed to system.toml")
+		return "", errors.Wrapf(err, "failed to marshal system.toml")
 	}
 	return buf.String(), nil
 }
