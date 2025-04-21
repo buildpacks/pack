@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1744654843843,
+  "lastUpdate": 1745255083326,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10108,6 +10108,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 60786586305,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4395547d0aaa4670fd3566efbbbd81fd3800ec89",
+          "message": "Merge pull request #2354 from yashisrani/upgrade-go1.23.3\n\nUpgrade Go version to 1.24 across project files",
+          "timestamp": "2025-04-21T12:02:42-05:00",
+          "tree_id": "4cf81c5972c37dfe1b0051d1764826ab3050b230",
+          "url": "https://github.com/buildpacks/pack/commit/4395547d0aaa4670fd3566efbbbd81fd3800ec89"
+        },
+        "date": 1745255082244,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7013181320,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2638961436,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 66569036964,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
