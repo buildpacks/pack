@@ -27,11 +27,11 @@ type ImageOrURI struct {
 }
 
 func (c *ImageOrURI) DisplayString() string {
-	if c.BuildpackURI.URI != "" {
-		return c.BuildpackURI.URI
+	if c.URI != "" {
+		return c.URI
 	}
 
-	return c.ImageRef.ImageName
+	return c.ImageName
 }
 
 type Platform struct {

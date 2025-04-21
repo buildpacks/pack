@@ -39,8 +39,8 @@ type ModuleConfig struct {
 }
 
 func (c *ModuleConfig) DisplayString() string {
-	if c.ModuleInfo.FullName() != "" {
-		return c.ModuleInfo.FullName()
+	if c.FullName() != "" {
+		return c.FullName()
 	}
 
 	return c.ImageOrURI.DisplayString()
