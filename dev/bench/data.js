@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745277259657,
+  "lastUpdate": 1745365456582,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10192,6 +10192,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 61854917978,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4f12b8398b0460afc354c974e3a3def2a18c6008",
+          "message": "Updating default lifecycle version to 0.20.8 (#2356)\n\n* Updating lifecycle to version 0.20.8\n* Removing build workflow for WCOW (Windows Container on Windows)\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2025-04-22T18:41:52-05:00",
+          "tree_id": "0e8aad07a7a5175e1fcc66bed4d019a7e27532d9",
+          "url": "https://github.com/buildpacks/pack/commit/4f12b8398b0460afc354c974e3a3def2a18c6008"
+        },
+        "date": 1745365455897,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4340033335,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1192987983,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 64046343521,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
