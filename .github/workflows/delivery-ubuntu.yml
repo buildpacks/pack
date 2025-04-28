@@ -20,7 +20,7 @@ jobs:
       strategy:
         fail-fast: false
         matrix:
-          target: [bionic, focal, jammy, noble]
+          target: [bionic, focal, jammy, noble, oracular, plucky]
       runs-on: ubuntu-20.04
       steps:
           - name: Checkout code
@@ -68,44 +68,7 @@ jobs:
             ###
 
           - name: Deliver bionic
-            if: matrix.target == 'bionic'
-            uses: docker://ubuntu:bionic
-            with:
-              entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
-            env:
-              DEBIAN_FRONTEND: "noninteractive"
-              GO_DEP_PACKAGE_NAME: golang
-              GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-              GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
-              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
-
-          - name: Deliver focal
-            if: matrix.target == 'focal'
-            uses: docker://ubuntu:focal
-            with:
-              entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
-            env:
-              DEBIAN_FRONTEND: "noninteractive"
-              GO_DEP_PACKAGE_NAME: golang
-              GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-              GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
-              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
-
-          - name: Deliver jammy
-            if: matrix.target == 'jammy'
-            uses: docker://ubuntu:jammy
-            with:
-              entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
-            env:
-              DEBIAN_FRONTEND: "noninteractive"
-              GO_DEP_PACKAGE_NAME: golang
-              GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-              GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
-              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
-
-          - name: Deliver noble
-            if: matrix.target == 'noble'
-            uses: docker://ubuntu:noble
+            uses: docker://ubuntu:${{ matrix.target }}
             with:
               entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
             env:
