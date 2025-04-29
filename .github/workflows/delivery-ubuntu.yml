@@ -67,7 +67,7 @@ jobs:
             # following steps per variant.
             ###
 
-          - name: Deliver bionic
+          - name: Deliver {{matrix.target}}
             uses: docker://ubuntu:${{ matrix.target }}
             with:
               entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
