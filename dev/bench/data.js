@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1745842968419,
+  "lastUpdate": 1746016721548,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10276,6 +10276,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 56737472220,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "aidan.delaney@gmail.com",
+            "name": "Aidan Delaney",
+            "username": "AidanDelaney"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "858c5d6ea5aa96a6b0ed270057e0922d4569ed00",
+          "message": "Release on the latest ubuntu (#2378)\n\n* Release on the latest ubuntu (24.10 and 25.04 ) \n\nSigned-off-by: Aidan Delaney <aidan.delaney@gmail.com>",
+          "timestamp": "2025-04-30T12:36:49Z",
+          "tree_id": "be4f2a32288d1aa518d8460d3a201bc3349f38c6",
+          "url": "https://github.com/buildpacks/pack/commit/858c5d6ea5aa96a6b0ed270057e0922d4569ed00"
+        },
+        "date": 1746016720366,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6779588720,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2250232590,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 63591507512,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
