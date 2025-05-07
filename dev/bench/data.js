@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1746574288529,
+  "lastUpdate": 1746613417500,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10402,6 +10402,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 65604790038,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bace39782863c1e66b60eaec65eeef0b9335ca83",
+          "message": "build(deps): bump the go-dependencies group with 6 updates (#2380)\n\nBumps the go-dependencies group with 6 updates:\n\n| Package | From | To |\n| --- | --- | --- |\n| [golang.org/x/crypto](https://github.com/golang/crypto) | `0.37.0` | `0.38.0` |\n| [golang.org/x/oauth2](https://github.com/golang/oauth2) | `0.29.0` | `0.30.0` |\n| [golang.org/x/sync](https://github.com/golang/sync) | `0.13.0` | `0.14.0` |\n| [golang.org/x/sys](https://github.com/golang/sys) | `0.32.0` | `0.33.0` |\n| [golang.org/x/term](https://github.com/golang/term) | `0.31.0` | `0.32.0` |\n| [golang.org/x/text](https://github.com/golang/text) | `0.24.0` | `0.25.0` |\n\n\nUpdates `golang.org/x/crypto` from 0.37.0 to 0.38.0\n- [Commits](https://github.com/golang/crypto/compare/v0.37.0...v0.38.0)\n\nUpdates `golang.org/x/oauth2` from 0.29.0 to 0.30.0\n- [Commits](https://github.com/golang/oauth2/compare/v0.29.0...v0.30.0)\n\nUpdates `golang.org/x/sync` from 0.13.0 to 0.14.0\n- [Commits](https://github.com/golang/sync/compare/v0.13.0...v0.14.0)\n\nUpdates `golang.org/x/sys` from 0.32.0 to 0.33.0\n- [Commits](https://github.com/golang/sys/compare/v0.32.0...v0.33.0)\n\nUpdates `golang.org/x/term` from 0.31.0 to 0.32.0\n- [Commits](https://github.com/golang/term/compare/v0.31.0...v0.32.0)\n\nUpdates `golang.org/x/text` from 0.24.0 to 0.25.0\n- [Release notes](https://github.com/golang/text/releases)\n- [Commits](https://github.com/golang/text/compare/v0.24.0...v0.25.0)\n\n---\nupdated-dependencies:\n- dependency-name: golang.org/x/crypto\n  dependency-version: 0.38.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/oauth2\n  dependency-version: 0.30.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/sync\n  dependency-version: 0.14.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/sys\n  dependency-version: 0.33.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/term\n  dependency-version: 0.32.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/text\n  dependency-version: 0.25.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2025-05-06T18:28:54-05:00",
+          "tree_id": "842a8b23d6c2cb79eb63a9582f4142931a504bf2",
+          "url": "https://github.com/buildpacks/pack/commit/bace39782863c1e66b60eaec65eeef0b9335ca83"
+        },
+        "date": 1746613416724,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4430219483,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1172997280,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 59643017072,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
