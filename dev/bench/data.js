@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1746613417500,
+  "lastUpdate": 1746804812129,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10444,6 +10444,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 59643017072,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "cmoulliard@redhat.com",
+            "name": "Charles Moulliard",
+            "username": "cmoulliard"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8f3b1d1e6ba7b5616b7cab61602a5ace75bcd5b0",
+          "message": "Add UBI8 builder as suggested  (#2383)\n\nSigned-off-by: cmoulliard <cmoulliard@redhat.com>",
+          "timestamp": "2025-05-09T10:30:57-05:00",
+          "tree_id": "ba953cec2c7203ca742e8f626d1babdcce7dbd58",
+          "url": "https://github.com/buildpacks/pack/commit/8f3b1d1e6ba7b5616b7cab61602a5ace75bcd5b0"
+        },
+        "date": 1746804810836,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7438137637,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2132132550,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 64862461737,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
