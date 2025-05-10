@@ -982,6 +982,31 @@ builder = "my-builder"
 				h.AssertError(t, err, "Exporting to OCI layout is currently experimental.")
 			})
 		})
+
+		when("--insecure-registry is provided", func() {
+			it("sets one insecure registry", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithInsecureRegistries([]string{
+						"foo.bar",
+					})).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--insecure-registry", "foo.bar"})
+				h.AssertNil(t, command.Execute())
+			})
+
+			it("sets more than one insecure registry", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithInsecureRegistries([]string{
+						"foo.bar",
+						"foo.com",
+					})).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--insecure-registry", "foo.bar", "--insecure-registry", "foo.com"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
 	})
 
 	when("export to OCI layout is expected", func() {
@@ -1239,6 +1264,18 @@ func EqBuildOptionsWithLayoutConfig(image, previousImage string, sparse bool, la
 				return result && o.LayoutConfig.Sparse == sparse && o.LayoutConfig.LayoutRepoDir == layoutDir
 			}
 			return false
+		},
+	}
+}
+
+func EqBuildOptionsWithInsecureRegistries(insecureRegistries []string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Insercure Registries=%s", insecureRegistries),
+		equals: func(o client.BuildOptions) bool {
+			if len(o.InsecureRegistries) != len(insecureRegistries) {
+				return false
+			}
+			return reflect.DeepEqual(o.InsecureRegistries, insecureRegistries)
 		},
 	}
 }
