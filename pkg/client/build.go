@@ -225,6 +225,9 @@ type BuildOptions struct {
 
 	// Configuration to export to OCI layout format
 	LayoutConfig *LayoutConfig
+
+	// Enable user namespace isolation for the build containers
+	EnableUsernsHost bool
 }
 
 func (b *BuildOptions) Layout() bool {
@@ -647,6 +650,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		CreationTime:             opts.CreationTime,
 		Layout:                   opts.Layout(),
 		Keychain:                 c.keychain,
+		EnableUsernsHost:         opts.EnableUsernsHost,
 	}
 
 	switch {
