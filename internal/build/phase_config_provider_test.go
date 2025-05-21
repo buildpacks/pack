@@ -68,8 +68,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				expectedBuilderImage := ifakes.NewImage("some-builder-name", "", nil)
 				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithImage(expectedBuilderImage))
 				h.AssertNil(t, err)
-				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
-				lifecycle.opts.EnableUsernsHost = true
+				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder), fakes.WithEnableUsernsHost())
 				expectedPhaseName := "some-name"
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(expectedPhaseName, lifecycle)
