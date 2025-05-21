@@ -59,8 +59,23 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			h.AssertSliceContainsMatch(t, phaseConfigProvider.HostConfig().Binds, "pack-app-.*:/workspace")
 
 			h.AssertEq(t, phaseConfigProvider.HostConfig().Isolation, container.IsolationEmpty)
-			h.AssertEq(t, phaseConfigProvider.HostConfig().UsernsMode, container.UsernsMode("host"))
+			h.AssertEq(t, phaseConfigProvider.HostConfig().UsernsMode, container.UsernsMode(""))
 			h.AssertSliceContains(t, phaseConfigProvider.HostConfig().SecurityOpt, "no-new-privileges=true")
+		})
+
+		when("userns-host is enabled", func() {
+			it("sets user namespace mode to host", func() {
+				expectedBuilderImage := ifakes.NewImage("some-builder-name", "", nil)
+				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithImage(expectedBuilderImage))
+				h.AssertNil(t, err)
+				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
+				lifecycle.opts.EnableUsernsHost = true
+				expectedPhaseName := "some-name"
+
+				phaseConfigProvider := build.NewPhaseConfigProvider(expectedPhaseName, lifecycle)
+
+				h.AssertEq(t, phaseConfigProvider.HostConfig().UsernsMode, container.UsernsMode("host"))
+			})
 		})
 
 		when("building for Windows", func() {
