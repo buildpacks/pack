@@ -667,7 +667,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			var lifecycleImageName = "buildpacksio/lifecycle:latest"
 
 			setupFakeLifecycleImage := func() *h.FakeWithUnderlyingImage {
-
 				// Write the tar content to a file in tmpDir
 				lifecycleLayerPath := filepath.Join("testdata", "lifecycle", "lifecycle.tar")
 				lifecycleTag, err := name.NewTag(lifecycleImageName)
