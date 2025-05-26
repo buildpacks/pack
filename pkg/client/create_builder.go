@@ -503,13 +503,22 @@ func (c *Client) uriFromLifecycleImage(ctx context.Context, basePath string, con
 
 	lifecycleImage, err = c.imageFetcher.Fetch(ctx, imageName, image.FetchOptions{Daemon: false})
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	lifecyclePath := filepath.Join(basePath, "lifecycle.tar")
-	layers, err := lifecycleImage.UnderlyingImage().Layers()
+	underlyingImage := lifecycleImage.UnderlyingImage()
+	if underlyingImage == nil {
+		return "", errors.New("lifecycle image has no underlying image")
+	}
+
+	layers, err := underlyingImage.Layers()
 	if err != nil {
 		return "", err
+	}
+
+	if len(layers) == 0 {
+		return "", errors.New("lifecycle image has no layers")
 	}
 
 	// Assume the last layer has the lifecycle
