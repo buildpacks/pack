@@ -64,6 +64,9 @@ type CreateBuilderOptions struct {
 
 	// Target platforms to build builder images for
 	Targets []dist.Target
+
+	// Temporary directory to use for downloading lifecycle images.
+	TempDirectory string
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.
@@ -260,7 +263,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 		)
 	}
 
-	lifecycle, err := c.fetchLifecycle(ctx, opts.Config.Lifecycle, opts.RelativeBaseDir, os, architecture)
+	lifecycle, err := c.fetchLifecycle(ctx, opts, os, architecture)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetch lifecycle")
 	}
@@ -271,7 +274,8 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	return bldr, nil
 }
 
-func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleConfig, relativeBaseDir, os string, architecture string) (builder.Lifecycle, error) {
+func (c *Client) fetchLifecycle(ctx context.Context, opts CreateBuilderOptions, os string, architecture string) (builder.Lifecycle, error) {
+	config := opts.Config.Lifecycle
 	if config.Version != "" && config.URI != "" {
 		return nil, errors.Errorf(
 			"%s can only declare %s or %s, not both",
@@ -283,7 +287,7 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 	var err error
 	switch {
 	case buildpack.HasDockerLocator(config.URI):
-		uri, err = c.uriFromLifecycleImage(ctx, relativeBaseDir, config)
+		uri, err = c.uriFromLifecycleImage(ctx, opts.TempDirectory, config)
 		if err != nil {
 			return nil, errors.Wrap(err, "Could not parse uri from lifecycle image")
 		}
@@ -295,7 +299,7 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 
 		uri = c.uriFromLifecycleVersion(*v, os, architecture)
 	case config.URI != "":
-		uri, err = paths.FilePathToURI(config.URI, relativeBaseDir)
+		uri, err = paths.FilePathToURI(config.URI, opts.RelativeBaseDir)
 		if err != nil {
 			return nil, err
 		}

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -102,6 +103,20 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				logger.Warnf("--append-image-name-suffix will be ignored, use combined with --publish")
 			}
 
+			// Create temporary directory for lifecycle downloads when using Docker images
+			var tempDir string
+			if hasDockerLifecycle(builderConfig) {
+				tempDir, err = os.MkdirTemp("", "pack-builder-*")
+				if err != nil {
+					return errors.Wrap(err, "creating temporary directory")
+				}
+				defer func() {
+					if cleanupErr := os.RemoveAll(tempDir); cleanupErr != nil {
+						logger.Debugf("Failed to clean up temporary directory %s: %v", tempDir, cleanupErr)
+					}
+				}()
+			}
+
 			imageName := args[0]
 			if err := pack.CreateBuilder(cmd.Context(), client.CreateBuilderOptions{
 				RelativeBaseDir:       relativeBaseDir,
@@ -115,6 +130,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				Flatten:               toFlatten,
 				Labels:                flags.Label,
 				Targets:               multiArchCfg.Targets(),
+				TempDirectory:         tempDir,
 			}); err != nil {
 				return err
 			}
@@ -147,6 +163,10 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 
 func hasExtensions(builderConfig builder.Config) bool {
 	return len(builderConfig.Extensions) > 0 || len(builderConfig.OrderExtensions) > 0
+}
+
+func hasDockerLifecycle(builderConfig builder.Config) bool {
+	return buildpack.HasDockerLocator(builderConfig.Lifecycle.URI)
 }
 
 func validateCreateFlags(flags *BuilderCreateFlags, cfg config.Config) error {
