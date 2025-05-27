@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1746804812129,
+  "lastUpdate": 1748309518821,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10486,6 +10486,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 64862461737,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rashadsirajudeen@gmail.com",
+            "name": "Rashad Sirajudeen",
+            "username": "rashadism"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e4460f02593b11052c43903525c5c4246a771b2a",
+          "message": "Support docker uri for lifecycle (#2112)\n\nThe lifecycle image can be specified as a Docker URI  in the `builder.toml` when creating a builder\n\n---------\n\nSigned-off-by: Rashad Sirajudeen <rashad.20@cse.mrt.ac.lk>\nSigned-off-by: Rashad Sirajudeen <rashadsirajudeen@gmail.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2025-05-27T01:30:03Z",
+          "tree_id": "f103039cecd3d3a94837cd2d5608a7223c0dfae1",
+          "url": "https://github.com/buildpacks/pack/commit/e4460f02593b11052c43903525c5c4246a771b2a"
+        },
+        "date": 1748309517472,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6306417570,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2215059110,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 65499752161,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
