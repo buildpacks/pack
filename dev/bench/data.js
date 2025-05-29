@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1748309518821,
+  "lastUpdate": 1748561489066,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10528,6 +10528,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 65499752161,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tibebe.demissie@matillion.com",
+            "name": "Tibebe Demissie",
+            "username": "tib-source"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a4d8f12fd372641b80e7563d813ea7d4f58bb263",
+          "message": "Add support for linux-arm64 in brew (#2388)\n\nSigned-off-by: Tibebe Demissie <tib.demissie@gmail.com>",
+          "timestamp": "2025-05-29T18:29:27-05:00",
+          "tree_id": "f7eb97530df4fc8554343b6d36cb362c1be0d680",
+          "url": "https://github.com/buildpacks/pack/commit/a4d8f12fd372641b80e7563d813ea7d4f58bb263"
+        },
+        "date": 1748561487821,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6864839048,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1990782827,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 72165485771,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
