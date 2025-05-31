@@ -353,9 +353,9 @@ func (b assetManagerBuilder) buildPack(compileVersion string) string {
 	b.assert.Nil(err)
 
 	cmd := exec.Command("go", "build",
+		// XXX the version setter is wrong here, there is no cmd.Version
 		"-ldflags", fmt.Sprintf("-X 'github.com/buildpacks/pack/cmd.Version=%s'", compileVersion),
 		"-o", packPath,
-		"./cmd/pack",
 	)
 	if filepath.Base(cwd) == "acceptance" {
 		cmd.Dir = filepath.Dir(cwd)
