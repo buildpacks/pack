@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1748561489066,
+  "lastUpdate": 1748710110679,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10570,6 +10570,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 72165485771,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8c7e57ae18ce7068dbbc6256d840b12c81c82424",
+          "message": "  Fix default userns=host behavior to be opt-in (#2386)\n\n* Fix default userns=host behavior to be opt-in\n\n  The flag `--userns-host` is now required to enable the user namespace\n  isolation for build containers. By default, this is disabled, which\n  resolves the incompatibility with Docker plugins that don't support\n  \"userns as host\" functionality.\n\n  This reverts the default behavior from pack 0.35.0 where user namespace\n  isolation was enabled by default, while still allowing users who want\n  this feature to opt in.\n\n---------\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2025-05-31T11:46:45-05:00",
+          "tree_id": "891f80bc8c78c0449b39179c992207408f570d63",
+          "url": "https://github.com/buildpacks/pack/commit/8c7e57ae18ce7068dbbc6256d840b12c81c82424"
+        },
+        "date": 1748710109997,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3236103932,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 849993596,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 64664658199,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
