@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1748710110679,
+  "lastUpdate": 1748735201966,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10612,6 +10612,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 64664658199,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "git@s-mc.io",
+            "name": "Sam",
+            "username": "pigeonhands"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "baa3edaef1ccba0f1ff61d806f898f338d81090b",
+          "message": "Do not select tagert from os if arch is specified (#2385)\n\nThe current daemonTarget function in pack has a flawed target selection logic that prevents proper multi-architecture builds when not publishing\n\nSigned-off-by: Sam M <git@s-mc.io>",
+          "timestamp": "2025-05-31T18:45:04-05:00",
+          "tree_id": "4ed49fafbed93d4c2e16efa0d2503f83089d8b2b",
+          "url": "https://github.com/buildpacks/pack/commit/baa3edaef1ccba0f1ff61d806f898f338d81090b"
+        },
+        "date": 1748735201133,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3796379151,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1107775789,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 59012320351,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
