@@ -14,6 +14,7 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/system"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
@@ -1243,6 +1244,124 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					layers := fakeLayerImage.AddedLayersOrder()
 					h.AssertEq(t, len(layers), 3)
+				})
+			})
+		})
+
+		when("daemon target selection for multi-platform builders", func() {
+			when("publish is false", func() {
+				when("daemon is linux/amd64", func() {
+					it.Before(func() {
+						mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{
+							Os:   "linux",
+							Arch: "amd64",
+						}, nil).AnyTimes()
+					})
+
+					when("multiple targets are provided", func() {
+						it("selects the matching OS and architecture", func() {
+							prepareFetcherWithBuildImage()
+							prepareFetcherWithRunImages()
+
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "arm64"},
+								{OS: "linux", Arch: "amd64"}, // should match
+								{OS: "windows", Arch: "amd64"},
+							}
+
+							h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+
+							// Verify that only one image was created (for the matching target)
+							h.AssertEq(t, fakeBuildImage.IsSaved(), true)
+						})
+					})
+
+					when("no exact architecture match exists", func() {
+						it("returns error", func() {
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "arm64"},
+								{OS: "linux", Arch: "arm"},
+							}
+
+							err := subject.CreateBuilder(context.TODO(), opts)
+							h.AssertError(t, err, "could not find a target that matches daemon os=linux and architecture=amd64")
+						})
+					})
+
+					when("target with empty architecture exists", func() {
+						it("selects the OS-only match", func() {
+							prepareFetcherWithBuildImage()
+							prepareFetcherWithRunImages()
+
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "arm64"},
+								{OS: "linux", Arch: ""}, // should match
+								{OS: "windows", Arch: "amd64"},
+							}
+
+							h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+
+							// Verify that the builder was created
+							h.AssertEq(t, fakeBuildImage.IsSaved(), true)
+						})
+					})
+				})
+
+				when("daemon is linux/arm64", func() {
+					it.Before(func() {
+						mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{
+							Os:   "linux",
+							Arch: "arm64",
+						}, nil).AnyTimes()
+					})
+
+					when("targets are ordered with amd64 first", func() {
+						it("selects arm64 even when amd64 appears first", func() {
+							prepareFetcherWithBuildImage()
+							prepareFetcherWithRunImages()
+
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "amd64"}, // appears first
+								{OS: "linux", Arch: "arm64"}, // should match
+								{OS: "windows", Arch: "arm64"},
+							}
+
+							h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+
+							// Verify that the builder was created
+							h.AssertEq(t, fakeBuildImage.IsSaved(), true)
+						})
+					})
+
+					when("only amd64 targets available", func() {
+						it("returns error", func() {
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "amd64"},
+								{OS: "windows", Arch: "amd64"},
+							}
+
+							err := subject.CreateBuilder(context.TODO(), opts)
+							h.AssertError(t, err, "could not find a target that matches daemon os=linux and architecture=arm64")
+						})
+					})
+				})
+
+				when("empty targets list", func() {
+					it("creates builder without calling daemonTarget", func() {
+						prepareFetcherWithBuildImage()
+						prepareFetcherWithRunImages()
+
+						// Empty targets should use the default behavior
+						opts.Targets = []dist.Target{}
+
+						// ServerVersion should NOT be called for empty targets
+						mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Times(0)
+
+						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+
+						// Verify that the builder was created
+						h.AssertEq(t, fakeBuildImage.IsSaved(), true)
+					})
 				})
 			})
 		})
