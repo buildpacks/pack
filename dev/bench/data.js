@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1748735201966,
+  "lastUpdate": 1748736364030,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10654,6 +10654,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 59012320351,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9bf04afbc45aa06f8c413a9971be712ab0c0889d",
+          "message": "Adding unit tests for issue 2384 (#2391)\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2025-05-31T19:04:09-05:00",
+          "tree_id": "81e8cce0ab9b10a96ac5b6165cc1015d77347cee",
+          "url": "https://github.com/buildpacks/pack/commit/9bf04afbc45aa06f8c413a9971be712ab0c0889d"
+        },
+        "date": 1748736362764,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6586683643,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2151190050,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 66223320284,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
