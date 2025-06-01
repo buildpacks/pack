@@ -32,7 +32,7 @@ type BuildFlags struct {
 	TrustExtraBuildpacks   bool
 	Interactive            bool
 	Sparse                 bool
-  EnableUsernsHost       bool
+	EnableUsernsHost       bool
 	DockerHost             string
 	CacheImage             string
 	Cache                  cache.CacheOpts
