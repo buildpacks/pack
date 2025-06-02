@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/system"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -820,6 +821,383 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						})
 						h.AssertNotNil(t, err)
 						h.AssertError(t, err, "is not allowed when creating a composite multi-platform buildpack; push your dependencies to a registry and use 'docker://<image>' instead")
+					})
+				})
+
+				when("daemon target selection", func() {
+					when("publish is false", func() {
+						when("daemon is linux/amd64", func() {
+							it.Before(func() {
+								mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{
+									Os:   "linux",
+									Arch: "amd64",
+								}, nil).AnyTimes()
+							})
+
+							when("targets include exact match", func() {
+								it("selects the exact OS and architecture match", func() {
+									// Prepare buildpack
+									destBpPath := filepath.Join("testdata", "buildpack-multi-platform", "buildpack-new-format")
+									bpPathURI, err = paths.FilePathToURI(destBpPath, "")
+									h.AssertNil(t, err)
+									// The code will check for platform-specific folder and download from there
+									prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, filepath.Join(destBpPath, "linux", "amd64"))
+
+									// Mock docker info for validateOSPlatform
+									mockDockerClient.EXPECT().Info(gomock.Any()).Return(system.Info{OSType: "linux"}, nil)
+
+									// Mock expectations for the selected target
+									fakeImage := fakes.NewImage(repoName, "", nil)
+									mockImageFactory.EXPECT().NewImage(repoName, true, dist.Target{OS: "linux", Arch: "amd64"}).Return(fakeImage, nil)
+
+									targets := []dist.Target{
+										{OS: "linux", Arch: "arm64"},
+										{OS: "linux", Arch: "amd64"}, // exact match
+										{OS: "windows", Arch: "amd64"},
+									}
+
+									err = subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+										Format:          client.FormatImage,
+										Publish:         false,
+										RelativeBaseDir: "",
+										Name:            repoName,
+										Config: pubbldpkg.Config{
+											Buildpack: dist.BuildpackURI{URI: bpPathURI},
+										},
+										Targets:    targets,
+										PullPolicy: image.PullNever,
+									})
+									h.AssertNil(t, err)
+
+									// Verify the image was saved (indicates successful packaging)
+									h.AssertEq(t, fakeImage.IsSaved(), true)
+								})
+							})
+
+							when("targets only have OS match with different architectures", func() {
+								it("returns error when no architecture matches", func() {
+									targets := []dist.Target{
+										{OS: "linux", Arch: "arm64"},
+										{OS: "linux", Arch: "arm"},
+										{OS: "windows", Arch: "amd64"},
+									}
+
+									err := subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+										Format:          client.FormatImage,
+										Publish:         false,
+										RelativeBaseDir: "",
+										Name:            repoName,
+										Config: pubbldpkg.Config{
+											Buildpack: dist.BuildpackURI{URI: "some-bp-uri"},
+										},
+										Targets:    targets,
+										PullPolicy: image.PullNever,
+									})
+									h.AssertError(t, err, "could not find a target that matches daemon os=linux and architecture=amd64")
+								})
+							})
+
+							when("targets have OS match with empty architecture", func() {
+								it("selects the target with matching OS and empty architecture", func() {
+									// Prepare buildpack
+									destBpPath := filepath.Join("testdata", "buildpack")
+									bpPathURI, err = paths.FilePathToURI(destBpPath, "")
+									h.AssertNil(t, err)
+									prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, destBpPath)
+
+									// Mock docker info for validateOSPlatform
+									mockDockerClient.EXPECT().Info(gomock.Any()).Return(system.Info{OSType: "linux"}, nil)
+
+									// Mock expectations for the selected target
+									fakeImage := fakes.NewImage(repoName, "", nil)
+									mockImageFactory.EXPECT().NewImage(repoName, true, dist.Target{OS: "linux", Arch: ""}).Return(fakeImage, nil)
+
+									targets := []dist.Target{
+										{OS: "linux", Arch: "arm64"},
+										{OS: "linux", Arch: ""}, // OS match with empty arch
+										{OS: "windows", Arch: "amd64"},
+									}
+
+									err = subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+										Format:          client.FormatImage,
+										Publish:         false,
+										RelativeBaseDir: "",
+										Name:            repoName,
+										Config: pubbldpkg.Config{
+											Buildpack: dist.BuildpackURI{URI: bpPathURI},
+										},
+										Targets:    targets,
+										PullPolicy: image.PullNever,
+									})
+									h.AssertNil(t, err)
+
+									// Verify the image was saved
+									h.AssertEq(t, fakeImage.IsSaved(), true)
+								})
+							})
+
+							when("multiple targets match", func() {
+								it("selects the first exact match", func() {
+									// Prepare buildpack
+									destBpPath := filepath.Join("testdata", "buildpack-multi-platform", "buildpack-new-format")
+									bpPathURI, err = paths.FilePathToURI(destBpPath, "")
+									h.AssertNil(t, err)
+									// The code will check for platform-specific folder and download from there
+									prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, filepath.Join(destBpPath, "linux", "amd64"))
+
+									// Mock docker info for validateOSPlatform
+									mockDockerClient.EXPECT().Info(gomock.Any()).Return(system.Info{OSType: "linux"}, nil)
+
+									// Mock expectations for the selected target
+									fakeImage := fakes.NewImage(repoName, "", nil)
+									mockImageFactory.EXPECT().NewImage(repoName, true, dist.Target{OS: "linux", Arch: "amd64", ArchVariant: "v1"}).Return(fakeImage, nil)
+
+									targets := []dist.Target{
+										{OS: "linux", Arch: "arm64"},
+										{OS: "linux", Arch: "amd64", ArchVariant: "v1"}, // first exact match
+										{OS: "linux", Arch: "amd64", ArchVariant: "v2"}, // second exact match
+										{OS: "linux", Arch: ""},
+									}
+
+									err = subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+										Format:          client.FormatImage,
+										Publish:         false,
+										RelativeBaseDir: "",
+										Name:            repoName,
+										Config: pubbldpkg.Config{
+											Buildpack: dist.BuildpackURI{URI: bpPathURI},
+										},
+										Targets:    targets,
+										PullPolicy: image.PullNever,
+									})
+									h.AssertNil(t, err)
+
+									// Verify the image was saved
+									h.AssertEq(t, fakeImage.IsSaved(), true)
+								})
+							})
+						})
+
+						when("daemon is linux/arm64", func() {
+							it.Before(func() {
+								mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{
+									Os:   "linux",
+									Arch: "arm64",
+								}, nil).AnyTimes()
+							})
+
+							when("targets are ordered with amd64 first", func() {
+								it("selects arm64 even when amd64 appears first", func() {
+									// Prepare buildpack
+									destBpPath := filepath.Join("testdata", "buildpack-multi-platform", "buildpack-new-format")
+									bpPathURI, err = paths.FilePathToURI(destBpPath, "")
+									h.AssertNil(t, err)
+									// The code will check for platform-specific folder and download from there
+									// Mock both paths as PlatformRootFolder returns /linux when it exists
+									prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, filepath.Join(destBpPath, "linux"))
+									prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, filepath.Join(destBpPath, "linux", "arm"))
+
+									// Mock docker info for validateOSPlatform
+									mockDockerClient.EXPECT().Info(gomock.Any()).Return(system.Info{OSType: "linux"}, nil)
+
+									// Mock expectations for the selected target
+									fakeImage := fakes.NewImage(repoName, "", nil)
+									mockImageFactory.EXPECT().NewImage(repoName, true, dist.Target{OS: "linux", Arch: "arm64"}).Return(fakeImage, nil)
+
+									targets := []dist.Target{
+										{OS: "linux", Arch: "amd64"}, // appears first but wrong arch
+										{OS: "linux", Arch: "arm64"}, // exact match
+										{OS: "windows", Arch: "arm64"},
+									}
+
+									err = subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+										Format:          client.FormatImage,
+										Publish:         false,
+										RelativeBaseDir: "",
+										Name:            repoName,
+										Config: pubbldpkg.Config{
+											Buildpack: dist.BuildpackURI{URI: bpPathURI},
+										},
+										Targets:    targets,
+										PullPolicy: image.PullNever,
+									})
+									h.AssertNil(t, err)
+
+									// Verify the image was saved
+									h.AssertEq(t, fakeImage.IsSaved(), true)
+								})
+							})
+
+							when("only amd64 targets available", func() {
+								it("returns error", func() {
+									targets := []dist.Target{
+										{OS: "linux", Arch: "amd64"},
+										{OS: "windows", Arch: "amd64"},
+									}
+
+									err := subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+										Format:          client.FormatImage,
+										Publish:         false,
+										RelativeBaseDir: "",
+										Name:            repoName,
+										Config: pubbldpkg.Config{
+											Buildpack: dist.BuildpackURI{URI: "some-bp-uri"},
+										},
+										Targets:    targets,
+										PullPolicy: image.PullNever,
+									})
+									h.AssertError(t, err, "could not find a target that matches daemon os=linux and architecture=arm64")
+								})
+							})
+						})
+
+						when("daemon is windows/amd64", func() {
+							it.Before(func() {
+								mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{
+									Os:   "windows",
+									Arch: "amd64",
+								}, nil).AnyTimes()
+							})
+
+							when("targets include windows", func() {
+								it("selects windows/amd64", func() {
+									// Create a Windows-compatible client
+									windowsClient, err := client.NewClient(
+										client.WithDockerClient(mockDockerClient),
+										client.WithLogger(logging.NewLogWithWriters(&out, &out)),
+										client.WithDownloader(mockDownloader),
+										client.WithImageFactory(mockImageFactory),
+										client.WithIndexFactory(mockIndexFactory),
+										client.WithFetcher(mockImageFetcher),
+										client.WithExperimental(true),
+									)
+									h.AssertNil(t, err)
+
+									// Prepare buildpack
+									destBpPath := filepath.Join("testdata", "buildpack")
+									bpPathURI, err = paths.FilePathToURI(destBpPath, "")
+									h.AssertNil(t, err)
+									prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, destBpPath)
+
+									// Mock docker info for validateOSPlatform
+									mockDockerClient.EXPECT().Info(gomock.Any()).Return(system.Info{OSType: "windows"}, nil)
+
+									// Mock expectations for the selected target
+									fakeImage := fakes.NewImage(repoName, "", nil)
+									mockImageFactory.EXPECT().NewImage(repoName, true, dist.Target{OS: "windows", Arch: "amd64"}).Return(fakeImage, nil)
+
+									targets := []dist.Target{
+										{OS: "linux", Arch: "amd64"},
+										{OS: "windows", Arch: "amd64"}, // exact match
+										{OS: "darwin", Arch: "amd64"},
+									}
+
+									err = windowsClient.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+										Format:          client.FormatImage,
+										Publish:         false,
+										RelativeBaseDir: "",
+										Name:            repoName,
+										Config: pubbldpkg.Config{
+											Buildpack: dist.BuildpackURI{URI: bpPathURI},
+										},
+										Targets:    targets,
+										PullPolicy: image.PullNever,
+									})
+									h.AssertNil(t, err)
+
+									// Verify the image was saved
+									h.AssertEq(t, fakeImage.IsSaved(), true)
+								})
+							})
+						})
+
+						when("targets with distributions", func() {
+							it.Before(func() {
+								mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{
+									Os:   "linux",
+									Arch: "amd64",
+								}, nil).AnyTimes()
+							})
+
+							it("selects target ignoring distributions", func() {
+								// Prepare buildpack
+								destBpPath := filepath.Join("testdata", "buildpack-multi-platform", "buildpack-new-format")
+								bpPathURI, err = paths.FilePathToURI(destBpPath, "")
+								h.AssertNil(t, err)
+								prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, filepath.Join(destBpPath, "linux", "amd64"))
+
+								// Mock docker info for validateOSPlatform
+								mockDockerClient.EXPECT().Info(gomock.Any()).Return(system.Info{OSType: "linux"}, nil)
+
+								// Mock expectations for the selected target
+								fakeImage := fakes.NewImage(repoName, "", nil)
+								mockImageFactory.EXPECT().NewImage(repoName, true, dist.Target{
+									OS:   "linux",
+									Arch: "amd64",
+									Distributions: []dist.Distribution{
+										{Name: "ubuntu", Version: "22.04"},
+									},
+								}).Return(fakeImage, nil)
+
+								targets := []dist.Target{
+									{
+										OS:   "linux",
+										Arch: "amd64",
+										Distributions: []dist.Distribution{
+											{Name: "ubuntu", Version: "22.04"},
+										},
+									},
+								}
+
+								err = subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+									Format:          client.FormatImage,
+									Publish:         false,
+									RelativeBaseDir: "",
+									Name:            repoName,
+									Config: pubbldpkg.Config{
+										Buildpack: dist.BuildpackURI{URI: bpPathURI},
+									},
+									Targets:    targets,
+									PullPolicy: image.PullNever,
+								})
+								h.AssertNil(t, err)
+
+								// Verify the image was saved
+								h.AssertEq(t, fakeImage.IsSaved(), true)
+							})
+						})
+
+						when("empty targets list", func() {
+							it("uses default behavior without calling daemonTarget", func() {
+								// Prepare buildpack
+								bpPathURI, err = paths.FilePathToURI(filepath.Join("testdata", "buildpack"), "")
+								h.AssertNil(t, err)
+								prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, filepath.Join("testdata", "buildpack"))
+
+								// Mock expectations - ServerVersion should NOT be called
+								// as daemonTarget is not invoked for empty targets
+								mockDockerClient.EXPECT().Info(gomock.Any()).Return(system.Info{OSType: "linux"}, nil)
+								fakeImage := fakes.NewImage(repoName, "", nil)
+								mockImageFactory.EXPECT().NewImage(repoName, true, dist.Target{OS: "linux"}).Return(fakeImage, nil)
+
+								err = subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
+									Format:          client.FormatImage,
+									Publish:         false,
+									RelativeBaseDir: "",
+									Name:            repoName,
+									Config: pubbldpkg.Config{
+										Platform:  dist.Platform{OS: "linux"},
+										Buildpack: dist.BuildpackURI{URI: bpPathURI},
+									},
+									Targets:    []dist.Target{}, // empty targets
+									PullPolicy: image.PullNever,
+								})
+								h.AssertNil(t, err)
+
+								// Verify the image was saved
+								h.AssertEq(t, fakeImage.IsSaved(), true)
+							})
+						})
 					})
 				})
 			})

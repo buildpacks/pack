@@ -103,6 +103,7 @@ type LifecycleOptions struct {
 	SBOMDestinationDir              string
 	CreationTime                    *time.Time
 	Keychain                        authn.Keychain
+	EnableUsernsHost                bool
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker DockerClient) *LifecycleExecutor {
