@@ -654,7 +654,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Layout:                   opts.Layout(),
 		Keychain:                 c.keychain,
 		EnableUsernsHost:         opts.EnableUsernsHost,
-    ExecutionEnvironment:     opts.CNBExecutionEnv,
+		ExecutionEnvironment:     opts.CNBExecutionEnv,
 	}
 
 	switch {
