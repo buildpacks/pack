@@ -61,6 +61,7 @@ type BuildFlags struct {
 	DateTime             string
 	PreBuildpacks        []string
 	PostBuildpacks       []string
+	EnableUsernsHost     bool
 }
 
 // Build an image from source code
@@ -211,6 +212,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				CreationTime:             dateTime,
 				PreBuildpacks:            flags.PreBuildpacks,
 				PostBuildpacks:           flags.PostBuildpacks,
+				EnableUsernsHost:         flags.EnableUsernsHost,
 				LayoutConfig: &client.LayoutConfig{
 					Sparse:             flags.Sparse,
 					InputImage:         inputImageName,
@@ -294,6 +296,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().StringVar(&buildFlags.ReportDestinationDir, "report-output-dir", "", "Path to export build report.toml.\nOmitting the flag yield no report file.")
 	cmd.Flags().BoolVar(&buildFlags.Interactive, "interactive", false, "Launch a terminal UI to depict the build process")
 	cmd.Flags().BoolVar(&buildFlags.Sparse, "sparse", false, "Use this flag to avoid saving on disk the run-image layers when the application image is exported to OCI layout format")
+	cmd.Flags().BoolVar(&buildFlags.EnableUsernsHost, "userns-host", false, "Enable user namespace isolation for the build containers")
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("interactive")
 		cmd.Flags().MarkHidden("sparse")

@@ -9,8 +9,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
+
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/system"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
@@ -660,6 +664,129 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("lifecycle URI is a docker image", func() {
+			var lifecycleImageName = "buildpacksio/lifecycle:latest"
+
+			setupFakeLifecycleImage := func() *h.FakeWithUnderlyingImage {
+				// Write the tar content to a file in tmpDir
+				lifecycleLayerPath := filepath.Join("testdata", "lifecycle", "lifecycle.tar")
+				lifecycleTag, err := name.NewTag(lifecycleImageName)
+				h.AssertNil(t, err)
+
+				v1LifecycleImage, err := tarball.ImageFromPath(lifecycleLayerPath, &lifecycleTag)
+				h.AssertNil(t, err)
+
+				return h.NewFakeWithUnderlyingV1Image(lifecycleImageName, nil, v1LifecycleImage)
+			}
+
+			it("should download lifecycle from docker registry", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+
+				fakeLifecycleImage := setupFakeLifecycleImage()
+
+				opts.Config.Lifecycle.URI = "docker://" + lifecycleImageName
+				opts.Config.Lifecycle.Version = ""
+				opts.RelativeBaseDir = tmpDir
+
+				// Expect the image fetcher to fetch the lifecycle image
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), lifecycleImageName, image.FetchOptions{Daemon: false}).Return(fakeLifecycleImage, nil)
+
+				// Create the expected lifecycle.tar file that will be referenced
+				lifecyclePath := filepath.Join(tmpDir, "lifecycle.tar")
+
+				// The downloader will be called with the extracted lifecycle tar
+				mockDownloader.EXPECT().Download(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uri string) (blob.Blob, error) {
+					// The URI should be a file:// URI pointing to lifecycle.tar
+					h.AssertTrue(t, strings.Contains(uri, "lifecycle.tar"))
+
+					// Write a minimal lifecycle tar for the test
+					f, err := os.Create(lifecyclePath)
+					h.AssertNil(t, err)
+					defer f.Close()
+
+					// Copy the test lifecycle content
+					testLifecycle := blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4"))
+					return testLifecycle, nil
+				})
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+			})
+
+			it("should handle docker URI without docker:// prefix", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+
+				fakeLifecycleImage := setupFakeLifecycleImage()
+
+				opts.Config.Lifecycle.URI = "docker:/" + lifecycleImageName
+				opts.Config.Lifecycle.Version = ""
+				opts.RelativeBaseDir = tmpDir
+
+				// Expect the image fetcher to fetch the lifecycle image
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), lifecycleImageName, image.FetchOptions{Daemon: false}).Return(fakeLifecycleImage, nil)
+
+				// The downloader will be called with the extracted lifecycle tar
+				mockDownloader.EXPECT().Download(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uri string) (blob.Blob, error) {
+					testLifecycle := blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4"))
+					return testLifecycle, nil
+				})
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+			})
+
+			when("fetching lifecycle image fails", func() {
+				it("should return an error", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+
+					opts.Config.Lifecycle.URI = "docker://" + lifecycleImageName
+					opts.Config.Lifecycle.Version = ""
+					opts.RelativeBaseDir = tmpDir
+
+					// Expect the image fetcher to fail
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), lifecycleImageName, image.FetchOptions{Daemon: false}).Return(nil, errors.New("failed to fetch image"))
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "Could not parse uri from lifecycle image")
+				})
+			})
+
+			when("lifecycle image has no layers", func() {
+				it("should return an error", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+
+					opts.Config.Lifecycle.URI = "docker://" + lifecycleImageName
+					opts.Config.Lifecycle.Version = ""
+					opts.RelativeBaseDir = tmpDir
+
+					// Create an image with no layers
+					emptyLifecycleImage := fakes.NewImage(lifecycleImageName, "", nil)
+
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), lifecycleImageName, image.FetchOptions{Daemon: false}).Return(emptyLifecycleImage, nil)
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "Could not parse uri from lifecycle image")
+				})
+			})
+
+			when("both lifecycle URI and version are provided", func() {
+				it("should return an error", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+
+					opts.Config.Lifecycle.URI = "docker://" + lifecycleImageName
+					opts.Config.Lifecycle.Version = "1.2.3"
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "'lifecycle' can only declare 'version' or 'uri', not both")
+				})
+			})
+		})
+
 		when("buildpack mixins are not satisfied", func() {
 			it("should return an error", func() {
 				prepareFetcherWithBuildImage()
@@ -1117,6 +1244,124 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					layers := fakeLayerImage.AddedLayersOrder()
 					h.AssertEq(t, len(layers), 3)
+				})
+			})
+		})
+
+		when("daemon target selection for multi-platform builders", func() {
+			when("publish is false", func() {
+				when("daemon is linux/amd64", func() {
+					it.Before(func() {
+						mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{
+							Os:   "linux",
+							Arch: "amd64",
+						}, nil).AnyTimes()
+					})
+
+					when("multiple targets are provided", func() {
+						it("selects the matching OS and architecture", func() {
+							prepareFetcherWithBuildImage()
+							prepareFetcherWithRunImages()
+
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "arm64"},
+								{OS: "linux", Arch: "amd64"}, // should match
+								{OS: "windows", Arch: "amd64"},
+							}
+
+							h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+
+							// Verify that only one image was created (for the matching target)
+							h.AssertEq(t, fakeBuildImage.IsSaved(), true)
+						})
+					})
+
+					when("no exact architecture match exists", func() {
+						it("returns error", func() {
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "arm64"},
+								{OS: "linux", Arch: "arm"},
+							}
+
+							err := subject.CreateBuilder(context.TODO(), opts)
+							h.AssertError(t, err, "could not find a target that matches daemon os=linux and architecture=amd64")
+						})
+					})
+
+					when("target with empty architecture exists", func() {
+						it("selects the OS-only match", func() {
+							prepareFetcherWithBuildImage()
+							prepareFetcherWithRunImages()
+
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "arm64"},
+								{OS: "linux", Arch: ""}, // should match
+								{OS: "windows", Arch: "amd64"},
+							}
+
+							h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+
+							// Verify that the builder was created
+							h.AssertEq(t, fakeBuildImage.IsSaved(), true)
+						})
+					})
+				})
+
+				when("daemon is linux/arm64", func() {
+					it.Before(func() {
+						mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{
+							Os:   "linux",
+							Arch: "arm64",
+						}, nil).AnyTimes()
+					})
+
+					when("targets are ordered with amd64 first", func() {
+						it("selects arm64 even when amd64 appears first", func() {
+							prepareFetcherWithBuildImage()
+							prepareFetcherWithRunImages()
+
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "amd64"}, // appears first
+								{OS: "linux", Arch: "arm64"}, // should match
+								{OS: "windows", Arch: "arm64"},
+							}
+
+							h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+
+							// Verify that the builder was created
+							h.AssertEq(t, fakeBuildImage.IsSaved(), true)
+						})
+					})
+
+					when("only amd64 targets available", func() {
+						it("returns error", func() {
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "amd64"},
+								{OS: "windows", Arch: "amd64"},
+							}
+
+							err := subject.CreateBuilder(context.TODO(), opts)
+							h.AssertError(t, err, "could not find a target that matches daemon os=linux and architecture=arm64")
+						})
+					})
+				})
+
+				when("empty targets list", func() {
+					it("creates builder without calling daemonTarget", func() {
+						prepareFetcherWithBuildImage()
+						prepareFetcherWithRunImages()
+
+						// Empty targets should use the default behavior
+						opts.Targets = []dist.Target{}
+
+						// ServerVersion should NOT be called for empty targets
+						mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Times(0)
+
+						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+
+						// Verify that the builder was created
+						h.AssertEq(t, fakeBuildImage.IsSaved(), true)
+					})
 				})
 			})
 		})

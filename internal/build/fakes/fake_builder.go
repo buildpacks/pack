@@ -122,3 +122,10 @@ func WithBuilder(builder *FakeBuilder) func(*build.LifecycleOptions) {
 		opts.Builder = builder
 	}
 }
+
+// WithEnableUsernsHost creates a LifecycleOptions option that enables userns=host
+func WithEnableUsernsHost() func(*build.LifecycleOptions) {
+	return func(opts *build.LifecycleOptions) {
+		opts.EnableUsernsHost = true
+	}
+}

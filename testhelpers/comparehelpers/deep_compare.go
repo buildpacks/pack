@@ -86,10 +86,10 @@ func mapContains(v1, v2 reflect.Value, depth int) bool {
 }
 
 func arrayLikeContains(v1, v2 reflect.Value, depth int) bool {
-	t2 := v2.Kind()
-	if t2 == reflect.Interface {
+	switch v2.Kind() {
+	case reflect.Interface:
 		return mapContains(v1, v2.Elem(), depth+1)
-	} else if t2 == reflect.Array || t2 == reflect.Slice {
+	case reflect.Array, reflect.Slice:
 		v1Index := 0
 		v2Index := 0
 		for v1Index < v1.Len() && v2Index < v2.Len() {

@@ -228,6 +228,9 @@ type BuildOptions struct {
 
 	// Configuration to export to OCI layout format
 	LayoutConfig *LayoutConfig
+
+	// Enable user namespace isolation for the build containers
+	EnableUsernsHost bool
 }
 
 func (b *BuildOptions) Layout() bool {
@@ -300,7 +303,7 @@ type layoutPathConfig struct {
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	var pathsConfig layoutPathConfig
 
-	if RunningInContainer() && !(opts.PullPolicy == image.PullAlways) {
+	if RunningInContainer() && (opts.PullPolicy != image.PullAlways) {
 		c.logger.Warnf("Detected pack is running in a container; if using a shared docker host, failing to pull build inputs from a remote registry is insecure - " +
 			"other tenants may have compromised build inputs stored in the daemon." +
 			"This configuration is insecure and may become unsupported in the future." +
@@ -572,7 +575,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		if targetToUse.OS == "windows" {
 			return fmt.Errorf("builder contains image extensions which are not supported for Windows builds")
 		}
-		if !(opts.PullPolicy == image.PullAlways) {
+		if opts.PullPolicy != image.PullAlways {
 			return fmt.Errorf("pull policy must be 'always' when builder contains image extensions")
 		}
 	}
@@ -650,7 +653,8 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		CreationTime:             opts.CreationTime,
 		Layout:                   opts.Layout(),
 		Keychain:                 c.keychain,
-		ExecutionEnvironment:     opts.CNBExecutionEnv,
+		EnableUsernsHost:         opts.EnableUsernsHost,
+    ExecutionEnvironment:     opts.CNBExecutionEnv,
 	}
 
 	switch {

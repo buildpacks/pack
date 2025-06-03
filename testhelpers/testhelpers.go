@@ -21,6 +21,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/imgutil"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+
 	"github.com/buildpacks/imgutil/fakes"
 
 	dockertypes "github.com/docker/docker/api/types"
@@ -898,4 +901,21 @@ func (f *FakeAddedLayerImage) AddedLayersOrder() []string {
 func (f *FakeAddedLayerImage) AddLayerWithDiffID(path, diffID string) error {
 	f.addedLayersOrder = append(f.addedLayersOrder, path)
 	return f.Image.AddLayerWithDiffID(path, diffID)
+}
+
+type FakeWithUnderlyingImage struct {
+	*fakes.Image
+	underlyingImage v1.Image
+}
+
+func (t *FakeWithUnderlyingImage) UnderlyingImage() v1.Image {
+	return t.underlyingImage
+}
+
+func NewFakeWithUnderlyingV1Image(repoName string, identifier imgutil.Identifier, underlyingImage v1.Image) *FakeWithUnderlyingImage {
+	fakeCNBImage := fakes.NewImage(repoName, "", identifier)
+	return &FakeWithUnderlyingImage{
+		Image:           fakeCNBImage,
+		underlyingImage: underlyingImage,
+	}
 }
