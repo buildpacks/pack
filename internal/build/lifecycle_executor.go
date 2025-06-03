@@ -86,6 +86,7 @@ type LifecycleOptions struct {
 	Termui                          Termui
 	DockerHost                      string
 	Cache                           cache.CacheOpts
+	ExecutionEnvironment            string
 	CacheImage                      string
 	HTTPProxy                       string
 	HTTPSProxy                      string
