@@ -145,23 +145,34 @@ func (c *Client) processSystem(system dist.System, buildpacks []buildpack.BuildM
 	}
 
 	resolved := dist.System{}
+
+	// Create a map of available buildpacks for faster lookup
+	availableBPs := make(map[string]bool)
 	for _, bp := range buildpacks {
 		bpInfo := bp.Descriptor().Info()
-		for _, preBp := range system.Pre.Buildpacks {
-			if bpInfo.ID == preBp.ID && bpInfo.Version == preBp.Version {
-				resolved.Pre.Buildpacks = append(resolved.Pre.Buildpacks, preBp)
-				break
-			}
-		}
+		availableBPs[bpInfo.ID+"@"+bpInfo.Version] = true
+	}
 
-		// Post buildpacks
-		for _, postBp := range system.Post.Buildpacks {
-			if bpInfo.ID == postBp.ID && bpInfo.Version == postBp.Version {
-				resolved.Post.Buildpacks = append(resolved.Post.Buildpacks, postBp)
-				break
-			}
+	// Process pre-buildpacks
+	for _, preBp := range system.Pre.Buildpacks {
+		key := preBp.ID + "@" + preBp.Version
+		if availableBPs[key] {
+			resolved.Pre.Buildpacks = append(resolved.Pre.Buildpacks, preBp)
+		} else if !preBp.Optional {
+			return dist.System{}, errors.Errorf("required system buildpack %s@%s is not available", preBp.ID, preBp.Version)
 		}
 	}
+
+	// Process post-buildpacks
+	for _, postBp := range system.Post.Buildpacks {
+		key := postBp.ID + "@" + postBp.Version
+		if availableBPs[key] {
+			resolved.Post.Buildpacks = append(resolved.Post.Buildpacks, postBp)
+		} else if !postBp.Optional {
+			return dist.System{}, errors.Errorf("required system buildpack %s@%s is not available", postBp.ID, postBp.Version)
+		}
+	}
+
 	return resolved, nil
 }
 
