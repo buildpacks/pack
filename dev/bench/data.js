@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1748868769975,
+  "lastUpdate": 1748954953878,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10738,6 +10738,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 59009675511,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "anatoli@rainforce.org",
+            "name": "Anatoli Babenia",
+            "username": "abitrolly"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d5a88c789d16cfff60e953007d811d425de65040",
+          "message": "Make `go build` work without Makefile (#2390)\n\nThis merges `version.go` into `pkg/client/client.go`, which is the\nonly file that uses the it. Then it moves `cmd/pack/main.go` into\nroot. Now `go build` produces executable `pack` instead of bogus\n`pack` with just `version.go`.\n\nNo need to specify `./cmd/pack` while compiling anymore.\nThe version is injected into client directly without extra files.\n\nSigned-off-by: Anatoli Babenia <anatoli@rainforce.org>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2025-06-03T07:47:11-05:00",
+          "tree_id": "8c3b831b6645164aaab44fd3ff066062a26b808e",
+          "url": "https://github.com/buildpacks/pack/commit/d5a88c789d16cfff60e953007d811d425de65040"
+        },
+        "date": 1748954952759,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5651764887,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1625960932,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 74728563766,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
