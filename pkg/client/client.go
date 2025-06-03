@@ -26,7 +26,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/build"
 	iconfig "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
@@ -41,6 +40,11 @@ import (
 const (
 	// Env variable to set the root folder for manifest list local storage
 	xdgRuntimePath = "XDG_RUNTIME_DIR"
+)
+
+var (
+	// Version is the version of `pack`. It is injected at compile time.
+	Version = "0.0.0"
 )
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_docker_client.go github.com/docker/docker/client CommonAPIClient
@@ -252,7 +256,7 @@ const DockerAPIVersion = "1.38"
 // NewClient allocates and returns a Client configured with the specified options.
 func NewClient(opts ...Option) (*Client, error) {
 	client := &Client{
-		version:  pack.Version,
+		version:  Version,
 		keychain: authn.DefaultKeychain,
 	}
 
