@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1748954953878,
+  "lastUpdate": 1749174211411,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10780,6 +10780,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 74728563766,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5cbbf3396f66482342b15606361d9ae7f6c232ae",
+          "message": "`pack builder create` supports system buildpacks (#2349)\n\nThis PR implements [RFC 101 - System Buildpacks](https://github.com/buildpacks/rfcs/blob/main/text/0101-system-buildpacks.md ) support in pack. \n\nSystems buildpacks are special buildpacks that are automatically included before (pre) and after (post) the regular buildpacks during the build process, providing platform-level functionality like shell profile scripts, service binding, and other platform-specific capabilities.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2025-06-05T20:41:24-05:00",
+          "tree_id": "5352f6167366f462052e2058bb2b111ec05fbb4c",
+          "url": "https://github.com/buildpacks/pack/commit/5cbbf3396f66482342b15606361d9ae7f6c232ae"
+        },
+        "date": 1749174210694,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5626044901,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 857863090,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 83158257034,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
