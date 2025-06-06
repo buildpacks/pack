@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749218535416,
+  "lastUpdate": 1749219265262,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10864,6 +10864,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 71212087626,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "108176843+prashantrewar@users.noreply.github.com",
+            "name": "Prashant Rewar",
+            "username": "prashantrewar"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ba54b86ec0cd45538a953dd30796624307da1b3a",
+          "message": "Support Insecure Registries (#2077)\n\n* Support Insecure Registries\n\nSigned-off-by: Prashant Rewar <108176843+prashantrewar@users.noreply.github.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nSigned-off-by: Juan Bustamante <juan.bustamante@broadcom.com>\nCo-authored-by: Juan Bustamante <juan.bustamante@broadcom.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2025-06-06T08:59:28-05:00",
+          "tree_id": "abd1056362f3daa8147d56579aa8f61aa5cb62c5",
+          "url": "https://github.com/buildpacks/pack/commit/ba54b86ec0cd45538a953dd30796624307da1b3a"
+        },
+        "date": 1749219264367,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4383954790,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1048141445,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 59991227350,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
