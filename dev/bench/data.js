@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749219265262,
+  "lastUpdate": 1749231205791,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10906,6 +10906,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 59991227350,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "distinct": false,
+          "id": "8e54e8a8db67f404d47789ffdf933797e43ee493",
+          "message": "Fixing build-additional-arch for windows\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2025-06-06T12:31:14-05:00",
+          "tree_id": "84f8f6928bccb69d3774d1ca4278ac766919f605",
+          "url": "https://github.com/buildpacks/pack/commit/8e54e8a8db67f404d47789ffdf933797e43ee493"
+        },
+        "date": 1749231204884,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3812685006,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1072814845,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 60492760450,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
