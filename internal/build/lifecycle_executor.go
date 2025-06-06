@@ -94,6 +94,7 @@ type LifecycleOptions struct {
 	Network                         string
 	AdditionalTags                  []string
 	Volumes                         []string
+	InsecureRegistries              []string
 	DefaultProcessType              string
 	FileFilter                      func(string) bool
 	Workspace                       string

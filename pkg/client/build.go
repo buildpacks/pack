@@ -231,6 +231,8 @@ type BuildOptions struct {
 
 	// Enable user namespace isolation for the build containers
 	EnableUsernsHost bool
+
+	InsecureRegistries []string
 }
 
 func (b *BuildOptions) Layout() bool {
@@ -366,9 +368,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		ctx,
 		builderRef.Name(),
 		image.FetchOptions{
-			Daemon:     true,
-			Target:     requestedTarget,
-			PullPolicy: opts.PullPolicy},
+			Daemon:             true,
+			Target:             requestedTarget,
+			PullPolicy:         opts.PullPolicy,
+			InsecureRegistries: opts.InsecureRegistries,
+		},
 	)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
@@ -390,9 +394,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	fetchOptions := image.FetchOptions{
-		Daemon:     !opts.Publish,
-		PullPolicy: opts.PullPolicy,
-		Target:     targetToUse,
+		Daemon:             !opts.Publish,
+		PullPolicy:         opts.PullPolicy,
+		Target:             targetToUse,
+		InsecureRegistries: opts.InsecureRegistries,
 	}
 	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish, fetchOptions)
 
@@ -488,9 +493,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				ctx,
 				lifecycleImageName,
 				image.FetchOptions{
-					Daemon:     true,
-					PullPolicy: opts.PullPolicy,
-					Target:     targetToUse,
+					Daemon:             true,
+					PullPolicy:         opts.PullPolicy,
+					Target:             targetToUse,
+					InsecureRegistries: opts.InsecureRegistries,
 				},
 			)
 			if err != nil {
@@ -661,6 +667,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Layout:                   opts.Layout(),
 		Keychain:                 c.keychain,
 		EnableUsernsHost:         opts.EnableUsernsHost,
+		InsecureRegistries:       opts.InsecureRegistries,
 	}
 
 	switch {
@@ -823,7 +830,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	if err = c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
 		return fmt.Errorf("executing lifecycle: %w", err)
 	}
-	return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
+	return c.logImageNameAndSha(ctx, opts.Publish, imageRef, opts.InsecureRegistries)
 }
 
 func usesContainerdStorage(docker DockerClient) bool {
@@ -1677,13 +1684,13 @@ func randString(n int) string {
 	return string(b)
 }
 
-func (c *Client) logImageNameAndSha(ctx context.Context, publish bool, imageRef name.Reference) error {
+func (c *Client) logImageNameAndSha(ctx context.Context, publish bool, imageRef name.Reference, insecureRegistries []string) error {
 	// The image name and sha are printed in the lifecycle logs, and there is no need to print it again, unless output is suppressed.
 	if !logging.IsQuiet(c.logger) {
 		return nil
 	}
 
-	img, err := c.imageFetcher.Fetch(ctx, imageRef.Name(), image.FetchOptions{Daemon: !publish, PullPolicy: image.PullNever})
+	img, err := c.imageFetcher.Fetch(ctx, imageRef.Name(), image.FetchOptions{Daemon: !publish, PullPolicy: image.PullNever, InsecureRegistries: insecureRegistries})
 	if err != nil {
 		return fmt.Errorf("fetching built image: %w", err)
 	}

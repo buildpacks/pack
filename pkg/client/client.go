@@ -1,5 +1,5 @@
 /*
-Package client provides all the functionally provided by pack as a library through a go api.
+Package client provides all the functionality provided by pack as a library through a go api.
 
 # Prerequisites
 
