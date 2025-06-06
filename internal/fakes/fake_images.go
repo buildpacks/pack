@@ -18,7 +18,7 @@ import (
 
 type FakeImageCreator func(name string, topLayerSha string, identifier imgutil.Identifier) *fakes.Image
 
-func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid string, metadata builder.Metadata, bpLayers dist.ModuleLayers, order dist.Order, exLayers dist.ModuleLayers, orderExtensions dist.Order, creator FakeImageCreator) *fakes.Image {
+func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid string, metadata builder.Metadata, bpLayers dist.ModuleLayers, order dist.Order, exLayers dist.ModuleLayers, orderExtensions dist.Order, system dist.System, creator FakeImageCreator) *fakes.Image {
 	fakeBuilderImage := creator(name, "", nil)
 
 	h.AssertNil(t, fakeBuilderImage.SetLabel("io.buildpacks.stack.id", stackID))
@@ -78,10 +78,27 @@ func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid st
 	h.AssertNil(t, tarBuilder.WriteToPath(orderTar, archive.DefaultTarWriterFactory()))
 	h.AssertNil(t, fakeBuilderImage.AddLayer(orderTar))
 
+	if len(system.Pre.Buildpacks) > 0 || len(system.Post.Buildpacks) > 0 {
+		h.AssertNil(t, dist.SetLabel(fakeBuilderImage, "io.buildpacks.buildpack.system", system))
+		systemTarBuilder := archive.TarBuilder{}
+		systemTomlBytes := &bytes.Buffer{}
+		h.AssertNil(t, toml.NewEncoder(systemTomlBytes).Encode(systemTOML{System: system}))
+
+		systemTarBuilder.AddFile("/cnb/system.toml", 0777, archive.NormalizedDateTime, systemTomlBytes.Bytes())
+
+		systemTar := filepath.Join(tmpDir, fmt.Sprintf("system.%s.toml", h.RandString(8)))
+		h.AssertNil(t, systemTarBuilder.WriteToPath(systemTar, archive.DefaultTarWriterFactory()))
+		h.AssertNil(t, fakeBuilderImage.AddLayer(systemTar))
+	}
+
 	return fakeBuilderImage
 }
 
 type orderTOML struct {
 	Order           dist.Order `toml:"order"`
 	OrderExtensions dist.Order `toml:"orderExtensions"`
+}
+
+type systemTOML struct {
+	System dist.System `toml:"system"`
 }

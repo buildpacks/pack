@@ -135,6 +135,47 @@ type Client struct {
 	version         string
 }
 
+func (c *Client) processSystem(system dist.System, buildpacks []buildpack.BuildModule, disableSystem bool) (dist.System, error) {
+	if disableSystem {
+		return dist.System{}, nil
+	}
+
+	if len(buildpacks) == 0 {
+		return system, nil
+	}
+
+	resolved := dist.System{}
+
+	// Create a map of available buildpacks for faster lookup
+	availableBPs := make(map[string]bool)
+	for _, bp := range buildpacks {
+		bpInfo := bp.Descriptor().Info()
+		availableBPs[bpInfo.ID+"@"+bpInfo.Version] = true
+	}
+
+	// Process pre-buildpacks
+	for _, preBp := range system.Pre.Buildpacks {
+		key := preBp.ID + "@" + preBp.Version
+		if availableBPs[key] {
+			resolved.Pre.Buildpacks = append(resolved.Pre.Buildpacks, preBp)
+		} else if !preBp.Optional {
+			return dist.System{}, errors.Errorf("required system buildpack %s@%s is not available", preBp.ID, preBp.Version)
+		}
+	}
+
+	// Process post-buildpacks
+	for _, postBp := range system.Post.Buildpacks {
+		key := postBp.ID + "@" + postBp.Version
+		if availableBPs[key] {
+			resolved.Post.Buildpacks = append(resolved.Post.Buildpacks, postBp)
+		} else if !postBp.Optional {
+			return dist.System{}, errors.Errorf("required system buildpack %s@%s is not available", postBp.ID, postBp.Version)
+		}
+	}
+
+	return resolved, nil
+}
+
 // Option is a type of function that mutate settings on the client.
 // Values in these functions are set through currying.
 type Option func(c *Client)

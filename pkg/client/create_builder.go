@@ -126,6 +126,7 @@ func (c *Client) createBuilderTarget(ctx context.Context, opts CreateBuilderOpti
 
 	bldr.SetOrder(opts.Config.Order)
 	bldr.SetOrderExtensions(opts.Config.OrderExtensions)
+	bldr.SetSystem(opts.Config.System)
 
 	if opts.Config.Stack.ID != "" {
 		bldr.SetStack(opts.Config.Stack)

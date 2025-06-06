@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+echo "---> DETECT: System Post buildpack"
+
+# Always pass detection for testing
+exit 0
