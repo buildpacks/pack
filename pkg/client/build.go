@@ -140,6 +140,9 @@ type BuildOptions struct {
 	// Launch a terminal UI to depict the build process
 	Interactive bool
 
+	// Disable System Buildpacks present in the builder
+	DisableSystemBuildpacks bool
+
 	// List of buildpack images or archives to add to a builder.
 	// These buildpacks may overwrite those on the builder if they
 	// share both an ID and Version with a buildpack on the builder.
@@ -225,6 +228,9 @@ type BuildOptions struct {
 
 	// Configuration to export to OCI layout format
 	LayoutConfig *LayoutConfig
+
+	// Enable user namespace isolation for the build containers
+	EnableUsernsHost bool
 
 	InsecureRegistries []string
 }
@@ -434,6 +440,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
+	system, err := c.processSystem(bldr.System(), fetchedBPs, opts.DisableSystemBuildpacks)
+	if err != nil {
+		return err
+	}
+
 	// Default mode: if the TrustBuilder option is not set, trust the known trusted builders.
 	if opts.TrustBuilder == nil {
 		opts.TrustBuilder = builder.IsKnownTrustedBuilder
@@ -560,6 +571,8 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		fetchedExs,
 		usingPlatformAPI.LessThan("0.12"),
 		opts.RunImage,
+		system,
+		opts.DisableSystemBuildpacks,
 	)
 	if err != nil {
 		return err
@@ -653,6 +666,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		CreationTime:             opts.CreationTime,
 		Layout:                   opts.Layout(),
 		Keychain:                 c.keychain,
+		EnableUsernsHost:         opts.EnableUsernsHost,
 		InsecureRegistries:       opts.InsecureRegistries,
 	}
 
@@ -1585,8 +1599,10 @@ func (c *Client) createEphemeralBuilder(
 	extensions []buildpack.BuildModule,
 	validateMixins bool,
 	runImage string,
+	system dist.System,
+	disableSystem bool,
 ) (*builder.Builder, error) {
-	if !ephemeralBuilderNeeded(env, order, buildpacks, orderExtensions, extensions, runImage) {
+	if !ephemeralBuilderNeeded(env, order, buildpacks, orderExtensions, extensions, runImage) && !disableSystem {
 		return builder.New(rawBuilderImage, rawBuilderImage.Name(), builder.WithoutSave())
 	}
 
@@ -1618,6 +1634,7 @@ func (c *Client) createEphemeralBuilder(
 	}
 
 	bldr.SetValidateMixins(validateMixins)
+	bldr.SetSystem(system)
 
 	if err := bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version}); err != nil {
 		return nil, err

@@ -25,41 +25,43 @@ import (
 )
 
 type BuildFlags struct {
-	Publish              bool
-	ClearCache           bool
-	TrustBuilder         bool
-	TrustExtraBuildpacks bool
-	Interactive          bool
-	Sparse               bool
-	DockerHost           string
-	CacheImage           string
-	Cache                cache.CacheOpts
-	AppPath              string
-	Builder              string
-	Registry             string
-	RunImage             string
-	Platform             string
-	Policy               string
-	Network              string
-	DescriptorPath       string
-	DefaultProcessType   string
-	LifecycleImage       string
-	Env                  []string
-	EnvFiles             []string
-	Buildpacks           []string
-	Extensions           []string
-	Volumes              []string
-	AdditionalTags       []string
-	Workspace            string
-	GID                  int
-	UID                  int
-	PreviousImage        string
-	SBOMDestinationDir   string
-	ReportDestinationDir string
-	DateTime             string
-	PreBuildpacks        []string
-	PostBuildpacks       []string
-	InsecureRegistries   []string
+	Publish                bool
+	ClearCache             bool
+	DisableSystemBuilpacks bool
+	TrustBuilder           bool
+	TrustExtraBuildpacks   bool
+	Interactive            bool
+	Sparse                 bool
+	EnableUsernsHost       bool
+	DockerHost             string
+	CacheImage             string
+	Cache                  cache.CacheOpts
+	AppPath                string
+	Builder                string
+	Registry               string
+	RunImage               string
+	Platform               string
+	Policy                 string
+	Network                string
+	DescriptorPath         string
+	DefaultProcessType     string
+	LifecycleImage         string
+	Env                    []string
+	EnvFiles               []string
+	Buildpacks             []string
+	Extensions             []string
+	Volumes                []string
+	AdditionalTags         []string
+	Workspace              string
+	GID                    int
+	UID                    int
+	PreviousImage          string
+	SBOMDestinationDir     string
+	ReportDestinationDir   string
+	DateTime               string
+	PreBuildpacks          []string
+	PostBuildpacks         []string
+	InsecureRegistries     []string
 }
 
 // Build an image from source code
@@ -210,6 +212,8 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				CreationTime:             dateTime,
 				PreBuildpacks:            flags.PreBuildpacks,
 				PostBuildpacks:           flags.PostBuildpacks,
+				DisableSystemBuildpacks:  flags.DisableSystemBuilpacks,
+				EnableUsernsHost:         flags.EnableUsernsHost,
 				LayoutConfig: &client.LayoutConfig{
 					Sparse:             flags.Sparse,
 					InputImage:         inputImageName,
@@ -264,6 +268,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVar(&buildFlags.DateTime, "creation-time", "", "Desired create time in the output image config. Accepted values are Unix timestamps (e.g., '1641013200'), or 'now'. Platform API version must be at least 0.9 to use this feature.")
 	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
 	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", `Set the default process type. (default "web")`)
+	cmd.Flags().BoolVar(&buildFlags.DisableSystemBuilpacks, "disable-system-buildpacks", false, "Disable System Buildpacks")
 	cmd.Flags().StringArrayVarP(&buildFlags.Env, "env", "e", []string{}, "Build-time environment variable, in the form 'VAR=VALUE' or 'VAR'.\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed.\nThis flag may be specified multiple times and will override\n  individual values defined by --env-file."+stringArrayHelp("env")+"\nNOTE: These are NOT available at image runtime.")
 	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed\nNOTE: These are NOT available at image runtime.\"")
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
@@ -293,6 +298,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().StringVar(&buildFlags.ReportDestinationDir, "report-output-dir", "", "Path to export build report.toml.\nOmitting the flag yield no report file.")
 	cmd.Flags().BoolVar(&buildFlags.Interactive, "interactive", false, "Launch a terminal UI to depict the build process")
 	cmd.Flags().BoolVar(&buildFlags.Sparse, "sparse", false, "Use this flag to avoid saving on disk the run-image layers when the application image is exported to OCI layout format")
+	cmd.Flags().BoolVar(&buildFlags.EnableUsernsHost, "userns-host", false, "Enable user namespace isolation for the build containers")
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("interactive")
 		cmd.Flags().MarkHidden("sparse")

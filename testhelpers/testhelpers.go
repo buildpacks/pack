@@ -336,6 +336,11 @@ func hasMatches(actual, exp string) bool {
 	return len(matches) > 0
 }
 
+// IndexOf returns the index of the first occurrence of substr in s, or -1 if not found
+func IndexOf(s, substr string) int {
+	return strings.Index(s, substr)
+}
+
 var dockerCliVal client.CommonAPIClient
 var dockerCliOnce sync.Once
 var dockerCliErr error
