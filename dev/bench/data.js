@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749231205791,
+  "lastUpdate": 1750088790662,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -10948,6 +10948,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 60492760450,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9bd06a987a93aa71d15c4f53274ab6b51618decb",
+          "message": "upding delivery workflow to correct the wrong format (#2398)\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2025-06-16T10:43:40-05:00",
+          "tree_id": "d0e2c29cb4216c2b09b8b1e6b046f40dbf5a2ef2",
+          "url": "https://github.com/buildpacks/pack/commit/9bd06a987a93aa71d15c4f53274ab6b51618decb"
+        },
+        "date": 1750088789292,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 9128946227,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2119688412,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 72359604029,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
