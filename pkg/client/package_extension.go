@@ -103,8 +103,7 @@ func (c *Client) packageExtensionTarget(ctx context.Context, opts PackageBuildpa
 			return digest, err
 		}
 	case FormatImage:
-		// TODO: This will need the extra arg
-		img, err := packageBuilder.SaveAsImage(opts.Name, opts.Publish, target, opts.Labels, []string{})
+		img, err := packageBuilder.SaveAsImage(opts.Name, opts.Publish, target, opts.Labels, opts.AdditionalTags)
 		if err != nil {
 			return digest, errors.Wrapf(err, "saving image")
 		}

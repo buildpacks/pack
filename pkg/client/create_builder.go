@@ -67,6 +67,9 @@ type CreateBuilderOptions struct {
 
 	// Temporary directory to use for downloading lifecycle images.
 	TempDirectory string
+
+	// Additional image tags to push to, each will contain contents identical to Image
+	AdditionalTags []string
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.
@@ -134,7 +137,7 @@ func (c *Client) createBuilderTarget(ctx context.Context, opts CreateBuilderOpti
 	bldr.SetRunImage(opts.Config.Run)
 	bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
 
-	err = bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version})
+	err = bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version}, opts.AdditionalTags)
 	if err != nil {
 		return "", err
 	}
