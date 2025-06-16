@@ -1636,7 +1636,7 @@ func (c *Client) createEphemeralBuilder(
 	bldr.SetValidateMixins(validateMixins)
 	bldr.SetSystem(system)
 
-	if err := bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version}); err != nil {
+	if err := bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version}, []string{}); err != nil {
 		return nil, err
 	}
 	return bldr, nil

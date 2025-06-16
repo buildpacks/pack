@@ -463,7 +463,7 @@ func (b *Builder) SetValidateMixins(to bool) {
 }
 
 // Save saves the builder
-func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) error {
+func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata, additionalTags []string) error {
 	if b.saveProhibited {
 		return fmt.Errorf("failed to save builder %s as saving is not allowed", b.Name())
 	}
@@ -652,7 +652,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		return errors.Wrap(err, "failed to set working dir")
 	}
 
-	return b.image.Save()
+	return b.image.Save(additionalTags...)
 }
 
 // Helpers

@@ -165,7 +165,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				}))
 				h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderName)
 				bldr := fakeLifecycle.Opts.Builder.(*builder.Builder)
-				h.AssertNotNil(t, bldr.Save(logger, builder.CreatorMetadata{})) // it shouldn't be possible to save this builder, as that would overwrite the original builder
+				h.AssertNotNil(t, bldr.Save(logger, builder.CreatorMetadata{}, []string{})) // it shouldn't be possible to save this builder, as that would overwrite the original builder
 			})
 		})
 

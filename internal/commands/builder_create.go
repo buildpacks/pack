@@ -27,6 +27,7 @@ type BuilderCreateFlags struct {
 	Flatten               []string
 	Targets               []string
 	Label                 map[string]string
+	AdditionalTags        []string
 }
 
 // CreateBuilder creates a builder image, based on a builder config
@@ -131,6 +132,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				Labels:                flags.Label,
 				Targets:               multiArchCfg.Targets(),
 				TempDirectory:         tempDir,
+				AdditionalTags:        flags.AdditionalTags,
 			}); err != nil {
 				return err
 			}
@@ -156,6 +158,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 - To specify the distribution version: '--target "linux/arm/v6:ubuntu@14.04"'
 - To specify multiple distribution versions: '--target "linux/arm/v6:ubuntu@14.04"  --target "linux/arm/v6:ubuntu@16.04"'
 	`)
+	cmd.Flags().StringSliceVarP(&flags.AdditionalTags, "tag", "", nil, "Additional tags to push the output image to.\nTags should be in the format 'image:tag' or 'repository/image:tag'."+stringSliceHelp("tag"))
 
 	AddHelpFlag(cmd, "create")
 	return cmd
