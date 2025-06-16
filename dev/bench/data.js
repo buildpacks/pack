@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1750092017530,
+  "lastUpdate": 1750111007002,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -11032,6 +11032,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 71941124823,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4188637c6a8d45c875a451633a067c0f8846ad08",
+          "message": "Jjbustamante/fix pack 2397 (#2399)\n\n* Reverting to the previous way of releasing ubuntu's pack version\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2025-06-16T16:54:52-05:00",
+          "tree_id": "c5d108fc5bdead4dfa7127e87edd6427b3746ff8",
+          "url": "https://github.com/buildpacks/pack/commit/4188637c6a8d45c875a451633a067c0f8846ad08"
+        },
+        "date": 1750111006317,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3865255657,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 762479266,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 58245657619,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
