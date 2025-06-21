@@ -332,9 +332,8 @@ func isNil(value interface{}) bool {
 	}
 	rv := reflect.ValueOf(value)
 	kind := rv.Kind()
-	// Check for types that can be nil
-	return (kind == reflect.Ptr || kind == reflect.Func || kind == reflect.Interface ||
-		kind == reflect.Chan || kind == reflect.Map || kind == reflect.Slice) && rv.IsNil()
+	// Check for types that can be nil - only add Func to the original logic
+	return (kind == reflect.Ptr || kind == reflect.Func) && rv.IsNil()
 }
 
 func hasMatches(actual, exp string) bool {
