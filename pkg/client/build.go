@@ -894,12 +894,31 @@ func getFileFilter(descriptor projectTypes.Descriptor) (func(string) bool, error
 	if len(descriptor.Build.Exclude) > 0 {
 		excludes := ignore.CompileIgnoreLines(descriptor.Build.Exclude...)
 		return func(fileName string) bool {
-			return !excludes.MatchesPath(fileName)
+			// Check if the file/directory matches directly
+			if excludes.MatchesPath(fileName) {
+				return false
+			}
+			// For directories, also check if adding a trailing slash would match
+			// This handles patterns like "foo/" that should exclude the "foo" directory
+			if excludes.MatchesPath(fileName + "/") {
+				return false
+			}
+			return true
 		}, nil
 	}
 	if len(descriptor.Build.Include) > 0 {
 		includes := ignore.CompileIgnoreLines(descriptor.Build.Include...)
-		return includes.MatchesPath, nil
+		return func(fileName string) bool {
+			// Check if the file/directory matches directly
+			if includes.MatchesPath(fileName) {
+				return true
+			}
+			// For directories, also check if adding a trailing slash would match
+			if includes.MatchesPath(fileName + "/") {
+				return true
+			}
+			return false
+		}, nil
 	}
 
 	return nil, nil

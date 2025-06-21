@@ -156,6 +156,65 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNilE(t, fakeLifecycleImage.Cleanup())
 	})
 
+	when("#getFileFilter", func() {
+		when("exclude patterns", func() {
+			it("creates filter that excludes files matching patterns", func() {
+				descriptor := projectTypes.Descriptor{
+					Build: projectTypes.Build{
+						Exclude: []string{"*.log", "tmp/"},
+					},
+				}
+
+				filter, err := getFileFilter(descriptor)
+				h.AssertNil(t, err)
+				h.AssertNotNil(t, filter)
+
+				// Files matching patterns should be excluded (filter returns false)
+				h.AssertEq(t, filter("app.log"), false)
+				h.AssertEq(t, filter("tmp/cache.dat"), false)
+				h.AssertEq(t, filter("tmp"), false) // Directory "tmp" should be excluded due to "tmp/" pattern
+
+				// Files not matching patterns should be included (filter returns true)
+				h.AssertEq(t, filter("app.js"), true)
+				h.AssertEq(t, filter("src/main.go"), true)
+			})
+		})
+
+		when("include patterns", func() {
+			it("creates filter that includes only files matching patterns", func() {
+				descriptor := projectTypes.Descriptor{
+					Build: projectTypes.Build{
+						Include: []string{"src/", "*.md"},
+					},
+				}
+
+				filter, err := getFileFilter(descriptor)
+				h.AssertNil(t, err)
+				h.AssertNotNil(t, filter)
+
+				// Files matching patterns should be included (filter returns true)
+				h.AssertEq(t, filter("src/main.go"), true)
+				h.AssertEq(t, filter("README.md"), true)
+
+				// Files not matching patterns should be excluded (filter returns false)
+				h.AssertEq(t, filter("app.log"), false)
+				h.AssertEq(t, filter("tmp/cache.dat"), false)
+			})
+		})
+
+		when("both exclude and include are empty", func() {
+			it("returns nil filter", func() {
+				descriptor := projectTypes.Descriptor{
+					Build: projectTypes.Build{},
+				}
+
+				filter, err := getFileFilter(descriptor)
+				h.AssertNil(t, err)
+				h.AssertNil(t, filter)
+			})
+		})
+	})
+
 	when("#Build", func() {
 		when("ephemeral builder is not needed", func() {
 			it("does not create one", func() {

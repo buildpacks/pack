@@ -179,6 +179,10 @@ func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int
 				return err
 			}
 			if !fileFilter(relPath) {
+				// If this is a directory that doesn't match the filter, skip the entire directory tree
+				if fi != nil && fi.IsDir() {
+					return filepath.SkipDir
+				}
 				return nil
 			}
 		}
