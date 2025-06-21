@@ -200,6 +200,31 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, filter("app.log"), false)
 				h.AssertEq(t, filter("tmp/cache.dat"), false)
 			})
+
+			it("includes parent directories when specific files are included", func() {
+				descriptor := projectTypes.Descriptor{
+					Build: projectTypes.Build{
+						Include: []string{"*.jar", "media/mountain.jpg", "/media/person.png"},
+					},
+				}
+
+				filter, err := getFileFilter(descriptor)
+				h.AssertNil(t, err)
+				h.AssertNotNil(t, filter)
+
+				// Direct matches should be included
+				h.AssertEq(t, filter("cookie.jar"), true)
+				h.AssertEq(t, filter("media/mountain.jpg"), true)
+				h.AssertEq(t, filter("media/person.png"), true)
+
+				// Parent directories should be included to allow traversal
+				h.AssertEq(t, filter("media"), true)
+
+				// Files not matching patterns should be excluded
+				h.AssertEq(t, filter("secrets/api_keys.json"), false)
+				h.AssertEq(t, filter("test.sh"), false)
+				h.AssertEq(t, filter("secrets"), false)
+			})
 		})
 
 		when("both exclude and include are empty", func() {
