@@ -917,7 +917,7 @@ func getFileFilter(descriptor projectTypes.Descriptor) (func(string) bool, error
 			if includes.MatchesPath(fileName + "/") {
 				return true
 			}
-			
+
 			// For directories, check if any included file is within this directory
 			// This allows parent directories to be traversed to reach included files
 			// For example, if "media/mountain.jpg" is included, "media" directory should also be included
@@ -939,7 +939,7 @@ func getFileFilter(descriptor projectTypes.Descriptor) (func(string) bool, error
 					}
 				}
 			}
-			
+
 			return false
 		}, nil
 	}
