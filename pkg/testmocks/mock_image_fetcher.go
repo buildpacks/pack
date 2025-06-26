@@ -37,7 +37,7 @@ func (m *MockImageFetcher) EXPECT() *MockImageFetcherMockRecorder {
 	return m.recorder
 }
 
-// CheckReadAccessValidator mocks base method.
+// CheckReadAccess mocks base method.
 func (m *MockImageFetcher) CheckReadAccess(arg0 string, arg1 image.FetchOptions) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CheckReadAccess", arg0, arg1)
@@ -45,8 +45,8 @@ func (m *MockImageFetcher) CheckReadAccess(arg0 string, arg1 image.FetchOptions)
 	return ret0
 }
 
-// CheckReadAccessValidator indicates an expected call of CheckReadAccessValidator.
-func (mr *MockImageFetcherMockRecorder) CheckReadAccessValidator(arg0, arg1 interface{}) *gomock.Call {
+// CheckReadAccess indicates an expected call of CheckReadAccess.
+func (mr *MockImageFetcherMockRecorder) CheckReadAccess(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckReadAccess", reflect.TypeOf((*MockImageFetcher)(nil).CheckReadAccess), arg0, arg1)
 }

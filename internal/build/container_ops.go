@@ -10,10 +10,10 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle/platform/files"
-	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/errdefs"
-	darchive "github.com/docker/docker/pkg/archive"
+
+	darchive "github.com/moby/go-archive"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/builder"
@@ -198,13 +198,13 @@ func copyDirWindows(ctx context.Context, ctrClient DockerClient, containerID str
 	)
 }
 
-func findMount(info types.ContainerJSON, dst string) (types.MountPoint, error) {
+func findMount(info dcontainer.InspectResponse, dst string) (dcontainer.MountPoint, error) {
 	for _, m := range info.Mounts {
 		if m.Destination == dst {
 			return m, nil
 		}
 	}
-	return types.MountPoint{}, fmt.Errorf("no matching mount found for %s", dst)
+	return dcontainer.MountPoint{}, fmt.Errorf("no matching mount found for %s", dst)
 }
 
 func writeToml(ctrClient DockerClient, ctx context.Context, data interface{}, dstPath string, containerID string, os string, stdout, stderr io.Writer) error {

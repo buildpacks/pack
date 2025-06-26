@@ -38,7 +38,7 @@ const phaseName = "phase"
 
 var (
 	repoName  string
-	ctrClient client.CommonAPIClient
+	ctrClient client.APIClient
 )
 
 // TestPhase is a integration test suite to ensure that the phase options are propagated to the container.
@@ -70,7 +70,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 		lifecycleExec  *build.LifecycleExecution
 		phaseFactory   build.PhaseFactory
 		outBuf, errBuf bytes.Buffer
-		docker         client.CommonAPIClient
+		docker         client.APIClient
 		logger         logging.Logger
 		osType         string
 	)
@@ -508,7 +508,7 @@ func assertRunSucceeds(t *testing.T, phase build.RunnerCleaner, outBuf *bytes.Bu
 	h.AssertNilE(t, phase.Cleanup())
 }
 
-func CreateFakeLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient, appDir string, repoName string, handler ...container.Handler) (*build.LifecycleExecution, error) {
+func CreateFakeLifecycleExecution(logger logging.Logger, docker client.APIClient, appDir string, repoName string, handler ...container.Handler) (*build.LifecycleExecution, error) {
 	builderImage, err := local.NewImage(repoName, docker, local.FromBaseImage(repoName))
 	if err != nil {
 		return nil, err
