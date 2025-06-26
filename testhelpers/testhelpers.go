@@ -26,7 +26,7 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 
-	dockertypes "github.com/docker/docker/api/types"
+	dbuild "github.com/docker/docker/api/types/build"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
@@ -379,7 +379,7 @@ func CreateImage(t *testing.T, dockerCli client.APIClient, repoName, dockerFile 
 	buildContext := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)
 	defer buildContext.Close()
 
-	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dockertypes.ImageBuildOptions{
+	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dbuild.ImageBuildOptions{
 		Tags:           []string{repoName},
 		SuppressOutput: true,
 		Remove:         true,
@@ -396,7 +396,7 @@ func CreateImageFromDir(t *testing.T, dockerCli client.APIClient, repoName strin
 	t.Helper()
 
 	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true, false, nil)
-	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dockertypes.ImageBuildOptions{
+	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dbuild.ImageBuildOptions{
 		Tags:           []string{repoName},
 		Remove:         true,
 		ForceRemove:    true,
@@ -409,7 +409,7 @@ func CreateImageFromDir(t *testing.T, dockerCli client.APIClient, repoName strin
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
-func CheckImageBuildResult(response dockertypes.ImageBuildResponse, err error) error {
+func CheckImageBuildResult(response dbuild.ImageBuildResponse, err error) error {
 	if err != nil {
 		return err
 	}

@@ -11,10 +11,11 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle/platform/files"
 	dcontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/errdefs"
 
 	darchive "github.com/moby/go-archive"
 	"github.com/pkg/errors"
+
+	cerrdefs "github.com/containerd/errdefs"
 
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/container"
@@ -51,7 +52,7 @@ func CopyOutMaybe(handler func(closer io.ReadCloser) error, srcs ...string) Cont
 		for _, src := range srcs {
 			reader, _, err := ctrClient.CopyFromContainer(ctx, containerID, src)
 			if err != nil {
-				if errdefs.IsNotFound(err) {
+				if cerrdefs.IsNotFound(err) {
 					continue
 				}
 				return err

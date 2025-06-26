@@ -10,13 +10,13 @@ import (
 
 	"github.com/buildpacks/imgutil/layout"
 	"github.com/buildpacks/imgutil/layout/sparse"
+	cerrdefs "github.com/containerd/errdefs"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
@@ -252,7 +252,7 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string, platform string
 
 	rc, err := f.docker.ImagePull(ctx, imageID, image.PullOptions{RegistryAuth: regAuth, Platform: platform})
 	if err != nil {
-		if client.IsErrNotFound(err) {
+		if cerrdefs.IsNotFound(err) {
 			return errors.Wrapf(ErrNotFound, "image %s does not exist on the daemon", style.Symbol(imageID))
 		}
 
