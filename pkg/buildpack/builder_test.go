@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -787,6 +788,26 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			_, err = builder.SaveAsImage("some/package", false, dist.Target{OS: "linux"}, customLabels)
 			h.AssertError(t, err, "adding label test.label.fail=true")
+		})
+
+		it("sets additional tags", func() {
+			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{}, 0644)
+			h.AssertNil(t, err)
+
+			builder := buildpack.NewBuilder(mockImageFactory("linux"))
+			builder.SetBuildpack(buildpack1)
+
+			packageImage, err := builder.SaveAsImage("some/package", false, dist.Target{OS: "linux"}, map[string]string{}, "additional-tag-one", "additional-tag-two")
+			h.AssertNil(t, err)
+
+			i, ok := packageImage.(*fakes.Image)
+			h.AssertTrue(t, ok)
+			savedNames := i.SavedNames()
+			slices.Sort(savedNames)
+			h.AssertEq(t, 3, len(savedNames))
+			h.AssertEq(t, "additional-tag-one", savedNames[0])
+			h.AssertEq(t, "additional-tag-two", savedNames[1])
+			h.AssertEq(t, "some/package", savedNames[2])
 		})
 
 		when("flatten is set", func() {

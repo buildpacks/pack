@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -458,6 +459,18 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				layerTar, err := baseImage.FindLayerWithPath("/cnb/order.toml")
 				h.AssertNil(t, err)
 				h.AssertOnTarEntry(t, layerTar, "/cnb/order.toml", h.ContentEquals("some content"))
+			})
+
+			it("adds additional tags as requested", func() {
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}, "additional-tag-one", "additional-tag-two"))
+				h.AssertEq(t, baseImage.IsSaved(), true)
+				h.AssertEq(t, baseImage.Name(), "some/builder")
+				savedNames := baseImage.SavedNames()
+				slices.Sort(savedNames)
+				h.AssertEq(t, 3, len(savedNames))
+				h.AssertEq(t, "additional-tag-one", savedNames[0])
+				h.AssertEq(t, "additional-tag-two", savedNames[1])
+				h.AssertEq(t, "some/builder", savedNames[2])
 			})
 
 			when("validating order", func() {
