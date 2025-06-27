@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1750112013839,
+  "lastUpdate": 1751036404070,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -11116,6 +11116,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 65638460521,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jericop@users.noreply.github.com",
+            "name": "Jerico Pena",
+            "username": "jericop"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6ee43b17134f4300d003e5852bed2ad0792b5454",
+          "message": "Bump imgutil to latest and docker from v27.5.1 to v28.3.0 (#2406)\n\n* Bump imgutil to latest and docker from v27.5.1 to v28.3.0\n* Remove deprecated DSA key form sshdialer\n\nSigned-off-by: Jerico Pena <jericop@gmail.com>",
+          "timestamp": "2025-06-27T09:57:41-05:00",
+          "tree_id": "975e207c039b754077327381474b6c3d1a9d7bb5",
+          "url": "https://github.com/buildpacks/pack/commit/6ee43b17134f4300d003e5852bed2ad0792b5454"
+        },
+        "date": 1751036402612,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4901927294,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 949618485,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 64786969525,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
