@@ -463,7 +463,7 @@ func (b *Builder) SetValidateMixins(to bool) {
 }
 
 // Save saves the builder
-func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata, additionalTags []string) error {
+func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata, additionalTags ...string) error {
 	if b.saveProhibited {
 		return fmt.Errorf("failed to save builder %s as saving is not allowed", b.Name())
 	}

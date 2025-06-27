@@ -452,7 +452,7 @@ func newLayoutImage(target dist.Target) (*layoutImage, error) {
 	return &layoutImage{Image: i}, nil
 }
 
-func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, target dist.Target, labels map[string]string, additionalTags []string) (imgutil.Image, error) {
+func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, target dist.Target, labels map[string]string, additionalTags ...string) (imgutil.Image, error) {
 	if err := b.validate(); err != nil {
 		return nil, err
 	}

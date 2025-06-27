@@ -208,7 +208,7 @@ func (c *Client) packageBuildpackTarget(ctx context.Context, opts PackageBuildpa
 				return "", errors.Wrap(err, "invalid image name")
 			}
 		}
-		img, err := packageBuilder.SaveAsImage(packageName, opts.Publish, target, opts.Labels, opts.AdditionalTags)
+		img, err := packageBuilder.SaveAsImage(packageName, opts.Publish, target, opts.Labels, opts.AdditionalTags...)
 		if err != nil {
 			return digest, errors.Wrapf(err, "saving image")
 		}

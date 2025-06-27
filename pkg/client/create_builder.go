@@ -137,7 +137,7 @@ func (c *Client) createBuilderTarget(ctx context.Context, opts CreateBuilderOpti
 	bldr.SetRunImage(opts.Config.Run)
 	bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
 
-	err = bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version}, opts.AdditionalTags)
+	err = bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version}, opts.AdditionalTags...)
 	if err != nil {
 		return "", err
 	}
