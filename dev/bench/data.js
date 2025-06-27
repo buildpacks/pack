@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1751051400065,
+  "lastUpdate": 1751056263298,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -11326,6 +11326,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 69065393731,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f1c347c6a645f1ff682dabc2b11fcdf3154f2aa9",
+          "message": "Updating lifecycle version to latest v0.20.11 (#2411)\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2025-06-27T15:28:22-05:00",
+          "tree_id": "11ba3af375d1a0f44b7453db2e82f2a88bbb88bc",
+          "url": "https://github.com/buildpacks/pack/commit/f1c347c6a645f1ff682dabc2b11fcdf3154f2aa9"
+        },
+        "date": 1751056261901,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6420182079,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2040207324,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 74318734203,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
