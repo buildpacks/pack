@@ -83,7 +83,7 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 				publish = true
 				mockController := gomock.NewController(t)
 				mockFetcher := testmocks.NewMockImageFetcher(mockController)
-				mockFetcher.EXPECT().CheckReadAccessValidator(gomock.Any(), gomock.Any()).Return(true).AnyTimes()
+				mockFetcher.EXPECT().CheckReadAccess(gomock.Any(), gomock.Any()).Return(true).AnyTimes()
 				subject, err = NewClient(WithLogger(logger), WithKeychain(keychain), WithFetcher(mockFetcher))
 				h.AssertNil(t, err)
 			})
@@ -118,9 +118,9 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 
 				mockController := gomock.NewController(t)
 				mockFetcher := testmocks.NewMockImageFetcher(mockController)
-				mockFetcher.EXPECT().CheckReadAccessValidator(gcrRunMirror, gomock.Any()).Return(false)
-				mockFetcher.EXPECT().CheckReadAccessValidator(stackInfo.RunImage.Image, gomock.Any()).Return(false)
-				mockFetcher.EXPECT().CheckReadAccessValidator(defaultMirror, gomock.Any()).Return(true)
+				mockFetcher.EXPECT().CheckReadAccess(gcrRunMirror, gomock.Any()).Return(false)
+				mockFetcher.EXPECT().CheckReadAccess(stackInfo.RunImage.Image, gomock.Any()).Return(false)
+				mockFetcher.EXPECT().CheckReadAccess(defaultMirror, gomock.Any()).Return(true)
 
 				subject, err = NewClient(WithLogger(logger), WithKeychain(keychain), WithFetcher(mockFetcher))
 				h.AssertNil(t, err)

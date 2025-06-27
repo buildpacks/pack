@@ -34,7 +34,7 @@ func TestVolumeCache(t *testing.T) {
 
 func testCache(t *testing.T, when spec.G, it spec.S) {
 	var (
-		dockerClient client.CommonAPIClient
+		dockerClient client.APIClient
 		outBuf       bytes.Buffer
 		logger       logging.Logger
 	)
@@ -298,7 +298,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 	when("#Clear", func() {
 		var (
 			volumeName   string
-			dockerClient client.CommonAPIClient
+			dockerClient client.APIClient
 			subject      *cache.VolumeCache
 			ctx          context.Context
 		)

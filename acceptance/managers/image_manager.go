@@ -22,10 +22,10 @@ var DefaultDuration = 10 * time.Second
 type ImageManager struct {
 	testObject *testing.T
 	assert     h.AssertionManager
-	dockerCli  client.CommonAPIClient
+	dockerCli  client.APIClient
 }
 
-func NewImageManager(t *testing.T, dockerCli client.CommonAPIClient) ImageManager {
+func NewImageManager(t *testing.T, dockerCli client.APIClient) ImageManager {
 	return ImageManager{
 		testObject: t,
 		assert:     h.NewAssertionManager(t),
@@ -43,7 +43,7 @@ func (im ImageManager) CleanupImages(imageNames ...string) {
 
 func (im ImageManager) InspectLocal(image string) (dockertypes.ImageInspect, error) {
 	im.testObject.Helper()
-	inspect, _, err := im.dockerCli.ImageInspectWithRaw(context.Background(), image)
+	inspect, err := im.dockerCli.ImageInspect(context.Background(), image)
 	return inspect, err
 }
 
@@ -119,7 +119,7 @@ func (im ImageManager) CreateContainer(name string) TestContainer {
 
 type TestContainer struct {
 	testObject *testing.T
-	dockerCli  client.CommonAPIClient
+	dockerCli  client.APIClient
 	assert     h.AssertionManager
 	name       string
 	id         string

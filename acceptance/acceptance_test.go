@@ -47,7 +47,7 @@ const (
 )
 
 var (
-	dockerCli      client.CommonAPIClient
+	dockerCli      client.APIClient
 	registryConfig *h.TestRegistryConfig
 	suiteManager   *SuiteManager
 	imageManager   managers.ImageManager
@@ -4147,7 +4147,7 @@ func generatePackageTomlWithOS(
 	return packageTomlFile.Name()
 }
 
-func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror string) error {
+func createStack(t *testing.T, dockerCli client.APIClient, runImageMirror string) error {
 	t.Helper()
 	t.Log("creating stack images...")
 
@@ -4168,7 +4168,7 @@ func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror 
 	return nil
 }
 
-func createStackImage(dockerCli client.CommonAPIClient, repoName string, dir string) error {
+func createStackImage(dockerCli client.APIClient, repoName string, dir string) error {
 	defaultFilterFunc := func(file string) bool { return true }
 
 	ctx := context.Background()
