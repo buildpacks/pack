@@ -7,7 +7,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20250626173435-7c19c278f3d2
-	github.com/buildpacks/lifecycle v0.20.8
+	github.com/buildpacks/lifecycle v0.20.11
 	github.com/containerd/errdefs v1.0.0
 	github.com/docker/cli v28.3.0+incompatible
 	github.com/docker/docker v28.3.0+incompatible
@@ -101,7 +101,7 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/mux v1.8.0 // indirect
+	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
@@ -151,6 +151,4 @@ require (
 
 replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.3.2
 
-go 1.24.0
-
-toolchain go1.24.3
+go 1.24.4
