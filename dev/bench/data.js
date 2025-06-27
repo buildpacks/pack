@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1751036404070,
+  "lastUpdate": 1751040365892,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -11158,6 +11158,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 64786969525,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "204a8c4c4a4b0575f02b29387b0ad9c9b0ce3152",
+          "message": "build(deps): bump the go-dependencies group across 1 directory with 3 updates (#2408)\n\nBumps the go-dependencies group with 3 updates in the / directory: [github.com/GoogleContainerTools/kaniko](https://github.com/GoogleContainerTools/kaniko), [github.com/docker/cli](https://github.com/docker/cli) and [github.com/go-git/go-git/v5](https://github.com/go-git/go-git).\n\n\nUpdates `github.com/GoogleContainerTools/kaniko` from 1.23.2 to 1.24.0\n- [Release notes](https://github.com/GoogleContainerTools/kaniko/releases)\n- [Changelog](https://github.com/GoogleContainerTools/kaniko/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/GoogleContainerTools/kaniko/compare/v1.23.2...v1.24.0)\n\nUpdates `github.com/docker/cli` from 28.2.2+incompatible to 28.3.0+incompatible\n- [Commits](https://github.com/docker/cli/compare/v28.2.2...v28.3.0)\n\nUpdates `github.com/go-git/go-git/v5` from 5.16.0 to 5.16.2\n- [Release notes](https://github.com/go-git/go-git/releases)\n- [Commits](https://github.com/go-git/go-git/compare/v5.16.0...v5.16.2)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/GoogleContainerTools/kaniko\n  dependency-version: 1.24.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: github.com/docker/cli\n  dependency-version: 28.3.0+incompatible\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: github.com/go-git/go-git/v5\n  dependency-version: 5.16.2\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2025-06-27T16:03:51Z",
+          "tree_id": "dec8dfa1fe73517a00fed95c27a53d9818f2c4a4",
+          "url": "https://github.com/buildpacks/pack/commit/204a8c4c4a4b0575f02b29387b0ad9c9b0ce3152"
+        },
+        "date": 1751040365224,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4045208035,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 942199688,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 61185061642,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
