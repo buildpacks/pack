@@ -10,13 +10,14 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/buildpacks/pack/internal/name"
-
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
+	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+
+	"github.com/buildpacks/pack/internal/name"
 
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
@@ -25,7 +26,6 @@ import (
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
-	"github.com/docker/docker/client"
 )
 
 // CreateBuilderOptions is a configuration object used to change the behavior of

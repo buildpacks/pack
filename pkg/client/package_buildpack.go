@@ -6,9 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/buildpacks/pack/internal/name"
-
+	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/name"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/layer"
@@ -18,7 +19,6 @@ import (
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
-	"github.com/docker/docker/client"
 )
 
 const (
