@@ -27,6 +27,7 @@ type BuilderCreateFlags struct {
 	Flatten               []string
 	Targets               []string
 	Label                 map[string]string
+	DockerHost            string
 }
 
 // CreateBuilder creates a builder image, based on a builder config
@@ -131,6 +132,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				Labels:                flags.Label,
 				Targets:               multiArchCfg.Targets(),
 				TempDirectory:         tempDir,
+				DockerHost:            flags.DockerHost,
 			}); err != nil {
 				return err
 			}
@@ -156,6 +158,12 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 - To specify the distribution version: '--target "linux/arm/v6:ubuntu@14.04"'
 - To specify multiple distribution versions: '--target "linux/arm/v6:ubuntu@14.04"  --target "linux/arm/v6:ubuntu@16.04"'
 	`)
+	cmd.Flags().StringVar(&flags.DockerHost, "docker-host", "",
+		`Address to docker daemon that will be exposed to the build container.
+If not set (or set to empty string) the standard socket location will be used.
+Special value 'inherit' may be used in which case DOCKER_HOST environment variable will be used.
+This option may set DOCKER_HOST environment variable for the build container if needed.
+`)
 
 	AddHelpFlag(cmd, "create")
 	return cmd
