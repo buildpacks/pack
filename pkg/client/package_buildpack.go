@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/buildpacks/pack/internal/name"
@@ -17,6 +18,7 @@ import (
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
+	"github.com/docker/docker/client"
 )
 
 const (
@@ -71,10 +73,32 @@ type PackageBuildpackOptions struct {
 
 	// Target platforms to build packages for
 	Targets []dist.Target
+
+	// Address to docker daemon that will be used for image operations
+	DockerHost string
 }
 
 // PackageBuildpack packages buildpack(s) into either an image or file.
 func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
+	if opts.DockerHost != "" {
+		host := opts.DockerHost
+		if host == "inherit" {
+			host = os.Getenv("DOCKER_HOST")
+		}
+		if host != "" {
+			os.Setenv("DOCKER_HOST", host)
+			newDocker, err := client.NewClientWithOpts(
+				client.WithHost(host),
+				client.WithVersion(DockerAPIVersion),
+			)
+			if err != nil {
+				return errors.Wrapf(err, "initializing docker client with host %s", host)
+			}
+			c.docker = newDocker
+			c.imageFetcher = image.NewFetcher(c.logger, c.docker, image.WithRegistryMirrors(c.registryMirrors), image.WithKeychain(c.keychain))
+		}
+	}
+
 	if opts.Format == "" {
 		opts.Format = FormatImage
 	}
