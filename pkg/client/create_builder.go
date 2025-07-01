@@ -67,6 +67,10 @@ type CreateBuilderOptions struct {
 
 	// Temporary directory to use for downloading lifecycle images.
 	TempDirectory string
+
+	// Address of docker daemon exposed to build container
+	// e.g. tcp://example.com:1234, unix:///run/user/1000/podman/podman.sock
+	DockerHost string
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.

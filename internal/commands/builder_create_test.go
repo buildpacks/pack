@@ -462,6 +462,34 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("--docker-host", func() {
+			it.Before(func() {
+				h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(validConfig), 0666))
+			})
+
+			it("passes docker host to CreateBuilder", func() {
+				mockClient.EXPECT().CreateBuilder(gomock.Any(), EqCreateBuilderOptionsDockerHost("unix:///var/run/docker.sock")).Return(nil)
+
+				command.SetArgs([]string{
+					"some/builder",
+					"--config", builderConfigPath,
+					"--docker-host", "unix:///var/run/docker.sock",
+				})
+				h.AssertNil(t, command.Execute())
+			})
+
+			it("passes inherit value to CreateBuilder", func() {
+				mockClient.EXPECT().CreateBuilder(gomock.Any(), EqCreateBuilderOptionsDockerHost("inherit")).Return(nil)
+
+				command.SetArgs([]string{
+					"some/builder",
+					"--config", builderConfigPath,
+					"--docker-host", "inherit",
+				})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
 		when("multi-platform builder is expected to be created", func() {
 			when("builder config has no targets defined", func() {
 				it.Before(func() {
@@ -566,6 +594,15 @@ func EqCreateBuilderOptionsTargets(targets []dist.Target) gomock.Matcher {
 				return false
 			}
 			return reflect.DeepEqual(o.Targets, targets)
+		},
+	}
+}
+
+func EqCreateBuilderOptionsDockerHost(host string) gomock.Matcher {
+	return createbuilderOptionsMatcher{
+		description: fmt.Sprintf("DockerHost=%s", host),
+		equals: func(o client.CreateBuilderOptions) bool {
+			return o.DockerHost == host
 		},
 	}
 }
