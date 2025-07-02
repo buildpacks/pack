@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1751477995733,
+  "lastUpdate": 1751478236063,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -11452,6 +11452,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 71297362646,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ab77bee404368c18446e438b342146c8dd787589",
+          "message": "Fix #2405: Add template parameter to GitHub issue URL (#2407)\n\nWhen using 'pack buildpack register', the GitHub URL was missing\nthe 'template=add-buildpack.md' parameter, causing GitHub to redirect\nto a template selection page and drop all pre-filled parameters.\n\nThis fix adds the template parameter to ensure the correct issue\ntemplate is used and all parameters are preserved.\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude <noreply@anthropic.com>",
+          "timestamp": "2025-07-02T12:37:55-05:00",
+          "tree_id": "160e96a7c14b2a7f5b97532043176781eb996292",
+          "url": "https://github.com/buildpacks/pack/commit/ab77bee404368c18446e438b342146c8dd787589"
+        },
+        "date": 1751478234717,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7843927300,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2204491339,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 66639293845,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
