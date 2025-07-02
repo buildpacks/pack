@@ -28,7 +28,7 @@ func TestImageCache(t *testing.T) {
 
 func testImageCache(t *testing.T, when spec.G, it spec.S) {
 	when("#NewImageCache", func() {
-		var dockerClient client.CommonAPIClient
+		var dockerClient client.APIClient
 
 		it.Before(func() {
 			var err error
@@ -76,7 +76,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Type", func() {
 		var (
-			dockerClient client.CommonAPIClient
+			dockerClient client.APIClient
 		)
 
 		it.Before(func() {
@@ -97,7 +97,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 	when("#Clear", func() {
 		var (
 			imageName    string
-			dockerClient client.CommonAPIClient
+			dockerClient client.APIClient
 			subject      *cache.ImageCache
 			ctx          context.Context
 		)

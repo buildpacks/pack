@@ -26,7 +26,7 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 
-	dockertypes "github.com/docker/docker/api/types"
+	dbuild "github.com/docker/docker/api/types/build"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
@@ -341,11 +341,11 @@ func IndexOf(s, substr string) int {
 	return strings.Index(s, substr)
 }
 
-var dockerCliVal client.CommonAPIClient
+var dockerCliVal client.APIClient
 var dockerCliOnce sync.Once
 var dockerCliErr error
 
-func dockerCli(t *testing.T) client.CommonAPIClient {
+func dockerCli(t *testing.T) client.APIClient {
 	dockerCliOnce.Do(func() {
 		dockerCliVal, dockerCliErr = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	})
@@ -373,13 +373,13 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 	}
 }
 
-func CreateImage(t *testing.T, dockerCli client.CommonAPIClient, repoName, dockerFile string) {
+func CreateImage(t *testing.T, dockerCli client.APIClient, repoName, dockerFile string) {
 	t.Helper()
 
 	buildContext := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)
 	defer buildContext.Close()
 
-	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dockertypes.ImageBuildOptions{
+	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dbuild.ImageBuildOptions{
 		Tags:           []string{repoName},
 		SuppressOutput: true,
 		Remove:         true,
@@ -392,11 +392,11 @@ func CreateImage(t *testing.T, dockerCli client.CommonAPIClient, repoName, docke
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
-func CreateImageFromDir(t *testing.T, dockerCli client.CommonAPIClient, repoName string, dir string) {
+func CreateImageFromDir(t *testing.T, dockerCli client.APIClient, repoName string, dir string) {
 	t.Helper()
 
 	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true, false, nil)
-	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dockertypes.ImageBuildOptions{
+	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dbuild.ImageBuildOptions{
 		Tags:           []string{repoName},
 		Remove:         true,
 		ForceRemove:    true,
@@ -409,7 +409,7 @@ func CreateImageFromDir(t *testing.T, dockerCli client.CommonAPIClient, repoName
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
-func CheckImageBuildResult(response dockertypes.ImageBuildResponse, err error) error {
+func CheckImageBuildResult(response dbuild.ImageBuildResponse, err error) error {
 	if err != nil {
 		return err
 	}
@@ -448,7 +448,7 @@ func checkResponse(responseBody io.Reader) error {
 	return nil
 }
 
-func CreateImageOnRemote(t *testing.T, dockerCli client.CommonAPIClient, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
+func CreateImageOnRemote(t *testing.T, dockerCli client.APIClient, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
 	t.Helper()
 	imageName := registryConfig.RepoName(repoName)
 	CreateImage(t, dockerCli, imageName, dockerFile)
@@ -456,7 +456,7 @@ func CreateImageOnRemote(t *testing.T, dockerCli client.CommonAPIClient, registr
 	return imageName
 }
 
-func DockerRmi(dockerCli client.CommonAPIClient, repoNames ...string) error {
+func DockerRmi(dockerCli client.APIClient, repoNames ...string) error {
 	var err error
 	ctx := context.Background()
 	for _, name := range repoNames {
@@ -472,7 +472,7 @@ func DockerRmi(dockerCli client.CommonAPIClient, repoNames ...string) error {
 	return err
 }
 
-func PushImage(dockerCli client.CommonAPIClient, ref string, registryConfig *TestRegistryConfig) error {
+func PushImage(dockerCli client.APIClient, ref string, registryConfig *TestRegistryConfig) error {
 	rc, err := dockerCli.ImagePush(context.Background(), ref, image.PushOptions{RegistryAuth: registryConfig.RegistryAuth()})
 	if err != nil {
 		return errors.Wrap(err, "pushing image")
@@ -516,14 +516,14 @@ func HTTPGetE(url string, headers map[string]string) (string, error) {
 
 func ImageID(t *testing.T, repoName string) string {
 	t.Helper()
-	inspect, _, err := dockerCli(t).ImageInspectWithRaw(context.Background(), repoName)
+	inspect, err := dockerCli(t).ImageInspect(context.Background(), repoName)
 	AssertNil(t, err)
 	return strings.TrimPrefix(inspect.ID, "sha256:")
 }
 
 func Digest(t *testing.T, repoName string) string {
 	t.Helper()
-	inspect, _, err := dockerCli(t).ImageInspectWithRaw(context.Background(), repoName)
+	inspect, err := dockerCli(t).ImageInspect(context.Background(), repoName)
 	AssertNil(t, err)
 	if len(inspect.RepoDigests) < 1 {
 		t.Fatalf("image '%s' has no repo digests", repoName)
@@ -537,7 +537,7 @@ func Digest(t *testing.T, repoName string) string {
 
 func TopLayerDiffID(t *testing.T, repoName string) string {
 	t.Helper()
-	inspect, _, err := dockerCli(t).ImageInspectWithRaw(context.Background(), repoName)
+	inspect, err := dockerCli(t).ImageInspect(context.Background(), repoName)
 	AssertNil(t, err)
 	if len(inspect.RootFS.Layers) < 1 {
 		t.Fatalf("image '%s' has no layers", repoName)
@@ -561,7 +561,7 @@ func RunE(cmd *exec.Cmd) (string, error) {
 	return string(output), nil
 }
 
-func PullImageWithAuth(dockerCli client.CommonAPIClient, ref, registryAuth string) error {
+func PullImageWithAuth(dockerCli client.APIClient, ref, registryAuth string) error {
 	rc, err := dockerCli.ImagePull(context.Background(), ref, image.PullOptions{RegistryAuth: registryAuth})
 	if err != nil {
 		return err
@@ -670,7 +670,7 @@ func SkipUnless(t *testing.T, expression bool, reason string) {
 	}
 }
 
-func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id string, stdout io.Writer, stderr io.Writer) error {
+func RunContainer(ctx context.Context, dockerCli client.APIClient, id string, stdout io.Writer, stderr io.Writer) error {
 	bodyChan, errChan := container.ContainerWaitWrapper(ctx, dockerCli, id, dcontainer.WaitConditionNextExit)
 
 	logs, err := dockerCli.ContainerAttach(ctx, id, dcontainer.AttachOptions{

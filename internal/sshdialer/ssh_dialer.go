@@ -272,7 +272,6 @@ func NewSSHClientConfig(url *urlPkg.URL, config Config) (*ssh.ClientConfig, erro
 			ssh.KeyAlgoRSASHA512,
 			ssh.KeyAlgoRSASHA256,
 			ssh.KeyAlgoRSA,
-			ssh.KeyAlgoDSA,
 		},
 		Timeout: sshTimeout * time.Second,
 	}
