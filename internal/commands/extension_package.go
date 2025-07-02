@@ -25,6 +25,7 @@ type ExtensionPackageFlags struct {
 	Publish         bool
 	Policy          string
 	Path            string
+	DockerHost      string
 }
 
 // ExtensionPackager packages extensions
@@ -121,6 +122,7 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 				Publish:         flags.Publish,
 				PullPolicy:      pullPolicy,
 				Targets:         multiArchCfg.Targets(),
+				DockerHost:      flags.DockerHost,
 			}); err != nil {
 				return err
 			}
@@ -152,6 +154,10 @@ Targets should be in the format '[os][/arch][/variant]:[distroname@osversion@ano
 - To specify the distribution version: '--target "linux/arm/v6:ubuntu@14.04"'
 - To specify multiple distribution versions: '--target "linux/arm/v6:ubuntu@14.04"  --target "linux/arm/v6:ubuntu@16.04"'
 	`)
+	cmd.Flags().StringVar(&flags.DockerHost, "docker-host", "",
+		`Address to docker daemon that will be exposed to the build container.
+If not set (or set to empty string) the standard socket location will be used.
+Special value 'inherit' may be used in which case the value from DOCKER_HOST environment variable will be used.`)
 	AddHelpFlag(cmd, "package")
 	return cmd
 }

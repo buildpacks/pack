@@ -10,13 +10,14 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/buildpacks/pack/internal/name"
-
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
+	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+
+	"github.com/buildpacks/pack/internal/name"
 
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
@@ -67,11 +68,38 @@ type CreateBuilderOptions struct {
 
 	// Temporary directory to use for downloading lifecycle images.
 	TempDirectory string
+
+	// Address of docker daemon exposed to build container
+	// e.g. tcp://example.com:1234, unix:///run/user/1000/podman/podman.sock
+	DockerHost string
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.
 // If any configuration is invalid, it will error and exit without creating any images.
 func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) error {
+	if opts.DockerHost != "" {
+		host := opts.DockerHost
+		if host == "inherit" {
+			host = OS.Getenv("DOCKER_HOST")
+		}
+		if host != "" {
+			OS.Setenv("DOCKER_HOST", host)
+			newDocker, err := client.NewClientWithOpts(
+				client.WithHost(host),
+				client.WithVersion(DockerAPIVersion),
+			)
+			if err != nil {
+				return errors.Wrapf(err, "initializing docker client with host %s", host)
+			}
+			c.docker = newDocker
+			c.imageFetcher = image.NewFetcher(c.logger, c.docker, image.WithRegistryMirrors(c.registryMirrors), image.WithKeychain(c.keychain))
+			c.imageFactory = &imageFactory{
+				dockerClient: c.docker,
+				keychain:     c.keychain,
+			}
+		}
+	}
+
 	targets, err := c.processBuilderCreateTargets(ctx, opts)
 	if err != nil {
 		return err
