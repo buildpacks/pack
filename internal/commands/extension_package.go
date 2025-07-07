@@ -25,6 +25,7 @@ type ExtensionPackageFlags struct {
 	Publish         bool
 	Policy          string
 	Path            string
+	AdditionalTags  []string
 }
 
 // ExtensionPackager packages extensions
@@ -121,6 +122,7 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 				Publish:         flags.Publish,
 				PullPolicy:      pullPolicy,
 				Targets:         multiArchCfg.Targets(),
+				AdditionalTags:  flags.AdditionalTags,
 			}); err != nil {
 				return err
 			}
@@ -152,6 +154,7 @@ Targets should be in the format '[os][/arch][/variant]:[distroname@osversion@ano
 - To specify the distribution version: '--target "linux/arm/v6:ubuntu@14.04"'
 - To specify multiple distribution versions: '--target "linux/arm/v6:ubuntu@14.04"  --target "linux/arm/v6:ubuntu@16.04"'
 	`)
+	cmd.Flags().StringSliceVarP(&flags.AdditionalTags, "tag", "", nil, "Additional tags to push the output image to.\nTags should be in the format 'image:tag' or 'repository/image:tag'."+stringSliceHelp("tag"))
 	AddHelpFlag(cmd, "package")
 	return cmd
 }

@@ -31,6 +31,7 @@ type BuildpackPackageFlags struct {
 	Publish               bool
 	Flatten               bool
 	AppendImageNameSuffix bool
+	AdditionalTags        []string
 }
 
 // BuildpackPackager packages buildpacks
@@ -148,6 +149,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 				FlattenExclude:        flags.FlattenExclude,
 				Labels:                flags.Label,
 				Targets:               multiArchCfg.Targets(),
+				AdditionalTags:        flags.AdditionalTags,
 			}); err != nil {
 				return err
 			}
@@ -183,6 +185,7 @@ Targets should be in the format '[os][/arch][/variant]:[distroname@osversion@ano
 - To specify the distribution version: '--target "linux/arm/v6:ubuntu@14.04"'
 - To specify multiple distribution versions: '--target "linux/arm/v6:ubuntu@14.04"  --target "linux/arm/v6:ubuntu@16.04"'
 	`)
+	cmd.Flags().StringSliceVarP(&flags.AdditionalTags, "tag", "", nil, "Additional tags to push the output image to.\nTags should be in the format 'image:tag' or 'repository/image:tag'."+stringSliceHelp("tag"))
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("flatten")
 		cmd.Flags().MarkHidden("flatten-exclude")
