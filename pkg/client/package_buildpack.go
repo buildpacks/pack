@@ -88,7 +88,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		if host != "" {
 			os.Setenv("DOCKER_HOST", host)
 			newDocker, err := client.NewClientWithOpts(
-				client.WithHost(host),
+				client.FromEnv,
 				client.WithVersion(DockerAPIVersion),
 			)
 			if err != nil {
