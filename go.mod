@@ -10,7 +10,7 @@ require (
 	github.com/buildpacks/lifecycle v0.20.11
 	github.com/containerd/errdefs v1.0.0
 	github.com/docker/cli v28.3.2+incompatible
-	github.com/docker/docker v28.3.2+incompatible
+	github.com/docker/docker v28.3.3+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gdamore/tcell/v2 v2.8.1
