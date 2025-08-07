@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1752634564922,
+  "lastUpdate": 1754567253677,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -11662,6 +11662,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 72087281037,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f9ac9cac91438775e478dd339ffe8aaed4bcc977",
+          "message": "build(deps): bump the go-dependencies group with 3 updates (#2422)\n\nBumps the go-dependencies group with 3 updates: [github.com/docker/cli](https://github.com/docker/cli), [github.com/docker/docker](https://github.com/docker/docker) and [github.com/onsi/gomega](https://github.com/onsi/gomega).\n\n\nUpdates `github.com/docker/cli` from 28.3.2+incompatible to 28.3.3+incompatible\n- [Commits](https://github.com/docker/cli/compare/v28.3.2...v28.3.3)\n\nUpdates `github.com/docker/docker` from 28.3.2+incompatible to 28.3.3+incompatible\n- [Release notes](https://github.com/docker/docker/releases)\n- [Commits](https://github.com/docker/docker/compare/v28.3.2...v28.3.3)\n\nUpdates `github.com/onsi/gomega` from 1.37.0 to 1.38.0\n- [Release notes](https://github.com/onsi/gomega/releases)\n- [Changelog](https://github.com/onsi/gomega/blob/master/CHANGELOG.md)\n- [Commits](https://github.com/onsi/gomega/compare/v1.37.0...v1.38.0)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/docker/cli\n  dependency-version: 28.3.3+incompatible\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/docker/docker\n  dependency-version: 28.3.3+incompatible\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/onsi/gomega\n  dependency-version: 1.38.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2025-08-07T06:45:16-05:00",
+          "tree_id": "e482e0d9b6b4402c9c7fbc12113addbaebeb8af9",
+          "url": "https://github.com/buildpacks/pack/commit/f9ac9cac91438775e478dd339ffe8aaed4bcc977"
+        },
+        "date": 1754567253030,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3880595152,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 770664161,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 59332229027,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
