@@ -49,7 +49,7 @@ jobs:
 
             return tag.replace(/^v/, '');
       - name: Checkout source at tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: v${{ steps.version.outputs.result }}
       - name: Determine App Name
