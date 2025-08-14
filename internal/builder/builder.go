@@ -652,7 +652,10 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata, a
 		return errors.Wrap(err, "failed to set working dir")
 	}
 
-	return b.image.Save(additionalTags...)
+	logger.Debugf("Builder creation completed, starting image save")
+	err = b.image.Save(additionalTags...)
+	logger.Debugf("Image save completed")
+	return err
 }
 
 // Helpers
