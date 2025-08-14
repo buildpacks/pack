@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/apex/log v1.9.0
-	github.com/buildpacks/imgutil v0.0.0-20250814142424-57726883cf1a
+	github.com/buildpacks/imgutil v0.0.0-20250814164739-4b1c8875ba7e
 	github.com/buildpacks/lifecycle v0.20.11
 	github.com/containerd/errdefs v1.0.0
 	github.com/docker/cli v28.3.3+incompatible
