@@ -190,47 +190,99 @@ jobs:
           echo "PACK_MILESTONE=${milestone}" >> $GITHUB_ENV
       - name: Download artifacts
         uses: actions/download-artifact@v4
-      - name: Package artifacts - macos
+      - name: Install Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Package artifacts and Generate SBOM JSON file - macos
         run: |
           chmod +x pack-macos/pack
           filename=pack-v${{ env.PACK_VERSION }}-macos.tgz
           tar -C pack-macos -vzcf $filename pack
           shasum -a 256 $filename > $filename.sha256
-      - name: Package artifacts - linux-arm64
+
+          temp_dir=$(mktemp -d)
+          trap 'rm -rf "$temp_dir"' EXIT
+
+          tar -xzf $filename -C $temp_dir
+          syft "$temp_dir" -o cyclonedx-json > "${filename}-sbom.cdx.json"
+          shasum -a 256 "${filename}-sbom.cdx.json" > "${filename}-sbom.cdx.json.sha256"
+      - name: Package artifacts and Generate SBOM JSON file - linux-arm64
         run: |
           chmod +x pack-linux-arm64/pack
           filename=pack-v${{ env.PACK_VERSION }}-linux-arm64.tgz
           tar -C pack-linux-arm64 -vzcf $filename pack
           shasum -a 256 $filename > $filename.sha256
-      - name: Package artifacts - linux-s390x
+
+          temp_dir=$(mktemp -d)
+          trap 'rm -rf "$temp_dir"' EXIT
+
+          tar -xzf $filename -C $temp_dir
+          syft "$temp_dir" -o cyclonedx-json > "${filename}-sbom.cdx.json"
+          shasum -a 256 "${filename}-sbom.cdx.json" > "${filename}-sbom.cdx.json.sha256"
+      - name: Package artifacts and Generate SBOM JSON file - linux-s390x
         run: |
           chmod +x pack-linux-s390x/pack
           filename=pack-v${{ env.PACK_VERSION }}-linux-s390x.tgz
           tar -C pack-linux-s390x -vzcf $filename pack
           shasum -a 256 $filename > $filename.sha256
-      - name: Package artifacts - linux-ppc64le
+
+          temp_dir=$(mktemp -d)
+          trap 'rm -rf "$temp_dir"' EXIT
+
+          tar -xzf $filename -C $temp_dir
+          syft "$temp_dir" -o cyclonedx-json > "${filename}-sbom.cdx.json"
+          shasum -a 256 "${filename}-sbom.cdx.json" > "${filename}-sbom.cdx.json.sha256"
+      - name: Package artifacts and Generate SBOM JSON file - linux-ppc64le
         run: |
           chmod +x pack-linux-ppc64le/pack
           filename=pack-v${{ env.PACK_VERSION }}-linux-ppc64le.tgz
           tar -C pack-linux-ppc64le -vzcf $filename pack
           shasum -a 256 $filename > $filename.sha256
-      - name: Package artifacts - macos-arm64
+        
+          temp_dir=$(mktemp -d)
+          trap 'rm -rf "$temp_dir"' EXIT
+
+          tar -xzf $filename -C $temp_dir
+          syft "$temp_dir" -o cyclonedx-json > "${filename}-sbom.cdx.json"
+          shasum -a 256 "${filename}-sbom.cdx.json" > "${filename}-sbom.cdx.json.sha256"
+      - name: Package artifacts and Generate SBOM JSON file - macos-arm64
         run: |
           chmod +x pack-macos-arm64/pack
           filename=pack-v${{ env.PACK_VERSION }}-macos-arm64.tgz
           tar -C pack-macos-arm64 -vzcf $filename pack
           shasum -a 256 $filename > $filename.sha256
-      - name: Package artifacts - linux
+
+          temp_dir=$(mktemp -d)
+          trap 'rm -rf "$temp_dir"' EXIT
+
+          tar -xzf $filename -C $temp_dir
+          syft "$temp_dir" -o cyclonedx-json > "${filename}-sbom.cdx.json"
+          shasum -a 256 "${filename}-sbom.cdx.json" > "${filename}-sbom.cdx.json.sha256"
+      - name: Package artifacts and Generate SBOM JSON file - linux
         run: |
           chmod +x pack-linux/pack
           filename=pack-v${{ env.PACK_VERSION }}-linux.tgz
           tar -C pack-linux -vzcf $filename pack
           shasum -a 256 $filename > $filename.sha256
-      - name: Package artifacts - windows
+
+          temp_dir=$(mktemp -d)
+          trap 'rm -rf "$temp_dir"' EXIT
+
+          tar -xzf $filename -C $temp_dir
+          syft "$temp_dir" -o cyclonedx-json > "${filename}-sbom.cdx.json"
+          shasum -a 256 "${filename}-sbom.cdx.json" > "${filename}-sbom.cdx.json.sha256"
+      - name: Package artifacts and Generate SBOM JSON file - windows
         run: |
           filename=pack-v${{ env.PACK_VERSION }}-windows.zip
           zip -j $filename pack-windows/pack.exe
           shasum -a 256 $filename > $filename.sha256
+
+          temp_dir=$(mktemp -d)
+          trap 'rm -rf "$temp_dir"' EXIT
+
+          unzip $filename -d $temp_dir
+          syft "$temp_dir" -o cyclonedx-json > "${filename}-sbom.cdx.json"
+          shasum -a 256 "${filename}-sbom.cdx.json" > "${filename}-sbom.cdx.json.sha256"
       - name: Extract lifecycle version
         id: lifecycle_version
         run: |
