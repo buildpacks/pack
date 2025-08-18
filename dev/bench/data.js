@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1754567253677,
+  "lastUpdate": 1755531477179,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -11704,6 +11704,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 59332229027,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jabrown85@gmail.com",
+            "name": "Jesse Brown",
+            "username": "jabrown85"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "58cb8935ef17e65323b3fae8a81e426ab105cab2",
+          "message": "Update imgutil to improve containerd storage driver performance (#2427)\n\n* Update imgutil to improve containerd storage driver performance\n\n- Always try the fast path first (omitting base layers) regardless of storage type. This greatly speeds up creating ephemeral builders in pack when it saves to the daemon.\n- Added log lines around ephemeral builder creation to help show time spent.\n\nSigned-off-by: Jesse Brown <jabrown85@gmail.com>\n\n* fixup! Update imgutil to improve containerd storage driver performance\n\nSigned-off-by: Jesse Brown <jabrown85@gmail.com>\n\n---------\n\nSigned-off-by: Jesse Brown <jabrown85@gmail.com>",
+          "timestamp": "2025-08-18T10:32:33-05:00",
+          "tree_id": "79a6a8a6072f6e7879b7393086531bb4bdd00074",
+          "url": "https://github.com/buildpacks/pack/commit/58cb8935ef17e65323b3fae8a81e426ab105cab2"
+        },
+        "date": 1755531475823,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 17739300067,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1943508103,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 70676792976,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
