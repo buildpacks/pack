@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1756677096765,
+  "lastUpdate": 1756677136170,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -11956,6 +11956,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 64762939578,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5c448370b1491f8b57c2b276329782674e83fb67",
+          "message": "Drop Ubuntu Bionic (18.04) support from PPA delivery (#2436)\n\nUbuntu 18.04 LTS (Bionic Beaver) reached End of Life on May 31, 2023,\nand is causing build failures for pack v0.38.0+ due to Go 1.24\nincompatibility on i386 architecture.\n\nChanges:\n- Remove 'bionic' from the Ubuntu delivery workflow matrix\n- Remove the bionic-specific delivery step from the workflow\n\nImpact:\n- Users on Ubuntu 18.04 should upgrade to a supported version (20.04+)\n- Last available pack version for Bionic remains v0.37.0\n\nSupported Ubuntu versions after this change:\n- Ubuntu 20.04 LTS (Focal)\n- Ubuntu 22.04 LTS (Jammy)\n- Ubuntu 24.04 LTS (Noble)\n- Ubuntu 24.10 (Oracular)\n- Ubuntu 25.04 (Plucky)\n\nFixes #2435\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude <noreply@anthropic.com>",
+          "timestamp": "2025-08-31T16:49:44-05:00",
+          "tree_id": "410459553b26d62665fa854c42c84ccccec21568",
+          "url": "https://github.com/buildpacks/pack/commit/5c448370b1491f8b57c2b276329782674e83fb67"
+        },
+        "date": 1756677134918,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6607074727,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2160372710,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 69391505726,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
