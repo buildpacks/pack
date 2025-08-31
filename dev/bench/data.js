@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1756667470039,
+  "lastUpdate": 1756677096765,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -11914,6 +11914,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 75536922437,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2f2716d13944a870faa7d9f35745790bd9a6ecc6",
+          "message": "Fix Ubuntu PPA build failures for pack v0.38.2+ (#2423)\n\n* Fix Ubuntu PPA build failures for pack v0.38.2+\n\nThis fixes multiple critical issues preventing successful Ubuntu PPA builds:\n\n1. **Update debian/compat**: 9 → 13 (modern debhelper compatibility)\n   - Eliminates deprecation warnings\n   - Ensures compatibility with current build environments\n\n2. **Fix debian/control**:\n   - Update debhelper dependency: (>=9) → (>= 13) to match compat level\n   - Update Go requirement: (>=1.16) → (>=1.24) to match actual project needs\n\n3. **Fix debian/rules Go cache handling**:\n   - Change cache location: /tmp/.cache/go-build → $(CURDIR)/.cache/go-build\n   - Avoids permission issues in Launchpad build environment\n   - Use direct go build command instead of dh_auto_build for better control\n\n4. **Update workflow Go version**: Update GO_DEP_ENTRY to require golang (>=1.24)\n\nThese changes address the root causes of PPA build failures while maintaining\ncompatibility with the GitHub Actions workflow and template system.\n\nFixes #2417\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Fix debhelper compatibility for older Ubuntu distributions\n\nThe previous fix used debhelper compat level 13, but Ubuntu Focal (20.04)\nonly has debhelper 12 available in the main repository. This was causing\nbuild failures with 'Unmet build dependencies: debhelper (>= 13)'.\n\nChanges:\n- debian/compat: 13 → 11 (widely supported across all Ubuntu LTS versions)\n- debian/control: Update Build-Depends to 'debhelper (>= 11)'\n\nCompat level 11 provides all the modern features we need while maintaining\ncompatibility with Ubuntu Bionic (18.04), Focal (20.04), and newer releases.\n\nFixes the build failures seen in GitHub Actions run 16804133863.\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Fix debian/rules build command for proper dh integration\n\nThe direct 'go build' command was failing during Debian package testing\nbecause the temporary build directory didn't have the full source structure.\nThis was causing 'stat /tmp/.../cmd/pack: directory not found' errors.\n\nChanges:\n- Restore 'dh_auto_build -- build' command for proper debhelper integration\n- Keep the Go cache environment variables and custom GOCACHE location\n- Maintain the cache cleanup to avoid permission issues\n\nThe dh_auto_build command properly handles the build context and source\ndirectory structure that's expected in Debian packaging workflows.\n\nFixes the build failures seen in GitHub Actions run 16804298363.\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Revert to original working debian/rules build command\n\nThe original dh_auto_build approach was working correctly. The main issues\nwere Go version compatibility and debhelper version requirements, which\nhave now been fixed separately.\n\nChanges:\n- Restore original 'dh_auto_build -- build' command\n- Use original /tmp/.cache/go-build cache location\n- Keep all environment variables and flags as originally designed\n\nThis maintains compatibility with the existing packaging approach while\nincorporating the Go 1.24+ and debhelper 11 compatibility fixes.\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n---------\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude <noreply@anthropic.com>",
+          "timestamp": "2025-08-31T16:49:18-05:00",
+          "tree_id": "3539b8de6706c7cbf36eeaf80f9cce91c13e8136",
+          "url": "https://github.com/buildpacks/pack/commit/2f2716d13944a870faa7d9f35745790bd9a6ecc6"
+        },
+        "date": 1756677096034,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3074466720,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 802702216,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 64762939578,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
