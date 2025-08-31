@@ -54,7 +54,7 @@ jobs:
               ARCH: "any"
               DATE_TIME: ${{ steps.metadata.outputs.date }}
               DESCRIPTION: "CLI for building apps using Cloud Native Buildpacks"
-              GO_DEP_ENTRY: golang (>=1.16)
+              GO_DEP_ENTRY: golang (>=1.24)
               GO_DEP_LIB_PATH: /usr/lib/go
               GO_DEP_PACKAGE_NAME: golang
               HOMEPAGE: "https://buildpacks.io"
