@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1756666566796,
+  "lastUpdate": 1756667470039,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -11872,6 +11872,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 65863968760,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "350b5a130a09111fddfeaab9e3c56c5a333f80de",
+          "message": "build(deps): bump github.com/go-viper/mapstructure/v2 (#2430)\n\nBumps [github.com/go-viper/mapstructure/v2](https://github.com/go-viper/mapstructure) from 2.3.0 to 2.4.0.\n- [Release notes](https://github.com/go-viper/mapstructure/releases)\n- [Changelog](https://github.com/go-viper/mapstructure/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/go-viper/mapstructure/compare/v2.3.0...v2.4.0)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/go-viper/mapstructure/v2\n  dependency-version: 2.4.0\n  dependency-type: indirect\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2025-08-31T19:08:26Z",
+          "tree_id": "5fd7d11b17ce83f559309b982b88a83f06cb4b80",
+          "url": "https://github.com/buildpacks/pack/commit/350b5a130a09111fddfeaab9e3c56c5a333f80de"
+        },
+        "date": 1756667468738,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7056813028,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1866979863,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 75536922437,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
