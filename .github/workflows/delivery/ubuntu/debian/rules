@@ -9,6 +9,6 @@ export DH_VERBOSE = 1
 override_dh_auto_test:
 
 override_dh_auto_build:
-	mkdir -p $(CURDIR)/.cache/go-build
-	GOCACHE=$(CURDIR)/.cache/go-build GOFLAGS="-mod=vendor" LDFLAGS="" PACK_VERSION='{{PACK_VERSION}}' PATH="${PATH}:{{GO_DEP_LIB_PATH}}/bin" go build -o pack ./cmd/pack
-	rm -rf $(CURDIR)/.cache/go-build
+	mkdir -p /tmp/.cache/go-build
+	GOCACHE=/tmp/.cache/go-build GOFLAGS="-mod=vendor" LDFLAGS="" PACK_VERSION='{{PACK_VERSION}}' PATH="${PATH}:{{GO_DEP_LIB_PATH}}/bin" dh_auto_build -- build
+	rm -r /tmp/.cache/go-build
