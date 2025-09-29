@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 ARG base_image=gcr.io/distroless/static
 
 FROM golang:1.24 as builder
