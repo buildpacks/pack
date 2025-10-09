@@ -244,6 +244,43 @@ func (f *Fetcher) fetchLayoutImage(name string, options LayoutOption) (imgutil.I
 	return image, nil
 }
 
+// FetchForPlatform fetches an image and resolves it to a platform-specific digest before fetching.
+// This ensures that multi-platform images are always resolved to the correct platform-specific manifest.
+func (f *Fetcher) FetchForPlatform(ctx context.Context, name string, options FetchOptions) (imgutil.Image, error) {
+	name, err := pname.TranslateRegistry(name, f.registryMirrors, f.logger)
+	if err != nil {
+		return nil, err
+	}
+
+	// If no target is specified, fall back to regular fetch
+	if options.Target == nil {
+		return f.Fetch(ctx, name, options)
+	}
+
+	// Resolve to platform-specific digest
+	platform := imgutil.Platform{OS: options.Target.OS, Architecture: options.Target.Arch, Variant: options.Target.ArchVariant}
+	registrySettings := make(map[string]imgutil.RegistrySetting)
+	for _, registry := range options.InsecureRegistries {
+		registrySettings[registry] = imgutil.RegistrySetting{Insecure: true}
+	}
+
+	resolvedName, err := remote.ResolvePlatformSpecificDigest(
+		name,
+		&platform,
+		f.keychain,
+		registrySettings,
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "resolving image %s to platform-specific digest", style.Symbol(name))
+	}
+
+	// Update the options to use the resolved name
+	optionsForResolved := options
+	optionsForResolved.Target = nil // Clear target since we already resolved to platform-specific digest
+
+	return f.Fetch(ctx, resolvedName, optionsForResolved)
+}
+
 func (f *Fetcher) pullImage(ctx context.Context, imageID string, platform string) error {
 	regAuth, err := f.registryAuth(imageID)
 	if err != nil {

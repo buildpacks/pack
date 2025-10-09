@@ -60,6 +60,12 @@ func (f *FakeImageFetcher) CheckReadAccess(_ string, _ image.FetchOptions) bool 
 	return true
 }
 
+func (f *FakeImageFetcher) FetchForPlatform(ctx context.Context, name string, options image.FetchOptions) (imgutil.Image, error) {
+	// For the fake implementation, FetchForPlatform behaves the same as Fetch
+	// since we don't need to simulate the platform-specific digest resolution
+	return f.Fetch(ctx, name, options)
+}
+
 func shouldPull(localFound, remoteFound bool, policy image.PullPolicy) bool {
 	if remoteFound && !localFound && policy == image.PullIfNotPresent {
 		return true

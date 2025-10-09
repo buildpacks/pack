@@ -151,4 +151,6 @@ require (
 
 replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.3.2
 
+replace github.com/buildpacks/imgutil => github.com/buildpacks/imgutil v0.0.0-20251009221527-96d2e6b579a4
+
 go 1.24.4
