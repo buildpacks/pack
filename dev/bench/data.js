@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1760285102634,
+  "lastUpdate": 1760295049139,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12166,6 +12166,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 105866786693,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0774fdbc24cba3baf7f025043c2ecfc0aad52735",
+          "message": "build(deps): bump @octokit/plugin-paginate-rest, @actions/github and @octokit/rest (#2338)\n\nBumps [@octokit/plugin-paginate-rest](https://github.com/octokit/plugin-paginate-rest.js) to 9.2.2 and updates ancestor dependencies [@octokit/plugin-paginate-rest](https://github.com/octokit/plugin-paginate-rest.js), [@actions/github](https://github.com/actions/toolkit/tree/HEAD/packages/github) and [@octokit/rest](https://github.com/octokit/rest.js). These dependencies need to be updated together.\n\n\nUpdates `@octokit/plugin-paginate-rest` from 2.2.3 to 9.2.2\n- [Release notes](https://github.com/octokit/plugin-paginate-rest.js/releases)\n- [Commits](https://github.com/octokit/plugin-paginate-rest.js/compare/v2.2.3...v9.2.2)\n\nUpdates `@actions/github` from 4.0.0 to 6.0.0\n- [Changelog](https://github.com/actions/toolkit/blob/main/packages/github/RELEASES.md)\n- [Commits](https://github.com/actions/toolkit/commits/HEAD/packages/github)\n\nUpdates `@octokit/rest` from 18.0.0 to 21.1.1\n- [Release notes](https://github.com/octokit/rest.js/releases)\n- [Commits](https://github.com/octokit/rest.js/compare/v18.0.0...v21.1.1)\n\n---\nupdated-dependencies:\n- dependency-name: \"@octokit/plugin-paginate-rest\"\n  dependency-type: indirect\n- dependency-name: \"@actions/github\"\n  dependency-type: direct:production\n- dependency-name: \"@octokit/rest\"\n  dependency-type: direct:production\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2025-10-12T18:47:29Z",
+          "tree_id": "cd7f7153b2789a9a1835450427751310aba6fc0e",
+          "url": "https://github.com/buildpacks/pack/commit/0774fdbc24cba3baf7f025043c2ecfc0aad52735"
+        },
+        "date": 1760295047801,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6107337317,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2087249863,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 111193395333,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
