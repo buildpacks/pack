@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1759153008756,
+  "lastUpdate": 1760285102634,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12124,6 +12124,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 65292305984,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d3e9df327434620cae70210260d03441e5ec1c7b",
+          "message": "build(deps): bump the go-dependencies group across 1 directory with 14 updates (#2449)\n\nBumps the go-dependencies group with 10 updates in the / directory:\n\n| Package | From | To |\n| --- | --- | --- |\n| [github.com/docker/cli](https://github.com/docker/cli) | `28.3.3+incompatible` | `28.5.0+incompatible` |\n| [github.com/docker/docker](https://github.com/docker/docker) | `28.3.3+incompatible` | `28.5.0+incompatible` |\n| [github.com/gdamore/tcell/v2](https://github.com/gdamore/tcell) | `2.8.1` | `2.9.0` |\n| [github.com/go-git/go-git/v5](https://github.com/go-git/go-git) | `5.16.2` | `5.16.3` |\n| [github.com/onsi/gomega](https://github.com/onsi/gomega) | `1.38.0` | `1.38.2` |\n| [github.com/rivo/tview](https://github.com/rivo/tview) | `0.0.0-20220307222120-9994674d60a8` | `0.42.0` |\n| [github.com/spf13/cobra](https://github.com/spf13/cobra) | `1.9.1` | `1.10.1` |\n| [golang.org/x/crypto](https://github.com/golang/crypto) | `0.41.0` | `0.42.0` |\n| [golang.org/x/mod](https://github.com/golang/mod) | `0.27.0` | `0.28.0` |\n| [golang.org/x/oauth2](https://github.com/golang/oauth2) | `0.30.0` | `0.31.0` |\n\n\n\nUpdates `github.com/docker/cli` from 28.3.3+incompatible to 28.5.0+incompatible\n- [Commits](https://github.com/docker/cli/compare/v28.3.3...v28.5.0)\n\nUpdates `github.com/docker/docker` from 28.3.3+incompatible to 28.5.0+incompatible\n- [Release notes](https://github.com/docker/docker/releases)\n- [Commits](https://github.com/docker/docker/compare/v28.3.3...v28.5.0)\n\nUpdates `github.com/gdamore/tcell/v2` from 2.8.1 to 2.9.0\n- [Release notes](https://github.com/gdamore/tcell/releases)\n- [Changelog](https://github.com/gdamore/tcell/blob/main/CHANGESv2.md)\n- [Commits](https://github.com/gdamore/tcell/compare/v2.8.1...v2.9.0)\n\nUpdates `github.com/go-git/go-git/v5` from 5.16.2 to 5.16.3\n- [Release notes](https://github.com/go-git/go-git/releases)\n- [Commits](https://github.com/go-git/go-git/compare/v5.16.2...v5.16.3)\n\nUpdates `github.com/onsi/gomega` from 1.38.0 to 1.38.2\n- [Release notes](https://github.com/onsi/gomega/releases)\n- [Changelog](https://github.com/onsi/gomega/blob/master/CHANGELOG.md)\n- [Commits](https://github.com/onsi/gomega/compare/v1.38.0...v1.38.2)\n\nUpdates `github.com/rivo/tview` from 0.0.0-20220307222120-9994674d60a8 to 0.42.0\n- [Release notes](https://github.com/rivo/tview/releases)\n- [Commits](https://github.com/rivo/tview/commits/v0.42.0)\n\nUpdates `github.com/spf13/cobra` from 1.9.1 to 1.10.1\n- [Release notes](https://github.com/spf13/cobra/releases)\n- [Commits](https://github.com/spf13/cobra/compare/v1.9.1...v1.10.1)\n\nUpdates `golang.org/x/crypto` from 0.41.0 to 0.42.0\n- [Commits](https://github.com/golang/crypto/compare/v0.41.0...v0.42.0)\n\nUpdates `golang.org/x/mod` from 0.27.0 to 0.28.0\n- [Commits](https://github.com/golang/mod/compare/v0.27.0...v0.28.0)\n\nUpdates `golang.org/x/oauth2` from 0.30.0 to 0.31.0\n- [Commits](https://github.com/golang/oauth2/compare/v0.30.0...v0.31.0)\n\nUpdates `golang.org/x/sync` from 0.16.0 to 0.17.0\n- [Commits](https://github.com/golang/sync/compare/v0.16.0...v0.17.0)\n\nUpdates `golang.org/x/sys` from 0.35.0 to 0.36.0\n- [Commits](https://github.com/golang/sys/compare/v0.35.0...v0.36.0)\n\nUpdates `golang.org/x/term` from 0.34.0 to 0.35.0\n- [Commits](https://github.com/golang/term/compare/v0.34.0...v0.35.0)\n\nUpdates `golang.org/x/text` from 0.28.0 to 0.29.0\n- [Release notes](https://github.com/golang/text/releases)\n- [Commits](https://github.com/golang/text/compare/v0.28.0...v0.29.0)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/docker/cli\n  dependency-version: 28.5.0+incompatible\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: github.com/docker/docker\n  dependency-version: 28.5.0+incompatible\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: github.com/gdamore/tcell/v2\n  dependency-version: 2.9.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: github.com/go-git/go-git/v5\n  dependency-version: 5.16.3\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/onsi/gomega\n  dependency-version: 1.38.2\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/rivo/tview\n  dependency-version: 0.42.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: github.com/spf13/cobra\n  dependency-version: 1.10.1\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/crypto\n  dependency-version: 0.42.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/mod\n  dependency-version: 0.28.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/oauth2\n  dependency-version: 0.31.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/sync\n  dependency-version: 0.17.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/sys\n  dependency-version: 0.36.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/term\n  dependency-version: 0.35.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/text\n  dependency-version: 0.29.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2025-10-12T11:01:38-05:00",
+          "tree_id": "068358f05d23c57de1155a89c0f84c1e0ea44894",
+          "url": "https://github.com/buildpacks/pack/commit/d3e9df327434620cae70210260d03441e5ec1c7b"
+        },
+        "date": 1760285101324,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 11396977716,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2010482150,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 105866786693,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
