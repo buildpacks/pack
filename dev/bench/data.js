@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1760295049139,
+  "lastUpdate": 1760296278416,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12208,6 +12208,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 111193395333,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "291399cda4744d2b4ab880848bc545c66b2d8d5c",
+          "message": "build(deps): bump @octokit/request, @actions/github and @octokit/rest (#2370)\n\nBumps [@octokit/request](https://github.com/octokit/request.js) to 8.4.1 and updates ancestor dependencies [@octokit/request](https://github.com/octokit/request.js), [@actions/github](https://github.com/actions/toolkit/tree/HEAD/packages/github) and [@octokit/rest](https://github.com/octokit/rest.js). These dependencies need to be updated together.\n\n\nUpdates `@octokit/request` from 5.6.3 to 8.4.1\n- [Release notes](https://github.com/octokit/request.js/releases)\n- [Commits](https://github.com/octokit/request.js/compare/v5.6.3...v8.4.1)\n\nUpdates `@actions/github` from 4.0.0 to 6.0.0\n- [Changelog](https://github.com/actions/toolkit/blob/main/packages/github/RELEASES.md)\n- [Commits](https://github.com/actions/toolkit/commits/HEAD/packages/github)\n\nUpdates `@octokit/rest` from 18.0.0 to 21.1.1\n- [Release notes](https://github.com/octokit/rest.js/releases)\n- [Commits](https://github.com/octokit/rest.js/compare/v18.0.0...v21.1.1)\n\n---\nupdated-dependencies:\n- dependency-name: \"@octokit/request\"\n  dependency-version: 8.4.1\n  dependency-type: indirect\n- dependency-name: \"@actions/github\"\n  dependency-version: 6.0.0\n  dependency-type: direct:production\n- dependency-name: \"@octokit/rest\"\n  dependency-version: 21.1.1\n  dependency-type: direct:production\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2025-10-12T14:09:07-05:00",
+          "tree_id": "cd7f7153b2789a9a1835450427751310aba6fc0e",
+          "url": "https://github.com/buildpacks/pack/commit/291399cda4744d2b4ab880848bc545c66b2d8d5c"
+        },
+        "date": 1760296277703,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3167348392,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 797955692,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 96934791526,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
