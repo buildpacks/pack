@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -68,7 +70,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 			}
 
 			if hasExtensions(builderConfig) {
-				if !cfg.Experimental {
+				if !hasValidLifecycleVersion(builderConfig.Lifecycle.Version, 0, 20, 0) && !cfg.Experimental {
 					return errors.New("builder config contains image extensions; support for image extensions is currently experimental")
 				}
 			}
@@ -186,4 +188,37 @@ func validateCreateFlags(flags *BuilderCreateFlags, cfg config.Config) error {
 	}
 
 	return nil
+}
+
+func hasValidLifecycleVersion(version string, minMajor, minMinor, minPatch int) bool {
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		return false
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return false
+	}
+
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return false
+	}
+
+	patch := 0
+	if len(parts) >= 3 {
+		patch, err = strconv.Atoi(parts[2])
+		if err != nil {
+			return false
+		}
+	}
+
+	if major != minMajor {
+		return major > minMajor
+	}
+	if minor != minMinor {
+		return minor > minMinor
+	}
+	return patch >= minPatch
 }
