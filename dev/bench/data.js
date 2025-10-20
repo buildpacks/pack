@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1760296278416,
+  "lastUpdate": 1760962397638,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12250,6 +12250,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 96934791526,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d1a30b6c04ea690b5a7c2dcab5f03386af6723ef",
+          "message": "build(deps): bump the go-dependencies group with 8 updates (#2453)\n\nBumps the go-dependencies group with 8 updates:\n\n| Package | From | To |\n| --- | --- | --- |\n| [github.com/docker/cli](https://github.com/docker/cli) | `28.5.0+incompatible` | `28.5.1+incompatible` |\n| [github.com/docker/docker](https://github.com/docker/docker) | `28.5.0+incompatible` | `28.5.1+incompatible` |\n| [golang.org/x/crypto](https://github.com/golang/crypto) | `0.42.0` | `0.43.0` |\n| [golang.org/x/mod](https://github.com/golang/mod) | `0.28.0` | `0.29.0` |\n| [golang.org/x/oauth2](https://github.com/golang/oauth2) | `0.31.0` | `0.32.0` |\n| [golang.org/x/sys](https://github.com/golang/sys) | `0.36.0` | `0.37.0` |\n| [golang.org/x/term](https://github.com/golang/term) | `0.35.0` | `0.36.0` |\n| [golang.org/x/text](https://github.com/golang/text) | `0.29.0` | `0.30.0` |\n\n\nUpdates `github.com/docker/cli` from 28.5.0+incompatible to 28.5.1+incompatible\n- [Commits](https://github.com/docker/cli/compare/v28.5.0...v28.5.1)\n\nUpdates `github.com/docker/docker` from 28.5.0+incompatible to 28.5.1+incompatible\n- [Release notes](https://github.com/docker/docker/releases)\n- [Commits](https://github.com/docker/docker/compare/v28.5.0...v28.5.1)\n\nUpdates `golang.org/x/crypto` from 0.42.0 to 0.43.0\n- [Commits](https://github.com/golang/crypto/compare/v0.42.0...v0.43.0)\n\nUpdates `golang.org/x/mod` from 0.28.0 to 0.29.0\n- [Commits](https://github.com/golang/mod/compare/v0.28.0...v0.29.0)\n\nUpdates `golang.org/x/oauth2` from 0.31.0 to 0.32.0\n- [Commits](https://github.com/golang/oauth2/compare/v0.31.0...v0.32.0)\n\nUpdates `golang.org/x/sys` from 0.36.0 to 0.37.0\n- [Commits](https://github.com/golang/sys/compare/v0.36.0...v0.37.0)\n\nUpdates `golang.org/x/term` from 0.35.0 to 0.36.0\n- [Commits](https://github.com/golang/term/compare/v0.35.0...v0.36.0)\n\nUpdates `golang.org/x/text` from 0.29.0 to 0.30.0\n- [Release notes](https://github.com/golang/text/releases)\n- [Commits](https://github.com/golang/text/compare/v0.29.0...v0.30.0)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/docker/cli\n  dependency-version: 28.5.1+incompatible\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/docker/docker\n  dependency-version: 28.5.1+incompatible\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/crypto\n  dependency-version: 0.43.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/mod\n  dependency-version: 0.29.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/oauth2\n  dependency-version: 0.32.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/sys\n  dependency-version: 0.37.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/term\n  dependency-version: 0.36.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/text\n  dependency-version: 0.30.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2025-10-20T07:10:27-05:00",
+          "tree_id": "5aff9201b9833062a521e3eadf1f309df528dea1",
+          "url": "https://github.com/buildpacks/pack/commit/d1a30b6c04ea690b5a7c2dcab5f03386af6723ef"
+        },
+        "date": 1760962396732,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4432196819,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1086181746,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 92295753698,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
