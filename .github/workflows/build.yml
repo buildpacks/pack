@@ -68,7 +68,7 @@ jobs:
           }
         shell: powershell
       - name: Set up go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           check-latest: true
           go-version-file: 'go.mod'
@@ -123,7 +123,6 @@ jobs:
           PACK_BUILD: ${{ github.run_number }}
         shell: powershell
       - uses: actions/upload-artifact@v4
-        if: matrix.config != 'windows-lcow'
         with:
           name: pack-${{ matrix.os }}
           path: out/${{ env.PACK_BIN }}
@@ -151,7 +150,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           check-latest: true
           go-version-file: 'go.mod'
@@ -190,7 +189,7 @@ jobs:
 
           echo "PACK_MILESTONE=${milestone}" >> $GITHUB_ENV
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
       - name: Package artifacts - macos
         run: |
           chmod +x pack-macos/pack

@@ -1,0 +1,33 @@
+[[buildpacks]]
+  id = "simple-layers-buildpack"
+  uri = "file://{{.Fixtures}}/simple-layers-buildpack"
+
+[[buildpacks]]
+  id = "system/fail-detect"
+  uri = "file://{{.Fixtures}}/system-fail-detect"
+
+[[buildpacks]]
+  id = "system/post"
+  uri = "file://{{.Fixtures}}/system-post-buildpack"
+
+# System buildpacks configuration
+[system]
+[system.pre]
+buildpacks = [
+  { id = "system/fail-detect", version = "system-fail-detect-version", optional = false }
+]
+
+[system.post]
+buildpacks = [
+  { id = "system/post", version = "system-post-version", optional = true }
+]
+
+[[order]]
+[[order.group]]
+  id = "simple-layers-buildpack"
+  version = "simple-layers-buildpack-version"
+
+[stack]
+  id = "pack.test.stack"
+  build-image = "pack-test/build"
+  run-image = "pack-test/run"

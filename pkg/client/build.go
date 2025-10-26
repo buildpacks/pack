@@ -143,6 +143,9 @@ type BuildOptions struct {
 	// Launch a terminal UI to depict the build process
 	Interactive bool
 
+	// Disable System Buildpacks present in the builder
+	DisableSystemBuildpacks bool
+
 	// List of buildpack images or archives to add to a builder.
 	// These buildpacks may overwrite those on the builder if they
 	// share both an ID and Version with a buildpack on the builder.
@@ -231,6 +234,8 @@ type BuildOptions struct {
 
 	// Enable user namespace isolation for the build containers
 	EnableUsernsHost bool
+
+	InsecureRegistries []string
 }
 
 func (b *BuildOptions) Layout() bool {
@@ -366,9 +371,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		ctx,
 		builderRef.Name(),
 		image.FetchOptions{
-			Daemon:     true,
-			Target:     requestedTarget,
-			PullPolicy: opts.PullPolicy},
+			Daemon:             true,
+			Target:             requestedTarget,
+			PullPolicy:         opts.PullPolicy,
+			InsecureRegistries: opts.InsecureRegistries,
+		},
 	)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
@@ -390,9 +397,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	fetchOptions := image.FetchOptions{
-		Daemon:     !opts.Publish,
-		PullPolicy: opts.PullPolicy,
-		Target:     targetToUse,
+		Daemon:             !opts.Publish,
+		PullPolicy:         opts.PullPolicy,
+		Target:             targetToUse,
+		InsecureRegistries: opts.InsecureRegistries,
 	}
 	runImageName := c.resolveRunImage(opts.RunImage, imgRegistry, builderRef.Context().RegistryStr(), bldr.DefaultRunImage(), opts.AdditionalMirrors, opts.Publish, fetchOptions)
 
@@ -431,6 +439,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	fetchedExs, orderExtensions, err := c.processExtensions(ctx, bldr.Extensions(), opts, targetToUse)
+	if err != nil {
+		return err
+	}
+
+	system, err := c.processSystem(bldr.System(), fetchedBPs, opts.DisableSystemBuildpacks)
 	if err != nil {
 		return err
 	}
@@ -483,9 +496,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				ctx,
 				lifecycleImageName,
 				image.FetchOptions{
-					Daemon:     true,
-					PullPolicy: opts.PullPolicy,
-					Target:     targetToUse,
+					Daemon:             true,
+					PullPolicy:         opts.PullPolicy,
+					Target:             targetToUse,
+					InsecureRegistries: opts.InsecureRegistries,
 				},
 			)
 			if err != nil {
@@ -560,6 +574,8 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		fetchedExs,
 		usingPlatformAPI.LessThan("0.12"),
 		opts.RunImage,
+		system,
+		opts.DisableSystemBuildpacks,
 	)
 	if err != nil {
 		return err
@@ -655,6 +671,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Keychain:                 c.keychain,
 		EnableUsernsHost:         opts.EnableUsernsHost,
 		ExecutionEnvironment:     opts.CNBExecutionEnv,
+		InsecureRegistries:       opts.InsecureRegistries,
 	}
 
 	switch {
@@ -817,7 +834,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	if err = c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
 		return fmt.Errorf("executing lifecycle: %w", err)
 	}
-	return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
+	return c.logImageNameAndSha(ctx, opts.Publish, imageRef, opts.InsecureRegistries)
 }
 
 func usesContainerdStorage(docker DockerClient) bool {
@@ -1586,8 +1603,10 @@ func (c *Client) createEphemeralBuilder(
 	extensions []buildpack.BuildModule,
 	validateMixins bool,
 	runImage string,
+	system dist.System,
+	disableSystem bool,
 ) (*builder.Builder, error) {
-	if !ephemeralBuilderNeeded(env, order, buildpacks, orderExtensions, extensions, runImage) {
+	if !ephemeralBuilderNeeded(env, order, buildpacks, orderExtensions, extensions, runImage) && !disableSystem {
 		return builder.New(rawBuilderImage, rawBuilderImage.Name(), builder.WithoutSave())
 	}
 
@@ -1619,6 +1638,7 @@ func (c *Client) createEphemeralBuilder(
 	}
 
 	bldr.SetValidateMixins(validateMixins)
+	bldr.SetSystem(system)
 
 	if err := bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version}); err != nil {
 		return nil, err
@@ -1668,13 +1688,13 @@ func randString(n int) string {
 	return string(b)
 }
 
-func (c *Client) logImageNameAndSha(ctx context.Context, publish bool, imageRef name.Reference) error {
+func (c *Client) logImageNameAndSha(ctx context.Context, publish bool, imageRef name.Reference, insecureRegistries []string) error {
 	// The image name and sha are printed in the lifecycle logs, and there is no need to print it again, unless output is suppressed.
 	if !logging.IsQuiet(c.logger) {
 		return nil
 	}
 
-	img, err := c.imageFetcher.Fetch(ctx, imageRef.Name(), image.FetchOptions{Daemon: !publish, PullPolicy: image.PullNever})
+	img, err := c.imageFetcher.Fetch(ctx, imageRef.Name(), image.FetchOptions{Daemon: !publish, PullPolicy: image.PullNever, InsecureRegistries: insecureRegistries})
 	if err != nil {
 		return fmt.Errorf("fetching built image: %w", err)
 	}

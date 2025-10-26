@@ -20,7 +20,7 @@ import (
 	"github.com/buildpacks/pack/pkg/client"
 )
 
-func tryInitSSHDockerClient() (dockerClient.CommonAPIClient, error) {
+func tryInitSSHDockerClient() (dockerClient.APIClient, error) {
 	dockerHost := os.Getenv("DOCKER_HOST")
 	_url, err := url.Parse(dockerHost)
 	isSSH := err == nil && _url.Scheme == "ssh"

@@ -1062,6 +1062,31 @@ builder = "my-builder"
 				})
 			})
 		})
+
+		when("--insecure-registry is provided", func() {
+			it("sets one insecure registry", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithInsecureRegistries([]string{
+						"foo.bar",
+					})).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--insecure-registry", "foo.bar"})
+				h.AssertNil(t, command.Execute())
+			})
+
+			it("sets more than one insecure registry", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithInsecureRegistries([]string{
+						"foo.bar",
+						"foo.com",
+					})).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--insecure-registry", "foo.bar", "--insecure-registry", "foo.com"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
 	})
 
 	when("export to OCI layout is expected", func() {
@@ -1328,6 +1353,18 @@ func EqBuildOptionsWithExecEnv(s string) interface{} {
 		description: fmt.Sprintf("exec-env=%s", s),
 		equals: func(o client.BuildOptions) bool {
 			return o.CNBExecutionEnv == s
+		},
+	}
+}
+
+func EqBuildOptionsWithInsecureRegistries(insecureRegistries []string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Insercure Registries=%s", insecureRegistries),
+		equals: func(o client.BuildOptions) bool {
+			if len(o.InsecureRegistries) != len(insecureRegistries) {
+				return false
+			}
+			return reflect.DeepEqual(o.InsecureRegistries, insecureRegistries)
 		},
 	}
 }

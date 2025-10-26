@@ -20,8 +20,8 @@ jobs:
       strategy:
         fail-fast: false
         matrix:
-          target: [bionic, focal, jammy, noble, oracular, plucky]
-      runs-on: ubuntu-20.04
+          target: [focal, jammy, noble, oracular, plucky]
+      runs-on: ubuntu-22.04
       steps:
           - name: Checkout code
             uses: actions/checkout@v4
@@ -54,7 +54,7 @@ jobs:
               ARCH: "any"
               DATE_TIME: ${{ steps.metadata.outputs.date }}
               DESCRIPTION: "CLI for building apps using Cloud Native Buildpacks"
-              GO_DEP_ENTRY: golang (>=1.16)
+              GO_DEP_ENTRY: golang (>=1.24)
               GO_DEP_LIB_PATH: /usr/lib/go
               GO_DEP_PACKAGE_NAME: golang
               HOMEPAGE: "https://buildpacks.io"
@@ -67,8 +67,58 @@ jobs:
             # following steps per variant.
             ###
 
-          - name: Deliver {{matrix.target}}
-            uses: docker://ubuntu:${{ matrix.target }}
+
+          - name: Deliver focal
+            if: matrix.target == 'focal'
+            uses: docker://ubuntu:focal
+            with:
+              entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
+            env:
+              DEBIAN_FRONTEND: "noninteractive"
+              GO_DEP_PACKAGE_NAME: golang
+              GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+              GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
+
+          - name: Deliver jammy
+            if: matrix.target == 'jammy'
+            uses: docker://ubuntu:jammy
+            with:
+              entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
+            env:
+              DEBIAN_FRONTEND: "noninteractive"
+              GO_DEP_PACKAGE_NAME: golang
+              GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+              GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
+
+          - name: Deliver noble
+            if: matrix.target == 'noble'
+            uses: docker://ubuntu:noble
+            with:
+              entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
+            env:
+              DEBIAN_FRONTEND: "noninteractive"
+              GO_DEP_PACKAGE_NAME: golang
+              GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+              GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
+
+          - name: Deliver oracular
+            if: matrix.target == 'oracular'
+            uses: docker://ubuntu:oracular
+            with:
+              entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
+            env:
+              DEBIAN_FRONTEND: "noninteractive"
+              GO_DEP_PACKAGE_NAME: golang
+              GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+              GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
+
+          - name: Deliver plucky
+            if: matrix.target == 'plucky'
+            uses: docker://ubuntu:plucky
             with:
               entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
             env:

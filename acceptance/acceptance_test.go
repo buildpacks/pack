@@ -47,7 +47,7 @@ const (
 )
 
 var (
-	dockerCli      client.CommonAPIClient
+	dockerCli      client.APIClient
 	registryConfig *h.TestRegistryConfig
 	suiteManager   *SuiteManager
 	imageManager   managers.ImageManager
@@ -1270,6 +1270,225 @@ func testAcceptance(
 					assert.NotNil(err)
 					assertOutput := assertions.NewOutputAssertionManager(t, output)
 					assertOutput.ReportsInvalidBuilderToml()
+				})
+			})
+
+			when("system buildpacks", func() {
+				var (
+					builderWithSystemBP                string
+					builderWithFailingSystemBP         string
+					builderWithOptionalFailingSystemBP string
+					regularBuilder                     string
+				)
+
+				it.Before(func() {
+					// Create builder with system buildpacks
+					builderWithSystemBP = fmt.Sprintf("pack.local/builder-with-system-bps/%s", h.RandString(10))
+					h.SkipIf(t, !createBuilderPack.Supports("builder create"), "pack builder create not supported")
+
+					createBuilderPack.JustRunSuccessfully(
+						"builder", "create", builderWithSystemBP,
+						"--config", createBuilderPack.FixtureManager().FixtureLocation("builder_with_system_buildpacks.toml"),
+					)
+
+					// Create builder with failing system buildpack
+					builderWithFailingSystemBP = fmt.Sprintf("pack.local/builder-fail-system/%s", h.RandString(10))
+					createBuilderPack.JustRunSuccessfully(
+						"builder", "create", builderWithFailingSystemBP,
+						"--config", createBuilderPack.FixtureManager().FixtureLocation("builder_with_failing_system_buildpack.toml"),
+					)
+
+					// Create builder with optional failing system buildpack
+					builderWithOptionalFailingSystemBP = fmt.Sprintf("pack.local/builder-optional-fail/%s", h.RandString(10))
+					createBuilderPack.JustRunSuccessfully(
+						"builder", "create", builderWithOptionalFailingSystemBP,
+						"--config", createBuilderPack.FixtureManager().FixtureLocation("builder_with_optional_failing_system_buildpack.toml"),
+					)
+
+					// Create regular builder for comparison
+					regularBuilder = fmt.Sprintf("pack.local/regular-builder/%s", h.RandString(10))
+					createBuilderPack.JustRunSuccessfully(
+						"builder", "create", regularBuilder,
+						"--config", createBuilderPack.FixtureManager().FixtureLocation("builder.toml"),
+					)
+				})
+
+				it.After(func() {
+					imageManager.CleanupImages(builderWithSystemBP)
+					imageManager.CleanupImages(builderWithFailingSystemBP)
+					imageManager.CleanupImages(builderWithOptionalFailingSystemBP)
+					imageManager.CleanupImages(regularBuilder)
+				})
+
+				when("inspecting builder with system buildpacks", func() {
+					it("shows system buildpacks in builder info", func() {
+						output := createBuilderPack.RunSuccessfully("builder", "inspect", builderWithSystemBP)
+
+						// Verify system buildpacks are shown in the output
+						h.AssertContains(t, output, "system/pre")
+						h.AssertContains(t, output, "system/post")
+					})
+				})
+
+				when("building with system buildpacks", func() {
+					var (
+						appImage string
+						appPath  string
+					)
+
+					it.Before(func() {
+						appPath = filepath.Join("testdata", "mock_app")
+						appImage = fmt.Sprintf("pack.local/app/%s", h.RandString(10))
+					})
+
+					it.After(func() {
+						imageManager.CleanupImages(appImage)
+					})
+
+					when("system buildpacks are enabled (default)", func() {
+						it("runs pre-system buildpacks before regular buildpacks", func() {
+							output := pack.RunSuccessfully(
+								"build", appImage,
+								"--path", appPath,
+								"--builder", builderWithSystemBP,
+								"--no-color",
+							)
+
+							// Verify pre-system buildpack ran before the main buildpack
+							h.AssertContains(t, output, "DETECT: System Pre buildpack")
+							h.AssertContains(t, output, "BUILD: System Pre buildpack")
+							h.AssertContains(t, output, "Simple Layers Buildpack")
+
+							// Verify order: system pre should come before main buildpack
+							systemPreIndex := strings.Index(output, "BUILD: System Pre buildpack")
+							mainBuildpackIndex := strings.Index(output, "Simple Layers Buildpack")
+							if systemPreIndex == -1 || mainBuildpackIndex == -1 || systemPreIndex >= mainBuildpackIndex {
+								t.Fatalf("Expected system pre buildpack to run before main buildpack")
+							}
+						})
+
+						it("runs post-system buildpacks after regular buildpacks", func() {
+							output := pack.RunSuccessfully(
+								"build", appImage,
+								"--path", appPath,
+								"--builder", builderWithSystemBP,
+								"--no-color",
+							)
+
+							// Verify post-system buildpack ran after the main buildpack
+							h.AssertContains(t, output, "BUILD: System Post buildpack")
+
+							// Verify order: system post should come after main buildpack
+							mainBuildpackIndex := strings.Index(output, "Simple Layers Buildpack")
+							systemPostIndex := strings.Index(output, "BUILD: System Post buildpack")
+							if mainBuildpackIndex == -1 || systemPostIndex == -1 || mainBuildpackIndex >= systemPostIndex {
+								t.Fatalf("Expected system post buildpack to run after main buildpack")
+							}
+						})
+
+						it("builds successfully with system buildpacks", func() {
+							output := pack.RunSuccessfully(
+								"build", appImage,
+								"--path", appPath,
+								"--builder", builderWithSystemBP,
+								"--verbose",
+							)
+
+							// Verify system buildpack contributed during build
+							h.AssertContains(t, output, "BUILD: System Pre buildpack")
+							h.AssertContains(t, output, "BUILD: System Post buildpack")
+
+							// Verify the image was successfully built
+							h.AssertContains(t, output, "Successfully built image")
+							assertImage.ExistsLocally(appImage)
+						})
+					})
+
+					when("--disable-system-buildpacks flag is used", func() {
+						it("does not run system buildpacks", func() {
+							output := pack.RunSuccessfully(
+								"build", appImage,
+								"--path", appPath,
+								"--builder", builderWithSystemBP,
+								"--disable-system-buildpacks",
+								"--no-color",
+							)
+
+							// Verify system buildpacks did not run
+							h.AssertNotContains(t, output, "DETECT: System Pre buildpack")
+							h.AssertNotContains(t, output, "BUILD: System Pre buildpack")
+							h.AssertNotContains(t, output, "BUILD: System Post buildpack")
+
+							// Verify main buildpack still runs
+							h.AssertContains(t, output, "Simple Layers Buildpack")
+
+							// Verify the image was successfully built
+							h.AssertContains(t, output, "Successfully built image")
+							assertImage.ExistsLocally(appImage)
+						})
+					})
+
+					when("builder has no system buildpacks", func() {
+						it("builds normally without system buildpacks", func() {
+							output := pack.RunSuccessfully(
+								"build", appImage,
+								"--path", appPath,
+								"--builder", regularBuilder,
+								"--no-color",
+							)
+
+							// Verify no system buildpacks ran
+							h.AssertNotContains(t, output, "System Pre buildpack")
+							h.AssertNotContains(t, output, "System Post buildpack")
+
+							// Verify main buildpack runs
+							h.AssertContains(t, output, "Simple Layers Buildpack")
+
+							// Verify the image was successfully built
+							h.AssertContains(t, output, "Successfully built image")
+							assertImage.ExistsLocally(appImage)
+						})
+					})
+
+					when("required system buildpack fails detection", func() {
+						it("fails the build", func() {
+							output, err := pack.Run(
+								"build", appImage,
+								"--path", appPath,
+								"--builder", builderWithFailingSystemBP,
+								"--no-color",
+							)
+
+							// Build should fail
+							h.AssertNotNil(t, err)
+							h.AssertContains(t, output, "DETECT: System Fail Detect buildpack (will fail)")
+							h.AssertContains(t, output, "No buildpack groups passed detection")
+						})
+					})
+
+					when("optional system buildpack fails detection", func() {
+						it("continues with the build", func() {
+							output := pack.RunSuccessfully(
+								"build", appImage,
+								"--path", appPath,
+								"--builder", builderWithOptionalFailingSystemBP,
+								"--no-color",
+							)
+
+							// Build should succeed despite optional system buildpack failing
+							h.AssertContains(t, output, "DETECT: System Fail Detect buildpack (will fail)")
+							h.AssertContains(t, output, "DETECT: System Pre buildpack")
+							h.AssertContains(t, output, "BUILD: System Pre buildpack")
+							h.AssertContains(t, output, "Simple Layers Buildpack")
+
+							// Verify the failed optional buildpack didn't run build
+							h.AssertNotContains(t, output, "BUILD: System Fail Detect buildpack")
+
+							// Verify the image was successfully built
+							h.AssertContains(t, output, "Successfully built image")
+							assertImage.ExistsLocally(appImage)
+						})
+					})
 				})
 			})
 
@@ -3928,7 +4147,7 @@ func generatePackageTomlWithOS(
 	return packageTomlFile.Name()
 }
 
-func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror string) error {
+func createStack(t *testing.T, dockerCli client.APIClient, runImageMirror string) error {
 	t.Helper()
 	t.Log("creating stack images...")
 
@@ -3949,7 +4168,7 @@ func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror 
 	return nil
 }
 
-func createStackImage(dockerCli client.CommonAPIClient, repoName string, dir string) error {
+func createStackImage(dockerCli client.APIClient, repoName string, dir string) error {
 	defaultFilterFunc := func(file string) bool { return true }
 
 	ctx := context.Background()

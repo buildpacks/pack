@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+echo "---> DETECT: System Pre buildpack"
+
+# Always pass detection for testing
+exit 0

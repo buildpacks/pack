@@ -28,7 +28,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-var docker client.CommonAPIClient
+var docker client.APIClient
 var registryConfig *h.TestRegistryConfig
 
 func TestFetcher(t *testing.T) {
@@ -83,6 +83,12 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 						it("returns the remote image", func() {
 							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways})
+							h.AssertNil(t, err)
+						})
+
+						it("returns the remote image when insecure registry", func() {
+							insecureRegistry := fmt.Sprintf("%s:%s", registryConfig.RunRegistryHost, registryConfig.RunRegistryPort)
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways, InsecureRegistries: []string{insecureRegistry}})
 							h.AssertNil(t, err)
 						})
 					})

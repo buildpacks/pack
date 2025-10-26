@@ -265,6 +265,25 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 			})
+
+			when("additional tags are specified", func() {
+				it("forwards additional tags to buildpackPackager", func() {
+					expectedTags := []string{"additional-tag-1", "additional-tag-2"}
+					cmd := packageCommand(
+						withBuildpackPackager(fakeBuildpackPackager),
+					)
+					cmd.SetArgs([]string{
+						"my-specific-image",
+						"--tag", expectedTags[0], "--tag", expectedTags[1],
+					})
+					err := cmd.Execute()
+					h.AssertNil(t, err)
+
+					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
+					h.AssertEq(t, receivedOptions.AdditionalTags[0], expectedTags[0])
+					h.AssertEq(t, receivedOptions.AdditionalTags[1], expectedTags[1])
+				})
+			})
 		})
 
 		when("no config path is specified", func() {
