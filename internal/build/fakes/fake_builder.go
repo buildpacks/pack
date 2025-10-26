@@ -131,3 +131,10 @@ func WithEnableUsernsHost() func(*build.LifecycleOptions) {
 		opts.EnableUsernsHost = true
 	}
 }
+
+// WithExecutionEnvironment creates a LifecycleOptions option that sets the execution environment
+func WithExecutionEnvironment(execEnv string) func(*build.LifecycleOptions) {
+	return func(opts *build.LifecycleOptions) {
+		opts.ExecutionEnvironment = execEnv
+	}
+}
