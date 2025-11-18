@@ -41,7 +41,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		var err error
-		dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+		dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.44"))
 		h.AssertNil(t, err)
 		logger = logging.NewSimpleLogger(&outBuf)
 	})
@@ -305,7 +305,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.44"))
 			h.AssertNil(t, err)
 			ctx = context.TODO()
 

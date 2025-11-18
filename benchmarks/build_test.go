@@ -32,7 +32,7 @@ var (
 
 func BenchmarkBuild(b *testing.B) {
 	setEnv()
-	dockerClient, err := dockerCli.NewClientWithOpts(dockerCli.FromEnv, dockerCli.WithVersion("1.38"))
+	dockerClient, err := dockerCli.NewClientWithOpts(dockerCli.FromEnv, dockerCli.WithVersion("1.44"))
 	if err != nil {
 		b.Error(errors.Wrap(err, "creating docker client"))
 	}
