@@ -274,6 +274,10 @@ func (f *Fetcher) FetchForPlatform(ctx context.Context, name string, options Fet
 		return nil, errors.Wrapf(err, "resolving image %s to platform-specific digest", style.Symbol(name))
 	}
 
+	// Log the resolution for visibility
+	platformStr := options.Target.ValuesAsPlatform()
+	f.logger.Debugf("Using lifecycle %s; pulling digest %s for platform %s", name, resolvedName, platformStr)
+
 	return f.Fetch(ctx, resolvedName, options)
 }
 
