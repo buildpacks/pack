@@ -44,7 +44,7 @@ func TestFetcher(t *testing.T) {
 	os.Setenv("DOCKER_CONFIG", registryConfig.DockerConfigDir)
 
 	var err error
-	docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+	docker, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	h.AssertNil(t, err)
 	spec.Run(t, "Fetcher", testFetcher, spec.Parallel(), spec.Report(report.Terminal{}))
 }
