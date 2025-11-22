@@ -11,7 +11,7 @@ import (
 	"syscall"
 
 	"github.com/buildpacks/lifecycle/auth"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	dockercli "github.com/docker/docker/client"
 	v1remote "github.com/google/go-containerregistry/pkg/v1/remote"
 )
@@ -71,12 +71,12 @@ func testWrite(filename, contents string) {
 
 func testDaemon() {
 	fmt.Println("daemon test")
-	cli, err := dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion("1.38"))
+	cli, err := dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithAPIVersionNegotiation())
 	if err != nil {
 		fmt.Printf("failed to create new docker client: %s\n", err)
 		os.Exit(1)
 	}
-	_, err = cli.ContainerList(context.TODO(), types.ContainerListOptions{})
+	_, err = cli.ContainerList(context.TODO(), container.ListOptions{})
 	if err != nil {
 		fmt.Printf("failed to access docker daemon: %s\n", err)
 		os.Exit(1)
@@ -86,7 +86,12 @@ func testDaemon() {
 func testRegistryAccess(repoName string) {
 	fmt.Println("registry test")
 	fmt.Printf("CNB_REGISTRY_AUTH=%+v\n", os.Getenv("CNB_REGISTRY_AUTH"))
-	ref, authenticator, err := auth.ReferenceForRepoName(auth.EnvKeychain("CNB_REGISTRY_AUTH"), repoName)
+	keychain, err := auth.NewEnvKeychain("CNB_REGISTRY_AUTH")
+	if err != nil {
+		fmt.Println("fail creating keychain:", err)
+		os.Exit(1)
+	}
+	ref, authenticator, err := auth.ReferenceForRepoName(keychain, repoName)
 	if err != nil {
 		fmt.Println("fail:", err)
 		os.Exit(1)

@@ -17,7 +17,6 @@ import (
 	"golang.org/x/term"
 
 	"github.com/buildpacks/pack/internal/sshdialer"
-	"github.com/buildpacks/pack/pkg/client"
 )
 
 func tryInitSSHDockerClient() (dockerClient.APIClient, error) {
@@ -50,7 +49,7 @@ func tryInitSSHDockerClient() (dockerClient.APIClient, error) {
 	}
 
 	dockerClientOpts := []dockerClient.Opt{
-		dockerClient.WithVersion(client.DockerAPIVersion),
+		dockerClient.WithAPIVersionNegotiation(),
 		dockerClient.WithHTTPClient(httpClient),
 		dockerClient.WithHost("http://dummy"),
 		dockerClient.WithDialContext(dialContext),
