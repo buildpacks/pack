@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1760962397638,
+  "lastUpdate": 1763843491710,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12292,6 +12292,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 92295753698,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f5f0a625484c4b875e3ac3ea4333ae9c0c259128",
+          "message": "Use Docker API version negotiation instead of hardcoded version (#2474)\n\n* Use Docker API version negotiation instead of hardcoded version\n\nFixes #2464\n\nThis change replaces all hardcoded Docker API version 1.38 references\nwith WithAPIVersionNegotiation(), allowing pack to automatically adapt\nto the Docker daemon's supported API version.\n\nChanges:\n- Updated main client initialization to use API version negotiation\n- Updated SSH Docker client to use API version negotiation\n- Updated all test files to use API version negotiation\n- Upgraded fake-lifecycle test dependencies from Docker client v1.4.2 (2019) to v28.5.1\n- Fixed fake-lifecycle imports and API calls for compatibility with modern Docker client\n\nBenefits:\n- Works with modern Docker daemons requiring API 1.44+ (Docker 27+)\n- Backward compatible with older Docker versions\n- Future-proof - no need to update hardcoded versions\n- Solves Windows runner issue without requiring Docker 27 upgrade\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Update Example_build test to use newer builder with modern lifecycle\n\nThe cnbs/sample-builder:noble builder includes a recent lifecycle version\nthat supports Docker API 1.44+, fixing the test failure on systems with\nmodern Docker daemons (Docker 27+).\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Downgrade fake-lifecycle dependencies for Go 1.23 compatibility\n\nUpdated fake-lifecycle test module to support Go 1.23.4 (Windows runner):\n- Downgraded lifecycle from v0.20.11 to v0.19.3\n- Downgraded go-containerregistry from v0.20.6 to v0.19.2\n- Set Go requirement to 1.23 (compatible with Go 1.23.4)\n- Updated Dockerfile to use golang:1.23 base image\n\nThe older versions still support Docker API 1.44+ and work correctly\nwith modern Docker daemons requiring minimum API version 1.44.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n---------\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude <noreply@anthropic.com>",
+          "timestamp": "2025-11-22T15:28:14-05:00",
+          "tree_id": "1e73da8b0c40a3222731ed4d126988fab52dd950",
+          "url": "https://github.com/buildpacks/pack/commit/f5f0a625484c4b875e3ac3ea4333ae9c0c259128"
+        },
+        "date": 1763843490220,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6800188931,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1927180817,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 109960924372,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
