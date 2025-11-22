@@ -10,10 +10,10 @@ require (
 	github.com/buildpacks/lifecycle v0.20.11
 	github.com/containerd/errdefs v1.0.0
 	github.com/docker/cli v28.5.1+incompatible
-	github.com/docker/docker v28.5.1+incompatible
+	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.6.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/gdamore/tcell/v2 v2.9.0
+	github.com/gdamore/tcell/v2 v2.11.0
 	github.com/go-git/go-git/v5 v5.16.3
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.7.0
@@ -33,8 +33,8 @@ require (
 	github.com/sclevine/spec v1.4.0
 	github.com/spf13/cobra v1.10.1
 	golang.org/x/crypto v0.45.0
-	golang.org/x/mod v0.29.0
-	golang.org/x/oauth2 v0.32.0
+	golang.org/x/mod v0.30.0
+	golang.org/x/oauth2 v0.33.0
 	golang.org/x/sync v0.18.0
 	golang.org/x/sys v0.38.0
 	golang.org/x/term v0.37.0
@@ -106,10 +106,9 @@ require (
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
-	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
+	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/moby/buildkit v0.22.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
