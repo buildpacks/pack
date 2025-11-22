@@ -2719,7 +2719,7 @@ func (f *fakeDockerClient) NetworkRemove(ctx context.Context, network string) er
 }
 
 func newTestLifecycleExecErr(t *testing.T, logVerbose bool, tmpDir string, ops ...func(*build.LifecycleOptions)) (*build.LifecycleExecution, error) {
-	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	h.AssertNil(t, err)
 
 	var outBuf bytes.Buffer
