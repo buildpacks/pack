@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1763843491710,
+  "lastUpdate": 1763844588540,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12334,6 +12334,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 109960924372,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6735aac3c8f1c48e8529063e68d19328cf4d9b2e",
+          "message": "build(deps): bump golang.org/x/crypto from 0.43.0 to 0.45.0 (#2473)\n\nBumps [golang.org/x/crypto](https://github.com/golang/crypto) from 0.43.0 to 0.45.0.\n- [Commits](https://github.com/golang/crypto/compare/v0.43.0...v0.45.0)\n\n---\nupdated-dependencies:\n- dependency-name: golang.org/x/crypto\n  dependency-version: 0.45.0\n  dependency-type: direct:production\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2025-11-22T20:46:52Z",
+          "tree_id": "6c7bc1c27b83a190f81297a2dd7e8da24e482cbd",
+          "url": "https://github.com/buildpacks/pack/commit/6735aac3c8f1c48e8529063e68d19328cf4d9b2e"
+        },
+        "date": 1763844587637,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3896770097,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1019554542,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 102074428388,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
