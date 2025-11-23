@@ -14,6 +14,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/pkg/errors"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -272,6 +273,10 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 		return nil, errors.Wrap(err, "fetch lifecycle")
 	}
 
+	// Validate lifecycle version for image extensions
+	if err := c.validateLifecycleVersion(opts.Config, lifecycle); err != nil {
+		return nil, err
+	}
 	bldr.SetLifecycle(lifecycle)
 	bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
 
@@ -550,4 +555,38 @@ func (c *Client) uriFromLifecycleImage(ctx context.Context, basePath string, con
 		return "", err
 	}
 	return uri, err
+}
+
+func hasExtensions(builderConfig pubbldr.Config) bool {
+	return len(builderConfig.Extensions) > 0 || len(builderConfig.OrderExtensions) > 0
+}
+
+func (c *Client) validateLifecycleVersion(builderConfig pubbldr.Config, lifecycle builder.Lifecycle) error {
+	if !hasExtensions(builderConfig) {
+		return nil
+	}
+
+	descriptor := lifecycle.Descriptor()
+
+	// Extensions are stable starting from Platform API 0.13
+	// Check the latest supported Platform API version
+	var platformAPI *api.Version
+	if len(descriptor.APIs.Platform.Supported) > 0 {
+		platformAPI = descriptor.APIs.Platform.Supported.Latest()
+	} else if descriptor.API.PlatformVersion != nil {
+		// Fallback to deprecated API field
+		platformAPI = descriptor.API.PlatformVersion
+	}
+
+	if platformAPI != nil && platformAPI.LessThan("0.13") {
+		if !c.experimental {
+			return errors.Errorf(
+				"builder config contains image extensions, but the lifecycle Platform API version (%s) is older than 0.13; "+
+					"support for image extensions with Platform API < 0.13 is currently experimental",
+				platformAPI.String(),
+			)
+		}
+	}
+
+	return nil
 }

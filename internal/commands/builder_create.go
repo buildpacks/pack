@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -69,11 +67,6 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				logger.Warnf("builder configuration: %s", w)
 			}
 
-			if hasExtensions(builderConfig) {
-				if !hasValidLifecycleVersion(builderConfig.Lifecycle.Version, 0, 20, 0) && !cfg.Experimental {
-					return errors.New("builder config contains image extensions; support for image extensions is currently experimental")
-				}
-			}
 
 			relativeBaseDir, err := filepath.Abs(filepath.Dir(flags.BuilderTomlPath))
 			if err != nil {
@@ -166,10 +159,6 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 	return cmd
 }
 
-func hasExtensions(builderConfig builder.Config) bool {
-	return len(builderConfig.Extensions) > 0 || len(builderConfig.OrderExtensions) > 0
-}
-
 func hasDockerLifecycle(builderConfig builder.Config) bool {
 	return buildpack.HasDockerLocator(builderConfig.Lifecycle.URI)
 }
@@ -188,37 +177,4 @@ func validateCreateFlags(flags *BuilderCreateFlags, cfg config.Config) error {
 	}
 
 	return nil
-}
-
-func hasValidLifecycleVersion(version string, minMajor, minMinor, minPatch int) bool {
-	parts := strings.Split(version, ".")
-	if len(parts) < 2 {
-		return false
-	}
-
-	major, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return false
-	}
-
-	minor, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return false
-	}
-
-	patch := 0
-	if len(parts) >= 3 {
-		patch, err = strconv.Atoi(parts[2])
-		if err != nil {
-			return false
-		}
-	}
-
-	if major != minMajor {
-		return major > minMajor
-	}
-	if minor != minMinor {
-		return minor > minMinor
-	}
-	return patch >= minPatch
 }
