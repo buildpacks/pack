@@ -72,6 +72,26 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any()).Return(fakeBuildImage, nil)
 		}
 
+		var prepareExtensions = func() {
+			// Extensions require Platform API >= 0.13
+			opts.Config.Lifecycle.URI = "file:///some-lifecycle-platform-0-13"
+			opts.Config.Extensions = []pubbldr.ModuleConfig{
+				{
+					ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3", Homepage: "http://one.extension"},
+					ImageOrURI: dist.ImageOrURI{
+						BuildpackURI: dist.BuildpackURI{
+							URI: "https://example.fake/ext-one.tgz",
+						},
+					},
+				},
+			}
+			opts.Config.OrderExtensions = []dist.OrderEntry{{
+				Group: []dist.ModuleRef{
+					{ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3"}, Optional: true},
+				}},
+			}
+		}
+
 		var createBuildpack = func(descriptor dist.BuildpackDescriptor) buildpack.BuildModule {
 			buildpack, err := ifakes.NewFakeBuildpack(descriptor, 0644)
 			h.AssertNil(t, err)
@@ -114,7 +134,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/ext-one.tgz").Return(exampleExtensionBlob, nil).AnyTimes()
 			mockDownloader.EXPECT().Download(gomock.Any(), "some/buildpack/dir").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
 			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil).AnyTimes()
-			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle-platform-0-1").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle-platform-0.1")), nil).AnyTimes()
+			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle-platform-0-1").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.3")), nil).AnyTimes()
+			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle-platform-0-13").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.13")), nil).AnyTimes()
 
 			bp, err := buildpack.FromBuildpackRootBlob(exampleBuildpackBlob, archive.DefaultTarWriterFactory(), nil)
 			h.AssertNil(t, err)
@@ -150,24 +171,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					},
-					Extensions: []pubbldr.ModuleConfig{
-						{
-							ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3", Homepage: "http://one.extension"},
-							ImageOrURI: dist.ImageOrURI{
-								BuildpackURI: dist.BuildpackURI{
-									URI: "https://example.fake/ext-one.tgz",
-								},
-							},
-						},
-					},
 					Order: []dist.OrderEntry{{
 						Group: []dist.ModuleRef{
 							{ModuleInfo: dist.ModuleInfo{ID: "bp.one", Version: "1.2.3"}, Optional: false},
-						}},
-					},
-					OrderExtensions: []dist.OrderEntry{{
-						Group: []dist.ModuleRef{
-							{ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3"}, Optional: true},
 						}},
 					},
 					Stack: pubbldr.StackConfig{
@@ -328,6 +334,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should fail when extension ID does not match downloaded extension", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				prepareExtensions()
 				opts.Config.Extensions[0].ID = "does.not.match"
 
 				err := subject.CreateBuilder(context.TODO(), opts)
@@ -338,6 +345,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should fail when extension version does not match downloaded extension", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				prepareExtensions()
 				opts.Config.Extensions[0].Version = "0.0.0"
 
 				err := subject.CreateBuilder(context.TODO(), opts)
@@ -512,6 +520,77 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					err = subject.CreateBuilder(context.TODO(), opts)
 					h.AssertError(t, err, "invalid lifecycle")
+				})
+			})
+		})
+
+		when("validating lifecycle Platform API for extensions", func() {
+			when("lifecycle supports Platform API >= 0.13", func() {
+				it("should allow extensions without experimental flag", func() {
+					// Uses default lifecycle which has Platform API 0.13
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Lifecycle.URI = "file:///some-lifecycle-platform-0-13"
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertNil(t, err)
+				})
+			})
+
+			when("lifecycle supports Platform API < 0.13", func() {
+				when("experimental flag is not set", func() {
+					it("should fail when builder has extensions", func() {
+						prepareFetcherWithBuildImage()
+						prepareFetcherWithRunImages()
+						prepareExtensions()
+						// Override to use lifecycle with Platform API 0.3 (< 0.13) for this test
+						opts.Config.Lifecycle.URI = "file:///some-lifecycle"
+
+						err := subject.CreateBuilder(context.TODO(), opts)
+						h.AssertError(t, err, "support for image extensions with Platform API < 0.13 is currently experimental")
+					})
+				})
+
+				when("experimental flag is set", func() {
+					it("should succeed when builder has extensions", func() {
+						packClientWithExperimental, err := client.NewClient(
+							client.WithLogger(logger),
+							client.WithDownloader(mockDownloader),
+							client.WithImageFactory(mockImageFactory),
+							client.WithFetcher(mockImageFetcher),
+							client.WithDockerClient(mockDockerClient),
+							client.WithBuildpackDownloader(mockBuildpackDownloader),
+							client.WithExperimental(true),
+						)
+						h.AssertNil(t, err)
+
+						prepareFetcherWithBuildImage()
+						prepareFetcherWithRunImages()
+						prepareExtensions()
+						// Remove buildpacks to avoid API compatibility issues
+						opts.Config.Buildpacks = nil
+						opts.Config.Order = nil
+						// Override to use lifecycle with Platform API 0.3 (< 0.13) for this test
+						opts.Config.Lifecycle.URI = "file:///some-lifecycle"
+
+						err = packClientWithExperimental.CreateBuilder(context.TODO(), opts)
+						h.AssertNil(t, err)
+					})
+				})
+			})
+
+			when("builder has no extensions", func() {
+				it("should succeed regardless of Platform API version", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					// Remove extensions from config
+					opts.Config.Extensions = nil
+					opts.Config.OrderExtensions = nil
+					// Use lifecycle with Platform API 0.3 (< 0.13)
+					opts.Config.Lifecycle.URI = "file:///some-lifecycle"
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertNil(t, err)
 				})
 			})
 		})
@@ -837,6 +916,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should set extensions and order-extensions metadata", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				prepareExtensions()
 
 				bldr := successfullyCreateBuilder()
 
@@ -889,6 +969,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should warn when deprecated Buildpack API version is used", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				prepareExtensions()
 				bldr := successfullyCreateBuilder()
 
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{"0.2", "0.3"})
@@ -899,6 +980,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("shouldn't warn when Buildpack API version used isn't deprecated", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				prepareExtensions()
 				opts.Config.Buildpacks[0].URI = "https://example.fake/bp-one-with-api-4.tgz"
 				opts.Config.Extensions[0].URI = "https://example.fake/ext-one-with-api-9.tgz"
 
@@ -977,6 +1059,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				it("should add dependencies buildpacks layers order by ID and version", func() {
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any()).Return(fakeLayerImage, nil)
 					prepareFetcherWithRunImages()
+					prepareExtensions()
 					opts.Config.Buildpacks[0].URI = "https://example.fake/bp-one-with-api-4.tgz"
 					opts.Config.Extensions[0].URI = "https://example.fake/ext-one-with-api-9.tgz"
 					bpDependencies := prepareBuildpackDependencies()
@@ -1036,6 +1119,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		it("supports directory extensions", func() {
 			prepareFetcherWithBuildImage()
 			prepareFetcherWithRunImages()
+			prepareExtensions()
 			opts.RelativeBaseDir = ""
 			directoryPath := "testdata/extension"
 			opts.Config.Extensions[0].URI = directoryPath
