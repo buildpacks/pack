@@ -489,7 +489,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				lifecycleImageName = fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, lifecycleVersion.String())
 			}
 
-			lifecycleImage, err := c.imageFetcher.Fetch(
+			lifecycleImage, err := c.imageFetcher.FetchForPlatform(
 				ctx,
 				lifecycleImageName,
 				image.FetchOptions{

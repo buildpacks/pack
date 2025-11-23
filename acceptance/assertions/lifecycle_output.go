@@ -89,7 +89,7 @@ func (l LifecycleOutputAssertionManager) IncludesTagOrEphemeralLifecycle(tag str
 	l.testObject.Helper()
 
 	if !strings.Contains(l.output, tag) {
-		if !strings.Contains(l.output, "pack.local/lifecyle") {
+		if !strings.Contains(l.output, "pack.local/lifecycle") {
 			l.testObject.Fatalf("Unable to locate reference to lifecycle image within output")
 		}
 	}
