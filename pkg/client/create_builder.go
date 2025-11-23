@@ -14,7 +14,6 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/lifecycle/api"
 	"github.com/pkg/errors"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -570,15 +569,13 @@ func (c *Client) validateLifecycleVersion(builderConfig pubbldr.Config, lifecycl
 
 	// Extensions are stable starting from Platform API 0.13
 	// Check the latest supported Platform API version
-	var platformAPI *api.Version
-	if len(descriptor.APIs.Platform.Supported) > 0 {
-		platformAPI = descriptor.APIs.Platform.Supported.Latest()
-	} else if descriptor.API.PlatformVersion != nil {
-		// Fallback to deprecated API field
-		platformAPI = descriptor.API.PlatformVersion
+	if len(descriptor.APIs.Platform.Supported) == 0 {
+		// No Platform API information available, skip validation
+		return nil
 	}
 
-	if platformAPI != nil && platformAPI.LessThan("0.13") {
+	platformAPI := descriptor.APIs.Platform.Supported.Latest()
+	if platformAPI.LessThan("0.13") {
 		if !c.experimental {
 			return errors.Errorf(
 				"builder config contains image extensions, but the lifecycle Platform API version (%s) is older than 0.13; "+
