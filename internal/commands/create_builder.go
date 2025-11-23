@@ -56,7 +56,6 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				logger.Warnf("builder configuration: %s", w)
 			}
 
-
 			relativeBaseDir, err := filepath.Abs(filepath.Dir(flags.BuilderTomlPath))
 			if err != nil {
 				return errors.Wrap(err, "getting absolute path for config")
