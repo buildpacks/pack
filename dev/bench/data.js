@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1763918205131,
+  "lastUpdate": 1763932281688,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12460,6 +12460,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 101205927731,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "64212458+vky5@users.noreply.github.com",
+            "name": "Vaibhav Yadav",
+            "username": "vky5"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e45b434cd4c23ee965c6df6fb8b677aa7bcb7e56",
+          "message": "fix: update lifecycle API validation for experimental flag solve issue #2414 (#2432)\n\n* fix: allow image extensions based on buildpack API\n\nSigned-off-by: vky5 <vky05@proton.me>\n\n* Move extension validation to client layer and check Platform API version\n\n- Move validation from command layer (builder_create.go, create_builder.go)\n  to client layer (pkg/client/create_builder.go)\n- Check Platform API version instead of lifecycle version to determine\n  if extensions are stable (>= 0.13) or experimental (< 0.13)\n- Use lifecycle's LessThan() method for version comparison\n- Add comprehensive tests for Platform API validation scenarios:\n  * Platform API >= 0.13 allows extensions without experimental flag\n  * Platform API < 0.13 requires experimental flag for extensions\n  * Builders without extensions work regardless of Platform API version\n- Create platform-0.13 test lifecycle data with Platform API 0.3-0.13\n- Add prepareExtensions() test helper that configures both extensions\n  and appropriate lifecycle for testing\n\nThis fixes the issue where users get experimental extension errors even\nwhen using lifecycle with Platform API 0.13 where extensions are stable.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Run make format to remove extra blank lines\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Fix linting errors by removing deprecated API usage\n\n- Remove fallback to deprecated descriptor.API.PlatformVersion\n- Use only descriptor.APIs.Platform.Supported (new API)\n- Skip validation if Platform API information is unavailable\n- Remove unused github.com/buildpacks/lifecycle/api import\n\nThis fixes staticcheck SA1019 warnings about using deprecated API fields.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n---------\n\nSigned-off-by: vky5 <vky05@proton.me>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude <noreply@anthropic.com>",
+          "timestamp": "2025-11-23T16:08:54-05:00",
+          "tree_id": "61ac438c4c4630e9ee9dd27f139ead6a8c04f81a",
+          "url": "https://github.com/buildpacks/pack/commit/e45b434cd4c23ee965c6df6fb8b677aa7bcb7e56"
+        },
+        "date": 1763932280434,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6583685842,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2069791750,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 102072251477,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
