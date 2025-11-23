@@ -203,3 +203,67 @@ func (t *FakeWithRandomUnderlyingImage) GetLayer(sha string) (io.ReadCloser, err
 	}
 	return layer.Uncompressed()
 }
+
+// SetUpRandomRemoteIndexWithPlatforms creates an image index with platform-specific images and pushes it to the registry
+// Uses imgutil for both image creation and index management, following the pattern from manifest_create.go
+func SetUpRandomRemoteIndexWithPlatforms(t *testing.T, indexRepoName string, platforms []struct{ OS, Arch string }) {
+	t.Helper()
+
+	// Create platform-specific images using imgutil and collect their identifiers
+	var imageDigests []string
+	for _, platform := range platforms {
+		platformTag := fmt.Sprintf("%s-%s", platform.OS, platform.Arch)
+		platformImageName := fmt.Sprintf("%s:%s", indexRepoName, platformTag)
+
+		// Use imgutil to create image with proper platform
+		img, err := imgutilRemote.NewImage(platformImageName, authn.DefaultKeychain, imgutilRemote.WithDefaultPlatform(imgutil.Platform{
+			OS:           platform.OS,
+			Architecture: platform.Arch,
+		}))
+		AssertNil(t, err)
+		AssertNil(t, img.Save())
+
+		// Extract the digest identifier
+		id, err := img.Identifier()
+		AssertNil(t, err)
+		imageDigests = append(imageDigests, id.String())
+	}
+
+	// Create a CNBIndex (similar to indexFactory.CreateIndex in manifest_create.go)
+	tmpDir, err := os.MkdirTemp("", "index-test")
+	AssertNil(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	idx, err := imgutil.NewCNBIndex(indexRepoName, imgutil.IndexOptions{
+		RemoteIndexOptions: imgutil.RemoteIndexOptions{
+			Keychain: authn.DefaultKeychain,
+		},
+		LayoutIndexOptions: imgutil.LayoutIndexOptions{
+			XdgPath: tmpDir,
+		},
+	})
+	AssertNil(t, err)
+
+	// Add each image to the index (similar to addManifestToIndex in common.go)
+	for i, digestStr := range imageDigests {
+		// Fetch the image using the digest
+		imageToAdd, err := imgutilRemote.NewImage(digestStr, authn.DefaultKeychain, imgutilRemote.FromBaseImage(digestStr))
+		AssertNil(t, err)
+
+		// Add the underlying v1.Image to the index
+		idx.AddManifest(imageToAdd.UnderlyingImage())
+
+		// Set platform metadata for the manifest
+		digestRef, err := name.NewDigest(digestStr)
+		AssertNil(t, err)
+
+		err = idx.SetOS(digestRef, platforms[i].OS)
+		AssertNil(t, err)
+		err = idx.SetArchitecture(digestRef, platforms[i].Arch)
+		AssertNil(t, err)
+	}
+
+	// Push the index to the registry (similar to manifest_create.go with Publish option)
+	err = idx.Push(imgutil.WithPurge(true), imgutil.WithMediaType(types.OCIImageIndex))
+	AssertNil(t, err)
+}

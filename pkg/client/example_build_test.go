@@ -30,7 +30,7 @@ func Example_build() {
 	// initialize our options
 	buildOpts := client.BuildOptions{
 		Image:        "pack-lib-test-image:0.0.1",
-		Builder:      "cnbs/sample-builder:bionic",
+		Builder:      "cnbs/sample-builder:noble",
 		AppPath:      appPath,
 		TrustBuilder: func(string) bool { return true },
 	}
