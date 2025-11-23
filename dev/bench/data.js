@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1763916003990,
+  "lastUpdate": 1763918205131,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12418,6 +12418,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 95026458851,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b604f01318c0753e5e75a1cdde9139ca887859f0",
+          "message": "Updating lifecycle version to v0.20.19 (#2481)\n\nUpdate remaining references to lifecycle version to match go.mod which already has v0.20.19\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2025-11-23T12:14:27-05:00",
+          "tree_id": "b9d04747130ce917113436997d46671b6cddf911",
+          "url": "https://github.com/buildpacks/pack/commit/b604f01318c0753e5e75a1cdde9139ca887859f0"
+        },
+        "date": 1763918204169,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4711985195,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1328161219,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 101205927731,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
