@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1763844588540,
+  "lastUpdate": 1763916003990,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12376,6 +12376,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 102074428388,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9321d2cc4a1fcb1a8dab370ed02f80db76f0debd",
+          "message": "Bump to go 1.25 (#2480)\n\nBuild and lint using go 1.25\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude <noreply@anthropic.com>",
+          "timestamp": "2025-11-23T11:37:07-05:00",
+          "tree_id": "2981f06ca9dc4ab31112483adc86e0e2b5f89181",
+          "url": "https://github.com/buildpacks/pack/commit/9321d2cc4a1fcb1a8dab370ed02f80db76f0debd"
+        },
+        "date": 1763916003162,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3586381979,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 777108291,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 95026458851,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
