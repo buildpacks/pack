@@ -657,7 +657,10 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 			when("with insecure registries", func() {
 				it.Before(func() {
-					img, err := remote.NewImage(repoName, authn.DefaultKeychain)
+					img, err := remote.NewImage(repoName, authn.DefaultKeychain, remote.WithDefaultPlatform(imgutil.Platform{
+						OS:           runtime.GOOS,
+						Architecture: runtime.GOARCH,
+					}))
 					h.AssertNil(t, err)
 					h.AssertNil(t, img.Save())
 				})
