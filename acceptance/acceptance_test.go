@@ -61,7 +61,7 @@ func TestAcceptance(t *testing.T) {
 
 	assert := h.NewAssertionManager(t)
 
-	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	assert.Nil(err)
 
 	imageManager = managers.NewImageManager(t, dockerCli)
@@ -1529,8 +1529,13 @@ func testAcceptance(
 						assert.Nil(err)
 
 						suiteManager.RegisterCleanUp("remove-lifecycle-"+lifecycle.Image(), func() error {
-							img := imageManager.GetImageID(lifecycle.Image())
-							imageManager.CleanupImages(img)
+							// Try to get image ID, but ignore errors if image doesn't exist
+							// (e.g., if it was pulled by digest instead of tag)
+							inspect, err := imageManager.InspectLocal(lifecycle.Image())
+							if err != nil {
+								return nil
+							}
+							imageManager.CleanupImages(inspect.ID)
 							return nil
 						})
 					})
