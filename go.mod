@@ -9,7 +9,7 @@ require (
 	github.com/buildpacks/lifecycle v0.20.19
 	github.com/chainguard-dev/kaniko v1.25.5
 	github.com/containerd/errdefs v1.0.0
-	github.com/docker/cli v29.0.3+incompatible
+	github.com/docker/cli v29.1.0+incompatible
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.6.0
 	github.com/dustin/go-humanize v1.0.1
