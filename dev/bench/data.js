@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1763932281688,
+  "lastUpdate": 1764240963136,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12502,6 +12502,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 102072251477,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a8010d1eeb0575e59a66ecf68dd6ed078d042e6d",
+          "message": "fix: upgrade imgutil to fix containerd snapshotter issue (#2493)\n\nUpgrades imgutil from v0.0.0-20250814164739-4b1c8875ba7e to\nv0.0.0-20250909162057-9db16db815e3 to fix an issue where builder\nimages created with Docker's containerd snapshotter storage driver\nhad malformed manifests.\n\nThe bug caused the first several base image layers to be replaced\nwith empty blob references in the manifest, while the config\nretained correct diff_ids. This created invalid images that failed\nOCI spec validation with tools like skopeo.\n\nThe fix was already merged in buildpacks/imgutil#297, which reverted\nthe problematic \"fast path\" optimization commits.\n\nResolves #2490\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude <noreply@anthropic.com>",
+          "timestamp": "2025-11-27T05:53:21-05:00",
+          "tree_id": "66ed97cb00b9e98b6954aebadd5d03d6cf30f91d",
+          "url": "https://github.com/buildpacks/pack/commit/a8010d1eeb0575e59a66ecf68dd6ed078d042e6d"
+        },
+        "date": 1764240962412,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3173311769,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 691196979,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 85155792752,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
