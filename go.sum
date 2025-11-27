@@ -98,8 +98,8 @@ github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
-github.com/buildpacks/imgutil v0.0.0-20250814164739-4b1c8875ba7e h1:a+vpYYeK7E7+3uGqseiRutzKA7yNNjAOPON9+VOADiw=
-github.com/buildpacks/imgutil v0.0.0-20250814164739-4b1c8875ba7e/go.mod h1:UH4th60x/wM1DdH7+eSgzbp0kgsJMhVgngWzXoF21cs=
+github.com/buildpacks/imgutil v0.0.0-20250909162057-9db16db815e3 h1:tm7oOjDEdtwfKL9ukn0cnCo7bgYNYCe0HFk9rbPAKNQ=
+github.com/buildpacks/imgutil v0.0.0-20250909162057-9db16db815e3/go.mod h1:UH4th60x/wM1DdH7+eSgzbp0kgsJMhVgngWzXoF21cs=
 github.com/buildpacks/lifecycle v0.20.19 h1:RyQe2QO524eiJNUpFNTdQKVgasPRP5Dl7zrqrFeJA6k=
 github.com/buildpacks/lifecycle v0.20.19/go.mod h1:Sp2Gc7hPquJ0BivUJjn1FKMzdNNrIAFP0MjNlkwxNGc=
 github.com/cenkalti/backoff/v5 v5.0.3 h1:ZN+IMa753KfX5hd8vVaMixjnqRZ3y8CuJKRKj1xcsSM=
