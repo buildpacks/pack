@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1764240963136,
+  "lastUpdate": 1764276331515,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12544,6 +12544,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 85155792752,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a89ee80f83e906d27f1b807fbe0547e6d9bfc06",
+          "message": "build(deps): bump the go-dependencies group across 1 directory with 3 updates (#2494)\n\nBumps the go-dependencies group with 3 updates in the / directory: [github.com/gdamore/tcell/v2](https://github.com/gdamore/tcell), [github.com/go-git/go-git/v5](https://github.com/go-git/go-git) and [github.com/google/go-containerregistry](https://github.com/google/go-containerregistry).\n\n\nUpdates `github.com/gdamore/tcell/v2` from 2.11.0 to 2.12.2\n- [Release notes](https://github.com/gdamore/tcell/releases)\n- [Changelog](https://github.com/gdamore/tcell/blob/main/CHANGESv2.md)\n- [Commits](https://github.com/gdamore/tcell/compare/v2.11.0...v2.12.2)\n\nUpdates `github.com/go-git/go-git/v5` from 5.16.3 to 5.16.4\n- [Release notes](https://github.com/go-git/go-git/releases)\n- [Commits](https://github.com/go-git/go-git/compare/v5.16.3...v5.16.4)\n\nUpdates `github.com/google/go-containerregistry` from 0.20.6 to 0.20.7\n- [Release notes](https://github.com/google/go-containerregistry/releases)\n- [Commits](https://github.com/google/go-containerregistry/compare/v0.20.6...v0.20.7)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/gdamore/tcell/v2\n  dependency-version: 2.12.2\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: github.com/go-git/go-git/v5\n  dependency-version: 5.16.4\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/google/go-containerregistry\n  dependency-version: 0.20.7\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2025-11-27T15:42:43-05:00",
+          "tree_id": "1c560b8bf3b1ab5173efa4df8a6b0702fcd9a525",
+          "url": "https://github.com/buildpacks/pack/commit/3a89ee80f83e906d27f1b807fbe0547e6d9bfc06"
+        },
+        "date": 1764276330733,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 2825735124,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 748793001,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 91683207617,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
