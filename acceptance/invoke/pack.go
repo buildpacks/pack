@@ -213,7 +213,7 @@ func (i *PackInvoker) Supports(command string) bool {
 		search = command
 	}
 
-	re := regexp.MustCompile(fmt.Sprint(`\b%s\b`, search))
+	re := regexp.MustCompile(fmt.Sprintf(`\b%s\b`, search))
 	output, err := i.baseCmd(cmdParts...).CombinedOutput()
 	i.assert.Nil(err)
 
