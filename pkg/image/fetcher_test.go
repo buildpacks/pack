@@ -732,6 +732,47 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 				h.AssertError(t, err, "")
 			})
 		})
+
+		when("pull policy is PullNever with daemon", func() {
+			var localImageName string
+
+			it.Before(func() {
+				// Use a different name for the local image to avoid conflicts
+				localImageName = "pack.local/test-" + h.RandString(10)
+
+				// Create a local daemon image with platform information
+				img, err := local.NewImage(localImageName, docker, local.WithDefaultPlatform(imgutil.Platform{
+					OS:           runtime.GOOS,
+					Architecture: runtime.GOARCH,
+				}))
+				h.AssertNil(t, err)
+				h.AssertNil(t, img.Save())
+			})
+
+			it.After(func() {
+				h.DockerRmi(docker, localImageName)
+			})
+
+			it("skips platform-specific digest resolution and uses tag directly", func() {
+				target := dist.Target{
+					OS:   runtime.GOOS,
+					Arch: runtime.GOARCH,
+				}
+
+				fetchedImg, err := imageFetcher.FetchForPlatform(context.TODO(), localImageName, image.FetchOptions{
+					Daemon:     true,
+					PullPolicy: image.PullNever,
+					Target:     &target,
+				})
+
+				// Should succeed without network access (digest resolution skipped)
+				h.AssertNil(t, err)
+				h.AssertNotNil(t, fetchedImg)
+
+				// Verify debug message about skipping digest resolution
+				h.AssertContains(t, outBuf.String(), "skipping digest resolution due to --pull-policy never")
+			})
+		})
 	})
 
 	when("#CheckReadAccess", func() {
