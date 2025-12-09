@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1764276331515,
+  "lastUpdate": 1765281869996,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12586,6 +12586,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 91683207617,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e157bb6e02ce75de384c9d25ccdc2df80c39a740",
+          "message": "fix: Skip platform-specific digest resolution with --pull-policy never (#2498)\n\n* fix: Skip platform-specific digest resolution with --pull-policy never\n\nWhen using --pull-policy never, pack now skips the platform-specific\ndigest resolution that requires network access to fetch the manifest list.\nInstead, it uses the image name directly from the daemon.\n\nThis fix addresses issue #2496 where builds fail when using --pull-policy\nnever because pack cannot resolve the platform-specific digest of the\nlifecycle image without network access.\n\nThe trade-off is that users may encounter containerd storage issues if\nDocker is configured to use containerd storage. In such cases, users\nshould manually pull the platform-specific digest or use a different\npull policy.\n\nRelated to PR #2467 which introduced platform-specific digest resolution\nto fix containerd storage issues.\n\nFixes #2496\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* test: Use daemon OS instead of runtime OS in PullNever test\n\nThis fixes test failures on Windows runners running Linux containers.\nThe test was using runtime.GOOS which returns 'windows' on Windows hosts,\nbut the Docker daemon may be running Linux containers. Now we use the\ndaemon's actual OS type queried via docker.Info().\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n---------\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2025-12-09T07:01:25-05:00",
+          "tree_id": "380b9190818c155dd434d6652fd3f5090e96a8b1",
+          "url": "https://github.com/buildpacks/pack/commit/e157bb6e02ce75de384c9d25ccdc2df80c39a740"
+        },
+        "date": 1765281868243,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5869036960,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1942291495,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 92902647530,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
