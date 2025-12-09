@@ -741,8 +741,10 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 				localImageName = "pack.local/test-" + h.RandString(10)
 
 				// Create a local daemon image with platform information
+				// Use osType (daemon OS) instead of runtime.GOOS to handle cases where
+				// Windows runner is running Linux containers
 				img, err := local.NewImage(localImageName, docker, local.WithDefaultPlatform(imgutil.Platform{
-					OS:           runtime.GOOS,
+					OS:           osType,
 					Architecture: runtime.GOARCH,
 				}))
 				h.AssertNil(t, err)
@@ -755,7 +757,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 			it("skips platform-specific digest resolution and uses tag directly", func() {
 				target := dist.Target{
-					OS:   runtime.GOOS,
+					OS:   osType,
 					Arch: runtime.GOARCH,
 				}
 
