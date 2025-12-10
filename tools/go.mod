@@ -2,7 +2,7 @@ module github.com/buildpacks/pack/tools
 
 go 1.25.0
 
-toolchain go1.25.3
+toolchain go1.25.5
 
 require (
 	github.com/golang/mock v1.6.0
