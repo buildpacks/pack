@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1765370292949,
+  "lastUpdate": 1765370524882,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12712,6 +12712,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 91808343249,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc9220d34a03fd994a3c2e81a83bcb1618da53cb",
+          "message": "fix: upgrade Go to 1.25.5 to address CVE-2025-61729 and CVE-2025-61727 (#2501)\n\nThis commit updates the Go version from 1.25.3 to 1.25.5 to fix two\nsecurity vulnerabilities in the Go standard library.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Sonnet 4.5 <noreply@anthropic.com>",
+          "timestamp": "2025-12-10T07:39:43-05:00",
+          "tree_id": "0aa17352daa3980bfee709547cef77128ec16e9a",
+          "url": "https://github.com/buildpacks/pack/commit/dc9220d34a03fd994a3c2e81a83bcb1618da53cb"
+        },
+        "date": 1765370523778,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4422295750,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1404161581,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 98170151053,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
