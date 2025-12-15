@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: [macos, linux, windows-lcow]
+        config: [macos, linux, windows]
         include:
           - config: macos
             # since macos-14 the latest runner is arm64
@@ -33,10 +33,10 @@ jobs:
             runner: ubuntu-latest
             no_docker: "false"
             pack_bin: pack
-          - config: windows-lcow
+          - config: windows
             os: windows
-            runner: [self-hosted, windows, lcow]
-            no_docker: "false"
+            runner: windows-latest
+            no_docker: "true"
             pack_bin: pack.exe
     runs-on: ${{ matrix.runner }}
     env:
@@ -84,6 +84,9 @@ jobs:
           echo "GOPATH=$(go env GOPATH)"| Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
           echo "$(go env GOPATH)\bin" | Out-File -FilePath $Env:GITHUB_PATH -Encoding utf8 -Append
         shell: powershell
+      - name: Install Make on Windows
+        if: runner.os == 'Windows'
+        run: choco install make -y
       - name: Verify
         run: make verify
       - name: Test
