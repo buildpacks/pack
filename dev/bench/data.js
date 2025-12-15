@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1765370524882,
+  "lastUpdate": 1765840353641,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12754,6 +12754,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 98170151053,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7d0fdf316d267fbeeca40f1075bd668d60fcbd19",
+          "message": "fix: migrate Windows CI testing from Equinix LCOW to GitHub-hosted runners (#2506)\n\nThis commit addresses issue #2505 by removing the dependency on the\nEquinix Metal self-hosted Windows LCOW runner, which is being sunset.\n\nChanges:\n- Replaced windows-lcow config with windows config using windows-latest runner\n- Set NO_DOCKER=true for Windows testing (GitHub runners don't support LCOW)\n- Added step to install Make via Chocolatey for Windows runner\n- Windows tests will run unit tests without Docker-dependent tests\n- Maintains pack.exe artifact generation for Chocolatey distribution\n\nThe new configuration:\n- Runs basic pack CLI tests on Windows to validate it works\n- Does not run Docker/LCOW tests (requires nested virtualization)\n- Ensures Windows binaries continue to be built for releases\n- Uses GitHub-hosted infrastructure instead of self-hosted Equinix Metal\n\nResolves #2505\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Sonnet 4.5 <noreply@anthropic.com>",
+          "timestamp": "2025-12-15T18:10:15-05:00",
+          "tree_id": "3e8c1749379374eca75743a3fa60c352334ce21b",
+          "url": "https://github.com/buildpacks/pack/commit/7d0fdf316d267fbeeca40f1075bd668d60fcbd19"
+        },
+        "date": 1765840352236,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 7076715226,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 2135769017,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 92208811712,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
