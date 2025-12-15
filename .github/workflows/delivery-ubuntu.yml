@@ -20,7 +20,7 @@ jobs:
       strategy:
         fail-fast: false
         matrix:
-          target: [focal, jammy, noble, oracular, plucky]
+          target: [focal, jammy, noble, plucky]
       runs-on: ubuntu-22.04
       steps:
           - name: Checkout code
@@ -95,18 +95,6 @@ jobs:
           - name: Deliver noble
             if: matrix.target == 'noble'
             uses: docker://ubuntu:noble
-            with:
-              entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
-            env:
-              DEBIAN_FRONTEND: "noninteractive"
-              GO_DEP_PACKAGE_NAME: golang
-              GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-              GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
-              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
-
-          - name: Deliver oracular
-            if: matrix.target == 'oracular'
-            uses: docker://ubuntu:oracular
             with:
               entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
             env:
