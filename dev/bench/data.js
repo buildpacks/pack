@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1765840353641,
+  "lastUpdate": 1766082822341,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12796,6 +12796,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 92208811712,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4aeda9c675b96378d81f6896ba97fbb536eaadf4",
+          "message": "chore: remove Ubuntu 24.10 (Oracular Oriole) from delivery workflow (#2507)\n\nUbuntu 24.10 \"Oracular Oriole\" has reached End of Life (July 11, 2025)\nand the Ubuntu repositories have been removed from the main archive,\ncausing delivery workflow failures.\n\nFixes #2504\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Sonnet 4.5 <noreply@anthropic.com>",
+          "timestamp": "2025-12-18T13:31:17-05:00",
+          "tree_id": "7d7217a256e1efd093ce773347645b4dc89aaa4f",
+          "url": "https://github.com/buildpacks/pack/commit/4aeda9c675b96378d81f6896ba97fbb536eaadf4"
+        },
+        "date": 1766082821322,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4835941668,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1365919613,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 106845895419,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
