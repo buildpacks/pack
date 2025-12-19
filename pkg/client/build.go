@@ -22,9 +22,9 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/platform/files"
-	"github.com/chainguard-dev/kaniko/pkg/util/proc"
 	types "github.com/docker/docker/api/types/image"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/osscontainertools/kaniko/pkg/util/proc"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
 
