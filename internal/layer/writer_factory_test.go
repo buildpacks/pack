@@ -20,11 +20,21 @@ func testWriterFactory(t *testing.T, when spec.G, it spec.S) {
 	when("#NewWriterFactory", func() {
 		it("returns an error for invalid image OS", func() {
 			_, err := layer.NewWriterFactory("not-an-os")
-			h.AssertError(t, err, "provided image OS 'not-an-os' must be either 'linux' or 'windows'")
+			h.AssertError(t, err, "provided image OS 'not-an-os' must be either 'freebsd', 'linux' or 'windows'")
 		})
 	})
 
 	when("#NewWriter", func() {
+		it("returns a regular tar writer for FreeBSD", func() {
+			factory, err := layer.NewWriterFactory("freebsd")
+			h.AssertNil(t, err)
+
+			_, ok := factory.NewWriter(nil).(*tar.Writer)
+			if !ok {
+				t.Fatal("returned writer was not a regular tar writer")
+			}
+		})
+
 		it("returns a regular tar writer for Linux", func() {
 			factory, err := layer.NewWriterFactory("linux")
 			h.AssertNil(t, err)
