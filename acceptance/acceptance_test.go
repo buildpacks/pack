@@ -1847,7 +1847,7 @@ func testAcceptance(
 						})
 					})
 
-					when("--volume", func() {
+					when.Focus("--volume", func() {
 						var (
 							volumeRoot   = "/"
 							slash        = "/"
@@ -1881,6 +1881,9 @@ func testAcceptance(
 
 							err = os.WriteFile(filepath.Join(tmpVolumeSrc, "some-file"), []byte("some-content\n"), 0777)
 							assert.Nil(err)
+
+							// use the 5 phases
+							pack.JustRunSuccessfully("config", "trusted-builders", "remove", builderName)
 						})
 
 						it.After(func() {
