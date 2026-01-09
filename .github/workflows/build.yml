@@ -269,7 +269,7 @@ jobs:
           body: |
             ## Prerequisites
 
-            - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/getting-started/) must be available to execute builds.
+            - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/get-started) must be available to execute builds.
 
             ## Install
 
@@ -348,7 +348,7 @@ jobs:
           body: |
             ## Prerequisites
 
-            - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/getting-started/) must be available to execute builds.
+            - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/get-started) must be available to execute builds.
 
             ## Install
 
