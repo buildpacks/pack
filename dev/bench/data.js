@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1767884659625,
+  "lastUpdate": 1768166955212,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12880,6 +12880,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 95587059269,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "gogolok@gmail.com",
+            "name": "Robert Gogolok",
+            "username": "gogolok"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2c1d805d9829062b7d6b075f99fba19865395c9b",
+          "message": "Fix link to `Get Started with Podman` page (#2511)\n\nThe previous link\nhttps://podman.io/getting-started/\npoints to a 404 page.\n\nSigned-off-by: Robert Gogolok <gogolok@gmail.com>",
+          "timestamp": "2026-01-11T16:27:04-05:00",
+          "tree_id": "260971c71efa5b504e83d79cf918d28ff1087316",
+          "url": "https://github.com/buildpacks/pack/commit/2c1d805d9829062b7d6b075f99fba19865395c9b"
+        },
+        "date": 1768166954242,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4128990177,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1130533928,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 90484089541,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
