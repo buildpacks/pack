@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/chainguard-dev/kaniko/pkg/util/proc"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/osscontainertools/kaniko/pkg/util/proc"
 
 	cerrdefs "github.com/containerd/errdefs"
 
