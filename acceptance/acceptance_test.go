@@ -19,7 +19,6 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"
-	dockertypes "github.com/docker/docker/api/types"
 	"github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -47,7 +46,7 @@ const (
 )
 
 var (
-	dockerCli      client.APIClient
+	dockerCli      *client.Client
 	registryConfig *h.TestRegistryConfig
 	suiteManager   *SuiteManager
 	imageManager   managers.ImageManager
@@ -4152,7 +4151,7 @@ func generatePackageTomlWithOS(
 	return packageTomlFile.Name()
 }
 
-func createStack(t *testing.T, dockerCli client.APIClient, runImageMirror string) error {
+func createStack(t *testing.T, dockerCli *client.Client, runImageMirror string) error {
 	t.Helper()
 	t.Log("creating stack images...")
 
@@ -4173,13 +4172,13 @@ func createStack(t *testing.T, dockerCli client.APIClient, runImageMirror string
 	return nil
 }
 
-func createStackImage(dockerCli client.APIClient, repoName string, dir string) error {
+func createStackImage(dockerCli *client.Client, repoName string, dir string) error {
 	defaultFilterFunc := func(file string) bool { return true }
 
 	ctx := context.Background()
 	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true, false, defaultFilterFunc)
 
-	return h.CheckImageBuildResult(dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
+	return h.CheckImageBuildResult(dockerCli.ImageBuild(ctx, buildContext, client.ImageBuildOptions{
 		Tags:        []string{repoName},
 		Remove:      true,
 		ForceRemove: true,
