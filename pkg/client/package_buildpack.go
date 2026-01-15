@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/buildpacks/pack/internal/name"
 	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/name"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/layer"

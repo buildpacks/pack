@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	ifakes "github.com/buildpacks/imgutil/fakes"
+	"github.com/heroku/color"
 	dcontainer "github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
-	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"

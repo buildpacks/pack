@@ -13,10 +13,10 @@ import (
 	"testing"
 
 	"github.com/buildpacks/lifecycle/platform/files"
+	"github.com/heroku/color"
 	dcontainer "github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/mount"
 	"github.com/moby/moby/client"
-	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 

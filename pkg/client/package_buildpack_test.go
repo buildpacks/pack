@@ -11,11 +11,11 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
-	mobysystem "github.com/moby/moby/api/types/system"
 	"github.com/golang/mock/gomock"
-	dockerclient "github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
+	mobysystem "github.com/moby/moby/api/types/system"
+	dockerclient "github.com/moby/moby/client"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 

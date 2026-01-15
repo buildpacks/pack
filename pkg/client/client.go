@@ -22,8 +22,8 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
-	dockerClient "github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	dockerClient "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/build"

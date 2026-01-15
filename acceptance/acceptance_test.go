@@ -19,10 +19,10 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/types"
+	"github.com/moby/moby/client"
 	"github.com/pelletier/go-toml"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"

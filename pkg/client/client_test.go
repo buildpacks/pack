@@ -8,8 +8,8 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 
-	dockerClient "github.com/moby/moby/client"
 	"github.com/golang/mock/gomock"
+	dockerClient "github.com/moby/moby/client"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 

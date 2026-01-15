@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	dockercontainer "github.com/moby/moby/api/types/container"
 	dockernetwork "github.com/moby/moby/api/types/network"
 	dockerregistry "github.com/moby/moby/api/types/registry"
 	"github.com/moby/moby/client"
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/buildpacks/pack/pkg/archive"
@@ -131,8 +131,8 @@ func (rc *TestRegistryConfig) AuthConfig() dockerregistry.AuthConfig {
 func (rc *TestRegistryConfig) Login(t *testing.T, username string, password string) {
 	Eventually(t, func() bool {
 		_, err := dockerCli(t).RegistryLogin(context.Background(), client.RegistryLoginOptions{
-			Username: username,
-			Password: password,
+			Username:      username,
+			Password:      password,
 			ServerAddress: RegistryHost(rc.RunRegistryHost, rc.RunRegistryPort),
 		})
 		return err == nil
@@ -173,7 +173,7 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) (st
 
 	_, err = dockerCli(t).CopyToContainer(ctx, ctrResult.ID, client.CopyToContainerOptions{
 		DestinationPath: "/",
-		Content:    htpasswdTar,
+		Content:         htpasswdTar,
 	})
 	AssertNil(t, err)
 

@@ -26,13 +26,13 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 
-	dcontainer "github.com/moby/moby/api/types/container"
-	"github.com/moby/moby/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/heroku/color"
+	dcontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/container"

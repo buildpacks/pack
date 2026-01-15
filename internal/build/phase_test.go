@@ -19,10 +19,11 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/lifecycle/auth"
 	dcontainer "github.com/moby/moby/api/types/container"
+
 	// "github.com/docker/docker/api/types/filters"
-	"github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/heroku/color"
+	"github.com/moby/moby/client"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -357,7 +358,8 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 			when("#WithBinds", func() {
 				it.After(func() {
-					_, err := docker.VolumeRemove(context.TODO(), "some-volume", client.VolumeRemoveOptions{Force: true}); h.AssertNilE(t, err)
+					_, err := docker.VolumeRemove(context.TODO(), "some-volume", client.VolumeRemoveOptions{Force: true})
+					h.AssertNilE(t, err)
 				})
 
 				it("mounts volumes inside container", func() {
