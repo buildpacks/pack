@@ -60,7 +60,7 @@ func TestAcceptance(t *testing.T) {
 
 	assert := h.NewAssertionManager(t)
 
-	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	dockerCli, err = client.New(client.FromEnv)
 	assert.Nil(err)
 
 	imageManager = managers.NewImageManager(t, dockerCli)

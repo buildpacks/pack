@@ -11,7 +11,6 @@ require (
 	github.com/containerd/errdefs v1.0.0
 	github.com/docker/cli v29.0.3+incompatible
 	github.com/docker/docker v28.5.2+incompatible
-	github.com/docker/go-connections v0.6.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gdamore/tcell/v2 v2.12.2
 	github.com/go-git/go-git/v5 v5.16.4
@@ -89,6 +88,7 @@ require (
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.4 // indirect
+	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect

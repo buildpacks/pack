@@ -126,7 +126,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		fakeLifecycleImage = newLinuxImage(fmt.Sprintf("%s:%s", cfg.DefaultLifecycleImageRepo, builder.DefaultLifecycleVersion), "", nil)
 		fakeImageFetcher.LocalImages[fakeLifecycleImage.Name()] = fakeLifecycleImage
 
-		docker, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
+		docker, err := dockerclient.New(dockerclient.FromEnv)
 		h.AssertNil(t, err)
 
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)

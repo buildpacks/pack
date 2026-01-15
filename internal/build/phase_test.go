@@ -47,7 +47,7 @@ func TestPhase(t *testing.T) {
 	h.RequireDocker(t)
 
 	var err error
-	ctrClient, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	ctrClient, err = client.New(client.FromEnv)
 	h.AssertNil(t, err)
 
 	info, err := ctrClient.Info(context.TODO(), client.InfoOptions{})
@@ -77,7 +77,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 
 		var err error
-		docker, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		docker, err = client.New(client.FromEnv)
 		h.AssertNil(t, err)
 
 		info, err := ctrClient.Info(context.Background(), client.InfoOptions{})

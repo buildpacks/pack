@@ -92,7 +92,7 @@ func testClient(t *testing.T, when spec.G, it spec.S) {
 
 	when("#WithDockerClient", func() {
 		it("uses docker client provided", func() {
-			docker, err := dockerClient.NewClientWithOpts(
+			docker, err := dockerClient.New(
 				dockerClient.FromEnv,
 			)
 			h.AssertNil(t, err)

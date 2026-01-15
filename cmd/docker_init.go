@@ -49,13 +49,12 @@ func tryInitSSHDockerClient() (*dockerClient.Client, error) {
 	}
 
 	dockerClientOpts := []dockerClient.Opt{
-		dockerClient.WithAPIVersionNegotiation(),
 		dockerClient.WithHTTPClient(httpClient),
 		dockerClient.WithHost("http://dummy"),
 		dockerClient.WithDialContext(dialContext),
 	}
 
-	return dockerClient.NewClientWithOpts(dockerClientOpts...)
+	return dockerClient.New(dockerClientOpts...)
 }
 
 // readSecret prompts for a secret and returns value input by user from stdin

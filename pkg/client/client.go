@@ -285,9 +285,8 @@ func NewClient(opts ...Option) (*Client, error) {
 
 	if client.docker == nil {
 		var err error
-		client.docker, err = dockerClient.NewClientWithOpts(
+		client.docker, err = dockerClient.New(
 			dockerClient.FromEnv,
-			dockerClient.WithAPIVersionNegotiation(),
 		)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating docker client")

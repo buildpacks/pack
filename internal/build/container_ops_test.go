@@ -36,7 +36,7 @@ func TestContainerOperations(t *testing.T) {
 	h.RequireDocker(t)
 
 	var err error
-	ctrClient, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	ctrClient, err = client.New(client.FromEnv)
 	h.AssertNil(t, err)
 
 	spec.Run(t, "container-ops", testContainerOps, spec.Report(report.Terminal{}), spec.Sequential())
