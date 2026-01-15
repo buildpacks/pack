@@ -16,9 +16,9 @@ import (
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform/files"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
@@ -784,9 +784,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		when("network is not provided", func() {
 			it("creates an ephemeral bridge network", func() {
 				beforeNetworks := func() int {
-					networks, err := docker.NetworkList(context.Background(), network.CreateOptions{})
+					networks, err := docker.NetworkList(context.Background(), client.NetworkListOptions{})
 					h.AssertNil(t, err)
-					return len(networks)
+					return len(networks.Items)
 				}()
 
 				opts := build.LifecycleOptions{
@@ -813,9 +813,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				afterNetworks := func() int {
-					networks, err := docker.NetworkList(context.Background(), network.CreateOptions{})
+					networks, err := docker.NetworkList(context.Background(), client.NetworkListOptions{})
 					h.AssertNil(t, err)
-					return len(networks)
+					return len(networks.Items)
 				}()
 				h.AssertEq(t, beforeNetworks, afterNetworks)
 			})
@@ -2703,19 +2703,19 @@ type fakeDockerClient struct {
 	build.DockerClient
 }
 
-func (f *fakeDockerClient) NetworkList(ctx context.Context, opts network.CreateOptions) ([]network.Inspect, error) {
-	ret := make([]network.Inspect, f.nNetworks)
-	return ret, nil
+func (f *fakeDockerClient) NetworkList(ctx context.Context, opts client.NetworkListOptions) (client.NetworkListResult, error) {
+	ret := make([]network.Summary, f.nNetworks)
+	return client.NetworkListResult{Items: ret}, nil
 }
 
-func (f *fakeDockerClient) NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (network.CreateResponse, error) {
+func (f *fakeDockerClient) NetworkCreate(ctx context.Context, name string, options client.NetworkCreateOptions) (client.NetworkCreateResult, error) {
 	f.nNetworks++
-	return network.CreateResponse{}, nil
+	return client.NetworkCreateResult{}, nil
 }
 
-func (f *fakeDockerClient) NetworkRemove(ctx context.Context, network string) error {
+func (f *fakeDockerClient) NetworkRemove(ctx context.Context, network string, options client.NetworkRemoveOptions) (client.NetworkRemoveResult, error) {
 	f.nNetworks--
-	return nil
+	return client.NetworkRemoveResult{}, nil
 }
 
 func newTestLifecycleExecErr(t *testing.T, logVerbose bool, tmpDir string, ops ...func(*build.LifecycleOptions)) (*build.LifecycleExecution, error) {

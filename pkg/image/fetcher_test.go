@@ -12,8 +12,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/heroku/color"
@@ -28,7 +27,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-var docker client.APIClient
+var docker *client.Client
 var registryConfig *h.TestRegistryConfig
 
 func TestFetcher(t *testing.T) {
@@ -63,9 +62,9 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 		repoName = registryConfig.RepoName(repo)
 		imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose()), docker)
 
-		info, err := docker.Info(context.TODO())
+		infoResult, err := docker.Info(context.TODO(), client.InfoOptions{})
 		h.AssertNil(t, err)
-		osType = info.OSType
+		osType = infoResult.Info.OSType
 	})
 
 	when("#Fetch", func() {
@@ -788,8 +787,8 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 			when("an error is thrown by the daemon", func() {
 				it.Before(func() {
 					mockController := gomock.NewController(t)
-					mockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
-					mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{}, errors.New("something wrong happened"))
+					mockDockerClient := testmocks.NewMockAPIClient(mockController)
+					mockDockerClient.EXPECT().ServerVersion(gomock.Any(), gomock.Any()).Return(client.ServerVersionResult{}, errors.New("something wrong happened"))
 					imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose()), mockDockerClient)
 				})
 				when("PullNever", func() {

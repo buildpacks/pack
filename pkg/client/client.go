@@ -22,7 +22,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
-	dockerClient "github.com/docker/docker/client"
+	dockerClient "github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
@@ -47,7 +47,7 @@ var (
 	Version = "0.0.0"
 )
 
-//go:generate mockgen -package testmocks -destination ../testmocks/mock_docker_client.go github.com/docker/docker/client CommonAPIClient
+//go:generate mockgen -package testmocks -destination ../testmocks/mock_docker_client.go github.com/moby/moby/client APIClient
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_image_fetcher.go github.com/buildpacks/pack/pkg/client ImageFetcher
 

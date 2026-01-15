@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/buildpacks/pack/internal/name"
-
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
@@ -266,13 +266,13 @@ func (c *Client) validateOSPlatform(ctx context.Context, os string, publish bool
 		return nil
 	}
 
-	info, err := c.docker.Info(ctx)
+	result, err := c.docker.Info(ctx, client.InfoOptions{})
 	if err != nil {
 		return err
 	}
 
-	if info.OSType != os {
-		return errors.Errorf("invalid %s specified: DOCKER_OS is %s", style.Symbol("platform.os"), style.Symbol(info.OSType))
+	if result.Info.OSType != os {
+		return errors.Errorf("invalid %s specified: DOCKER_OS is %s", style.Symbol("platform.os"), style.Symbol(result.Info.OSType))
 	}
 
 	return nil
@@ -280,17 +280,17 @@ func (c *Client) validateOSPlatform(ctx context.Context, os string, publish bool
 
 // daemonTarget returns a target that matches with the given daemon os/arch
 func (c *Client) daemonTarget(ctx context.Context, targets []dist.Target) (dist.Target, error) {
-	info, err := c.docker.ServerVersion(ctx)
+	serverResult, err := c.docker.ServerVersion(ctx, client.ServerVersionOptions{})
 	if err != nil {
 		return dist.Target{}, err
 	}
 
 	for _, t := range targets {
-		if t.Arch != "" && t.OS == info.Os && t.Arch == info.Arch {
+		if t.Arch != "" && t.OS == serverResult.Os && t.Arch == serverResult.Arch {
 			return t, nil
-		} else if t.Arch == "" && t.OS == info.Os {
+		} else if t.Arch == "" && t.OS == serverResult.Os {
 			return t, nil
 		}
 	}
-	return dist.Target{}, errors.Errorf("could not find a target that matches daemon os=%s and architecture=%s", info.Os, info.Arch)
+	return dist.Target{}, errors.Errorf("could not find a target that matches daemon os=%s and architecture=%s", serverResult.Os, serverResult.Arch)
 }

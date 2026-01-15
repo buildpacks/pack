@@ -13,9 +13,9 @@ import (
 	"testing"
 
 	"github.com/buildpacks/lifecycle/platform/files"
-	dcontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/client"
+	dcontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/client"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -25,6 +25,8 @@ import (
 	"github.com/buildpacks/pack/internal/container"
 	h "github.com/buildpacks/pack/testhelpers"
 )
+
+var ctrClient *client.Client
 
 // TestContainerOperations are integration tests for the container operations against a docker daemon
 func TestContainerOperations(t *testing.T) {
@@ -49,9 +51,9 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		imageName = "container-ops.test-" + h.RandString(10)
 
-		info, err := ctrClient.Info(context.TODO())
+		infoResult, err := ctrClient.Info(context.TODO(), client.InfoOptions{})
 		h.AssertNil(t, err)
-		osType = info.OSType
+		osType = infoResult.Info.OSType
 
 		dockerfileContent := `FROM busybox`
 		if osType == "windows" {
@@ -655,10 +657,11 @@ drwxrwxrwx    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			inspect, err := ctrClient.ContainerInspect(ctx, ctr.ID)
+			inspectResult, err := ctrClient.ContainerInspect(ctx, ctr.ID, client.ContainerInspectOptions{})
 			if err != nil {
 				return
 			}
+			inspect := inspectResult.Container
 
 			// use container's current volumes
 			var ctrVolumes []string
@@ -683,32 +686,33 @@ drwxrwxrwx    2 123      456 (.*) some-vol
 	})
 }
 
-func createContainer(ctx context.Context, imageName, containerDir, osType string, cmd ...string) (dcontainer.CreateResponse, error) {
+func createContainer(ctx context.Context, imageName, containerDir, osType string, cmd ...string) (client.ContainerCreateResult, error) {
 	isolationType := dcontainer.IsolationDefault
 	if osType == "windows" {
 		isolationType = dcontainer.IsolationProcess
 	}
 
-	return ctrClient.ContainerCreate(ctx,
-		&dcontainer.Config{
+	return ctrClient.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config: &dcontainer.Config{
 			Image: imageName,
 			Cmd:   cmd,
 		},
-		&dcontainer.HostConfig{
+		HostConfig: &dcontainer.HostConfig{
 			Binds:     []string{fmt.Sprintf("%s:%s", fmt.Sprintf("tests-volume-%s", h.RandString(5)), filepath.ToSlash(containerDir))},
 			Isolation: isolationType,
-		}, nil, nil, "",
-	)
+		},
+	})
 }
 
 func cleanupContainer(ctx context.Context, ctrID string) {
-	inspect, err := ctrClient.ContainerInspect(ctx, ctrID)
+	inspectResult, err := ctrClient.ContainerInspect(ctx, ctrID, client.ContainerInspectOptions{})
 	if err != nil {
 		return
 	}
+	inspect := inspectResult.Container
 
 	// remove container
-	err = ctrClient.ContainerRemove(ctx, ctrID, dcontainer.RemoveOptions{})
+	_, err = ctrClient.ContainerRemove(ctx, ctrID, client.ContainerRemoveOptions{})
 	if err != nil {
 		return
 	}
@@ -716,7 +720,7 @@ func cleanupContainer(ctx context.Context, ctrID string) {
 	// remove volumes
 	for _, m := range inspect.Mounts {
 		if m.Type == mount.TypeVolume {
-			err = ctrClient.VolumeRemove(ctx, m.Name, true)
+			_, err = ctrClient.VolumeRemove(ctx, m.Name, client.VolumeRemoveOptions{Force: true})
 			if err != nil {
 				return
 			}

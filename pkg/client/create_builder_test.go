@@ -14,9 +14,9 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/system"
+	mobysystem "github.com/moby/moby/api/types/system"
 	"github.com/golang/mock/gomock"
+	dockerclient "github.com/moby/moby/client"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
@@ -53,7 +53,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockBuildpackDownloader *testmocks.MockBuildpackDownloader
 			mockImageFactory        *testmocks.MockImageFactory
 			mockImageFetcher        *testmocks.MockImageFetcher
-			mockDockerClient        *testmocks.MockCommonAPIClient
+			mockDockerClient        *testmocks.MockAPIClient
 			fakeBuildImage          *fakes.Image
 			fakeRunImage            *fakes.Image
 			fakeRunImageMirror      *fakes.Image
@@ -113,7 +113,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDownloader = testmocks.NewMockBlobDownloader(mockController)
 			mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
 			mockImageFactory = testmocks.NewMockImageFactory(mockController)
-			mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
+			mockDockerClient = testmocks.NewMockAPIClient(mockController)
 			mockBuildpackDownloader = testmocks.NewMockBuildpackDownloader(mockController)
 
 			fakeBuildImage = fakes.NewImage("some/build-image", "", nil)
@@ -154,7 +154,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			)
 			h.AssertNil(t, err)
 
-			mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+			mockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil).AnyTimes()
 
 			opts = client.CreateBuilderOptions{
 				RelativeBaseDir: "/",
@@ -1336,7 +1336,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("publish is false", func() {
 				when("daemon is linux/amd64", func() {
 					it.Before(func() {
-						mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{
+						mockDockerClient.EXPECT().ServerVersion(gomock.Any(), gomock.Any()).Return(dockerclient.ServerVersionResult{
 							Os:   "linux",
 							Arch: "amd64",
 						}, nil).AnyTimes()
@@ -1393,7 +1393,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("daemon is linux/arm64", func() {
 					it.Before(func() {
-						mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{
+						mockDockerClient.EXPECT().ServerVersion(gomock.Any(), gomock.Any()).Return(dockerclient.ServerVersionResult{
 							Os:   "linux",
 							Arch: "arm64",
 						}, nil).AnyTimes()
@@ -1439,7 +1439,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						opts.Targets = []dist.Target{}
 
 						// ServerVersion should NOT be called for empty targets
-						mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Times(0)
+						mockDockerClient.EXPECT().ServerVersion(gomock.Any(), gomock.Any()).Times(0)
 
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
 

@@ -8,9 +8,8 @@ import (
 	reflect "reflect"
 
 	imgutil "github.com/buildpacks/imgutil"
-	gomock "github.com/golang/mock/gomock"
-
 	dist "github.com/buildpacks/pack/pkg/dist"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockImageFactory is a mock of ImageFactory interface.

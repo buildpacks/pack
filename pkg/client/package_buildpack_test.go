@@ -11,9 +11,9 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/system"
+	mobysystem "github.com/moby/moby/api/types/system"
 	"github.com/golang/mock/gomock"
+	dockerclient "github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -48,7 +48,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		mockDownloader   *testmocks.MockBlobDownloader
 		mockImageFactory *testmocks.MockImageFactory
 		mockImageFetcher *testmocks.MockImageFetcher
-		mockDockerClient *testmocks.MockCommonAPIClient
+		mockDockerClient *testmocks.MockAPIClient
 		mockIndexFactory *testmocks.MockIndexFactory
 		out              bytes.Buffer
 	)
@@ -58,7 +58,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		mockDownloader = testmocks.NewMockBlobDownloader(mockController)
 		mockImageFactory = testmocks.NewMockImageFactory(mockController)
 		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
-		mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
+		mockDockerClient = testmocks.NewMockAPIClient(mockController)
 		mockIndexFactory = testmocks.NewMockIndexFactory(mockController)
 
 		var err error
@@ -142,7 +142,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				dependencyPath := "http://example.com/flawed.file"
 				mockDownloader.EXPECT().Download(gomock.Any(), dependencyPath).Return(blob.NewBlob("no-file.txt"), nil).AnyTimes()
 
-				mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+				mockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil).AnyTimes()
 
 				packageDescriptor := dist.BuildpackDescriptor{
 					WithAPI:  api.MustParse("0.2"),
@@ -175,8 +175,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		when("simple package for both OS formats (experimental only)", func() {
 			it("creates package image based on daemon OS", func() {
 				for _, daemonOS := range []string{"linux", "windows"} {
-					localMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
-					localMockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: daemonOS}, nil).AnyTimes()
+					localMockDockerClient := testmocks.NewMockAPIClient(mockController)
+					localMockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: daemonOS}}, nil).AnyTimes()
 
 					packClientWithExperimental, err := client.NewClient(
 						client.WithDockerClient(localMockDockerClient),
@@ -210,7 +210,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("fails without experimental on Windows daemons", func() {
-				windowsMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
+				windowsMockDockerClient := testmocks.NewMockAPIClient(mockController)
 
 				packClientWithoutExperimental, err := client.NewClient(
 					client.WithDockerClient(windowsMockDockerClient),
@@ -229,8 +229,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("fails for mismatched platform and daemon os", func() {
-				windowsMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
-				windowsMockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "windows"}, nil).AnyTimes()
+				windowsMockDockerClient := testmocks.NewMockAPIClient(mockController)
+				windowsMockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "windows"}}, nil).AnyTimes()
 
 				packClientWithoutExperimental, err := client.NewClient(
 					client.WithDockerClient(windowsMockDockerClient),
@@ -257,7 +257,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
 				mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, dist.Target{OS: "linux"}).Return(nestedPackage, nil)
 
-				mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+				mockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil).AnyTimes()
 
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
 					Name: nestedPackage.Name(),
@@ -402,7 +402,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				notPackageImage := fakes.NewImage("not/package", "", nil)
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Target: &dist.Target{OS: "linux"}}).Return(notPackageImage, nil)
 
-				mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+				mockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil).AnyTimes()
 
 				h.AssertError(t, subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
 					Name: "some/package",
@@ -457,7 +457,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				)
 				h.AssertNil(t, err)
 
-				mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+				mockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil).AnyTimes()
 
 				name := "basic/package-" + h.RandString(12)
 				fakeImage := fakes.NewImage(name, "", nil)
@@ -828,7 +828,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					when("publish is false", func() {
 						when("daemon is linux/amd64", func() {
 							it.Before(func() {
-								mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{
+								mockDockerClient.EXPECT().ServerVersion(gomock.Any(), gomock.Any()).Return(dockerclient.ServerVersionResult{
 									Os:   "linux",
 									Arch: "amd64",
 								}, nil).AnyTimes()
@@ -844,7 +844,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 									prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, filepath.Join(destBpPath, "linux", "amd64"))
 
 									// Mock docker info for validateOSPlatform
-									mockDockerClient.EXPECT().Info(gomock.Any()).Return(system.Info{OSType: "linux"}, nil)
+									mockDockerClient.EXPECT().Info(gomock.Any(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil)
 
 									// Mock expectations for the selected target
 									fakeImage := fakes.NewImage(repoName, "", nil)
@@ -906,7 +906,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 									prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, destBpPath)
 
 									// Mock docker info for validateOSPlatform
-									mockDockerClient.EXPECT().Info(gomock.Any()).Return(system.Info{OSType: "linux"}, nil)
+									mockDockerClient.EXPECT().Info(gomock.Any(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil)
 
 									// Mock expectations for the selected target
 									fakeImage := fakes.NewImage(repoName, "", nil)
@@ -946,7 +946,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 									prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, filepath.Join(destBpPath, "linux", "amd64"))
 
 									// Mock docker info for validateOSPlatform
-									mockDockerClient.EXPECT().Info(gomock.Any()).Return(system.Info{OSType: "linux"}, nil)
+									mockDockerClient.EXPECT().Info(gomock.Any(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil)
 
 									// Mock expectations for the selected target
 									fakeImage := fakes.NewImage(repoName, "", nil)
@@ -980,7 +980,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 						when("daemon is linux/arm64", func() {
 							it.Before(func() {
-								mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{
+								mockDockerClient.EXPECT().ServerVersion(gomock.Any(), gomock.Any()).Return(dockerclient.ServerVersionResult{
 									Os:   "linux",
 									Arch: "arm64",
 								}, nil).AnyTimes()
@@ -998,7 +998,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 									prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, filepath.Join(destBpPath, "linux", "arm"))
 
 									// Mock docker info for validateOSPlatform
-									mockDockerClient.EXPECT().Info(gomock.Any()).Return(system.Info{OSType: "linux"}, nil)
+									mockDockerClient.EXPECT().Info(gomock.Any(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil)
 
 									// Mock expectations for the selected target
 									fakeImage := fakes.NewImage(repoName, "", nil)
@@ -1053,7 +1053,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 						when("daemon is windows/amd64", func() {
 							it.Before(func() {
-								mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{
+								mockDockerClient.EXPECT().ServerVersion(gomock.Any(), gomock.Any()).Return(dockerclient.ServerVersionResult{
 									Os:   "windows",
 									Arch: "amd64",
 								}, nil).AnyTimes()
@@ -1080,7 +1080,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 									prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, destBpPath)
 
 									// Mock docker info for validateOSPlatform
-									mockDockerClient.EXPECT().Info(gomock.Any()).Return(system.Info{OSType: "windows"}, nil)
+									mockDockerClient.EXPECT().Info(gomock.Any(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "windows"}}, nil)
 
 									// Mock expectations for the selected target
 									fakeImage := fakes.NewImage(repoName, "", nil)
@@ -1113,7 +1113,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 						when("targets with distributions", func() {
 							it.Before(func() {
-								mockDockerClient.EXPECT().ServerVersion(gomock.Any()).Return(types.Version{
+								mockDockerClient.EXPECT().ServerVersion(gomock.Any(), gomock.Any()).Return(dockerclient.ServerVersionResult{
 									Os:   "linux",
 									Arch: "amd64",
 								}, nil).AnyTimes()
@@ -1127,7 +1127,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 								prepareDownloadedBuildpackBlobAtURI(t, mockDownloader, filepath.Join(destBpPath, "linux", "amd64"))
 
 								// Mock docker info for validateOSPlatform
-								mockDockerClient.EXPECT().Info(gomock.Any()).Return(system.Info{OSType: "linux"}, nil)
+								mockDockerClient.EXPECT().Info(gomock.Any(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil)
 
 								// Mock expectations for the selected target
 								fakeImage := fakes.NewImage(repoName, "", nil)
@@ -1176,7 +1176,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 								// Mock expectations - ServerVersion should NOT be called
 								// as daemonTarget is not invoked for empty targets
-								mockDockerClient.EXPECT().Info(gomock.Any()).Return(system.Info{OSType: "linux"}, nil)
+								mockDockerClient.EXPECT().Info(gomock.Any(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil)
 								fakeImage := fakes.NewImage(repoName, "", nil)
 								mockImageFactory.EXPECT().NewImage(repoName, true, dist.Target{OS: "linux"}).Return(fakeImage, nil)
 
@@ -1212,8 +1212,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				defer os.Remove(tmpDir)
 
 				for _, imageOS := range []string{"linux", "windows"} {
-					localMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
-					localMockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: imageOS}, nil).AnyTimes()
+					localMockDockerClient := testmocks.NewMockAPIClient(mockController)
+					localMockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: imageOS}}, nil).AnyTimes()
 
 					packClientWithExperimental, err := client.NewClient(
 						client.WithDockerClient(localMockDockerClient),
@@ -1564,7 +1564,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 	when("unknown format is provided", func() {
 		it("should error", func() {
-			mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+			mockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil).AnyTimes()
 
 			err := subject.PackageBuildpack(context.TODO(), client.PackageBuildpackOptions{
 				Name:   "some-buildpack",

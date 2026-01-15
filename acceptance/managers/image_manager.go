@@ -56,9 +56,9 @@ func (im ImageManager) GetImageID(image string) string {
 
 func (im ImageManager) HostOS() string {
 	im.testObject.Helper()
-	daemonInfo, err := im.dockerCli.Info(context.Background())
+	infoResult, err := im.dockerCli.Info(context.Background())
 	im.assert.Nil(err)
-	return daemonInfo.OSType
+	return infoResult.OSType
 }
 
 func (im ImageManager) TagImage(image, ref string) {
@@ -163,8 +163,9 @@ func (t TestContainer) WaitForResponse(duration time.Duration) string {
 
 func (t TestContainer) hostPort() string {
 	t.testObject.Helper()
-	i, err := t.dockerCli.ContainerInspect(context.Background(), t.name)
+	result, err := t.dockerCli.ContainerInspect(context.Background(), t.name)
 	t.assert.Nil(err)
+	i := result
 	for _, port := range i.NetworkSettings.Ports {
 		for _, binding := range port {
 			return binding.HostPort

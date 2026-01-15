@@ -10,8 +10,9 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/docker/docker/api/types/system"
+	mobysystem "github.com/moby/moby/api/types/system"
 	"github.com/golang/mock/gomock"
+	dockerclient "github.com/moby/moby/client"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -40,7 +41,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 		mockDownloader   *testmocks.MockBlobDownloader
 		mockImageFactory *testmocks.MockImageFactory
 		mockImageFetcher *testmocks.MockImageFetcher
-		mockDockerClient *testmocks.MockCommonAPIClient
+		mockDockerClient *testmocks.MockAPIClient
 		out              bytes.Buffer
 	)
 
@@ -49,7 +50,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 		mockDownloader = testmocks.NewMockBlobDownloader(mockController)
 		mockImageFactory = testmocks.NewMockImageFactory(mockController)
 		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
-		mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
+		mockDockerClient = testmocks.NewMockAPIClient(mockController)
 
 		var err error
 		subject, err = client.NewClient(
@@ -129,8 +130,8 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 		when("simple package for both OS formats (experimental only)", func() {
 			it("creates package image based on daemon OS", func() {
 				for _, daemonOS := range []string{"linux", "windows"} {
-					localMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
-					localMockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: daemonOS}, nil).AnyTimes()
+					localMockDockerClient := testmocks.NewMockAPIClient(mockController)
+					localMockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: daemonOS}}, nil).AnyTimes()
 
 					packClientWithExperimental, err := client.NewClient(
 						client.WithDockerClient(localMockDockerClient),
@@ -163,7 +164,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("fails without experimental on Windows daemons", func() {
-				windowsMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
+				windowsMockDockerClient := testmocks.NewMockAPIClient(mockController)
 
 				packClientWithoutExperimental, err := client.NewClient(
 					client.WithDockerClient(windowsMockDockerClient),
@@ -182,8 +183,8 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("fails for mismatched platform and daemon os", func() {
-				windowsMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
-				windowsMockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "windows"}, nil).AnyTimes()
+				windowsMockDockerClient := testmocks.NewMockAPIClient(mockController)
+				windowsMockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "windows"}}, nil).AnyTimes()
 
 				packClientWithoutExperimental, err := client.NewClient(
 					client.WithDockerClient(windowsMockDockerClient),
@@ -212,8 +213,8 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 				defer os.Remove(tmpDir)
 
 				for _, imageOS := range []string{"linux", "windows"} {
-					localMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
-					localMockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: imageOS}, nil).AnyTimes()
+					localMockDockerClient := testmocks.NewMockAPIClient(mockController)
+					localMockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: imageOS}}, nil).AnyTimes()
 
 					packClientWithExperimental, err := client.NewClient(
 						client.WithDockerClient(localMockDockerClient),
@@ -247,7 +248,7 @@ func testPackageExtension(t *testing.T, when spec.G, it spec.S) {
 
 	when("unknown format is provided", func() {
 		it("should error", func() {
-			mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+			mockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil).AnyTimes()
 
 			err := subject.PackageExtension(context.TODO(), client.PackageBuildpackOptions{
 				Name:   "some-extension",

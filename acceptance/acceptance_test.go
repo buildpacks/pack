@@ -20,7 +20,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"
 	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/types"

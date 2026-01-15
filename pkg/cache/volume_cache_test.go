@@ -12,9 +12,7 @@ import (
 	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/logging"
 
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/volume"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 	"github.com/docker/docker/daemon/names"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
@@ -318,7 +316,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is a cache volume", func() {
 			it.Before(func() {
-				dockerClient.VolumeCreate(context.TODO(), volume.CreateOptions{
+				dockerClient.VolumeCreate(context.TODO(), client.VolumeCreateOptions{
 					Name: volumeName,
 				})
 			})
@@ -327,14 +325,13 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 				err := subject.Clear(ctx)
 				h.AssertNil(t, err)
 
-				volumes, err := dockerClient.VolumeList(context.TODO(), volume.ListOptions{
-					Filters: filters.NewArgs(filters.KeyValuePair{
-						Key:   "name",
-						Value: volumeName,
-					}),
+				volumesResult, err := dockerClient.VolumeList(context.TODO(), client.VolumeListOptions{
+					Filters: client.Filters{
+						"name": {volumeName: true},
+					},
 				})
 				h.AssertNil(t, err)
-				h.AssertEq(t, len(volumes.Volumes), 0)
+				h.AssertEq(t, len(volumesResult.Items), 0)
 			})
 		})
 

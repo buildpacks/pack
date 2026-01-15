@@ -12,14 +12,14 @@ import (
 	"os"
 	"strings"
 
-	dockerClient "github.com/docker/docker/client"
+	dockerClient "github.com/moby/moby/client"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
 
 	"github.com/buildpacks/pack/internal/sshdialer"
 )
 
-func tryInitSSHDockerClient() (dockerClient.APIClient, error) {
+func tryInitSSHDockerClient() (*dockerClient.Client, error) {
 	dockerHost := os.Getenv("DOCKER_HOST")
 	_url, err := url.Parse(dockerHost)
 	isSSH := err == nil && _url.Scheme == "ssh"

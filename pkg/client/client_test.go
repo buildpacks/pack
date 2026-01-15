@@ -8,7 +8,7 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 
-	dockerClient "github.com/docker/docker/client"
+	dockerClient "github.com/moby/moby/client"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"

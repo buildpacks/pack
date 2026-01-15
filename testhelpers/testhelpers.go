@@ -26,10 +26,8 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 
-	dbuild "github.com/docker/docker/api/types/build"
-	dcontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
+	dcontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-git/go-git/v5"
@@ -341,11 +339,11 @@ func IndexOf(s, substr string) int {
 	return strings.Index(s, substr)
 }
 
-var dockerCliVal client.APIClient
+var dockerCliVal *client.Client
 var dockerCliOnce sync.Once
 var dockerCliErr error
 
-func dockerCli(t *testing.T) client.APIClient {
+func dockerCli(t *testing.T) *client.Client {
 	dockerCliOnce.Do(func() {
 		dockerCliVal, dockerCliErr = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	})
@@ -373,13 +371,13 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 	}
 }
 
-func CreateImage(t *testing.T, dockerCli client.APIClient, repoName, dockerFile string) {
+func CreateImage(t *testing.T, dockerCli *client.Client, repoName, dockerFile string) {
 	t.Helper()
 
 	buildContext := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)
 	defer buildContext.Close()
 
-	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dbuild.ImageBuildOptions{
+	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, client.ImageBuildOptions{
 		Tags:           []string{repoName},
 		SuppressOutput: true,
 		Remove:         true,
@@ -392,11 +390,11 @@ func CreateImage(t *testing.T, dockerCli client.APIClient, repoName, dockerFile 
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
-func CreateImageFromDir(t *testing.T, dockerCli client.APIClient, repoName string, dir string) {
+func CreateImageFromDir(t *testing.T, dockerCli *client.Client, repoName string, dir string) {
 	t.Helper()
 
 	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true, false, nil)
-	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dbuild.ImageBuildOptions{
+	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, client.ImageBuildOptions{
 		Tags:           []string{repoName},
 		Remove:         true,
 		ForceRemove:    true,
@@ -409,7 +407,7 @@ func CreateImageFromDir(t *testing.T, dockerCli client.APIClient, repoName strin
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
-func CheckImageBuildResult(response dbuild.ImageBuildResponse, err error) error {
+func CheckImageBuildResult(response client.ImageBuildResult, err error) error {
 	if err != nil {
 		return err
 	}
@@ -448,7 +446,7 @@ func checkResponse(responseBody io.Reader) error {
 	return nil
 }
 
-func CreateImageOnRemote(t *testing.T, dockerCli client.APIClient, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
+func CreateImageOnRemote(t *testing.T, dockerCli *client.Client, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
 	t.Helper()
 	imageName := registryConfig.RepoName(repoName)
 	CreateImage(t, dockerCli, imageName, dockerFile)
@@ -456,14 +454,14 @@ func CreateImageOnRemote(t *testing.T, dockerCli client.APIClient, registryConfi
 	return imageName
 }
 
-func DockerRmi(dockerCli client.APIClient, repoNames ...string) error {
+func DockerRmi(dockerCli *client.Client, repoNames ...string) error {
 	var err error
 	ctx := context.Background()
 	for _, name := range repoNames {
 		_, e := dockerCli.ImageRemove(
 			ctx,
 			name,
-			image.RemoveOptions{Force: true, PruneChildren: true},
+			client.ImageRemoveOptions{Force: true, PruneChildren: true},
 		)
 		if e != nil && err == nil {
 			err = e
@@ -472,8 +470,8 @@ func DockerRmi(dockerCli client.APIClient, repoNames ...string) error {
 	return err
 }
 
-func PushImage(dockerCli client.APIClient, ref string, registryConfig *TestRegistryConfig) error {
-	rc, err := dockerCli.ImagePush(context.Background(), ref, image.PushOptions{RegistryAuth: registryConfig.RegistryAuth()})
+func PushImage(dockerCli *client.Client, ref string, registryConfig *TestRegistryConfig) error {
+	rc, err := dockerCli.ImagePush(context.Background(), ref, client.ImagePushOptions{RegistryAuth: registryConfig.RegistryAuth()})
 	if err != nil {
 		return errors.Wrap(err, "pushing image")
 	}
@@ -561,15 +559,15 @@ func RunE(cmd *exec.Cmd) (string, error) {
 	return string(output), nil
 }
 
-func PullImageWithAuth(dockerCli client.APIClient, ref, registryAuth string) error {
-	rc, err := dockerCli.ImagePull(context.Background(), ref, image.PullOptions{RegistryAuth: registryAuth})
+func PullImageWithAuth(dockerCli *client.Client, ref, registryAuth string) error {
+	pullResult, err := dockerCli.ImagePull(context.Background(), ref, client.ImagePullOptions{RegistryAuth: registryAuth})
 	if err != nil {
 		return err
 	}
-	if _, err := io.Copy(io.Discard, rc); err != nil {
+	if _, err := io.Copy(io.Discard, pullResult); err != nil {
 		return err
 	}
-	return rc.Close()
+	return pullResult.Close()
 }
 
 func CopyFile(t *testing.T, src, dst string) {
@@ -670,10 +668,28 @@ func SkipUnless(t *testing.T, expression bool, reason string) {
 	}
 }
 
-func RunContainer(ctx context.Context, dockerCli client.APIClient, id string, stdout io.Writer, stderr io.Writer) error {
-	bodyChan, errChan := container.ContainerWaitWrapper(ctx, dockerCli, id, dcontainer.WaitConditionNextExit)
+// dockerClientAdapter adapts moby client to internal/container.DockerClient interface
+type dockerClientAdapter struct {
+	*client.Client
+}
 
-	logs, err := dockerCli.ContainerAttach(ctx, id, dcontainer.AttachOptions{
+func (a *dockerClientAdapter) ContainerWait(ctx context.Context, containerID string, options client.ContainerWaitOptions) client.ContainerWaitResult {
+	return a.Client.ContainerWait(ctx, containerID, options)
+}
+
+func (a *dockerClientAdapter) ContainerAttach(ctx context.Context, container string, options client.ContainerAttachOptions) (client.ContainerAttachResult, error) {
+	return a.Client.ContainerAttach(ctx, container, options)
+}
+
+func (a *dockerClientAdapter) ContainerStart(ctx context.Context, container string, options client.ContainerStartOptions) (client.ContainerStartResult, error) {
+	return a.Client.ContainerStart(ctx, container, options)
+}
+
+func RunContainer(ctx context.Context, dockerCli *client.Client, id string, stdout io.Writer, stderr io.Writer) error {
+	adapter := &dockerClientAdapter{Client: dockerCli}
+	bodyChan, errChan := container.ContainerWaitWrapper(ctx, adapter, id, dcontainer.WaitConditionNextExit)
+
+	logsResult, err := dockerCli.ContainerAttach(ctx, id, client.ContainerAttachOptions{
 		Stream: true,
 		Stdout: true,
 		Stderr: true,
@@ -682,13 +698,14 @@ func RunContainer(ctx context.Context, dockerCli client.APIClient, id string, st
 		return err
 	}
 
-	if err := dockerCli.ContainerStart(ctx, id, dcontainer.StartOptions{}); err != nil {
+	_, err = dockerCli.ContainerStart(ctx, id, client.ContainerStartOptions{})
+	if err != nil {
 		return errors.Wrap(err, "container start")
 	}
 
 	copyErr := make(chan error)
 	go func() {
-		_, err := stdcopy.StdCopy(stdout, stderr, logs.Reader)
+		_, err := stdcopy.StdCopy(stdout, stderr, logsResult.Reader)
 		copyErr <- err
 	}()
 

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	dockerCli "github.com/docker/docker/client"
+	dockerCli "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 

@@ -10,8 +10,9 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/docker/docker/api/types/system"
+	mobysystem "github.com/moby/moby/api/types/system"
 	"github.com/golang/mock/gomock"
+	dockerclient "github.com/moby/moby/client"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
@@ -43,7 +44,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 		mockImageFactory     *testmocks.MockImageFactory
 		mockImageFetcher     *testmocks.MockImageFetcher
 		mockRegistryResolver *testmocks.MockRegistryResolver
-		mockDockerClient     *testmocks.MockCommonAPIClient
+		mockDockerClient     *testmocks.MockAPIClient
 		buildpackDownloader  client.BuildpackDownloader
 		logger               logging.Logger
 		out                  bytes.Buffer
@@ -94,13 +95,13 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 		mockRegistryResolver = testmocks.NewMockRegistryResolver(mockController)
 		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
 		mockImageFactory = testmocks.NewMockImageFactory(mockController)
-		mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
+		mockDockerClient = testmocks.NewMockAPIClient(mockController)
 		mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one.tgz").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
 		mockDownloader.EXPECT().Download(gomock.Any(), "some/buildpack/dir").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
 
 		buildpackDownloader = buildpack.NewDownloader(logger, mockImageFetcher, mockDownloader, mockRegistryResolver)
 
-		mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+		mockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil).AnyTimes()
 
 		mockRegistryResolver.EXPECT().
 			Resolve("some-registry", "urn:cnb:registry:example/foo@1.1.0").
