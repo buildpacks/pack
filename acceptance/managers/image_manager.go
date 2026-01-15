@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -22,10 +22,10 @@ var DefaultDuration = 10 * time.Second
 type ImageManager struct {
 	testObject *testing.T
 	assert     h.AssertionManager
-	dockerCli  client.APIClient
+	dockerCli  *client.Client
 }
 
-func NewImageManager(t *testing.T, dockerCli client.APIClient) ImageManager {
+func NewImageManager(t *testing.T, dockerCli *client.Client) ImageManager {
 	return ImageManager{
 		testObject: t,
 		assert:     h.NewAssertionManager(t),
@@ -41,10 +41,10 @@ func (im ImageManager) CleanupImages(imageNames ...string) {
 	}
 }
 
-func (im ImageManager) InspectLocal(image string) (dockertypes.ImageInspect, error) {
+func (im ImageManager) InspectLocal(imageName string) (image.InspectResponse, error) {
 	im.testObject.Helper()
-	inspect, err := im.dockerCli.ImageInspect(context.Background(), image)
-	return inspect, err
+	result, err := im.dockerCli.ImageInspect(context.Background(), imageName)
+	return result.InspectResponse, err
 }
 
 func (im ImageManager) GetImageID(image string) string {
@@ -56,14 +56,17 @@ func (im ImageManager) GetImageID(image string) string {
 
 func (im ImageManager) HostOS() string {
 	im.testObject.Helper()
-	infoResult, err := im.dockerCli.Info(context.Background())
+	infoResult, err := im.dockerCli.Info(context.Background(), client.InfoOptions{})
 	im.assert.Nil(err)
-	return infoResult.OSType
+	return infoResult.Info.OSType
 }
 
-func (im ImageManager) TagImage(image, ref string) {
+func (im ImageManager) TagImage(imageName, ref string) {
 	im.testObject.Helper()
-	err := im.dockerCli.ImageTag(context.Background(), image, ref)
+	_, err := im.dockerCli.ImageTag(context.Background(), client.ImageTagOptions{
+		Source: imageName,
+		Target: ref,
+	})
 	im.assert.Nil(err)
 }
 
@@ -77,19 +80,23 @@ func (im ImageManager) ExposePortOnImage(image, containerName string) TestContai
 	im.testObject.Helper()
 	ctx := context.Background()
 
-	ctr, err := im.dockerCli.ContainerCreate(ctx, &container.Config{
-		Image:        image,
-		ExposedPorts: map[nat.Port]struct{}{"8080/tcp": {}},
-		Healthcheck:  nil,
-	}, &container.HostConfig{
-		PortBindings: nat.PortMap{
-			"8080/tcp": []nat.PortBinding{{}},
+	ctr, err := im.dockerCli.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config: &container.Config{
+			Image:        image,
+			ExposedPorts: network.PortSet{network.MustParsePort("8080/tcp"): {}},
+			Healthcheck:  nil,
 		},
-		AutoRemove: true,
-	}, nil, nil, containerName)
+		HostConfig: &container.HostConfig{
+			PortBindings: network.PortMap{
+				network.MustParsePort("8080/tcp"): []network.PortBinding{{}},
+			},
+			AutoRemove: true,
+		},
+		Name: containerName,
+	})
 	im.assert.Nil(err)
 
-	err = im.dockerCli.ContainerStart(ctx, ctr.ID, container.StartOptions{})
+	_, err = im.dockerCli.ContainerStart(ctx, ctr.ID, client.ContainerStartOptions{})
 	im.assert.Nil(err)
 	return TestContainer{
 		testObject: im.testObject,
@@ -103,9 +110,12 @@ func (im ImageManager) ExposePortOnImage(image, containerName string) TestContai
 func (im ImageManager) CreateContainer(name string) TestContainer {
 	im.testObject.Helper()
 	containerName := "test-" + h.RandString(10)
-	ctr, err := im.dockerCli.ContainerCreate(context.Background(), &container.Config{
-		Image: name,
-	}, nil, nil, nil, containerName)
+	ctr, err := im.dockerCli.ContainerCreate(context.Background(), client.ContainerCreateOptions{
+		Config: &container.Config{
+			Image: name,
+		},
+		Name: containerName,
+	})
 	im.assert.Nil(err)
 
 	return TestContainer{
@@ -119,7 +129,7 @@ func (im ImageManager) CreateContainer(name string) TestContainer {
 
 type TestContainer struct {
 	testObject *testing.T
-	dockerCli  client.APIClient
+	dockerCli  *client.Client
 	assert     h.AssertionManager
 	name       string
 	id         string
@@ -135,8 +145,8 @@ func (t TestContainer) RunWithOutput() string {
 
 func (t TestContainer) Cleanup() {
 	t.testObject.Helper()
-	t.dockerCli.ContainerKill(context.Background(), t.name, "SIGKILL")
-	t.dockerCli.ContainerRemove(context.Background(), t.name, container.RemoveOptions{Force: true})
+	t.dockerCli.ContainerKill(context.Background(), t.name, client.ContainerKillOptions{Signal: "SIGKILL"})
+	t.dockerCli.ContainerRemove(context.Background(), t.name, client.ContainerRemoveOptions{Force: true})
 }
 
 func (t TestContainer) WaitForResponse(duration time.Duration) string {
@@ -163,9 +173,9 @@ func (t TestContainer) WaitForResponse(duration time.Duration) string {
 
 func (t TestContainer) hostPort() string {
 	t.testObject.Helper()
-	result, err := t.dockerCli.ContainerInspect(context.Background(), t.name)
+	result, err := t.dockerCli.ContainerInspect(context.Background(), t.name, client.ContainerInspectOptions{})
 	t.assert.Nil(err)
-	i := result
+	i := result.Container
 	for _, port := range i.NetworkSettings.Ports {
 		for _, binding := range port {
 			return binding.HostPort
