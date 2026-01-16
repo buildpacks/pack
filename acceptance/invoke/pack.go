@@ -241,6 +241,7 @@ const (
 	PlatformOption
 	MultiPlatformBuildersAndBuildPackages
 	StackWarning
+	PlatformAPI_0_14
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -288,6 +289,11 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	},
 	StackWarning: func(i *PackInvoker) bool {
 		return i.atLeast("v0.37.0")
+	},
+	PlatformAPI_0_14: func(i *PackInvoker) bool {
+		// Platform API 0.14 is supported in lifecycle 0.21.0+
+		// which will ship in pack v0.40.0
+		return i.atLeast("v0.40.0")
 	},
 }
 

@@ -771,6 +771,11 @@ func testWithoutSpecificBuilderRequirement(
 
 	when("report", func() {
 		when("default builder is set", func() {
+			it.Before(func() {
+				// Platform API 0.14 requires lifecycle 0.21.0+ (pack v0.40.0+)
+				h.SkipIf(t, !pack.SupportsFeature(invoke.PlatformAPI_0_14), "Platform API 0.14 requires lifecycle 0.21.0+")
+			})
+
 			it("redacts default builder", func() {
 				pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder-jammy-base")
 
