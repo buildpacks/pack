@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768166955212,
+  "lastUpdate": 1768911796719,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12922,6 +12922,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 90484089541,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "812530673f5620703d3ac80d3579c491a2ba6e0c",
+          "message": "chore: migrate from docker/docker to moby/moby client (#2512)\n\n* chore: migrate from docker/docker to moby/moby client\n\nMigrates all Docker client usage from github.com/docker/docker to\ngithub.com/moby/moby/client following imgutil's PR #299 migration.\n\nKey changes:\n- Updated all DockerClient interfaces to use moby Result types\n  (ImageHistoryResult, ContainerInspectResult, etc.)\n- Migrated to Options pattern for API calls (ImagePullOptions,\n  ContainerInspectOptions, etc.)\n- Updated Result field access patterns (result.Items, result.Info, etc.)\n- Fixed platform validation by passing dist.Target directly to\n  ImagePull instead of string conversion\n- Regenerated mocks for moby's APIClient interface\n- Updated test assertions for moby's type system changes\n- Fixed go.mod dependencies (moby packages now direct)\n\nAll tests passing (304 tests across pkg/client, pkg/image, internal/build).\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* chore: migrate acceptance test manager to moby client\n\nUpdated acceptance/managers/image_manager.go to use the new moby client API.\n\nKey changes:\n- Updated imports from github.com/docker/docker to github.com/moby/moby\n- Changed dockerCli type from client.APIClient to *client.Client\n- Updated method signatures to use Options pattern:\n  - Info() now requires client.InfoOptions{} and accesses .Info.OSType\n  - ImageTag() uses client.ImageTagOptions with Source/Target fields\n  - ImageInspect() returns Result type, access .InspectResponse field\n  - ContainerCreate() uses client.ContainerCreateOptions struct\n  - ContainerStart() uses client.ContainerStartOptions{}\n  - ContainerKill() uses client.ContainerKillOptions{Signal: \"SIGKILL\"}\n  - ContainerRemove() uses client.ContainerRemoveOptions{Force: true}\n  - ContainerInspect() requires client.ContainerInspectOptions{} and returns Result\n- Updated network port types:\n  - Use network.MustParsePort() to create network.Port values\n  - Changed from nat.PortSet/PortMap to network.PortSet/PortMap\n  - Updated PortBinding from nat.PortBinding to network.PortBinding\n- Fixed Result type accesses:\n  - ContainerInspect: access result.Container instead of result directly\n  - ImageInspect: access result.InspectResponse\n  - Info: access result.Info.OSType\n\nThis completes the migration from docker/docker to moby/moby client across all test code.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* fix: use concrete Client type in acceptance tests\n\nChanged all dockerCli parameter and variable types from client.APIClient\ninterface to *client.Client concrete type to match the updated helper\nfunctions and managers that now require the concrete type.\n\nChanges:\n- Updated global dockerCli variable type\n- Updated createStack() and createStackImage() parameter types\n- Changed dockertypes.ImageBuildOptions to client.ImageBuildOptions\n- Removed unused github.com/docker/docker/api/types import\n\nThis fixes compilation errors where the interface type couldn't be\nused as the concrete type without type assertion.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* fixing format issues\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* fix: migrate to client.New() and remove deprecated APIs\n\nUpdated all docker client initialization to use the new client.New()\nfunction instead of the deprecated NewClientWithOpts(). The new API\nenables API version negotiation by default, so WithAPIVersionNegotiation()\nis no longer needed.\n\nChanges:\n- Replaced all NewClientWithOpts() calls with New()\n- Removed WithAPIVersionNegotiation() option (now default behavior)\n- Updated cmd/docker_init.go, pkg/client/client.go, and all test files\n- Ran go mod tidy to clean up dependencies\n\nNote: internal/build/testdata/fake-lifecycle/phase.go still uses the old\nAPI since it references the legacy github.com/docker/docker/client package\nand is built in a separate container context during tests.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* test: skip report tests for pack versions < v0.40.0\n\nThe report tests expect the fixture to show Platform API 0.14 and 0.15,\nwhich are only supported in lifecycle 0.21.0+. Pack versions before\nv0.40.0 use lifecycle 0.20.x which only supports Platform APIs up to 0.13.\n\nAdded PlatformAPI_0_14 feature flag that checks if pack >= v0.40.0.\nThe report tests now skip when testing with older pack versions that\ndon't support Platform APIs 0.14, 0.15.\n\nThis fixes the acceptance-combo (current, current, previous) test failure\nwhere current pack (with lifecycle 0.21.0) outputs Platform APIs 0.3-0.15,\nbut the test was incorrectly expecting 0.3-0.13 due to the fixture override\nfile that was being picked up.\n\nRemoved the pack_previous_fixtures_overrides/report_output.txt file as\nthe override directory approach didn't work correctly for this test case.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* fix: add Platform API 0.14 and 0.15 support\n\nWhen we updated to lifecycle 0.21.0, we updated the fixture file to\nexpect Platform APIs 0.14 and 0.15, but forgot to update the\nSupportedPlatformAPIVersions in the code.\n\nThe pack report command reads from build.SupportedPlatformAPIVersions\nto display which Platform APIs are supported, so this was causing a\nmismatch between the fixture expectation and the actual output.\n\nChanges:\n- Added api.MustParse(\"0.14\") and api.MustParse(\"0.15\") to\n  SupportedPlatformAPIVersions in internal/build/lifecycle_executor.go\n- Removed the PlatformAPI_0_14 feature flag and skip logic from\n  acceptance tests (no longer needed)\n\nThis fixes the acceptance test failures where the fixture expected\nPlatform APIs up to 0.15 but pack was only reporting up to 0.13.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n---------\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Sonnet 4.5 <noreply@anthropic.com>",
+          "timestamp": "2026-01-20T07:20:36-05:00",
+          "tree_id": "f96ca513926cc74874a256650585cedaa5fbe3b4",
+          "url": "https://github.com/buildpacks/pack/commit/812530673f5620703d3ac80d3579c491a2ba6e0c"
+        },
+        "date": 1768911795847,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3344608731,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 807825002,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 79852715216,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
