@@ -6,10 +6,9 @@ import (
 	"testing"
 
 	ifakes "github.com/buildpacks/imgutil/fakes"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/strslice"
-	"github.com/docker/docker/client"
 	"github.com/heroku/color"
+	dcontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -35,7 +34,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithBuilder(fakeBuilder))
 			expectedPhaseName := "some-name"
-			expectedCmd := strslice.StrSlice{"/cnb/lifecycle/" + expectedPhaseName}
+			expectedCmd := []string{"/cnb/lifecycle/" + expectedPhaseName}
 
 			phaseConfigProvider := build.NewPhaseConfigProvider(expectedPhaseName, lifecycle)
 
@@ -58,8 +57,8 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			h.AssertSliceContainsMatch(t, phaseConfigProvider.HostConfig().Binds, "pack-layers-.*:/layers")
 			h.AssertSliceContainsMatch(t, phaseConfigProvider.HostConfig().Binds, "pack-app-.*:/workspace")
 
-			h.AssertEq(t, phaseConfigProvider.HostConfig().Isolation, container.IsolationEmpty)
-			h.AssertEq(t, phaseConfigProvider.HostConfig().UsernsMode, container.UsernsMode(""))
+			h.AssertEq(t, phaseConfigProvider.HostConfig().Isolation, dcontainer.IsolationEmpty)
+			h.AssertEq(t, phaseConfigProvider.HostConfig().UsernsMode, dcontainer.UsernsMode(""))
 			h.AssertSliceContains(t, phaseConfigProvider.HostConfig().SecurityOpt, "no-new-privileges=true")
 		})
 
@@ -73,7 +72,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(expectedPhaseName, lifecycle)
 
-				h.AssertEq(t, phaseConfigProvider.HostConfig().UsernsMode, container.UsernsMode("host"))
+				h.AssertEq(t, phaseConfigProvider.HostConfig().UsernsMode, dcontainer.UsernsMode("host"))
 			})
 		})
 
@@ -87,14 +86,14 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
 
-				h.AssertEq(t, phaseConfigProvider.HostConfig().Isolation, container.IsolationProcess)
+				h.AssertEq(t, phaseConfigProvider.HostConfig().Isolation, dcontainer.IsolationProcess)
 				h.AssertSliceNotContains(t, phaseConfigProvider.HostConfig().SecurityOpt, "no-new-privileges=true")
 			})
 		})
 
 		when("building with interactive mode", func() {
 			it("returns a phase config provider with interactive args", func() {
-				handler := func(bodyChan <-chan container.WaitResponse, errChan <-chan error, reader io.Reader) error {
+				handler := func(bodyChan <-chan dcontainer.WaitResponse, errChan <-chan error, reader io.Reader) error {
 					return errors.New("i was called")
 				}
 
@@ -109,7 +108,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 		when("called with WithArgs", func() {
 			it("sets args on the config", func() {
 				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir")
-				expectedArgs := strslice.StrSlice{"some-arg-1", "some-arg-2"}
+				expectedArgs := []string{"some-arg-1", "some-arg-2"}
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
 					"some-name",
@@ -232,7 +231,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(
 					t,
 					phaseConfigProvider.HostConfig().NetworkMode,
-					container.NetworkMode(expectedNetworkMode),
+					dcontainer.NetworkMode(expectedNetworkMode),
 				)
 			})
 		})
@@ -313,7 +312,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				var outBuf bytes.Buffer
 				logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 
-				docker, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+				docker, err := client.New(client.FromEnv)
 				h.AssertNil(t, err)
 
 				defaultBuilder, err := fakes.NewFakeBuilder()
@@ -350,7 +349,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					var outBuf bytes.Buffer
 					logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 
-					docker, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+					docker, err := client.New(client.FromEnv)
 					h.AssertNil(t, err)
 
 					defaultBuilder, err := fakes.NewFakeBuilder()

@@ -146,5 +146,11 @@ func initClient(logger logging.Logger, cfg config.Config) (*client.Client, error
 	if err != nil {
 		return nil, err
 	}
-	return client.NewClient(client.WithLogger(logger), client.WithExperimental(cfg.Experimental), client.WithRegistryMirrors(cfg.RegistryMirrors), client.WithDockerClient(dc))
+
+	// If we got a docker client from SSH, use it directly
+	if dc != nil {
+		return client.NewClient(client.WithLogger(logger), client.WithExperimental(cfg.Experimental), client.WithRegistryMirrors(cfg.RegistryMirrors), client.WithDockerClient(dc))
+	}
+
+	return client.NewClient(client.WithLogger(logger), client.WithExperimental(cfg.Experimental), client.WithRegistryMirrors(cfg.RegistryMirrors))
 }

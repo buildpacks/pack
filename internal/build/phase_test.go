@@ -14,15 +14,16 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/docker/docker/api/types/volume"
+	// "github.com/docker/docker/api/types/volume"
 
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/lifecycle/auth"
-	dcontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/client"
+	dcontainer "github.com/moby/moby/api/types/container"
+
+	// "github.com/docker/docker/api/types/filters"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/heroku/color"
+	"github.com/moby/moby/client"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -36,10 +37,7 @@ import (
 
 const phaseName = "phase"
 
-var (
-	repoName  string
-	ctrClient client.APIClient
-)
+var repoName string
 
 // TestPhase is a integration test suite to ensure that the phase options are propagated to the container.
 func TestPhase(t *testing.T) {
@@ -49,12 +47,12 @@ func TestPhase(t *testing.T) {
 	h.RequireDocker(t)
 
 	var err error
-	ctrClient, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	ctrClient, err = client.New(client.FromEnv)
 	h.AssertNil(t, err)
 
-	info, err := ctrClient.Info(context.TODO())
+	info, err := ctrClient.Info(context.TODO(), client.InfoOptions{})
 	h.AssertNil(t, err)
-	h.SkipIf(t, info.OSType == "windows", "These tests are not yet compatible with Windows-based containers")
+	h.SkipIf(t, info.Info.OSType == "windows", "These tests are not yet compatible with Windows-based containers")
 
 	repoName = "phase.test.lc-" + h.RandString(10)
 	wd, err := os.Getwd()
@@ -79,12 +77,12 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 
 		var err error
-		docker, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		docker, err = client.New(client.FromEnv)
 		h.AssertNil(t, err)
 
-		info, err := ctrClient.Info(context.Background())
+		info, err := ctrClient.Info(context.Background(), client.InfoOptions{})
 		h.AssertNil(t, err)
-		osType = info.OSType
+		osType = info.Info.OSType
 
 		lifecycleExec, err = CreateFakeLifecycleExecution(logger, docker, filepath.Join("testdata", "fake-app"), repoName)
 		h.AssertNil(t, err)
@@ -360,7 +358,8 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 			when("#WithBinds", func() {
 				it.After(func() {
-					h.AssertNilE(t, docker.VolumeRemove(context.TODO(), "some-volume", true))
+					_, err := docker.VolumeRemove(context.TODO(), "some-volume", client.VolumeRemoveOptions{Force: true})
+					h.AssertNilE(t, err)
 				})
 
 				it("mounts volumes inside container", func() {
@@ -368,12 +367,9 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
 					h.AssertContains(t, outBuf.String(), "binds test")
-					body, err := docker.VolumeList(context.TODO(), volume.ListOptions{Filters: filters.NewArgs(filters.KeyValuePair{
-						Key:   "name",
-						Value: "some-volume",
-					})})
+					body, err := docker.VolumeList(context.TODO(), client.VolumeListOptions{Filters: client.Filters{"name": {"some-volume": true}}})
 					h.AssertNil(t, err)
-					h.AssertEq(t, len(body.Volumes), 1)
+					h.AssertEq(t, len(body.Items), 1)
 				})
 			})
 
@@ -461,23 +457,17 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should delete the layers volume", func() {
-			body, err := docker.VolumeList(context.TODO(), volume.ListOptions{
-				Filters: filters.NewArgs(filters.KeyValuePair{
-					Key:   "name",
-					Value: lifecycleExec.LayersVolume(),
-				})})
+			body, err := docker.VolumeList(context.TODO(), client.VolumeListOptions{
+				Filters: client.Filters{"name": {lifecycleExec.LayersVolume(): true}}})
 			h.AssertNil(t, err)
-			h.AssertEq(t, len(body.Volumes), 0)
+			h.AssertEq(t, len(body.Items), 0)
 		})
 
 		it("should delete the app volume", func() {
-			body, err := docker.VolumeList(context.TODO(), volume.ListOptions{
-				Filters: filters.NewArgs(filters.KeyValuePair{
-					Key:   "name",
-					Value: lifecycleExec.AppVolume(),
-				})})
+			body, err := docker.VolumeList(context.TODO(), client.VolumeListOptions{
+				Filters: client.Filters{"name": {lifecycleExec.AppVolume(): true}}})
 			h.AssertNil(t, err)
-			h.AssertEq(t, len(body.Volumes), 0)
+			h.AssertEq(t, len(body.Items), 0)
 		})
 	})
 }
