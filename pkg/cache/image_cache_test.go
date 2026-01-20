@@ -7,11 +7,9 @@ import (
 	"github.com/buildpacks/pack/pkg/cache"
 
 	"github.com/buildpacks/imgutil/local"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
+	"github.com/moby/moby/client"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -28,11 +26,11 @@ func TestImageCache(t *testing.T) {
 
 func testImageCache(t *testing.T, when spec.G, it spec.S) {
 	when("#NewImageCache", func() {
-		var dockerClient client.APIClient
+		var dockerClient *client.Client
 
 		it.Before(func() {
 			var err error
-			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+			dockerClient, err = client.New(client.FromEnv)
 			h.AssertNil(t, err)
 		})
 
@@ -81,7 +79,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+			dockerClient, err = client.New(client.FromEnv)
 			h.AssertNil(t, err)
 		})
 
@@ -104,7 +102,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			var err error
-			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+			dockerClient, err = client.New(client.FromEnv)
 			h.AssertNil(t, err)
 			ctx = context.TODO()
 
@@ -126,14 +124,13 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 			it("removes the image", func() {
 				err := subject.Clear(ctx)
 				h.AssertNil(t, err)
-				images, err := dockerClient.ImageList(context.TODO(), image.ListOptions{
-					Filters: filters.NewArgs(filters.KeyValuePair{
-						Key:   "reference",
-						Value: imageName,
-					}),
+				result, err := dockerClient.ImageList(context.TODO(), client.ImageListOptions{
+					Filters: client.Filters{
+						"reference": {imageName: true},
+					},
 				})
 				h.AssertNil(t, err)
-				h.AssertEq(t, len(images), 0)
+				h.AssertEq(t, len(result.Items), 0)
 			})
 		})
 

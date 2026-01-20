@@ -37,7 +37,7 @@ func testPullBuildpack(t *testing.T, when spec.G, it spec.S) {
 		mockDownloader   *testmocks.MockBlobDownloader
 		mockImageFactory *testmocks.MockImageFactory
 		mockImageFetcher *testmocks.MockImageFetcher
-		mockDockerClient *testmocks.MockCommonAPIClient
+		mockDockerClient *testmocks.MockAPIClient
 		out              bytes.Buffer
 	)
 
@@ -46,7 +46,7 @@ func testPullBuildpack(t *testing.T, when spec.G, it spec.S) {
 		mockDownloader = testmocks.NewMockBlobDownloader(mockController)
 		mockImageFactory = testmocks.NewMockImageFactory(mockController)
 		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
-		mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
+		mockDockerClient = testmocks.NewMockAPIClient(mockController)
 
 		var err error
 		subject, err = client.NewClient(

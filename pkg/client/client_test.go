@@ -8,8 +8,8 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 
-	dockerClient "github.com/docker/docker/client"
 	"github.com/golang/mock/gomock"
+	dockerClient "github.com/moby/moby/client"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -92,7 +92,7 @@ func testClient(t *testing.T, when spec.G, it spec.S) {
 
 	when("#WithDockerClient", func() {
 		it("uses docker client provided", func() {
-			docker, err := dockerClient.NewClientWithOpts(
+			docker, err := dockerClient.New(
 				dockerClient.FromEnv,
 			)
 			h.AssertNil(t, err)

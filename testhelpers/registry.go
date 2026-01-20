@@ -12,11 +12,12 @@ import (
 	"testing"
 	"time"
 
-	dockercontainer "github.com/docker/docker/api/types/container"
-	dockerregistry "github.com/docker/docker/api/types/registry"
-	"github.com/docker/go-connections/nat"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	dockercontainer "github.com/moby/moby/api/types/container"
+	dockernetwork "github.com/moby/moby/api/types/network"
+	dockerregistry "github.com/moby/moby/api/types/registry"
+	"github.com/moby/moby/client"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/buildpacks/pack/pkg/archive"
@@ -129,7 +130,7 @@ func (rc *TestRegistryConfig) AuthConfig() dockerregistry.AuthConfig {
 
 func (rc *TestRegistryConfig) Login(t *testing.T, username string, password string) {
 	Eventually(t, func() bool {
-		_, err := dockerCli(t).RegistryLogin(context.Background(), dockerregistry.AuthConfig{
+		_, err := dockerCli(t).RegistryLogin(context.Background(), client.RegistryLoginOptions{
 			Username:      username,
 			Password:      password,
 			ServerAddress: RegistryHost(rc.RunRegistryHost, rc.RunRegistryPort),
@@ -141,37 +142,45 @@ func (rc *TestRegistryConfig) Login(t *testing.T, username string, password stri
 func startRegistry(t *testing.T, runRegistryName, username, password string) (string, string, string) {
 	ctx := context.Background()
 
-	daemonInfo, err := dockerCli(t).Info(ctx)
+	daemonInfoResult, err := dockerCli(t).Info(ctx, client.InfoOptions{})
 	AssertNil(t, err)
 
-	registryContainerName := registryContainerNames[daemonInfo.OSType]
+	registryContainerName := registryContainerNames[daemonInfoResult.Info.OSType]
 	AssertNil(t, PullImageWithAuth(dockerCli(t), registryContainerName, ""))
 
 	htpasswdTar := generateHtpasswd(t, username, password)
 	defer htpasswdTar.Close()
 
-	ctr, err := dockerCli(t).ContainerCreate(ctx, &dockercontainer.Config{
-		Image:  registryContainerName,
-		Labels: map[string]string{"author": "pack"},
-		Env: []string{
-			"REGISTRY_AUTH=htpasswd",
-			"REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm",
-			"REGISTRY_AUTH_HTPASSWD_PATH=/registry_test_htpasswd",
+	ctrResult, err := dockerCli(t).ContainerCreate(ctx, client.ContainerCreateOptions{
+		Name: runRegistryName,
+		Config: &dockercontainer.Config{
+			Image:  registryContainerName,
+			Labels: map[string]string{"author": "pack"},
+			Env: []string{
+				"REGISTRY_AUTH=htpasswd",
+				"REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm",
+				"REGISTRY_AUTH_HTPASSWD_PATH=/registry_test_htpasswd",
+			},
 		},
-	}, &dockercontainer.HostConfig{
-		AutoRemove: true,
-		PortBindings: nat.PortMap{
-			"5000/tcp": []nat.PortBinding{{HostPort: "0"}},
+		HostConfig: &dockercontainer.HostConfig{
+			AutoRemove: true,
+			PortBindings: dockernetwork.PortMap{
+				dockernetwork.MustParsePort("5000/tcp"): []dockernetwork.PortBinding{{HostPort: "0"}},
+			},
 		},
-	}, nil, nil, runRegistryName)
-	AssertNil(t, err)
-	err = dockerCli(t).CopyToContainer(ctx, ctr.ID, "/", htpasswdTar, dockercontainer.CopyToContainerOptions{})
+	})
 	AssertNil(t, err)
 
-	err = dockerCli(t).ContainerStart(ctx, ctr.ID, dockercontainer.StartOptions{})
+	_, err = dockerCli(t).CopyToContainer(ctx, ctrResult.ID, client.CopyToContainerOptions{
+		DestinationPath: "/",
+		Content:         htpasswdTar,
+	})
 	AssertNil(t, err)
 
-	runRegistryPort, err := waitForPortBinding(t, ctr.ID, "5000/tcp", 30*time.Second)
+	_, err = dockerCli(t).ContainerStart(ctx, ctrResult.ID, client.ContainerStartOptions{})
+	AssertNil(t, err)
+
+	runRegistryPort, err := waitForPortBinding(t, ctrResult.ID, "5000/tcp", 30*time.Second)
 	AssertNil(t, err)
 
 	runRegistryHost := DockerHostname(t)
@@ -188,12 +197,14 @@ func waitForPortBinding(t *testing.T, containerID, portSpec string, duration tim
 	for {
 		select {
 		case <-ticker.C:
-			inspect, err := dockerCli(t).ContainerInspect(context.TODO(), containerID)
+			inspectResult, err := dockerCli(t).ContainerInspect(context.TODO(), containerID, client.ContainerInspectOptions{})
 			if err != nil {
 				return "", err
 			}
+			inspect := inspectResult.Container
 
-			portBindings := inspect.NetworkSettings.Ports[nat.Port(portSpec)]
+			portPort, _ := dockernetwork.ParsePort(portSpec)
+			portBindings := inspect.NetworkSettings.Ports[portPort]
 			if len(portBindings) > 0 {
 				return portBindings[0].HostPort, nil
 			}
@@ -221,12 +232,12 @@ func DockerHostname(t *testing.T) string {
 	// if DOCKER_HOST is non-tcp, we assume that we are
 	// talking to the daemon over a local pipe.
 	default:
-		daemonInfo, err := dockerCli.Info(context.TODO())
+		daemonInfoResult, err := dockerCli.Info(context.TODO(), client.InfoOptions{})
 		if err != nil {
 			t.Fatalf("unable to fetch client.DockerInfo: %s", err)
 		}
 
-		if daemonInfo.OSType == "windows" {
+		if daemonInfoResult.Info.OSType == "windows" {
 			// try to lookup the host IP by helper domain name (https://docs.docker.com/docker-for-windows/networking/#use-cases-and-workarounds)
 			// Note: pack appears to not support /etc/hosts-based insecure-registries
 			addrs, err := net.LookupHost("host.docker.internal")
@@ -284,7 +295,7 @@ func (rc *TestRegistryConfig) RmRegistry(t *testing.T) {
 func (rc *TestRegistryConfig) StopRegistry(t *testing.T) {
 	t.Log("stop registry")
 	t.Helper()
-	dockerCli(t).ContainerKill(context.Background(), rc.runRegistryName, "SIGKILL")
+	dockerCli(t).ContainerKill(context.Background(), rc.runRegistryName, client.ContainerKillOptions{Signal: "SIGKILL"})
 
 	err := os.RemoveAll(rc.DockerConfigDir)
 	AssertNil(t, err)
