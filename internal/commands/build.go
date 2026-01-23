@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -38,6 +39,7 @@ type BuildFlags struct {
 	Cache                  cache.CacheOpts
 	AppPath                string
 	Builder                string
+	ExecutionEnv           string
 	Registry               string
 	RunImage               string
 	Platform               string
@@ -220,6 +222,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 					PreviousInputImage: inputPreviousImage,
 					LayoutRepoDir:      cfg.LayoutRepositoryDir,
 				},
+				CNBExecutionEnv:    flags.ExecutionEnv,
 				InsecureRegistries: flags.InsecureRegistries,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
@@ -284,6 +287,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().StringVar(&buildFlags.LifecycleImage, "lifecycle-image", cfg.LifecycleImage, `Custom lifecycle image to use for analysis, restore, and export when builder is untrusted.`)
 	cmd.Flags().StringVar(&buildFlags.Platform, "platform", "", `Platform to build on (e.g., "linux/amd64").`)
 	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
+	cmd.Flags().StringVar(&buildFlags.ExecutionEnv, "exec-env", "production", `Execution environment to use. (default "production"`)
 	cmd.Flags().StringVarP(&buildFlags.Registry, "buildpack-registry", "r", cfg.DefaultRegistryName, "Buildpack Registry by name")
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
 	cmd.Flags().StringSliceVarP(&buildFlags.AdditionalTags, "tag", "t", nil, "Additional tags to push the output image to.\nTags should be in the format 'image:tag' or 'repository/image:tag'."+stringSliceHelp("tag"))
@@ -345,6 +349,14 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, inputImageRef clie
 	if _, err := os.Stat(inputImageRef.Name()); err == nil && flags.AppPath == "" {
 		logger.Warnf("You are building an image named '%s'. If you mean it as an app directory path, run 'pack build <args> --path %s'",
 			inputImageRef.Name(), inputImageRef.Name())
+	}
+
+	if flags.ExecutionEnv != "" && flags.ExecutionEnv != "production" && flags.ExecutionEnv != "test" {
+		// RFC: the / character is reserved in case we need to introduce namespacing in the future.
+		var executionEnvRegex = regexp.MustCompile(`^[a-zA-Z0-9.-]+$`)
+		if ok := executionEnvRegex.MatchString(flags.ExecutionEnv); !ok {
+			return errors.New("exec-env MUST only contain numbers, letters, and the characters: . or -")
+		}
 	}
 
 	return nil

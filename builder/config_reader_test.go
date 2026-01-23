@@ -54,6 +54,15 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 [[order]]
 [[order.group]]
   id = "buildpack/1"
+  exec-env = ["production"]
+
+[[build.env]]
+  name = "key1"
+  value = "value1"
+  suffix = "append"
+  delim = "%"
+  exec-env = ["test"]
+
 `), 0666))
 			})
 
@@ -76,6 +85,15 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, builderConfig.Buildpacks[2].ImageName, "")
 
 				h.AssertEq(t, builderConfig.Order[0].Group[0].ID, "buildpack/1")
+				h.AssertTrue(t, len(builderConfig.Order[0].Group[0].ExecEnv) == 1)
+				h.AssertEq(t, builderConfig.Order[0].Group[0].ExecEnv[0], "production")
+
+				h.AssertTrue(t, len(builderConfig.Build.Env) == 1)
+				h.AssertEq(t, builderConfig.Build.Env[0].Name, "key1")
+				h.AssertEq(t, builderConfig.Build.Env[0].Value, "value1")
+				h.AssertEq(t, string(builderConfig.Build.Env[0].Suffix), "append")
+				h.AssertTrue(t, len(builderConfig.Build.Env[0].ExecEnv) == 1)
+				h.AssertEq(t, builderConfig.Build.Env[0].ExecEnv[0], "test")
 			})
 		})
 

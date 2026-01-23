@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/buildpacks/pack/pkg/project/types"
+
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -37,6 +39,128 @@ func testProject(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#ReadProjectDescriptor", func() {
+		when("valid 0.3 project.toml file is provided", func() {
+			it("should exec-env on [[io.buildpacks.group]]", func() {
+				projectToml := `
+[_]
+name = "gallant 0.3"
+schema-version = "0.3"
+
+[[io.buildpacks.group]]
+id = "buildpacks/metrics-agent"
+version = "latest"
+exec-env = ["production"]
+`
+				tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name(), logger)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				assertProjectName(t, "gallant 0.3", projectDescriptor)
+				assertSchemaVersion(t, api.MustParse("0.3"), projectDescriptor)
+
+				expectedNumberOfBuildPacks := 1
+				expectedNumberOfExecEnvs := 1
+				atIndex := 0
+				assertBuildPackGroupExecEnv(t, "production", expectedNumberOfBuildPacks, expectedNumberOfExecEnvs, atIndex, projectDescriptor)
+			})
+
+			it("should exec-env on [[io.buildpacks.pre.group]]", func() {
+				projectToml := `
+[_]
+name = "gallant 0.3"
+schema-version = "0.3"
+
+[[io.buildpacks.pre.group]]
+id = "buildpacks/procfile"
+version = "latest"
+exec-env = ["test"]
+`
+				tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name(), logger)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				assertProjectName(t, "gallant 0.3", projectDescriptor)
+				assertSchemaVersion(t, api.MustParse("0.3"), projectDescriptor)
+
+				expectedNumberOfBuildPacks := 1
+				expectedNumberOfExecEnvs := 1
+				atIndex := 0
+				assertBuildPackPreGroupExecEnv(t, "test", expectedNumberOfBuildPacks, expectedNumberOfExecEnvs, atIndex, projectDescriptor)
+			})
+		})
+
+		it("should exec-env on [[io.buildpacks.post.group]]", func() {
+			projectToml := `
+[_]
+name = "gallant 0.3"
+schema-version = "0.3"
+
+[[io.buildpacks.post.group]]
+id = "buildpacks/headless-chrome"
+version = "latest"
+exec-env = ["test-1"]
+`
+			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name(), logger)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			assertProjectName(t, "gallant 0.3", projectDescriptor)
+			assertSchemaVersion(t, api.MustParse("0.3"), projectDescriptor)
+
+			expectedNumberOfBuildPacks := 1
+			expectedNumberOfExecEnvs := 1
+			atIndex := 0
+			assertBuildPackPostGroupExecEnv(t, "test-1", expectedNumberOfBuildPacks, expectedNumberOfExecEnvs, atIndex, projectDescriptor)
+		})
+
+		it("should exec-env on [[io.buildpacks.build.env]]", func() {
+			projectToml := `
+[_]
+name = "gallant 0.3"
+schema-version = "0.3"
+
+[[io.buildpacks.build.env]]
+name = "RAILS_ENV"
+value = "test"
+exec-env = ["test-1.1"]
+`
+			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name(), logger)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			assertProjectName(t, "gallant 0.3", projectDescriptor)
+			assertSchemaVersion(t, api.MustParse("0.3"), projectDescriptor)
+
+			expectedNumberOfBuildPacks := 1
+			expectedNumberOfExecEnvs := 1
+			atIndex := 0
+			assertBuildPackBuildExecEnv(t, "test-1.1", expectedNumberOfBuildPacks, expectedNumberOfExecEnvs, atIndex, projectDescriptor)
+		})
+
 		it("should parse a valid v0.2 project.toml file", func() {
 			projectToml := `
 [_]
@@ -490,6 +614,56 @@ buzz = ["a", "b", "c"]
 			)
 		})
 	})
+}
+
+func assertProjectName(t *testing.T, expected string, projectDescriptor types.Descriptor) {
+	if projectDescriptor.Project.Name != expected {
+		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+			expected, projectDescriptor.Project.Name)
+	}
+}
+
+func assertSchemaVersion(t *testing.T, expected *api.Version, projectDescriptor types.Descriptor) {
+	if !reflect.DeepEqual(expected, projectDescriptor.SchemaVersion) {
+		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+			expected, projectDescriptor.SchemaVersion)
+	}
+}
+
+func assertBuildPackGroupExecEnv(t *testing.T, expected string, bpLength int, execEnvLength int, atIndex int, projectDescriptor types.Descriptor) {
+	h.AssertTrue(t, len(projectDescriptor.Build.Buildpacks) == bpLength)
+	h.AssertTrue(t, len(projectDescriptor.Build.Buildpacks[atIndex].ExecEnv) == execEnvLength)
+	if !reflect.DeepEqual(expected, projectDescriptor.Build.Buildpacks[atIndex].ExecEnv[atIndex]) {
+		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+			expected, projectDescriptor.Build.Buildpacks[atIndex].ExecEnv[atIndex])
+	}
+}
+
+func assertBuildPackPreGroupExecEnv(t *testing.T, expected string, bpLength int, execEnvLength int, atIndex int, projectDescriptor types.Descriptor) {
+	h.AssertTrue(t, len(projectDescriptor.Build.Pre.Buildpacks) == bpLength)
+	h.AssertTrue(t, len(projectDescriptor.Build.Pre.Buildpacks[atIndex].ExecEnv) == execEnvLength)
+	if !reflect.DeepEqual(expected, projectDescriptor.Build.Pre.Buildpacks[atIndex].ExecEnv[atIndex]) {
+		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+			expected, projectDescriptor.Build.Pre.Buildpacks[atIndex].ExecEnv[atIndex])
+	}
+}
+
+func assertBuildPackPostGroupExecEnv(t *testing.T, expected string, bpLength int, execEnvLength int, atIndex int, projectDescriptor types.Descriptor) {
+	h.AssertTrue(t, len(projectDescriptor.Build.Post.Buildpacks) == bpLength)
+	h.AssertTrue(t, len(projectDescriptor.Build.Post.Buildpacks[atIndex].ExecEnv) == execEnvLength)
+	if !reflect.DeepEqual(expected, projectDescriptor.Build.Post.Buildpacks[atIndex].ExecEnv[atIndex]) {
+		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+			expected, projectDescriptor.Build.Post.Buildpacks[atIndex].ExecEnv[atIndex])
+	}
+}
+
+func assertBuildPackBuildExecEnv(t *testing.T, expected string, bpLength int, execEnvLength int, atIndex int, projectDescriptor types.Descriptor) {
+	h.AssertTrue(t, len(projectDescriptor.Build.Env) == bpLength)
+	h.AssertTrue(t, len(projectDescriptor.Build.Env[atIndex].ExecEnv) == execEnvLength)
+	if !reflect.DeepEqual(expected, projectDescriptor.Build.Env[atIndex].ExecEnv[atIndex]) {
+		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+			expected, projectDescriptor.Build.Env[atIndex].ExecEnv[atIndex])
+	}
 }
 
 func createTmpProjectTomlFile(projectToml string) (*os.File, error) {

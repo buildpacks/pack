@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	ifakes "github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"
 	dcontainer "github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
@@ -200,6 +201,46 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				)
 
 				h.AssertSliceContains(t, phaseConfigProvider.ContainerConfig().Env, "SOME_VARIABLE=some-value")
+			})
+		})
+
+		when("execution environment is set", func() {
+			when("platform API >= 0.15", func() {
+				it("sets CNB_EXEC_ENV environment variable", func() {
+					expectedBuilderImage := ifakes.NewImage("some-builder-name", "", nil)
+					fakeBuilder, err := fakes.NewFakeBuilder(
+						fakes.WithImage(expectedBuilderImage),
+						fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.15")}),
+					)
+					h.AssertNil(t, err)
+					lifecycle := newTestLifecycleExec(t, false, "some-temp-dir",
+						fakes.WithBuilder(fakeBuilder),
+						fakes.WithExecutionEnvironment("test"),
+					)
+
+					phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
+
+					h.AssertSliceContains(t, phaseConfigProvider.ContainerConfig().Env, "CNB_EXEC_ENV=test")
+				})
+			})
+
+			when("platform API < 0.15", func() {
+				it("does not set CNB_EXEC_ENV environment variable", func() {
+					expectedBuilderImage := ifakes.NewImage("some-builder-name", "", nil)
+					fakeBuilder, err := fakes.NewFakeBuilder(
+						fakes.WithImage(expectedBuilderImage),
+						fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.14")}),
+					)
+					h.AssertNil(t, err)
+					lifecycle := newTestLifecycleExec(t, false, "some-temp-dir",
+						fakes.WithBuilder(fakeBuilder),
+						fakes.WithExecutionEnvironment("test"),
+					)
+
+					phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
+
+					h.AssertSliceNotContains(t, phaseConfigProvider.ContainerConfig().Env, "CNB_EXEC_ENV=test")
+				})
 			})
 		})
 
