@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1768911796719,
+  "lastUpdate": 1769132851887,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -12964,6 +12964,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 79852715216,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "94348a5314b46f723d86744fb0726874c4fe05bf",
+          "message": "Execution Environment RFC Implementation (#2324)\n\n* WIP - adding flag to set the CNB_EXEC_ENV\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* adding . and - to the regular expression to validate and cnn exec env\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* WIP - adding exec-env on project.toml schema verion 0.3, it is still in progress\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* fixing some lint errors\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* WIP - refacting test case\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* adding more test cases\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* adding exec-env to builder.toml\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* adding exec-env to builder.toml\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Adding unit test for exec-env in buildpack.toml\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Removing for now the platform API version validation\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Fixing unit tests\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* fixing some unit tests\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Fixing formatting issue\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Test Coverage Improvements Summary\n\n  Changes Made:\n\n  1. internal/build/lifecycle_executor.go (2 lines added)\n    - Added Platform API versions 0.14 and 0.15 to SupportedPlatformAPIVersions\n    - This allows pack to support the new execution environment feature which requires Platform API 0.15\n  2. internal/build/phase_config_provider.go (1 line changed)\n    - Updated the Platform API version check from 0.13 to 0.15 for the CNB_EXEC_ENV environment variable\n  3. internal/build/fakes/fake_builder.go (7 lines added)\n    - Added WithExecutionEnvironment() helper function for tests\n    - Allows tests to easily set the execution environment in lifecycle options\n  4. internal/build/phase_config_provider_test.go (41 lines added)\n    - Added comprehensive tests for the execution environment feature:\n        - ✅ Test that CNB_EXEC_ENV is set when Platform API >= 0.15\n      - ✅ Test that CNB_EXEC_ENV is NOT set when Platform API < 0.15\n    - Added import for \"github.com/buildpacks/lifecycle/api\" package\n\n  Existing Test Coverage (Already in PR):\n\n  1. internal/commands/build_test.go\n    - ✅ Tests that default exec-env is 'production'\n    - ✅ Tests with valid characters (letters, numbers, dots, hyphens)\n    - ✅ Tests with invalid characters (shows proper error)\n    - ✅ Comprehensive validation tests for exec-env flag\n  2. builder/config_reader_test.go\n    - ✅ Tests reading exec-env from builder configuration\n  3. pkg/project/project_test.go\n    - ✅ Tests reading exec-env from project.toml (schema v0.3)\n    - ✅ Tests for buildpack groups, pre-groups, and post-groups\n\n  Test Results:\n\n  - All phase config provider tests: PASSING ✅\n  - All build command tests: PASSING ✅\n  - Coverage for exec-env flag validation: COMPLETE ✅\n  - Coverage for CNB_EXEC_ENV environment variable: COMPLETE ✅\n  - Coverage for Platform API version gating: COMPLETE ✅\n\n  The test coverage for your ExecutionEnvironment feature is now comprehensive and covers:\n  - Command-line flag validation\n  - Environment variable setting based on Platform API version\n  - Builder and project configuration reading\n  - Edge cases and error conditions\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Fixing Acceptance Tests API Platform expected versions\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* fix: add missing api import in phase_config_provider_test\n\nAdd missing import for github.com/buildpacks/lifecycle/api package\nrequired by execution environment tests that use api.MustParse().\n\nThe tests added in this branch for CNB_EXEC_ENV functionality\nreference api.Version and api.MustParse() but the import was missing,\ncausing compilation errors after merging latest changes from main.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n---------\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Sonnet 4.5 <noreply@anthropic.com>",
+          "timestamp": "2026-01-22T20:45:27-05:00",
+          "tree_id": "f7b51a135317cd832446075090a0974a532180c8",
+          "url": "https://github.com/buildpacks/pack/commit/94348a5314b46f723d86744fb0726874c4fe05bf"
+        },
+        "date": 1769132850985,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3547532181,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1071265094,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 90195966477,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
