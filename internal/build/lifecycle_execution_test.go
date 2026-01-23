@@ -2046,6 +2046,28 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("platform >= 0.14", func() {
+			platformAPI = api.MustParse("0.14")
+
+			it("provides -run flag", func() {
+				h.AssertIncludeAllExpectedPatterns(t,
+					configProvider.ContainerConfig().Cmd,
+					[]string{"-run", "/layers/run.toml"},
+				)
+			})
+		})
+
+		when("platform < 0.14", func() {
+			platformAPI = api.MustParse("0.13")
+
+			it("does not provide -run flag", func() {
+				h.AssertSliceNotContains(t,
+					configProvider.ContainerConfig().Cmd,
+					"-run",
+				)
+			})
+		})
+
 		when("layout is true", func() {
 			when("platform >= 0.12", func() {
 				platformAPI = api.MustParse("0.12")

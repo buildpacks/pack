@@ -551,6 +551,13 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 		}
 	}
 
+	// for run
+	runOp := NullOp()
+	if l.platformAPI.AtLeast("0.14") {
+		flags = append(flags, "-run", l.mountPaths.runPath())
+		runOp = WithContainerOperations(WriteRunToml(l.mountPaths.runPath(), l.opts.Builder.RunImages(), l.os))
+	}
+
 	// for kaniko
 	kanikoCacheBindOp := NullOp()
 	if (l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild()) ||
@@ -607,6 +614,7 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 		cacheBindOp,
 		dockerOp,
 		flagsOp,
+		runOp,
 		kanikoCacheBindOp,
 		registryOp,
 		layoutOp,
