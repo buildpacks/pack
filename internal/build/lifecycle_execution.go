@@ -552,8 +552,9 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 	}
 
 	// for run
+	// The -run flag is only needed when using image extensions to extend the run image (Platform API >= 0.14)
 	runOp := NullOp()
-	if l.platformAPI.AtLeast("0.14") {
+	if l.platformAPI.AtLeast("0.14") && l.hasExtensions() {
 		flags = append(flags, "-run", l.mountPaths.runPath())
 		runOp = WithContainerOperations(WriteRunToml(l.mountPaths.runPath(), l.opts.Builder.RunImages(), l.os))
 		// Add run images to registry images list for authentication
