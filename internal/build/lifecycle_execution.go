@@ -557,11 +557,6 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 	if l.platformAPI.AtLeast("0.14") && l.hasExtensions() {
 		flags = append(flags, "-run", l.mountPaths.runPath())
 		runOp = WithContainerOperations(WriteRunToml(l.mountPaths.runPath(), l.opts.Builder.RunImages(), l.os))
-		// Add run images to registry images list for authentication
-		for _, runImage := range l.opts.Builder.RunImages() {
-			registryImages = append(registryImages, runImage.Image)
-			registryImages = append(registryImages, runImage.Mirrors...)
-		}
 	}
 
 	// for kaniko
