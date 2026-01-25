@@ -2047,18 +2047,35 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("platform >= 0.14", func() {
-			platformAPI = api.MustParse("0.14")
+			when("there are extensions", func() {
+				platformAPI = api.MustParse("0.14")
+				providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+				extensionsForRun = true
 
-			it("provides -run flag", func() {
-				h.AssertIncludeAllExpectedPatterns(t,
-					configProvider.ContainerConfig().Cmd,
-					[]string{"-run", "/layers/run.toml"},
-				)
+				it("provides -run flag", func() {
+					h.AssertIncludeAllExpectedPatterns(t,
+						configProvider.ContainerConfig().Cmd,
+						[]string{"-run", "/layers/run.toml"},
+					)
+				})
+			})
+
+			when("there are no extensions", func() {
+				platformAPI = api.MustParse("0.14")
+
+				it("does not provide -run flag", func() {
+					h.AssertSliceNotContains(t,
+						configProvider.ContainerConfig().Cmd,
+						"-run",
+					)
+				})
 			})
 		})
 
 		when("platform < 0.14", func() {
 			platformAPI = api.MustParse("0.13")
+			providedOrderExt = dist.Order{dist.OrderEntry{Group: []dist.ModuleRef{ /* don't care */ }}}
+			extensionsForRun = true
 
 			it("does not provide -run flag", func() {
 				h.AssertSliceNotContains(t,
