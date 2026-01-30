@@ -135,6 +135,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - name: freebsd
+            goarch: amd64
+            goos: freebsd
+          - name: freebsd-arm64
+            goarch: arm64
+            goos: freebsd
           - name: linux-arm64
             goarch: arm64
             goos: linux
@@ -198,6 +204,18 @@ jobs:
           chmod +x pack-macos/pack
           filename=pack-v${{ env.PACK_VERSION }}-macos.tgz
           tar -C pack-macos -vzcf $filename pack
+          shasum -a 256 $filename > $filename.sha256
+      - name: Package artifacts - freebsd
+        run: |
+          chmod +x pack-freebsd/pack
+          filename=pack-v${{ env.PACK_VERSION }}-freebsd.tgz
+          tar -C pack-freebsd -vzcf $filename pack
+          shasum -a 256 $filename > $filename.sha256
+      - name: Package artifacts - freebsd-arm64
+        run: |
+          chmod +x pack-freebsd-arm64/pack
+          filename=pack-v${{ env.PACK_VERSION }}-freebsd-arm64.tgz
+          tar -C pack-freebsd-arm64 -vzcf $filename pack
           shasum -a 256 $filename > $filename.sha256
       - name: Package artifacts - linux-arm64
         run: |
@@ -272,6 +290,20 @@ jobs:
             - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/get-started) must be available to execute builds.
 
             ## Install
+
+            #### FreeBSD
+
+            ##### AMD64
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-freebsd.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
+
+            ##### ARM64
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-freebsd-arm64.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
 
             #### Linux
 
