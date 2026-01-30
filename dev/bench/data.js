@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1769132851887,
+  "lastUpdate": 1769776940478,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13006,6 +13006,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 90195966477,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "gogolok@gmail.com",
+            "name": "Robert Gogolok",
+            "username": "gogolok"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "06c9593f4c2c12f4f124ebfeb524ac0a8ca74117",
+          "message": "Ship FreeBSD binaries (#2518)\n\nSigned-off-by: Robert Gogolok <gogolok@gmail.com>",
+          "timestamp": "2026-01-30T07:40:09-05:00",
+          "tree_id": "baf7c0aa7a50b1f53ddddae7a9079bed45974d70",
+          "url": "https://github.com/buildpacks/pack/commit/06c9593f4c2c12f4f124ebfeb524ac0a8ca74117"
+        },
+        "date": 1769776939312,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4704240464,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1390998354,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 90902740066,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
