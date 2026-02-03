@@ -1368,7 +1368,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							}
 
 							err := subject.CreateBuilder(context.TODO(), opts)
-							h.AssertError(t, err, "could not find a target that matches daemon os=linux and architecture=amd64")
+							h.AssertError(t, err, "unable to save image to docker daemon")
+							h.AssertError(t, err, "do not match the daemon's os/architecture")
+							h.AssertError(t, err, "use the --publish flag")
 						})
 					})
 
@@ -1425,7 +1427,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							}
 
 							err := subject.CreateBuilder(context.TODO(), opts)
-							h.AssertError(t, err, "could not find a target that matches daemon os=linux and architecture=arm64")
+							h.AssertError(t, err, "unable to save image to docker daemon")
+							h.AssertError(t, err, "do not match the daemon's os/architecture")
+							h.AssertError(t, err, "use the --publish flag")
 						})
 					})
 				})

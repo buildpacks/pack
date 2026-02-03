@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
@@ -293,5 +294,17 @@ func (c *Client) daemonTarget(ctx context.Context, targets []dist.Target) (dist.
 			return t, nil
 		}
 	}
-	return dist.Target{}, errors.Errorf("could not find a target that matches daemon os=%s and architecture=%s", serverResult.Os, serverResult.Arch)
+
+	// Build a list of the requested targets for a more informative error message
+	var requestedTargets []string
+	for _, t := range targets {
+		requestedTargets = append(requestedTargets, style.Symbol(t.ValuesAsPlatform()))
+	}
+
+	return dist.Target{}, errors.Errorf(
+		"unable to save image to docker daemon: the specified target(s) %s do not match the daemon's os/architecture %s. "+
+			"To build for a different platform than the daemon, use the --publish flag to push directly to a registry",
+		strings.Join(requestedTargets, ", "),
+		style.Symbol(fmt.Sprintf("%s/%s", serverResult.Os, serverResult.Arch)),
+	)
 }
