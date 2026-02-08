@@ -312,6 +312,32 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
+			it("excludes directories and their contents when directory is filtered", func() {
+				tarFile := filepath.Join(tmpDir, "some.tar")
+				fh, err := os.Create(tarFile)
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+
+				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, false, func(path string) bool {
+					// Exclude the sub-dir directory entirely
+					return path != "sub-dir"
+				})
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+
+				file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+				defer file.Close()
+
+				tr := tar.NewReader(file)
+
+				verify := h.NewTarVerifier(t, tr, 1234, 2345)
+				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", int64(os.ModePerm))
+				verify.NoMoreFilesExist()
+			})
+
 			it("filter is only handed relevant section of the filepath", func() {
 				tarFile := filepath.Join(tmpDir, "some.tar")
 				fh, err := os.Create(tarFile)
