@@ -315,17 +315,34 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 			"Re-run with '--pull-policy=always' to silence this warning.")
 	}
 
-	if !opts.Publish && usesContainerdStorage(c.docker) {
-		c.logger.Warnf("Exporting to docker daemon (building without --publish) and daemon uses containerd storage; performance may be significantly degraded.\n" +
-			"For more information, see https://github.com/buildpacks/pack/issues/2272.")
-	}
-
 	imageRef, err := c.parseReference(opts)
 	if err != nil {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.Image)
 	}
 	imgRegistry := imageRef.Context().RegistryStr()
 	imageName := imageRef.Name()
+
+	// When the daemon uses containerd storage, exporting directly to the daemon is slow and can hit digest errors (pack#2272).
+	// Workaround: publish to a local registry (e.g. localhost:5001), then pull into the daemon and tag as requested.
+	var containerdWorkaround bool
+	var publishRef name.Reference
+	if !opts.Publish && !opts.Layout() && opts.PreviousImage == "" && usesContainerdStorage(c.docker) {
+		workaroundRegistry := os.Getenv("PACK_CONTAINERD_WORKAROUND_REGISTRY")
+		if workaroundRegistry == "" {
+			workaroundRegistry = "localhost:5001"
+		}
+		workaroundRegistry = strings.TrimSuffix(workaroundRegistry, "/")
+		publishImageStr := workaroundRegistry + "/" + imageRef.Name()
+		publishRef, err = name.NewTag(publishImageStr, name.WeakValidation)
+		if err != nil {
+			return errors.Wrapf(err, "containerd workaround: invalid publish image '%s'", publishImageStr)
+		}
+		containerdWorkaround = true
+		c.logger.Infof("Daemon uses containerd storage; using publish-then-pull workaround (registry: %s). See https://github.com/buildpacks/pack/issues/2272.", workaroundRegistry)
+	} else if !opts.Publish && usesContainerdStorage(c.docker) {
+		c.logger.Warnf("Exporting to docker daemon (building without --publish) and daemon uses containerd storage; performance may be significantly degraded.\n" +
+			"For more information, see https://github.com/buildpacks/pack/issues/2272.")
+	}
 
 	if opts.Layout() {
 		pathsConfig, err = c.processLayoutPath(opts.LayoutConfig.InputImage, opts.LayoutConfig.PreviousInputImage)
@@ -634,16 +651,29 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		}
 	}
 
+	effectiveImageRef := imageRef
+	effectivePublish := opts.Publish
+	effectiveInsecureRegistries := opts.InsecureRegistries
+	if containerdWorkaround {
+		effectiveImageRef = publishRef
+		effectivePublish = true
+		workaroundRegistry := publishRef.Context().RegistryStr()
+		regSet := stringset.FromSlice(effectiveInsecureRegistries)
+		if _, ok := regSet[workaroundRegistry]; !ok {
+			effectiveInsecureRegistries = append([]string{workaroundRegistry}, effectiveInsecureRegistries...)
+		}
+	}
+
 	lifecycleOpts := build.LifecycleOptions{
 		AppPath:                  appPath,
-		Image:                    imageRef,
+		Image:                    effectiveImageRef,
 		Builder:                  ephemeralBuilder,
 		BuilderImage:             builderRef.Name(),
 		LifecycleImage:           ephemeralBuilder.Name(),
 		RunImage:                 runImageName,
 		ProjectMetadata:          projectMetadata,
 		ClearCache:               opts.ClearCache,
-		Publish:                  opts.Publish,
+		Publish:                  effectivePublish,
 		TrustBuilder:             opts.TrustBuilder(opts.Builder),
 		UseCreator:               useCreator,
 		UseCreatorWithExtensions: supportsCreatorWithExtensions(lifecycleVersion),
@@ -671,7 +701,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Keychain:                 c.keychain,
 		EnableUsernsHost:         opts.EnableUsernsHost,
 		ExecutionEnvironment:     opts.CNBExecutionEnv,
-		InsecureRegistries:       opts.InsecureRegistries,
+		InsecureRegistries:       effectiveInsecureRegistries,
 	}
 
 	switch {
@@ -834,6 +864,24 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	if err = c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
 		return fmt.Errorf("executing lifecycle: %w", err)
 	}
+
+	if containerdWorkaround {
+		// Pull the image from the registry into the daemon, then tag as the user-requested name.
+		rdr, pullErr := c.docker.ImagePull(ctx, publishRef.String(), client.ImagePullOptions{})
+		if pullErr != nil {
+			return fmt.Errorf("containerd workaround: pulling image into daemon: %w", pullErr)
+		}
+		_, _ = io.Copy(io.Discard, rdr)
+		rdr.Close()
+
+		if publishRef.String() != imageRef.String() {
+			_, tagErr := c.docker.ImageTag(ctx, client.ImageTagOptions{Source: publishRef.String(), Target: imageRef.String()})
+			if tagErr != nil {
+				return fmt.Errorf("containerd workaround: tagging image: %w", tagErr)
+			}
+		}
+	}
+
 	return c.logImageNameAndSha(ctx, opts.Publish, imageRef, opts.InsecureRegistries)
 }
 
