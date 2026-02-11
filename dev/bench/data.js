@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770727982971,
+  "lastUpdate": 1770813211067,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13132,6 +13132,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 89419734011,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b86f52e56791638a7ff9692d7f1a7e6d931537d0",
+          "message": "build(deps): bump the go-dependencies group across 1 directory with 7 updates (#2524)\n\nBumps the go-dependencies group with 2 updates in the / directory: [github.com/chainguard-dev/kaniko](https://github.com/chainguard-dev/kaniko) and [golang.org/x/mod](https://github.com/golang/mod).\n\n\nUpdates `github.com/chainguard-dev/kaniko` from 1.25.6 to 1.25.7\n- [Release notes](https://github.com/chainguard-dev/kaniko/releases)\n- [Changelog](https://github.com/chainguard-forks/kaniko/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/chainguard-dev/kaniko/compare/v1.25.6...v1.25.7)\n\nUpdates `golang.org/x/crypto` from 0.47.0 to 0.48.0\n- [Commits](https://github.com/golang/crypto/compare/v0.47.0...v0.48.0)\n\nUpdates `golang.org/x/mod` from 0.32.0 to 0.33.0\n- [Commits](https://github.com/golang/mod/compare/v0.32.0...v0.33.0)\n\nUpdates `golang.org/x/oauth2` from 0.34.0 to 0.35.0\n- [Commits](https://github.com/golang/oauth2/compare/v0.34.0...v0.35.0)\n\nUpdates `golang.org/x/sys` from 0.40.0 to 0.41.0\n- [Commits](https://github.com/golang/sys/compare/v0.40.0...v0.41.0)\n\nUpdates `golang.org/x/term` from 0.39.0 to 0.40.0\n- [Commits](https://github.com/golang/term/compare/v0.39.0...v0.40.0)\n\nUpdates `golang.org/x/text` from 0.33.0 to 0.34.0\n- [Release notes](https://github.com/golang/text/releases)\n- [Commits](https://github.com/golang/text/compare/v0.33.0...v0.34.0)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/chainguard-dev/kaniko\n  dependency-version: 1.25.7\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/crypto\n  dependency-version: 0.48.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/mod\n  dependency-version: 0.33.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/oauth2\n  dependency-version: 0.35.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/sys\n  dependency-version: 0.41.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/term\n  dependency-version: 0.40.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/text\n  dependency-version: 0.34.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-02-11T07:30:48-05:00",
+          "tree_id": "0d8726ace51ed32d30e5e4cb4813c6c55c5af12a",
+          "url": "https://github.com/buildpacks/pack/commit/b86f52e56791638a7ff9692d7f1a7e6d931537d0"
+        },
+        "date": 1770813210081,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3652835117,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1088957001,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 80107299670,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
