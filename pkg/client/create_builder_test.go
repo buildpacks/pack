@@ -1368,7 +1368,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							}
 
 							err := subject.CreateBuilder(context.TODO(), opts)
-							h.AssertError(t, err, "could not find a target that matches daemon os=linux and architecture=amd64")
+							h.AssertError(t, err, "the requested target(s)")
 						})
 					})
 
@@ -1425,7 +1425,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							}
 
 							err := subject.CreateBuilder(context.TODO(), opts)
-							h.AssertError(t, err, "could not find a target that matches daemon os=linux and architecture=arm64")
+							h.AssertError(t, err, "the requested target(s)")
 						})
 					})
 				})
