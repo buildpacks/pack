@@ -16,7 +16,7 @@ require (
 	github.com/go-git/go-git/v5 v5.16.5
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.7.0
-	github.com/google/go-containerregistry v0.20.7
+	github.com/google/go-containerregistry v0.21.0
 	github.com/google/go-github/v30 v30.1.0
 	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
 	github.com/heroku/color v0.0.6
@@ -81,7 +81,7 @@ require (
 	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
-	github.com/containerd/stargz-snapshotter/estargz v0.18.1 // indirect
+	github.com/containerd/stargz-snapshotter/estargz v0.18.2 // indirect
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect
 	github.com/cyphar/filepath-securejoin v0.6.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
@@ -109,7 +109,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
-	github.com/klauspost/compress v1.18.2 // indirect
+	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -156,4 +156,4 @@ require (
 
 replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.3.2
 
-go 1.25.5
+go 1.25.6
