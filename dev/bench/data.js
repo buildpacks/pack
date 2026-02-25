@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770813211067,
+  "lastUpdate": 1772021723129,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13174,6 +13174,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 80107299670,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2926efccb9c22e901af00406d6967454c5a04ec7",
+          "message": "build(deps): bump github.com/google/go-containerregistry (#2532)\n\nBumps the go-dependencies group with 1 update: [github.com/google/go-containerregistry](https://github.com/google/go-containerregistry).\n\n\nUpdates `github.com/google/go-containerregistry` from 0.20.7 to 0.21.0\n- [Release notes](https://github.com/google/go-containerregistry/releases)\n- [Commits](https://github.com/google/go-containerregistry/compare/v0.20.7...v0.21.0)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/google/go-containerregistry\n  dependency-version: 0.21.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-02-25T07:12:35-05:00",
+          "tree_id": "352ad3e29727acdd5477a7a6a53ca011e7b410d0",
+          "url": "https://github.com/buildpacks/pack/commit/2926efccb9c22e901af00406d6967454c5a04ec7"
+        },
+        "date": 1772021722251,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3612700239,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 883106750,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 84704547648,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
