@@ -324,6 +324,8 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	// When the daemon uses containerd storage, exporting directly to the daemon is slow and can hit digest errors (pack#2272).
 	// Workaround: publish to a local registry (e.g. localhost:5001), then pull into the daemon and tag as requested.
+	// Use only the repository path + tag (Context().RepositoryStr() + Identifier()), not the full image name, so we
+	// don't double-prefix when the requested image is already e.g. localhost:5001/ghcr.io/org/app:latest.
 	var containerdWorkaround bool
 	var publishRef name.Reference
 	if !opts.Publish && !opts.Layout() && opts.PreviousImage == "" && usesContainerdStorage(c.docker) {
@@ -332,7 +334,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 			workaroundRegistry = "localhost:5001"
 		}
 		workaroundRegistry = strings.TrimSuffix(workaroundRegistry, "/")
-		publishImageStr := workaroundRegistry + "/" + imageRef.Name()
+		publishImageStr := workaroundRegistry + "/" + imageRef.Context().RepositoryStr() + ":" + imageRef.Identifier()
 		publishRef, err = name.NewTag(publishImageStr, name.WeakValidation)
 		if err != nil {
 			return errors.Wrapf(err, "containerd workaround: invalid publish image '%s'", publishImageStr)
