@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772454708033,
+  "lastUpdate": 1772456093649,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13300,6 +13300,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 83920650558,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bb546d6a3fb3f7972d55237739473af00041385c",
+          "message": "chore: fix security vulnerabilities in dependencies (#2539)\n\n- Bump go stdlib 1.25.6 → 1.25.7 (CVE-2025-68121 critical, CVE-2025-61732 high)\n- Bump github.com/chainguard-dev/kaniko v1.25.7 → v1.25.10 (GHSA-6rxq-q92g-4rmf high)\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-03-02T07:52:38-05:00",
+          "tree_id": "58da374eb915dc70feb522497b9ffbc6fb59a883",
+          "url": "https://github.com/buildpacks/pack/commit/bb546d6a3fb3f7972d55237739473af00041385c"
+        },
+        "date": 1772456092199,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5526169540,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1970985983,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
