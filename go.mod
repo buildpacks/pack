@@ -156,4 +156,4 @@ require (
 
 replace github.com/BurntSushi/toml => github.com/BurntSushi/toml v1.3.2
 
-go 1.25.6
+go 1.25.7
