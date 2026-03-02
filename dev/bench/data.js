@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772021723129,
+  "lastUpdate": 1772454045174,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13216,6 +13216,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 84704547648,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9d92bd105e06eff2bd65565beac2588b76d41e17",
+          "message": "build(deps): bump github.com/cloudflare/circl from 1.6.1 to 1.6.3 (#2533)\n\nBumps [github.com/cloudflare/circl](https://github.com/cloudflare/circl) from 1.6.1 to 1.6.3.\n- [Release notes](https://github.com/cloudflare/circl/releases)\n- [Commits](https://github.com/cloudflare/circl/compare/v1.6.1...v1.6.3)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/cloudflare/circl\n  dependency-version: 1.6.3\n  dependency-type: indirect\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-03-02T07:17:45-05:00",
+          "tree_id": "d3316080faae9f3c5534aa1519d8cbf59a72c99f",
+          "url": "https://github.com/buildpacks/pack/commit/9d92bd105e06eff2bd65565beac2588b76d41e17"
+        },
+        "date": 1772454044058,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4703478712,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1396604290,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 93541285042,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
