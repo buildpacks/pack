@@ -315,7 +315,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 			"Re-run with '--pull-policy=always' to silence this warning.")
 	}
 
-	if !opts.Publish && usesContainerdStorage(c.docker) {
+	if !opts.Publish && usesContainerdStorage(c.docker) && !logging.IsQuiet(c.logger) {
 		c.logger.Warnf("Exporting to docker daemon (building without --publish) and daemon uses containerd storage; performance may be significantly degraded.\n" +
 			"For more information, see https://github.com/buildpacks/pack/issues/2272.")
 	}
