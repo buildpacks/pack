@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772456093649,
+  "lastUpdate": 1772800172457,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13336,6 +13336,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Trusted_Builder",
             "value": 1970985983,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "papastathiscr@gmail.com",
+            "name": "Costas Papastathis",
+            "username": "pacostas"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bcb955d724f0892b412871078906309d52e65b96",
+          "message": "fix: Adding ubi9, ubi10 and noble builders on the suggested builders of the pack cli (#2540)\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-03-06T07:26:38-05:00",
+          "tree_id": "4e52ab683fb089b1dd5946fa6ffe4637858640db",
+          "url": "https://github.com/buildpacks/pack/commit/bcb955d724f0892b412871078906309d52e65b96"
+        },
+        "date": 1772800171006,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6051491023,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1959351295,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 82716849647,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
