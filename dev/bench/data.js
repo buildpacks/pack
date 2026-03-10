@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772800172457,
+  "lastUpdate": 1773143965992,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13378,6 +13378,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 82716849647,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5dfdab8f7e78200b2cfde0f331ae1bb42eada78e",
+          "message": "build(deps): bump the go-dependencies group across 1 directory with 8 updates (#2545)\n\nBumps the go-dependencies group with 8 updates in the / directory:\n\n| Package | From | To |\n| --- | --- | --- |\n| [github.com/chainguard-dev/kaniko](https://github.com/chainguard-dev/kaniko) | `1.25.10` | `1.25.11` |\n| [github.com/docker/cli](https://github.com/docker/cli) | `29.2.1+incompatible` | `29.3.0+incompatible` |\n| [github.com/google/go-containerregistry](https://github.com/google/go-containerregistry) | `0.21.1` | `0.21.2` |\n| [github.com/moby/moby/api](https://github.com/moby/moby) | `1.53.0` | `1.54.0` |\n| [github.com/moby/moby/client](https://github.com/moby/moby) | `0.2.2` | `0.3.0` |\n| [golang.org/x/oauth2](https://github.com/golang/oauth2) | `0.35.0` | `0.36.0` |\n| [golang.org/x/sync](https://github.com/golang/sync) | `0.19.0` | `0.20.0` |\n| [golang.org/x/sys](https://github.com/golang/sys) | `0.41.0` | `0.42.0` |\n\n\n\nUpdates `github.com/chainguard-dev/kaniko` from 1.25.10 to 1.25.11\n- [Release notes](https://github.com/chainguard-dev/kaniko/releases)\n- [Changelog](https://github.com/chainguard-forks/kaniko/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/chainguard-dev/kaniko/compare/v1.25.10...v1.25.11)\n\nUpdates `github.com/docker/cli` from 29.2.1+incompatible to 29.3.0+incompatible\n- [Commits](https://github.com/docker/cli/compare/v29.2.1...v29.3.0)\n\nUpdates `github.com/google/go-containerregistry` from 0.21.1 to 0.21.2\n- [Release notes](https://github.com/google/go-containerregistry/releases)\n- [Commits](https://github.com/google/go-containerregistry/compare/v0.21.1...v0.21.2)\n\nUpdates `github.com/moby/moby/api` from 1.53.0 to 1.54.0\n- [Release notes](https://github.com/moby/moby/releases)\n- [Commits](https://github.com/moby/moby/compare/api/v1.53.0...api/v1.54.0)\n\nUpdates `github.com/moby/moby/client` from 0.2.2 to 0.3.0\n- [Release notes](https://github.com/moby/moby/releases)\n- [Changelog](https://github.com/moby/moby/blob/v0.3.0/CHANGELOG.md)\n- [Commits](https://github.com/moby/moby/compare/v0.2.2...v0.3.0)\n\nUpdates `golang.org/x/oauth2` from 0.35.0 to 0.36.0\n- [Commits](https://github.com/golang/oauth2/compare/v0.35.0...v0.36.0)\n\nUpdates `golang.org/x/sync` from 0.19.0 to 0.20.0\n- [Commits](https://github.com/golang/sync/compare/v0.19.0...v0.20.0)\n\nUpdates `golang.org/x/sys` from 0.41.0 to 0.42.0\n- [Commits](https://github.com/golang/sys/compare/v0.41.0...v0.42.0)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/chainguard-dev/kaniko\n  dependency-version: 1.25.11\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/docker/cli\n  dependency-version: 29.3.0+incompatible\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: github.com/google/go-containerregistry\n  dependency-version: 0.21.2\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/moby/moby/api\n  dependency-version: 1.54.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: github.com/moby/moby/client\n  dependency-version: 0.3.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/oauth2\n  dependency-version: 0.36.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/sync\n  dependency-version: 0.20.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/sys\n  dependency-version: 0.42.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-03-10T06:56:34-05:00",
+          "tree_id": "f2a2c037f5ff3d48e6b9aa20c3b7cdc329006665",
+          "url": "https://github.com/buildpacks/pack/commit/5dfdab8f7e78200b2cfde0f331ae1bb42eada78e"
+        },
+        "date": 1773143965123,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3248006782,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 870808226,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 89145377394,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
