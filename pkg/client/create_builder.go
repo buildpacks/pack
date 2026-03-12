@@ -462,6 +462,10 @@ func (c *Client) uriFromLifecycleVersion(version semver.Version, os string, arch
 		return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+windows.%s.tgz", version.String(), version.String(), arch)
 	}
 
+	if architecture == "amd64" {
+		architecture = "x86-64"
+	}
+
 	if builder.SupportedLinuxArchitecture(architecture) {
 		arch = architecture
 	} else {
