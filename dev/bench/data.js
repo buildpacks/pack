@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773143965992,
+  "lastUpdate": 1773336127405,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13420,6 +13420,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 89145377394,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "32770175+Onyx2406@users.noreply.github.com",
+            "name": "Yash",
+            "username": "Onyx2406"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "32379475d282cbdb107ab50df945c8d77a8ac111",
+          "message": "fix: treat amd64 as equivalent to x86-64 for lifecycle binary selection (#2544)\n\nMap amd64 architecture to x86-64 when constructing lifecycle binary\ndownload URLs to eliminate the spurious warning on standard AMD64\nsystems. Add tests for amd64 mapping and unknown architecture warning.\n\nFixes #2528\n\nSigned-off-by: Onyx2406 <yashsancheti24@gmail.com>",
+          "timestamp": "2026-03-12T12:19:56-05:00",
+          "tree_id": "923db1cd7bed74cea1c5ff79d45d4e76338ef9f7",
+          "url": "https://github.com/buildpacks/pack/commit/32379475d282cbdb107ab50df945c8d77a8ac111"
+        },
+        "date": 1773336126151,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3946766676,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1188909119,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 85230452185,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
