@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773336127405,
+  "lastUpdate": 1773406346739,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13462,6 +13462,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 85230452185,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c91bcbb0d8941b2093ca06553c05bc9500602d38",
+          "message": "chore: upgrade Go to 1.25.8 to fix stdlib CVEs (#2548)\n\nFixes CVE-2026-25679 (High), CVE-2026-27142 (High), and CVE-2026-27139 (Low)\nin the Go standard library by bumping the minimum Go version to 1.25.8.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-03-13T07:49:21-05:00",
+          "tree_id": "db0c80d5dee01740892ea8eb2c8f22a652c7f67a",
+          "url": "https://github.com/buildpacks/pack/commit/c91bcbb0d8941b2093ca06553c05bc9500602d38"
+        },
+        "date": 1773406345919,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3054868789,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 845046680,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 103598262143,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
