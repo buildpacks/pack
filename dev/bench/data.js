@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773406346739,
+  "lastUpdate": 1773884480681,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13504,6 +13504,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 103598262143,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4d231c9038ee8e907a0eaa7955737324a593897f",
+          "message": "build(deps): bump the go-dependencies group with 4 updates (#2549)\n\nBumps the go-dependencies group with 4 updates: [golang.org/x/crypto](https://github.com/golang/crypto), [golang.org/x/mod](https://github.com/golang/mod), [golang.org/x/term](https://github.com/golang/term) and [golang.org/x/text](https://github.com/golang/text).\n\n\nUpdates `golang.org/x/crypto` from 0.48.0 to 0.49.0\n- [Commits](https://github.com/golang/crypto/compare/v0.48.0...v0.49.0)\n\nUpdates `golang.org/x/mod` from 0.33.0 to 0.34.0\n- [Commits](https://github.com/golang/mod/compare/v0.33.0...v0.34.0)\n\nUpdates `golang.org/x/term` from 0.40.0 to 0.41.0\n- [Commits](https://github.com/golang/term/compare/v0.40.0...v0.41.0)\n\nUpdates `golang.org/x/text` from 0.34.0 to 0.35.0\n- [Release notes](https://github.com/golang/text/releases)\n- [Commits](https://github.com/golang/text/compare/v0.34.0...v0.35.0)\n\n---\nupdated-dependencies:\n- dependency-name: golang.org/x/crypto\n  dependency-version: 0.49.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/mod\n  dependency-version: 0.34.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/term\n  dependency-version: 0.41.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/text\n  dependency-version: 0.35.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-03-18T20:38:28-05:00",
+          "tree_id": "11873b0b8e047d01998addff4dc5de947a8ca230",
+          "url": "https://github.com/buildpacks/pack/commit/4d231c9038ee8e907a0eaa7955737324a593897f"
+        },
+        "date": 1773884479680,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3709351291,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1144141035,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 90589328967,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
