@@ -631,6 +631,44 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 			})
 
+			it("should download x86-64 lifecycle when architecture is amd64", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Lifecycle.URI = ""
+				opts.Config.Lifecycle.Version = "3.4.5"
+				h.AssertNil(t, fakeBuildImage.SetArchitecture("amd64"))
+
+				mockDownloader.EXPECT().Download(
+					gomock.Any(),
+					"https://github.com/buildpacks/lifecycle/releases/download/v3.4.5/lifecycle-v3.4.5+linux.x86-64.tgz",
+				).Return(
+					blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil,
+				)
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+				h.AssertNotContains(t, out.String(), "failed to find a lifecycle binary")
+			})
+
+			it("should warn and default to x86-64 for unknown architecture", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Lifecycle.URI = ""
+				opts.Config.Lifecycle.Version = "3.4.5"
+				h.AssertNil(t, fakeBuildImage.SetArchitecture("riscv64"))
+
+				mockDownloader.EXPECT().Download(
+					gomock.Any(),
+					"https://github.com/buildpacks/lifecycle/releases/download/v3.4.5/lifecycle-v3.4.5+linux.x86-64.tgz",
+				).Return(
+					blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil,
+				)
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+				h.AssertContains(t, out.String(), "failed to find a lifecycle binary")
+			})
+
 			when("windows", func() {
 				it("should download from predetermined uri", func() {
 					opts.Config.Extensions = nil      // TODO: downloading extensions doesn't work yet; to be implemented in https://github.com/buildpacks/pack/issues/1489
