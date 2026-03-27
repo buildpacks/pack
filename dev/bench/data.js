@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773884480681,
+  "lastUpdate": 1774611636771,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13546,6 +13546,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 90589328967,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0d1bb33c22733b76de10fdc768020ad2f053880e",
+          "message": "build(deps): bump the go-dependencies group with 2 updates (#2552)\n\nBumps the go-dependencies group with 2 updates: [github.com/chainguard-dev/kaniko](https://github.com/chainguard-dev/kaniko) and [github.com/google/go-containerregistry](https://github.com/google/go-containerregistry).\n\n\nUpdates `github.com/chainguard-dev/kaniko` from 1.25.11 to 1.25.12\n- [Release notes](https://github.com/chainguard-dev/kaniko/releases)\n- [Changelog](https://github.com/chainguard-forks/kaniko/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/chainguard-dev/kaniko/compare/v1.25.11...v1.25.12)\n\nUpdates `github.com/google/go-containerregistry` from 0.21.2 to 0.21.3\n- [Release notes](https://github.com/google/go-containerregistry/releases)\n- [Commits](https://github.com/google/go-containerregistry/compare/v0.21.2...v0.21.3)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/chainguard-dev/kaniko\n  dependency-version: 1.25.12\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/google/go-containerregistry\n  dependency-version: 0.21.3\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-03-27T06:37:40-05:00",
+          "tree_id": "d025a742413714ef93cceec3b39915911c3e8ddd",
+          "url": "https://github.com/buildpacks/pack/commit/0d1bb33c22733b76de10fdc768020ad2f053880e"
+        },
+        "date": 1774611635137,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5688611000,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1763322074,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 91077966383,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
