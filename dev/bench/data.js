@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774612251671,
+  "lastUpdate": 1775757030280,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13630,6 +13630,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 90043548783,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e667ae06c26052ed967f809d24b1132f67c90ab8",
+          "message": "build(deps): bump the go-dependencies group across 1 directory with 5 updates (#2563)\n\nBumps the go-dependencies group with 5 updates in the / directory:\n\n| Package | From | To |\n| --- | --- | --- |\n| [github.com/docker/cli](https://github.com/docker/cli) | `29.3.0+incompatible` | `29.3.1+incompatible` |\n| [github.com/go-git/go-git/v5](https://github.com/go-git/go-git) | `5.17.0` | `5.17.2` |\n| [github.com/google/go-containerregistry](https://github.com/google/go-containerregistry) | `0.21.3` | `0.21.4` |\n| [github.com/moby/moby/api](https://github.com/moby/moby) | `1.54.0` | `1.54.1` |\n| [github.com/moby/moby/client](https://github.com/moby/moby) | `0.3.0` | `0.4.0` |\n\n\n\nUpdates `github.com/docker/cli` from 29.3.0+incompatible to 29.3.1+incompatible\n- [Commits](https://github.com/docker/cli/compare/v29.3.0...v29.3.1)\n\nUpdates `github.com/go-git/go-git/v5` from 5.17.0 to 5.17.2\n- [Release notes](https://github.com/go-git/go-git/releases)\n- [Commits](https://github.com/go-git/go-git/compare/v5.17.0...v5.17.2)\n\nUpdates `github.com/google/go-containerregistry` from 0.21.3 to 0.21.4\n- [Release notes](https://github.com/google/go-containerregistry/releases)\n- [Commits](https://github.com/google/go-containerregistry/compare/v0.21.3...v0.21.4)\n\nUpdates `github.com/moby/moby/api` from 1.54.0 to 1.54.1\n- [Release notes](https://github.com/moby/moby/releases)\n- [Commits](https://github.com/moby/moby/compare/api/v1.54.0...api/v1.54.1)\n\nUpdates `github.com/moby/moby/client` from 0.3.0 to 0.4.0\n- [Release notes](https://github.com/moby/moby/releases)\n- [Changelog](https://github.com/moby/moby/blob/v0.4.0/CHANGELOG.md)\n- [Commits](https://github.com/moby/moby/compare/v0.3.0...v0.4.0)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/docker/cli\n  dependency-version: 29.3.1+incompatible\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/go-git/go-git/v5\n  dependency-version: 5.17.2\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/google/go-containerregistry\n  dependency-version: 0.21.4\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/moby/moby/api\n  dependency-version: 1.54.1\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/moby/moby/client\n  dependency-version: 0.4.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-04-09T12:47:27-05:00",
+          "tree_id": "dc9915acf324e6d6e6ccd477fc1ed6c15f1c7c4c",
+          "url": "https://github.com/buildpacks/pack/commit/e667ae06c26052ed967f809d24b1132f67c90ab8"
+        },
+        "date": 1775757029381,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3391536727,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 941180484,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 99475900503,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
