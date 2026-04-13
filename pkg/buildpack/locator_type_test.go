@@ -156,6 +156,14 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			expectedType: buildpack.RegistryLocator,
 		},
 		{
+			locator:      "localhost:5000/foo",
+			expectedType: buildpack.RegistryLocator,
+		},
+		{
+			locator:      "myregistry:8080/bar",
+			expectedType: buildpack.RegistryLocator,
+		},
+		{
 			locator:      "cnbs/sample-package@hello-universe",
 			expectedType: buildpack.InvalidLocator,
 		},
