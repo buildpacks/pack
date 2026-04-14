@@ -24,6 +24,13 @@ var KnownBuilders = []KnownBuilder{
 	},
 	{
 		Vendor:             "Heroku",
+		Image:              "heroku/builder:26",
+		DefaultDescription: "Ubuntu 26.04 AMD64+ARM64 base image with buildpacks for .NET, Go, Java, Node.js, Python & Scala",
+		Suggested:          false,
+		Trusted:            true,
+	},
+	{
+		Vendor:             "Heroku",
 		Image:              "heroku/builder:24",
 		DefaultDescription: "Ubuntu 24.04 AMD64+ARM64 base image with buildpacks for Go, Java, Node.js, PHP, Python, Ruby & Scala.",
 		Suggested:          true,
