@@ -20,6 +20,16 @@ func TestTrustedBuilder(t *testing.T) {
 }
 
 func trustedBuilder(t *testing.T, when spec.G, it spec.S) {
+	when("SuggestedBuilders", func() {
+		it("are all trusted", func() {
+			for _, knownBuilder := range bldr.KnownBuilders {
+				if knownBuilder.Suggested {
+					h.AssertTrue(t, knownBuilder.Trusted)
+				}
+			}
+		})
+	})
+
 	when("IsKnownTrustedBuilder", func() {
 		it("matches exactly", func() {
 			h.AssertTrue(t, bldr.IsKnownTrustedBuilder("paketobuildpacks/builder-jammy-base"))
