@@ -22,10 +22,10 @@ func TestTrustedBuilder(t *testing.T) {
 func trustedBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("SuggestedBuilders", func() {
 		it("are all trusted", func() {
-			for _, knownBuilder := range bldr.KnownBuilders {
-				if knownBuilder.Suggested {
-					h.AssertTrue(t, knownBuilder.Trusted)
-				}
+			for _, suggestedBuilder := range bldr.SuggestedBuilders {
+				isTrusted, err := bldr.IsTrustedBuilder(config.Config{}, suggestedBuilder.Image)
+				h.AssertNil(t, err)
+				h.AssertTrue(t, isTrusted)
 			}
 		})
 	})
