@@ -71,7 +71,7 @@ func inspectBuilder(
 	builderInfo := writer.SharedBuilderInfo{
 		Name:      imageName,
 		IsDefault: imageName == cfg.DefaultBuilder,
-		Trusted:   isTrusted,
+		Trusted:   isTrusted || bldr.IsKnownTrustedBuilder(imageName),
 	}
 
 	localInfo, localErr := inspector.InspectBuilder(imageName, true, client.WithDetectionOrderDepth(flags.Depth))
