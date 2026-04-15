@@ -57,7 +57,7 @@ func testListTrustedBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertContains(t, outBuf.String(), "Trusted Builders:")
 		})
 
-		it("shows suggested builders and locally trusted builder in alphabetical order", func() {
+		it("shows known and locally trusted builders in alphabetical order", func() {
 			builderName := "great-builder-" + h.RandString(8)
 
 			h.AssertNil(t, command.Execute())
