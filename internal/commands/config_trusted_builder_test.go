@@ -85,7 +85,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 	when("list", func() {
 		var args = []string{"list"}
 
-		it("shows suggested builders and locally trusted builder in alphabetical order", func() {
+		it("shows known and locally trusted builders in alphabetical order", func() {
 			builderName := "great-builder-" + h.RandString(8)
 
 			command.SetArgs(args)
@@ -171,7 +171,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("builder is a suggested builder", func() {
+			when("builder is a known trusted builder", func() {
 				it("does nothing", func() {
 					h.AssertNil(t, os.WriteFile(configPath, []byte(""), os.ModePerm))
 
@@ -268,7 +268,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("builder is a suggested builder", func() {
+		when("builder is a known trusted builder", func() {
 			it("does nothing and reports that ", func() {
 				builder := "paketobuildpacks/builder-jammy-base"
 				command := commands.ConfigTrustedBuilder(logger, config.Config{}, configPath)
