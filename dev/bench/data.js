@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776858993187,
+  "lastUpdate": 1776859225211,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13798,6 +13798,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 85360831894,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d92a7ca0490aa044434cc21c7008248025d2dc4a",
+          "message": "build(deps): bump the go-dependencies group across 1 directory with 11 updates (#2580)\n\nBumps the go-dependencies group with 4 updates in the / directory: [github.com/chainguard-dev/kaniko](https://github.com/chainguard-dev/kaniko), [github.com/gdamore/tcell/v2](https://github.com/gdamore/tcell), [github.com/moby/moby/api](https://github.com/moby/moby) and [github.com/moby/moby/client](https://github.com/moby/moby).\n\n\nUpdates `github.com/chainguard-dev/kaniko` from 1.25.12 to 1.25.13\n- [Release notes](https://github.com/chainguard-dev/kaniko/releases)\n- [Changelog](https://github.com/chainguard-forks/kaniko/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/chainguard-dev/kaniko/compare/v1.25.12...v1.25.13)\n\nUpdates `github.com/docker/cli` from 29.3.1+incompatible to 29.4.0+incompatible\n- [Commits](https://github.com/docker/cli/compare/v29.3.1...v29.4.0)\n\nUpdates `github.com/gdamore/tcell/v2` from 2.13.8 to 2.13.9\n- [Release notes](https://github.com/gdamore/tcell/releases)\n- [Changelog](https://github.com/gdamore/tcell/blob/main/CHANGESv3.md)\n- [Commits](https://github.com/gdamore/tcell/compare/v2.13.8...v2.13.9)\n\nUpdates `github.com/google/go-containerregistry` from 0.21.4 to 0.21.5\n- [Release notes](https://github.com/google/go-containerregistry/releases)\n- [Commits](https://github.com/google/go-containerregistry/compare/v0.21.4...v0.21.5)\n\nUpdates `github.com/moby/moby/api` from 1.54.1 to 1.54.2\n- [Release notes](https://github.com/moby/moby/releases)\n- [Commits](https://github.com/moby/moby/compare/api/v1.54.1...api/v1.54.2)\n\nUpdates `github.com/moby/moby/client` from 0.4.0 to 0.4.1\n- [Release notes](https://github.com/moby/moby/releases)\n- [Changelog](https://github.com/moby/moby/blob/v0.4.1/CHANGELOG.md)\n- [Commits](https://github.com/moby/moby/compare/v0.4.0...v0.4.1)\n\nUpdates `golang.org/x/crypto` from 0.49.0 to 0.50.0\n- [Commits](https://github.com/golang/crypto/compare/v0.49.0...v0.50.0)\n\nUpdates `golang.org/x/mod` from 0.34.0 to 0.35.0\n- [Commits](https://github.com/golang/mod/compare/v0.34.0...v0.35.0)\n\nUpdates `golang.org/x/sys` from 0.42.0 to 0.43.0\n- [Commits](https://github.com/golang/sys/compare/v0.42.0...v0.43.0)\n\nUpdates `golang.org/x/term` from 0.41.0 to 0.42.0\n- [Commits](https://github.com/golang/term/compare/v0.41.0...v0.42.0)\n\nUpdates `golang.org/x/text` from 0.35.0 to 0.36.0\n- [Release notes](https://github.com/golang/text/releases)\n- [Commits](https://github.com/golang/text/compare/v0.35.0...v0.36.0)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/chainguard-dev/kaniko\n  dependency-version: 1.25.13\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/docker/cli\n  dependency-version: 29.4.0+incompatible\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: github.com/gdamore/tcell/v2\n  dependency-version: 2.13.9\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/google/go-containerregistry\n  dependency-version: 0.21.5\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/moby/moby/api\n  dependency-version: 1.54.2\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/moby/moby/client\n  dependency-version: 0.4.1\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/crypto\n  dependency-version: 0.50.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/mod\n  dependency-version: 0.35.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/sys\n  dependency-version: 0.43.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/term\n  dependency-version: 0.42.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/text\n  dependency-version: 0.36.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-04-22T06:33:57-05:00",
+          "tree_id": "30c3a41b567265960946481178956fede346296a",
+          "url": "https://github.com/buildpacks/pack/commit/d92a7ca0490aa044434cc21c7008248025d2dc4a"
+        },
+        "date": 1776859223670,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5327786976,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1876983686,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 84663115830,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
