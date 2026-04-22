@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776866313368,
+  "lastUpdate": 1776872683542,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13882,6 +13882,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 100757526490,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7a70737d0f32ca8db41a6e9b47a5aaa981eb7584",
+          "message": "chore: add .grype.yaml to ignore unreachable docker daemon CVEs (#2582)\n\nMirror the ignore list used by buildpacks/lifecycle for the same\nreasons: pack uses docker/docker as a client only, so daemon-side\nvulnerabilities (plugin install privilege validation, AuthZ plugin\nbypass) are not reachable from pack's code paths. Grype also flags\ntwo long-standing protobuf false positives that are already filtered\nby lifecycle.\n\nThis silences the scheduled check-latest-release.yml grype scan,\nwhich currently fails on:\n- GHSA-pxq6-2prw-chj9 (Medium)\n- GHSA-x744-4wpc-v9h2 (High)\n\nBoth are fixed upstream in github.com/moby/moby/v2 but not backported\nto the github.com/docker/docker module, so grype cannot auto-resolve\nthem.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 4.7 <noreply@anthropic.com>",
+          "timestamp": "2026-04-22T10:41:04-05:00",
+          "tree_id": "7677486a66501d911691435404a9a3ecf394e4ac",
+          "url": "https://github.com/buildpacks/pack/commit/7a70737d0f32ca8db41a6e9b47a5aaa981eb7584"
+        },
+        "date": 1776872681438,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5374139965,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1836276362,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 90491281522,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
