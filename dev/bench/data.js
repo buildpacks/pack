@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776859225211,
+  "lastUpdate": 1776866313368,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13840,6 +13840,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 84663115830,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cf418c2bf6e04b9965d595983e9afe9bf4c2ee39",
+          "message": "chore: upgrade Go to 1.25.9 to fix stdlib CVEs (#2581)\n\nFixes CVE-2026-27143 (Critical), CVE-2026-27140 (High),\nCVE-2026-27144 (High), CVE-2026-32280 (High), CVE-2026-32281 (High),\nCVE-2026-32283 (High), CVE-2026-32282 (Medium), CVE-2026-32288 (Medium),\nand CVE-2026-32289 (Medium) in the Go standard library by bumping the\nminimum Go version to 1.25.9.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 4.7 <noreply@anthropic.com>",
+          "timestamp": "2026-04-22T08:55:28-05:00",
+          "tree_id": "5b2a4f69ecfea9dc9588c479c1cbd8a044d4ea05",
+          "url": "https://github.com/buildpacks/pack/commit/cf418c2bf6e04b9965d595983e9afe9bf4c2ee39"
+        },
+        "date": 1776866311523,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4347518741,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1344901282,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 100757526490,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
