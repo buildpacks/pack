@@ -39,16 +39,10 @@ func suggestSettingBuilder(logger logging.Logger, inspector BuilderInspector) {
 }
 
 func suggestBuilders(logger logging.Logger, client BuilderInspector) {
-	suggestedBuilders := []bldr.KnownBuilder{}
-	for _, knownBuilder := range bldr.KnownBuilders {
-		if knownBuilder.Suggested {
-			suggestedBuilders = append(suggestedBuilders, knownBuilder)
-		}
-	}
-	WriteSuggestedBuilder(logger, client, suggestedBuilders)
+	WriteSuggestedBuilder(logger, client, bldr.SuggestedBuilders)
 }
 
-func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, builders []bldr.KnownBuilder) {
+func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, builders []bldr.SuggestedBuilder) {
 	sort.Slice(builders, func(i, j int) bool {
 		if builders[i].Vendor == builders[j].Vendor {
 			return builders[i].Image < builders[j].Image
@@ -66,7 +60,7 @@ func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, bu
 	wg.Add(len(builders))
 
 	for i, builder := range builders {
-		go func(w *sync.WaitGroup, i int, builder bldr.KnownBuilder) {
+		go func(w *sync.WaitGroup, i int, builder bldr.SuggestedBuilder) {
 			descriptions[i] = getBuilderDescription(builder, inspector)
 			w.Done()
 		}(&wg, i, builder)
@@ -84,7 +78,7 @@ func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, bu
 	logger.Info("\tpack builder inspect <builder-image>")
 }
 
-func getBuilderDescription(builder bldr.KnownBuilder, inspector BuilderInspector) string {
+func getBuilderDescription(builder bldr.SuggestedBuilder, inspector BuilderInspector) string {
 	info, err := inspector.InspectBuilder(builder.Image, false)
 	if err == nil && info != nil && info.Description != "" {
 		return info.Description

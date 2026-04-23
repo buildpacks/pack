@@ -55,7 +55,7 @@ func addTrustedBuilder(args []string, logger logging.Logger, cfg config.Config, 
 	if err != nil {
 		return err
 	}
-	if isTrusted || bldr.IsKnownTrustedBuilder(imageName) {
+	if isTrusted {
 		logger.Infof("Builder %s is already trusted", style.Symbol(imageName))
 		return nil
 	}
@@ -103,12 +103,8 @@ func removeTrustedBuilder(args []string, logger logging.Logger, cfg config.Confi
 }
 
 func getTrustedBuilders(cfg config.Config) []string {
-	var trustedBuilders []string
-	for _, knownBuilder := range bldr.KnownBuilders {
-		if knownBuilder.Trusted {
-			trustedBuilders = append(trustedBuilders, knownBuilder.Image)
-		}
-	}
+	trustedBuilders := make([]string, len(bldr.TrustedBuilders))
+	copy(trustedBuilders, bldr.TrustedBuilders)
 
 	for _, builder := range cfg.TrustedBuilders {
 		trustedBuilders = append(trustedBuilders, builder.Name)
