@@ -258,6 +258,12 @@ func (f *Fetcher) FetchForPlatform(ctx context.Context, name string, options Fet
 
 	platformStr := options.Target.ValuesAsPlatform()
 
+	// Log the pull attempt upfront so it appears in output regardless of whether
+	// digest resolution succeeds (mirrors the log emitted by Fetch for non-FetchForPlatform paths).
+	if options.Daemon {
+		f.logger.Debugf("Pulling image %s with platform %s", style.Symbol(name), style.Symbol(platformStr))
+	}
+
 	// When PullPolicy is PullNever, skip platform-specific digest resolution as it requires
 	// network access to fetch the manifest list. Instead, use the image as-is from the daemon.
 	// Note: This may cause issues with containerd storage. Users should pre-pull the platform-specific
