@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777754088349,
+  "lastUpdate": 1777755954512,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13966,6 +13966,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 92970387243,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "dushyantdahiya2@gmail.com",
+            "name": "Dushyant Dahiya",
+            "username": "ddusht"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b39620ff3c47e713d7fa6ce063255e1bf99d21bc",
+          "message": "fix: fetch builder image per platform (#2589)\n\n* fix(build): fetch builder per platform\nSigned-off-by: Dushyant Dahiya <dushyantdahiya2@gmail.com>\n\n* fix(acceptance): emit platform pull log before digest resolution in FetchForPlatform\n\nSigned-off-by: Dushyant Dahiya <dushyantdahiya2@gmail.com>\n\n---------\n\nSigned-off-by: Dushyant Dahiya <dushyantdahiya2@gmail.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-05-02T16:03:43-05:00",
+          "tree_id": "d60f48cd025a04ff64da442224063a80b5fb438c",
+          "url": "https://github.com/buildpacks/pack/commit/b39620ff3c47e713d7fa6ce063255e1bf99d21bc"
+        },
+        "date": 1777755952727,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5051300493,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1534077368,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 92060490009,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
