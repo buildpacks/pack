@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777755954512,
+  "lastUpdate": 1777757590539,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14008,6 +14008,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 92060490009,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "03db778083925ff319d3c6bc3f6189c39780c32e",
+          "message": "build(deps): bump yaml in /.github/workflows/actions/release-notes (#2554)\n\nBumps [yaml](https://github.com/eemeli/yaml) from 1.10.0 to 1.10.3.\n- [Release notes](https://github.com/eemeli/yaml/releases)\n- [Commits](https://github.com/eemeli/yaml/compare/v1.10.0...v1.10.3)\n\n---\nupdated-dependencies:\n- dependency-name: yaml\n  dependency-version: 1.10.3\n  dependency-type: direct:production\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-05-02T21:31:07Z",
+          "tree_id": "dbb5e064e42a6b963aefabab3886e07544c9b0cf",
+          "url": "https://github.com/buildpacks/pack/commit/03db778083925ff319d3c6bc3f6189c39780c32e"
+        },
+        "date": 1777757589119,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5518689992,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1861756479,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 81439330676,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
