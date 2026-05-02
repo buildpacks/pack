@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777758638894,
+  "lastUpdate": 1777759312068,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14092,6 +14092,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 97053306615,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jambalaya.pyoncafe@outlook.jp",
+            "name": "Jam Balaya",
+            "username": "JamBalaya56562"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3ebbecd20f477a4711d5cd28427956c61f6b13e3",
+          "message": "build: add `syntax` parser directive to Dockerfile (#2420)\n\nSigned-off-by: JamBalaya56562 <jambalaya.pyoncafe@outlook.jp>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-05-02T21:59:24Z",
+          "tree_id": "eab36a96acbecca7a00fc5f31ba95c6899c68a31",
+          "url": "https://github.com/buildpacks/pack/commit/3ebbecd20f477a4711d5cd28427956c61f6b13e3"
+        },
+        "date": 1777759310577,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4993650735,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 9379325256,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 101021824027,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
