@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1776872683542,
+  "lastUpdate": 1777754088349,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -13924,6 +13924,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 90491281522,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d826fe6c8497d30fb6dd76307c201dfbbfe8862f",
+          "message": "build(deps): bump github.com/docker/cli in the go-dependencies group (#2585)\n\nBumps the go-dependencies group with 1 update: [github.com/docker/cli](https://github.com/docker/cli).\n\n\nUpdates `github.com/docker/cli` from 29.4.0+incompatible to 29.4.1+incompatible\n- [Commits](https://github.com/docker/cli/compare/v29.4.0...v29.4.1)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/docker/cli\n  dependency-version: 29.4.1+incompatible\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-05-02T15:32:00-05:00",
+          "tree_id": "08115a81faeb9309a322d371e6ab981ae2f14645",
+          "url": "https://github.com/buildpacks/pack/commit/d826fe6c8497d30fb6dd76307c201dfbbfe8862f"
+        },
+        "date": 1777754087260,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4358372259,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1317758849,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 92970387243,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
