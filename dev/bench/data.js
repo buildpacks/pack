@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777757590539,
+  "lastUpdate": 1777758638894,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14050,6 +14050,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 81439330676,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dfa19a2939eaedd6cd7b172318ef36a0adcbc787",
+          "message": "build(deps): bump uuid and @actions/core (#2583)\n\nRemoves [uuid](https://github.com/uuidjs/uuid). It's no longer used after updating ancestor dependency [@actions/core](https://github.com/actions/toolkit/tree/HEAD/packages/core). These dependencies need to be updated together.\n\n\nRemoves `uuid`\n\nUpdates `@actions/core` from 1.10.0 to 1.11.1\n- [Changelog](https://github.com/actions/toolkit/blob/main/packages/core/RELEASES.md)\n- [Commits](https://github.com/actions/toolkit/commits/HEAD/packages/core)\n\n---\nupdated-dependencies:\n- dependency-name: \"@actions/core\"\n  dependency-version: 1.11.1\n  dependency-type: direct:production\n- dependency-name: uuid\n  dependency-version: \n  dependency-type: indirect\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-05-02T16:48:23-05:00",
+          "tree_id": "472cf552a8d6295def48786def225b79ca63bc9f",
+          "url": "https://github.com/buildpacks/pack/commit/dfa19a2939eaedd6cd7b172318ef36a0adcbc787"
+        },
+        "date": 1777758637509,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5027267686,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1525276968,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 97053306615,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
