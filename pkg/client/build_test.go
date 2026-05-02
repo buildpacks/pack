@@ -2334,6 +2334,13 @@ api = "0.2"
 					h.AssertEq(t, args.PullPolicy, image.PullAlways)
 					h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/arm64")
 
+					// builder must be fetched via FetchForPlatform so that containerd-backed daemons
+					// return the platform-specific image config (and its labels) instead of the
+					// manifest list or the host-arch image.
+					platformArgs := fakeImageFetcher.FetchForPlatformCalls[defaultBuilderName]
+					h.AssertNotNil(t, platformArgs)
+					h.AssertEq(t, platformArgs.Target.ValuesAsPlatform(), "linux/arm64")
+
 					args = fakeImageFetcher.FetchCalls["default/run"]
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.PullPolicy, image.PullAlways)
@@ -2348,6 +2355,24 @@ api = "0.2"
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.PullPolicy, image.PullAlways)
 					h.AssertEq(t, args.Target.ValuesAsPlatform(), "linux/arm64")
+				})
+
+				it("fetches the builder image via FetchForPlatform to resolve platform-specific labels on containerd daemons", func() {
+					// Regression test for: pack build --platform linux/arm64 on a containerd-backed
+					// daemon returning 'missing label io.buildpacks.builder.metadata' because the
+					// host-arch (amd64) image config was inspected instead of the arm64 one.
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    defaultBuilderName,
+						Platform:   "linux/arm64",
+						PullPolicy: image.PullAlways,
+					}))
+
+					// FetchForPlatform must have been called for the builder (not plain Fetch),
+					// which ensures the platform-specific digest is resolved before the daemon
+					// reads the image config.
+					h.AssertNotNil(t, fakeImageFetcher.FetchForPlatformCalls[defaultBuilderName])
+					h.AssertEq(t, fakeImageFetcher.FetchForPlatformCalls[defaultBuilderName].Target.ValuesAsPlatform(), "linux/arm64")
 				})
 			})
 
@@ -2368,6 +2393,9 @@ api = "0.2"
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.PullPolicy, image.PullAlways)
 					h.AssertEq(t, args.Target, (*dist.Target)(nil))
+
+					// builder is always fetched via FetchForPlatform regardless of --platform
+					h.AssertNotNil(t, fakeImageFetcher.FetchForPlatformCalls[defaultBuilderName])
 
 					args = fakeImageFetcher.FetchCalls["default/run"]
 					h.AssertEq(t, args.Daemon, true)
