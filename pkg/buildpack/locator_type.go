@@ -144,4 +144,3 @@ func isLocalFile(locator, relativeBaseDir string) bool {
 
 	return false
 }
-
