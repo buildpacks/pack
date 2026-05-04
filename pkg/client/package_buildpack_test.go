@@ -714,10 +714,10 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				)
 
 				it.Before(func() {
-					bp1URI = "localhost:3333/bp-1"
+					bp1URI = "docker://localhost:3333/bp-1"
 					target1 = dist.Target{OS: "linux", Arch: "amd64"}
 
-					bp2URI = "localhost:3333/bp-2"
+					bp2URI = "docker://localhost:3333/bp-2"
 					target2 = dist.Target{OS: "linux", Arch: "arm"}
 				})
 
@@ -733,14 +733,14 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 						indexAMD64Digest := newDigest(t, repoName, "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda40")
 						prepareRemoteMultiPlatformBuildpackPackage(t, mockImageFactory, mockImageFetcher, repoName, indexAMD64Digest, target1, []expectedMultiPlatformImage{
-							{digest: newDigest(t, bp1URI, "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda34"), id: "samples/bp-1", version: "0.0.1", bpURI: bp1URI},
-							{digest: newDigest(t, bp2URI, "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda35"), id: "samples/bp-2", version: "0.0.1", bpURI: bp2URI},
+							{digest: newDigest(t, buildpack.ParsePackageLocator(bp1URI), "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda34"), id: "samples/bp-1", version: "0.0.1", bpURI: buildpack.ParsePackageLocator(bp1URI)},
+							{digest: newDigest(t, buildpack.ParsePackageLocator(bp2URI), "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda35"), id: "samples/bp-2", version: "0.0.1", bpURI: buildpack.ParsePackageLocator(bp2URI)},
 						})
 
 						indexARMDigest := newDigest(t, repoName, "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda41")
 						prepareRemoteMultiPlatformBuildpackPackage(t, mockImageFactory, mockImageFetcher, repoName, indexARMDigest, target2, []expectedMultiPlatformImage{
-							{digest: newDigest(t, bp1URI, "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda36"), id: "samples/bp-1", version: "0.0.1", bpURI: bp1URI},
-							{digest: newDigest(t, bp2URI, "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda37"), id: "samples/bp-2", version: "0.0.1", bpURI: bp2URI},
+							{digest: newDigest(t, buildpack.ParsePackageLocator(bp1URI), "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda36"), id: "samples/bp-1", version: "0.0.1", bpURI: buildpack.ParsePackageLocator(bp1URI)},
+							{digest: newDigest(t, buildpack.ParsePackageLocator(bp2URI), "sha256:b9d056b83bb6446fee29e89a7fcf10203c562c1f59586a6e2f39c903597bda37"), id: "samples/bp-2", version: "0.0.1", bpURI: buildpack.ParsePackageLocator(bp2URI)},
 						})
 
 						// Define expected targets to package
