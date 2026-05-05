@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777827921561,
+  "lastUpdate": 1777982420050,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14176,6 +14176,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 100543826452,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5cdc8bff029eec1268d738bb07aae4d8fec0c9f9",
+          "message": "build(deps): bump the go-dependencies group with 3 updates (#2592)\n\nBumps the go-dependencies group with 3 updates: [github.com/chainguard-dev/kaniko](https://github.com/chainguard-dev/kaniko), [github.com/docker/cli](https://github.com/docker/cli) and [github.com/onsi/gomega](https://github.com/onsi/gomega).\n\n\nUpdates `github.com/chainguard-dev/kaniko` from 1.25.13 to 1.25.14\n- [Release notes](https://github.com/chainguard-dev/kaniko/releases)\n- [Changelog](https://github.com/chainguard-forks/kaniko/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/chainguard-dev/kaniko/compare/v1.25.13...v1.25.14)\n\nUpdates `github.com/docker/cli` from 29.4.1+incompatible to 29.4.2+incompatible\n- [Commits](https://github.com/docker/cli/compare/v29.4.1...v29.4.2)\n\nUpdates `github.com/onsi/gomega` from 1.39.1 to 1.40.0\n- [Release notes](https://github.com/onsi/gomega/releases)\n- [Changelog](https://github.com/onsi/gomega/blob/master/CHANGELOG.md)\n- [Commits](https://github.com/onsi/gomega/compare/v1.39.1...v1.40.0)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/chainguard-dev/kaniko\n  dependency-version: 1.25.14\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/docker/cli\n  dependency-version: 29.4.2+incompatible\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/onsi/gomega\n  dependency-version: 1.40.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-05-05T06:57:25-05:00",
+          "tree_id": "1c7e4662301195fe24ffdd7d2e92e43987f7b3f8",
+          "url": "https://github.com/buildpacks/pack/commit/5cdc8bff029eec1268d738bb07aae4d8fec0c9f9"
+        },
+        "date": 1777982419088,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3073303123,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 841039106,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 98183181616,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
