@@ -3607,8 +3607,8 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					h.AssertRemoteImageIndex(t, multiArchBuildpackPackage, types.OCIImageIndex, 3)
 
 					// runImage and buildImage are saved in the daemon, for this test we want them to be available in a registry
-					remoteRunImage = registryConfig.RepoName(runImage + h.RandString(8))
-					remoteBuildImage = registryConfig.RepoName(buildImage + h.RandString(8))
+					remoteRunImage = registryConfig.RepoName(runImage + strings.ToLower(h.RandString(8)))
+					remoteBuildImage = registryConfig.RepoName(buildImage + strings.ToLower(h.RandString(8)))
 
 					imageManager.TagImage(runImage, remoteRunImage)
 					imageManager.TagImage(buildImage, remoteBuildImage)
@@ -3644,7 +3644,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 				when("builder.toml has no targets but the user provides --target", func() {
 					when("--publish", func() {
 						it.Before(func() {
-							builderName = registryConfig.RepoName("remote-multi-platform-builder" + h.RandString(8))
+							builderName = registryConfig.RepoName("remote-multi-platform-builder" + strings.ToLower(h.RandString(8)))
 
 							// We need to configure our builder.toml with image references that points to our ephemeral registry
 							builderTomlPath = generateMultiPlatformBuilderToml("builder_multi_platform-no-targets.toml", multiArchBuildpackPackage, remoteBuildImage, remoteRunImage)
@@ -3672,7 +3672,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					when("--daemon", func() {
 						it.Before(func() {
-							builderName = registryConfig.RepoName("local-multi-platform-builder" + h.RandString(8))
+							builderName = registryConfig.RepoName("local-multi-platform-builder" + strings.ToLower(h.RandString(8)))
 
 							// We need to configure our builder.toml with image references that points to our ephemeral registry
 							builderTomlPath = generateMultiPlatformBuilderToml("builder_multi_platform-no-targets.toml", multiArchBuildpackPackage, buildImage, runImage)
@@ -3699,7 +3699,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 				when("builder.toml has targets", func() {
 					when("--publish", func() {
 						it.Before(func() {
-							builderName = registryConfig.RepoName("remote-multi-platform-builder" + h.RandString(8))
+							builderName = registryConfig.RepoName("remote-multi-platform-builder" + strings.ToLower(h.RandString(8)))
 
 							// We need to configure our builder.toml with image references that points to our ephemeral registry
 							builderTomlPath = generateMultiPlatformBuilderToml("builder_multi_platform.toml", multiArchBuildpackPackage, remoteBuildImage, remoteRunImage)
@@ -3724,7 +3724,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					when("--daemon", func() {
 						it.Before(func() {
-							builderName = registryConfig.RepoName("local-multi-platform-builder" + h.RandString(8))
+							builderName = registryConfig.RepoName("local-multi-platform-builder" + strings.ToLower(h.RandString(8)))
 
 							// We need to configure our builder.toml with image references that points to our ephemeral registry
 							builderTomlPath = generateMultiPlatformBuilderToml("builder_multi_platform.toml", multiArchBuildpackPackage, buildImage, runImage)
