@@ -229,7 +229,7 @@ func testWithoutSpecificBuilderRequirement(
 
 			when("no --format is provided", func() {
 				it("creates the package as image", func() {
-					packageName := "test/package-" + strings.ToLower(h.RandString(10))
+					packageName := "test/package-" + h.RandString(10)
 					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 
 					output := pack.RunSuccessfully("buildpack", "package", packageName, "-c", packageTomlPath)
@@ -243,8 +243,8 @@ func testWithoutSpecificBuilderRequirement(
 			when("--format image", func() {
 				it("creates the package", func() {
 					t.Log("package w/ only buildpacks")
-					nestedPackageName := "test/package-" + strings.ToLower(h.RandString(10))
-					packageName := "test/package-" + strings.ToLower(h.RandString(10))
+					nestedPackageName := "test/package-" + h.RandString(10)
+					packageName := "test/package-" + h.RandString(10)
 
 					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
@@ -281,7 +281,7 @@ func testWithoutSpecificBuilderRequirement(
 					when("no --targets", func() {
 						it("publishes image to registry", func() {
 							packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
-							nestedPackageName := registryConfig.RepoName("test/package-" + strings.ToLower(h.RandString(10)))
+							nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
 							nestedPackage := buildpacks.NewPackageImage(
 								t,
@@ -294,7 +294,7 @@ func testWithoutSpecificBuilderRequirement(
 							buildpackManager.PrepareBuildModules(tmpDir, nestedPackage)
 
 							aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
-							packageName := registryConfig.RepoName("test/package-" + strings.ToLower(h.RandString(10)))
+							packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
 							output := pack.RunSuccessfully(
 								"buildpack", "package", packageName,
@@ -315,7 +315,7 @@ func testWithoutSpecificBuilderRequirement(
 
 						it.Before(func() {
 							h.SkipIf(t, !pack.SupportsFeature(invoke.MultiPlatformBuildersAndBuildPackages), "multi-platform builders and buildpack packages are available since 0.34.0")
-							packageName = registryConfig.RepoName("simple-multi-platform-buildpack" + strings.ToLower(h.RandString(8)))
+							packageName = registryConfig.RepoName("simple-multi-platform-buildpack" + h.RandString(8))
 						})
 
 						when("simple buildpack on disk", func() {
@@ -396,7 +396,7 @@ func testWithoutSpecificBuilderRequirement(
 									h.AssertNil(t, err)
 
 									// push the dependency to a registry
-									depPackageName = registryConfig.RepoName("simple-multi-platform-buildpack" + strings.ToLower(h.RandString(8)))
+									depPackageName = registryConfig.RepoName("simple-multi-platform-buildpack" + h.RandString(8))
 									output := pack.RunSuccessfully(
 										"buildpack", "package", depPackageName,
 										"--path", depPath,
@@ -446,7 +446,7 @@ func testWithoutSpecificBuilderRequirement(
 
 						it.Before(func() {
 							h.SkipIf(t, !pack.SupportsFeature(invoke.MultiPlatformBuildersAndBuildPackages), "multi-platform builders and buildpack packages are available since 0.34.0")
-							packageName = registryConfig.RepoName("simple-multi-platform-buildpack" + strings.ToLower(h.RandString(8)))
+							packageName = registryConfig.RepoName("simple-multi-platform-buildpack" + h.RandString(8))
 						})
 
 						when("simple buildpack on disk", func() {
@@ -483,7 +483,7 @@ func testWithoutSpecificBuilderRequirement(
 				when("--pull-policy=never", func() {
 					it("should use local image", func() {
 						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
-						nestedPackageName := "test/package-" + strings.ToLower(h.RandString(10))
+						nestedPackageName := "test/package-" + h.RandString(10)
 						nestedPackage := buildpacks.NewPackageImage(
 							t,
 							pack,
@@ -495,7 +495,7 @@ func testWithoutSpecificBuilderRequirement(
 						defer imageManager.CleanupImages(nestedPackageName)
 						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
 
-						packageName := registryConfig.RepoName("test/package-" + strings.ToLower(h.RandString(10)))
+						packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 						defer imageManager.CleanupImages(packageName)
 						pack.JustRunSuccessfully(
 							"buildpack", "package", packageName,
@@ -507,7 +507,7 @@ func testWithoutSpecificBuilderRequirement(
 
 					it("should not pull image from registry", func() {
 						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
-						nestedPackageName := registryConfig.RepoName("test/package-" + strings.ToLower(h.RandString(10)))
+						nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 						nestedPackage := buildpacks.NewPackageImage(
 							t,
 							pack,
@@ -519,7 +519,7 @@ func testWithoutSpecificBuilderRequirement(
 						buildpackManager.PrepareBuildModules(tmpDir, nestedPackage)
 						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
 
-						packageName := registryConfig.RepoName("test/package-" + strings.ToLower(h.RandString(10)))
+						packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
 						output, err := pack.Run(
 							"buildpack", "package", packageName,
@@ -645,7 +645,7 @@ func testWithoutSpecificBuilderRequirement(
 				when("inspect", func() {
 					it("succeeds", func() {
 						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
-						packageImageName := registryConfig.RepoName("buildpack-" + strings.ToLower(h.RandString(8)))
+						packageImageName := registryConfig.RepoName("buildpack-" + h.RandString(8))
 
 						packageImage := buildpacks.NewPackageImage(
 							t,
@@ -2097,7 +2097,7 @@ func testAcceptance(
 							})
 
 							it("adds the buildpacks to the builder and runs them", func() {
-								packageImageName = registryConfig.RepoName("buildpack-" + strings.ToLower(h.RandString(8)))
+								packageImageName = registryConfig.RepoName("buildpack-" + h.RandString(8))
 
 								packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
 								packageImage := buildpacks.NewPackageImage(
@@ -2134,7 +2134,7 @@ func testAcceptance(
 							when("buildpackage is in a registry", func() {
 								it("adds the buildpacks to the builder and runs them", func() {
 									h.SkipIf(t, !pack.SupportsFeature(invoke.PlatformRetries), "")
-									packageImageName = registryConfig.RepoName("buildpack-" + strings.ToLower(h.RandString(8)))
+									packageImageName = registryConfig.RepoName("buildpack-" + h.RandString(8))
 
 									packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
 									packageImage := buildpacks.NewPackageImage(
@@ -3022,7 +3022,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						assertImage.ExistsLocally(nestedPackageName)
 
 						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
-						flattenedPackageName = "test/package-" + strings.ToLower(h.RandString(10))
+						flattenedPackageName = "test/package-" + h.RandString(10)
 
 						_ = pack.RunSuccessfully(
 							"buildpack", "package", flattenedPackageName,
@@ -3588,7 +3588,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					os.Setenv("DOCKER_CONFIG", registryConfig.DockerConfigDir)
 
 					// create a multi-platform buildpack and push it to a registry
-					multiArchBuildpackPackage = registryConfig.RepoName("simple-multi-platform-buildpack" + strings.ToLower(h.RandString(8)))
+					multiArchBuildpackPackage = registryConfig.RepoName("simple-multi-platform-buildpack" + h.RandString(8))
 					sourceDir := filepath.Join("testdata", "mock_buildpacks")
 					path := filepath.Join(tmpDir, "simple-layers-buildpack")
 					err = buildpacks.BpFolderSimpleLayers.Prepare(sourceDir, tmpDir)
@@ -3607,8 +3607,8 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					h.AssertRemoteImageIndex(t, multiArchBuildpackPackage, types.OCIImageIndex, 3)
 
 					// runImage and buildImage are saved in the daemon, for this test we want them to be available in a registry
-					remoteRunImage = registryConfig.RepoName(runImage + strings.ToLower(h.RandString(8)))
-					remoteBuildImage = registryConfig.RepoName(buildImage + strings.ToLower(h.RandString(8)))
+					remoteRunImage = registryConfig.RepoName(runImage + h.RandString(8))
+					remoteBuildImage = registryConfig.RepoName(buildImage + h.RandString(8))
 
 					imageManager.TagImage(runImage, remoteRunImage)
 					imageManager.TagImage(buildImage, remoteBuildImage)
@@ -3644,7 +3644,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 				when("builder.toml has no targets but the user provides --target", func() {
 					when("--publish", func() {
 						it.Before(func() {
-							builderName = registryConfig.RepoName("remote-multi-platform-builder" + strings.ToLower(h.RandString(8)))
+							builderName = registryConfig.RepoName("remote-multi-platform-builder" + h.RandString(8))
 
 							// We need to configure our builder.toml with image references that points to our ephemeral registry
 							builderTomlPath = generateMultiPlatformBuilderToml("builder_multi_platform-no-targets.toml", multiArchBuildpackPackage, remoteBuildImage, remoteRunImage)
@@ -3672,7 +3672,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					when("--daemon", func() {
 						it.Before(func() {
-							builderName = registryConfig.RepoName("local-multi-platform-builder" + strings.ToLower(h.RandString(8)))
+							builderName = registryConfig.RepoName("local-multi-platform-builder" + h.RandString(8))
 
 							// We need to configure our builder.toml with image references that points to our ephemeral registry
 							builderTomlPath = generateMultiPlatformBuilderToml("builder_multi_platform-no-targets.toml", multiArchBuildpackPackage, buildImage, runImage)
@@ -3699,7 +3699,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 				when("builder.toml has targets", func() {
 					when("--publish", func() {
 						it.Before(func() {
-							builderName = registryConfig.RepoName("remote-multi-platform-builder" + strings.ToLower(h.RandString(8)))
+							builderName = registryConfig.RepoName("remote-multi-platform-builder" + h.RandString(8))
 
 							// We need to configure our builder.toml with image references that points to our ephemeral registry
 							builderTomlPath = generateMultiPlatformBuilderToml("builder_multi_platform.toml", multiArchBuildpackPackage, remoteBuildImage, remoteRunImage)
@@ -3724,7 +3724,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					when("--daemon", func() {
 						it.Before(func() {
-							builderName = registryConfig.RepoName("local-multi-platform-builder" + strings.ToLower(h.RandString(8)))
+							builderName = registryConfig.RepoName("local-multi-platform-builder" + h.RandString(8))
 
 							// We need to configure our builder.toml with image references that points to our ephemeral registry
 							builderTomlPath = generateMultiPlatformBuilderToml("builder_multi_platform.toml", multiArchBuildpackPackage, buildImage, runImage)
@@ -3835,10 +3835,10 @@ func createComplexBuilder(t *testing.T,
 		"run_image_mirror": runImageMirror,
 	}
 
-	packageImageName := registryConfig.RepoName("nested-level-1-buildpack-" + strings.ToLower(h.RandString(8)))
-	nestedLevelTwoBuildpackName := registryConfig.RepoName("nested-level-2-buildpack-" + strings.ToLower(h.RandString(8)))
-	simpleLayersBuildpackName := registryConfig.RepoName("simple-layers-buildpack-" + strings.ToLower(h.RandString(8)))
-	simpleLayersBuildpackDifferentShaName := registryConfig.RepoName("simple-layers-buildpack-different-name-" + strings.ToLower(h.RandString(8)))
+	packageImageName := registryConfig.RepoName("nested-level-1-buildpack-" + h.RandString(8))
+	nestedLevelTwoBuildpackName := registryConfig.RepoName("nested-level-2-buildpack-" + h.RandString(8))
+	simpleLayersBuildpackName := registryConfig.RepoName("simple-layers-buildpack-" + h.RandString(8))
+	simpleLayersBuildpackDifferentShaName := registryConfig.RepoName("simple-layers-buildpack-different-name-" + h.RandString(8))
 
 	templateMapping["package_id"] = "simple/nested-level-1"
 	templateMapping["package_image_name"] = packageImageName
@@ -3982,7 +3982,7 @@ func createBuilder(
 	}
 
 	packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package.toml", imageManager.HostOS())
-	packageImageName := registryConfig.RepoName("simple-layers-package-image-buildpack-" + strings.ToLower(h.RandString(8)))
+	packageImageName := registryConfig.RepoName("simple-layers-package-image-buildpack-" + h.RandString(8))
 
 	packageImageBuildpack := buildpacks.NewPackageImage(
 		t,
@@ -4215,10 +4215,10 @@ func createFlattenBuilder(
 		"run_image_mirror": runImageMirror,
 	}
 
-	packageImageName := registryConfig.RepoName("nested-level-1-buildpack-" + strings.ToLower(h.RandString(8)))
-	nestedLevelTwoBuildpackName := registryConfig.RepoName("nested-level-2-buildpack-" + strings.ToLower(h.RandString(8)))
-	simpleLayersBuildpackName := registryConfig.RepoName("simple-layers-buildpack-" + strings.ToLower(h.RandString(8)))
-	simpleLayersBuildpackDifferentShaName := registryConfig.RepoName("simple-layers-buildpack-different-name-" + strings.ToLower(h.RandString(8)))
+	packageImageName := registryConfig.RepoName("nested-level-1-buildpack-" + h.RandString(8))
+	nestedLevelTwoBuildpackName := registryConfig.RepoName("nested-level-2-buildpack-" + h.RandString(8))
+	simpleLayersBuildpackName := registryConfig.RepoName("simple-layers-buildpack-" + h.RandString(8))
+	simpleLayersBuildpackDifferentShaName := registryConfig.RepoName("simple-layers-buildpack-different-name-" + h.RandString(8))
 
 	templateMapping["package_id"] = "simple/nested-level-1"
 	templateMapping["package_image_name"] = packageImageName
