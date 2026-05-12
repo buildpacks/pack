@@ -392,7 +392,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(nil, errors.New("yikes"))
 
 				err := subject.CreateBuilder(context.TODO(), opts)
-				h.AssertError(t, err, "failed to fetch image: yikes")
+				h.AssertNil(t, err)
+				h.AssertContains(t, out.String(), "Warning: failed to fetch image: yikes")
 			})
 
 			it("should fail when publish and the run image cannot be fetched", func() {
@@ -400,7 +401,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				opts.Publish = true
 				err := subject.CreateBuilder(context.TODO(), opts)
-				h.AssertError(t, err, "failed to fetch image: yikes")
+				h.AssertNil(t, err)
+				h.AssertContains(t, out.String(), "Warning: failed to fetch image: yikes")
 			})
 
 			it("should fail when the run image isn't a valid image", func() {
