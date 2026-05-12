@@ -159,7 +159,7 @@ func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions, 
 	}
 
 	if err := c.validateRunImageConfig(ctx, opts, target); err != nil {
-		return errors.Wrap(err, "invalid run image config")
+		c.logger.Warnf("invalid run image config: %v", err)
 	}
 
 	return nil
