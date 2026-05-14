@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777982420050,
+  "lastUpdate": 1778766028182,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14218,6 +14218,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 98183181616,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ab4d2149373deac45496c352ce131ff0a7d5a600",
+          "message": "build(deps): bump github.com/go-git/go-git/v5 from 5.18.0 to 5.19.0 (#2596)\n\nBumps [github.com/go-git/go-git/v5](https://github.com/go-git/go-git) from 5.18.0 to 5.19.0.\n- [Release notes](https://github.com/go-git/go-git/releases)\n- [Changelog](https://github.com/go-git/go-git/blob/main/HISTORY.md)\n- [Commits](https://github.com/go-git/go-git/compare/v5.18.0...v5.19.0)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/go-git/go-git/v5\n  dependency-version: 5.19.0\n  dependency-type: direct:production\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-05-14T08:37:42-05:00",
+          "tree_id": "d036dc2aafada295500c9cf5dffbb6f1eb2b2dee",
+          "url": "https://github.com/buildpacks/pack/commit/ab4d2149373deac45496c352ce131ff0a7d5a600"
+        },
+        "date": 1778766027181,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3434564532,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 848133702,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 87876850730,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
