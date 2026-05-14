@@ -2,6 +2,8 @@
 
 echo --- Detect: Volume Buildpack
 
+echo %USERNAME%
+
 set /p content=<%TEST_FILE_PATH%
 echo Detect: Reading file '%TEST_FILE_PATH%': %content%
 
