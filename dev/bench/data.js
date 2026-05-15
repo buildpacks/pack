@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778766028182,
+  "lastUpdate": 1778847091129,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14260,6 +14260,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 87876850730,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dc69d531cb5c0652d366d7604a8574fff321e5e7",
+          "message": "build(deps): bump the go-dependencies group across 1 directory with 7 updates (#2601)\n\nBumps the go-dependencies group with 4 updates in the / directory: [github.com/chainguard-dev/kaniko](https://github.com/chainguard-dev/kaniko), [github.com/docker/cli](https://github.com/docker/cli), [golang.org/x/crypto](https://github.com/golang/crypto) and [golang.org/x/mod](https://github.com/golang/mod).\n\n\nUpdates `github.com/chainguard-dev/kaniko` from 1.25.14 to 1.25.15\n- [Release notes](https://github.com/chainguard-dev/kaniko/releases)\n- [Changelog](https://github.com/chainguard-forks/kaniko/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/chainguard-dev/kaniko/compare/v1.25.14...v1.25.15)\n\nUpdates `github.com/docker/cli` from 29.4.2+incompatible to 29.4.3+incompatible\n- [Commits](https://github.com/docker/cli/compare/v29.4.2...v29.4.3)\n\nUpdates `golang.org/x/crypto` from 0.50.0 to 0.51.0\n- [Commits](https://github.com/golang/crypto/compare/v0.50.0...v0.51.0)\n\nUpdates `golang.org/x/mod` from 0.35.0 to 0.36.0\n- [Commits](https://github.com/golang/mod/compare/v0.35.0...v0.36.0)\n\nUpdates `golang.org/x/sys` from 0.43.0 to 0.44.0\n- [Commits](https://github.com/golang/sys/compare/v0.43.0...v0.44.0)\n\nUpdates `golang.org/x/term` from 0.42.0 to 0.43.0\n- [Commits](https://github.com/golang/term/compare/v0.42.0...v0.43.0)\n\nUpdates `golang.org/x/text` from 0.36.0 to 0.37.0\n- [Release notes](https://github.com/golang/text/releases)\n- [Commits](https://github.com/golang/text/compare/v0.36.0...v0.37.0)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/chainguard-dev/kaniko\n  dependency-version: 1.25.15\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/docker/cli\n  dependency-version: 29.4.3+incompatible\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/crypto\n  dependency-version: 0.51.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/mod\n  dependency-version: 0.36.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/sys\n  dependency-version: 0.44.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/term\n  dependency-version: 0.43.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/text\n  dependency-version: 0.37.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-05-15T07:08:27-05:00",
+          "tree_id": "685684839090e09a01c4f783fda44368289a0292",
+          "url": "https://github.com/buildpacks/pack/commit/dc69d531cb5c0652d366d7604a8574fff321e5e7"
+        },
+        "date": 1778847089852,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4457132869,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1316908494,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 96980118101,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
