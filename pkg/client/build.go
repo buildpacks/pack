@@ -367,7 +367,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		}
 	}()
 
-	rawBuilderImage, err := c.imageFetcher.Fetch(
+	rawBuilderImage, err := c.imageFetcher.FetchForPlatform(
 		ctx,
 		builderRef.Name(),
 		image.FetchOptions{
