@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778849260349,
+  "lastUpdate": 1778850907869,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14386,6 +14386,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 84049346158,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "runesoerensen@gmail.com",
+            "name": "Rune Soerensen",
+            "username": "runesoerensen"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aea0c7ac5a8ffb882152a0f0a0662fc8521845ce",
+          "message": "Fix `builder inspect` showing known builders as untrusted (#2571)\n\n* Add failing test for builder inspect not trusting known builders\n\nSigned-off-by: Rune Soerensen <rsoerensen@salesforce.com>\n\n* Check known trusted builders in builder inspect\n\nSigned-off-by: Rune Soerensen <rsoerensen@salesforce.com>\n\n---------\n\nSigned-off-by: Rune Soerensen <rsoerensen@salesforce.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-05-15T08:12:59-05:00",
+          "tree_id": "a5c591a0888789167e9bcccb4fb145f88359dd78",
+          "url": "https://github.com/buildpacks/pack/commit/aea0c7ac5a8ffb882152a0f0a0662fc8521845ce"
+        },
+        "date": 1778850906950,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 2966651689,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1022715253,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 81028956603,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
