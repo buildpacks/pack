@@ -4,6 +4,7 @@ package archive // import "github.com/buildpacks/pack/pkg/archive"
 import (
 	"archive/tar"
 	"archive/zip"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -15,6 +16,10 @@ import (
 
 	"github.com/buildpacks/pack/internal/paths"
 )
+
+// maxTarEntrySize is the maximum number of bytes that ReadTarEntry will read
+// from a single tar entry, guarding against decompression bombs.
+const maxTarEntrySize = 4 * 1024 * 1024 // 4 MB
 
 var NormalizedDateTime time.Time
 var Umask fs.FileMode
@@ -147,9 +152,15 @@ func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 		}
 
 		if paths.CanonicalTarPath(header.Name) == canonicalEntryPath {
-			buf, err := io.ReadAll(tr)
+			if header.Size > maxTarEntrySize {
+				return nil, nil, fmt.Errorf("tar entry %q is too large: %d bytes (max %d)", entryPath, header.Size, maxTarEntrySize)
+			}
+			buf, err := io.ReadAll(io.LimitReader(tr, maxTarEntrySize+1))
 			if err != nil {
 				return nil, nil, errors.Wrapf(err, "failed to read contents of '%s'", entryPath)
+			}
+			if int64(len(buf)) > maxTarEntrySize {
+				return nil, nil, fmt.Errorf("tar entry %q exceeds maximum allowed size of %d bytes", entryPath, maxTarEntrySize)
 			}
 
 			return header, buf, nil
