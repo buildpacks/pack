@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778848411395,
+  "lastUpdate": 1778849260349,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14344,6 +14344,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 81920491978,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "runesoerensen@gmail.com",
+            "name": "Rune Soerensen",
+            "username": "runesoerensen"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "831cfb845403e26ead12dfdc1be6bec48d179213",
+          "message": "Add `heroku/builder:26` as a trusted builder (#2569)\n\nSigned-off-by: Rune Soerensen <rsoerensen@salesforce.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-05-15T07:45:27-05:00",
+          "tree_id": "b5b3d2bf0b433ce92c8392f6c33a1774dd172da4",
+          "url": "https://github.com/buildpacks/pack/commit/831cfb845403e26ead12dfdc1be6bec48d179213"
+        },
+        "date": 1778849258752,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5584459642,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1916877931,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 84049346158,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
