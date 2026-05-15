@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM mcr.microsoft.com/windows/nanoserver:1809
 
 # non-zero sets all user-owned directories to BUILTIN\Users
