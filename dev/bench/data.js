@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778847091129,
+  "lastUpdate": 1778848411395,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14302,6 +14302,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 96980118101,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3409902bd3e233ea133245fc5a13cd5d6112ebca",
+          "message": "chore: upgrade Go to 1.25.10 to fix stdlib CVEs (#2602)\n\nBumps minimum Go version from 1.25.9 to 1.25.10 in go.mod to address\nstdlib vulnerabilities flagged by grype scans in #2595 and #2600.\n\nFollows the same pattern as #2581.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-05-15T07:30:42-05:00",
+          "tree_id": "b793ddf3e4ffbf19a21215648d3f2839294e7c92",
+          "url": "https://github.com/buildpacks/pack/commit/3409902bd3e233ea133245fc5a13cd5d6112ebca"
+        },
+        "date": 1778848409828,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6036923990,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1897518998,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 81920491978,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
