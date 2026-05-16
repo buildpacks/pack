@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/Masterminds/semver"
@@ -88,6 +89,11 @@ const (
 	windowsPrefix             = "c:"
 )
 
+type EnhancedProcess struct {
+	launch.Process
+	ArgsDisplay string
+}
+
 // InspectImage reads the Label metadata of an image. It initializes a ImageInfo object
 // using this metadata, and returns it.
 // If daemon is true, first the local registry will be searched for the image.
@@ -173,16 +179,25 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 	}
 
 	var processDetails ProcessDetails
+
+	// Update to how processes are handled to include enhanced argument information.
 	for _, proc := range buildMD.Processes {
-		proc := proc
-		if proc.WorkingDirectory == "" {
-			proc.WorkingDirectory = workingDir
+		enhancedProc := EnhancedProcess{
+			Process:     proc,
+			ArgsDisplay: formatArgsDisplay(proc.Args), // Utilize the new formatArgsDisplay to enhance arg visibility
 		}
+
+		if proc.WorkingDirectory == "" {
+			enhancedProc.WorkingDirectory = workingDir
+		}
+
 		if proc.Type == defaultProcessType {
-			processDetails.DefaultProcess = &proc
+			defaultProc := enhancedProc.Process
+			processDetails.DefaultProcess = &defaultProc
 			continue
 		}
-		processDetails.OtherProcesses = append(processDetails.OtherProcesses, proc)
+
+		processDetails.OtherProcesses = append(processDetails.OtherProcesses, enhancedProc.Process)
 	}
 
 	var stackCompat files.Stack
@@ -228,4 +243,21 @@ func getRebasableLabel(labeled dist.Labeled) (bool, error) {
 	}
 
 	return rebasableOutput, nil
+}
+
+func formatArgsDisplay(args []string) string {
+	if len(args) == 0 {
+		return "<NONE>" // Indicates no arguments are present.
+	}
+
+	var result strings.Builder
+	result.WriteString(fmt.Sprintf("(count = %d) ", len(args)))
+	for _, arg := range args {
+		if arg == "" {
+			result.WriteString(`"" `) // Represent empty string arguments visibly.
+		} else {
+			result.WriteString(fmt.Sprintf("%q ", arg))
+		}
+	}
+	return strings.TrimSpace(result.String())
 }
