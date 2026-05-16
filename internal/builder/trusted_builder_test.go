@@ -20,6 +20,16 @@ func TestTrustedBuilder(t *testing.T) {
 }
 
 func trustedBuilder(t *testing.T, when spec.G, it spec.S) {
+	when("SuggestedBuilders", func() {
+		it("are all trusted", func() {
+			for _, suggestedBuilder := range bldr.SuggestedBuilders {
+				isTrusted, err := bldr.IsTrustedBuilder(config.Config{}, suggestedBuilder.Image)
+				h.AssertNil(t, err)
+				h.AssertTrue(t, isTrusted)
+			}
+		})
+	})
+
 	when("IsKnownTrustedBuilder", func() {
 		it("matches exactly", func() {
 			h.AssertTrue(t, bldr.IsKnownTrustedBuilder("paketobuildpacks/builder-jammy-base"))
@@ -30,6 +40,23 @@ func trustedBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("IsTrustedBuilder", func() {
+		it("trusts known trusted builders", func() {
+			// Known builder with exact tag match
+			isTrusted, err := bldr.IsTrustedBuilder(config.Config{}, "heroku/builder:24")
+			h.AssertNil(t, err)
+			h.AssertTrue(t, isTrusted)
+
+			// Known builder without tag should match any tag
+			isTrusted, err = bldr.IsTrustedBuilder(config.Config{}, "paketobuildpacks/builder-jammy-base:latest")
+			h.AssertNil(t, err)
+			h.AssertTrue(t, isTrusted)
+
+			// Unknown builder should not be trusted
+			isTrusted, err = bldr.IsTrustedBuilder(config.Config{}, "my/private/builder")
+			h.AssertNil(t, err)
+			h.AssertFalse(t, isTrusted)
+		})
+
 		it("trust image without tag", func() {
 			cfg := config.Config{
 				TrustedBuilders: []config.TrustedBuilder{

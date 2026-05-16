@@ -83,7 +83,7 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("builder is a suggested builder", func() {
+			when("builder is a known trusted builder", func() {
 				it("does nothing", func() {
 					h.AssertNil(t, os.WriteFile(configPath, []byte(""), os.ModePerm))
 
