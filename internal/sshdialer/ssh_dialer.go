@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/docker/cli/cli/connhelper"
-	"github.com/docker/docker/pkg/homedir"
+	"github.com/moby/moby/v2/pkg/homedir"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"

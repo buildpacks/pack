@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/docker/docker/pkg/ioutils"
+	"github.com/moby/moby/v2/pkg/ioutils"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/pkg/archive"

@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/docker/docker/volume/mounts"
+	"github.com/moby/moby/v2/daemon/volume/mounts"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/style"

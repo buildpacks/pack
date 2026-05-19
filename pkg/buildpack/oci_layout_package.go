@@ -9,7 +9,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/docker/docker/pkg/ioutils"
+	"github.com/moby/moby/v2/pkg/ioutils"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 

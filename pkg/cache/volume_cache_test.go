@@ -12,10 +12,10 @@ import (
 	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/logging"
 
-	"github.com/docker/docker/daemon/names"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
 	"github.com/moby/moby/client"
+	"github.com/moby/moby/v2/daemon/names"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 

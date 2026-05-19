@@ -17,7 +17,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/docker/docker/pkg/homedir"
+	"github.com/moby/moby/v2/pkg/homedir"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
