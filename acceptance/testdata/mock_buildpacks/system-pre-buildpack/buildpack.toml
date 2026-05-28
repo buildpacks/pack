@@ -1,0 +1,9 @@
+api = "0.7"
+
+[buildpack]
+  id = "system/pre"
+  version = "system-pre-version"
+  name = "System Pre Buildpack"
+
+[[stacks]]
+  id = "pack.test.stack"

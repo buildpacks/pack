@@ -1,0 +1,7 @@
+ignore:
+  - vulnerability: CVE-2015-5237 # false positive, see https://github.com/anchore/grype/issues/558
+  - vulnerability: CVE-2021-22570 # false positive, see https://github.com/anchore/grype/issues/558
+  - vulnerability: CVE-2024-41110 # non-impactful as we only use docker as a client
+  - vulnerability: GHSA-v23v-6jw2-98fq # non-impactful as we only use docker as a client
+  - vulnerability: GHSA-x744-4wpc-v9h2 # AuthZ plugin bypass; not exploitable as pack only uses docker as a client. Fixed in moby/moby/v2 but not backported to docker/docker module.
+  - vulnerability: GHSA-pxq6-2prw-chj9 # plugin privilege validation off-by-one; not exploitable as pack only uses docker as a client. Fixed in moby/moby/v2 but not backported to docker/docker module.

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+echo "---> Build: Descriptor Buildpack"
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+ls -laR
+
+echo "---> Done"

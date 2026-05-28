@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+echo "---> Build: Read Env Buildpack"
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+launch_dir=$1
+platform_dir=$2
+
+## makes a launch layer
+if [[ -f "$platform_dir/env/ENV1_CONTENTS" ]]; then
+    echo "making env1 layer"
+    mkdir "$launch_dir/env1-launch-layer"
+    contents=$(cat "$platform_dir/env/ENV1_CONTENTS")
+    echo "$contents" > "$launch_dir/env1-launch-layer/env1-launch-dep"
+    ln -snf "$launch_dir/env1-launch-layer" env1-launch-deps
+    echo "[types]" > "$launch_dir/env1-launch-layer.toml"
+    echo "launch = true" >> "$launch_dir/env1-launch-layer.toml"
+fi
+
+## makes a launch layer
+if [[ -f "$platform_dir/env/ENV2_CONTENTS" ]]; then
+    echo "making env2 layer"
+    mkdir "$launch_dir/env2-launch-layer"
+    contents=$(cat "$platform_dir/env/ENV2_CONTENTS")
+    echo "$contents" > "$launch_dir/env2-launch-layer/env2-launch-dep"
+    ln -snf "$launch_dir/env2-launch-layer" env2-launch-deps
+    echo "[types]" > "$launch_dir/env2-launch-layer.toml"
+    echo "launch = true" >> "$launch_dir/env2-launch-layer.toml"
+fi
+
+echo "---> Done"

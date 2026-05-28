@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+TEST_FILE_PATH=${TEST_FILE_PATH:?"env var must be set"}
+
+echo "---> Detect: Volume Buildpack"
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+echo "Detect: Reading file '${TEST_FILE_PATH}': $(< "${TEST_FILE_PATH}")"
+
+echo "---> Done"

@@ -1,0 +1,17 @@
+{
+  "name": "release-notes",
+  "version": "1.0.0",
+  "scripts": {
+    "local": "node local.js",
+    "build": "ncc build action.js -o dist/"
+  },
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.1",
+    "@octokit/rest": "^22.0.0",
+    "yaml": "^1.10.3"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.24.1"
+  }
+}

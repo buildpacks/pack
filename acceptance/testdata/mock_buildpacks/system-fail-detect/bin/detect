@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+echo "---> DETECT: System Fail Detect buildpack (will fail)"
+
+# Always fail detection
+exit 1

@@ -1,0 +1,9 @@
+api = "0.7"
+
+[buildpack]
+  id = "system/post"
+  version = "system-post-version"
+  name = "System Post Buildpack"
+
+[[stacks]]
+  id = "pack.test.stack"
