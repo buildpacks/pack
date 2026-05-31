@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"sort"
@@ -24,6 +25,7 @@ import (
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/chainguard-dev/kaniko/pkg/util/proc"
 	"github.com/google/go-containerregistry/pkg/name"
+	mnetwork "github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
@@ -261,6 +263,9 @@ type ContainerConfig struct {
 	// https://docs.docker.com/network/#network-drivers
 	Network string
 
+	// Configure the MAC address of the build containers' network endpoint.
+	MacAddress string
+
 	// Volumes are accessible during both detect build phases
 	// should have the form: /path/in/host:/path/in/container.
 	// For more about volume mounts, and their permissions see:
@@ -272,6 +277,19 @@ type ContainerConfig struct {
 	// - /layers
 	// - anything below /cnb/**
 	Volumes []string
+}
+
+func parseMACAddress(macAddress string) (mnetwork.HardwareAddr, error) {
+	if macAddress == "" {
+		return nil, nil
+	}
+
+	parsed, err := net.ParseMAC(macAddress)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invalid MAC address %q", macAddress)
+	}
+
+	return mnetwork.HardwareAddr(parsed), nil
 }
 
 type LayoutConfig struct {
@@ -609,6 +627,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		c.logger.Warn(warning)
 	}
 
+	macAddress, err := parseMACAddress(opts.ContainerConfig.MacAddress)
+	if err != nil {
+		return err
+	}
+
 	fileFilter, err := getFileFilter(opts.ProjectDescriptor)
 	if err != nil {
 		return err
@@ -654,6 +677,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		HTTPSProxy:               proxyConfig.HTTPSProxy,
 		NoProxy:                  proxyConfig.NoProxy,
 		Network:                  opts.ContainerConfig.Network,
+		MacAddress:               macAddress,
 		AdditionalTags:           opts.AdditionalTags,
 		Volumes:                  processedVolumes,
 		DefaultProcessType:       opts.DefaultProcessType,
