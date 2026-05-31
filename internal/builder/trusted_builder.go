@@ -109,8 +109,26 @@ var KnownBuilders = []KnownBuilder{
 }
 
 func IsKnownTrustedBuilder(builderName string) bool {
+	builderReference, err := name.ParseReference(builderName, name.WithDefaultTag(""))
+	if err != nil {
+		return false
+	}
+
+	return isKnownTrustedBuilderReference(builderReference)
+}
+
+func isKnownTrustedBuilderReference(builderReference name.Reference) bool {
 	for _, knownBuilder := range KnownBuilders {
-		if builderName == knownBuilder.Image && knownBuilder.Trusted {
+		if !knownBuilder.Trusted {
+			continue
+		}
+
+		knownBuilderReference, err := name.ParseReference(knownBuilder.Image, name.WithDefaultTag(""))
+		if err != nil {
+			continue
+		}
+
+		if referencesMatch(knownBuilderReference, builderReference) {
 			return true
 		}
 	}
@@ -122,20 +140,27 @@ func IsTrustedBuilder(cfg config.Config, builderName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	if isKnownTrustedBuilderReference(builderReference) {
+		return true, nil
+	}
+
 	for _, trustedBuilder := range cfg.TrustedBuilders {
 		trustedBuilderReference, err := name.ParseReference(trustedBuilder.Name, name.WithDefaultTag(""))
 		if err != nil {
 			return false, err
 		}
-		if trustedBuilderReference.Identifier() != "" {
-			if builderReference.Name() == trustedBuilderReference.Name() {
-				return true, nil
-			}
-		} else {
-			if builderReference.Context().RepositoryStr() == trustedBuilderReference.Context().RepositoryStr() {
-				return true, nil
-			}
+		if referencesMatch(trustedBuilderReference, builderReference) {
+			return true, nil
 		}
 	}
 	return false, nil
+}
+
+func referencesMatch(trustedReference name.Reference, builderReference name.Reference) bool {
+	if trustedReference.Identifier() != "" {
+		return builderReference.Name() == trustedReference.Name()
+	}
+
+	return builderReference.Context().RepositoryStr() == trustedReference.Context().RepositoryStr()
 }

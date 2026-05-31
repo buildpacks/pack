@@ -179,7 +179,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				it("does nothing", func() {
 					h.AssertNil(t, os.WriteFile(configPath, []byte(""), os.ModePerm))
 
-					command.SetArgs(append(args, "paketobuildpacks/builder-jammy-base"))
+					command.SetArgs(append(args, "paketobuildpacks/builder-jammy-base:latest"))
 					h.AssertNil(t, command.Execute())
 					oldContents, err := os.ReadFile(configPath)
 					h.AssertNil(t, err)

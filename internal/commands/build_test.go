@@ -139,6 +139,19 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("the builder matches a tagless known trusted builder", func() {
+				it("sets the trust builder option", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(true)).
+						Return(nil)
+
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"image", "--builder", "paketobuildpacks/builder-jammy-base:latest"})
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Builder 'paketobuildpacks/builder-jammy-base:latest' is trusted")
+				})
+			})
+
 			when("the image name matches a builder name", func() {
 				it("refuses to build", func() {
 					logger.WantVerbose(true)

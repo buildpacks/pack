@@ -215,7 +215,7 @@ func testBuilderInspectCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("image is a known trusted builder", func() {
+		when("image matches a known trusted builder", func() {
 			it("passes builder info with trusted true to the writer's `Print` method", func() {
 				builderWriter := newDefaultBuilderWriter()
 
@@ -225,7 +225,7 @@ func testBuilderInspectCommand(t *testing.T, when spec.G, it spec.S) {
 					newDefaultBuilderInspector(),
 					newWriterFactory(returnsForWriter(builderWriter)),
 				)
-				command.SetArgs([]string{"heroku/builder:24"})
+				command.SetArgs([]string{"paketobuildpacks/builder-jammy-base:latest"})
 
 				err := command.Execute()
 				assert.Nil(err)
