@@ -1910,6 +1910,20 @@ api = "0.2"
 `)
 				})
 			})
+
+			it("fetches the run image into the daemon when publishing", func() {
+				fakeImageFetcher.RemoteImages[fakeDefaultRunImage.Name()] = fakeDefaultRunImage
+
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:      "some/app",
+					Builder:    defaultBuilderName,
+					Publish:    true,
+					Extensions: []string{"extension.1.id"},
+				}))
+
+				args := fakeImageFetcher.FetchCalls[defaultRunImageName]
+				h.AssertEq(t, args.Daemon, true)
+			})
 		})
 
 		//TODO: "all buildpacks are added to ephemeral builder" test after extractPackaged() is completed.
