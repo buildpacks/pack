@@ -120,9 +120,9 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 						Return(nil)
 
 					logger.WantVerbose(true)
-					command.SetArgs([]string{"image", "--builder", "heroku/builder:24"})
+					command.SetArgs([]string{"image", "--builder", "heroku/builder:26"})
 					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:24' is trusted")
+					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:26' is trusted")
 				})
 			})
 
@@ -133,9 +133,9 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 						Return(nil)
 
 					logger.WantVerbose(true)
-					command.SetArgs([]string{"image", "--builder", "heroku/builder:22"})
+					command.SetArgs([]string{"image", "--builder", "heroku/builder:24"})
 					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:22' is trusted")
+					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:24' is trusted")
 				})
 			})
 
