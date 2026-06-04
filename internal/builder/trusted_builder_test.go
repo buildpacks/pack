@@ -21,10 +21,17 @@ func TestTrustedBuilder(t *testing.T) {
 
 func trustedBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("IsKnownTrustedBuilder", func() {
-		it("matches exactly", func() {
+		it("matches tagless known builders against any tag in the same repository", func() {
 			h.AssertTrue(t, bldr.IsKnownTrustedBuilder("paketobuildpacks/builder-jammy-base"))
-			h.AssertFalse(t, bldr.IsKnownTrustedBuilder("paketobuildpacks/builder-jammy-base:latest"))
-			h.AssertFalse(t, bldr.IsKnownTrustedBuilder("paketobuildpacks/builder-jammy-base:1.2.3"))
+			h.AssertTrue(t, bldr.IsKnownTrustedBuilder("paketobuildpacks/builder-jammy-base:latest"))
+			h.AssertTrue(t, bldr.IsKnownTrustedBuilder("paketobuildpacks/builder-jammy-base:1.2.3"))
+		})
+		it("requires an exact tag match for tagged known builders", func() {
+			h.AssertTrue(t, bldr.IsKnownTrustedBuilder("heroku/builder:24"))
+			h.AssertFalse(t, bldr.IsKnownTrustedBuilder("heroku/builder"))
+			h.AssertFalse(t, bldr.IsKnownTrustedBuilder("heroku/builder:99"))
+		})
+		it("does not match unknown builders", func() {
 			h.AssertFalse(t, bldr.IsKnownTrustedBuilder("my/private/builder"))
 		})
 	})

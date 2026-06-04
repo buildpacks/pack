@@ -109,12 +109,11 @@ var KnownBuilders = []KnownBuilder{
 }
 
 func IsKnownTrustedBuilder(builderName string) bool {
-	for _, knownBuilder := range KnownBuilders {
-		if builderName == knownBuilder.Image && knownBuilder.Trusted {
-			return true
-		}
+	builderReference, err := name.ParseReference(builderName, name.WithDefaultTag(""))
+	if err != nil {
+		return false
 	}
-	return false
+	return matchesAnyKnownTrustedBuilder(builderReference)
 }
 
 func IsTrustedBuilder(cfg config.Config, builderName string) (bool, error) {
@@ -123,38 +122,44 @@ func IsTrustedBuilder(cfg config.Config, builderName string) (bool, error) {
 		return false, err
 	}
 
-	// Collect all trusted builder names
-	var trustedBuilderNames []string
-
-	// Add known trusted builders
-	for _, knownBuilder := range KnownBuilders {
-		if knownBuilder.Trusted {
-			trustedBuilderNames = append(trustedBuilderNames, knownBuilder.Image)
-		}
+	if matchesAnyKnownTrustedBuilder(builderReference) {
+		return true, nil
 	}
 
-	// Add user-configured trusted builders
 	for _, trustedBuilder := range cfg.TrustedBuilders {
-		trustedBuilderNames = append(trustedBuilderNames, trustedBuilder.Name)
-	}
-
-	// Check if builder matches any trusted builder
-	for _, trustedBuilderName := range trustedBuilderNames {
-		trustedBuilderReference, err := name.ParseReference(trustedBuilderName, name.WithDefaultTag(""))
+		trustedBuilderReference, err := name.ParseReference(trustedBuilder.Name, name.WithDefaultTag(""))
 		if err != nil {
 			return false, err
 		}
-
-		if trustedBuilderReference.Identifier() != "" {
-			if builderReference.Name() == trustedBuilderReference.Name() {
-				return true, nil
-			}
-		} else {
-			if builderReference.Context().RepositoryStr() == trustedBuilderReference.Context().RepositoryStr() {
-				return true, nil
-			}
+		if referencesMatch(builderReference, trustedBuilderReference) {
+			return true, nil
 		}
 	}
 
 	return false, nil
+}
+
+func matchesAnyKnownTrustedBuilder(builderReference name.Reference) bool {
+	for _, knownBuilder := range KnownBuilders {
+		if !knownBuilder.Trusted {
+			continue
+		}
+		trustedBuilderReference, err := name.ParseReference(knownBuilder.Image, name.WithDefaultTag(""))
+		if err != nil {
+			continue
+		}
+		if referencesMatch(builderReference, trustedBuilderReference) {
+			return true
+		}
+	}
+	return false
+}
+
+// referencesMatch reports whether builderReference is trusted by trustedBuilderReference.
+// Tagless trusted entries match any tag in the same repository; tagged entries require an exact match.
+func referencesMatch(builderReference, trustedBuilderReference name.Reference) bool {
+	if trustedBuilderReference.Identifier() != "" {
+		return builderReference.Name() == trustedBuilderReference.Name()
+	}
+	return builderReference.Context().RepositoryStr() == trustedBuilderReference.Context().RepositoryStr()
 }
