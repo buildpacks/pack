@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781700551132,
+  "lastUpdate": 1781702122397,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14554,6 +14554,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 84218009581,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "20mahin2020@gmail.com",
+            "name": "Md Mushfiqur Rahim",
+            "username": "MD-Mushfiqur123"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0e21cd53568c4e251c5dddac91691fe8013f15a",
+          "message": "fix(buildpack): fix malformed yank PR template body (#2631)\n\nSigned-off-by: MD-Mushfiqur123 <MD-Mushfiqur123@users.noreply.github.com>\nCo-authored-by: MD-Mushfiqur123 <MD-Mushfiqur123@users.noreply.github.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-06-17T08:12:38-05:00",
+          "tree_id": "0a18449153e8128625f087506b8d37884d3bd29f",
+          "url": "https://github.com/buildpacks/pack/commit/e0e21cd53568c4e251c5dddac91691fe8013f15a"
+        },
+        "date": 1781702120964,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 8185928557,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1838310834,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 109009504707,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
