@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779745785378,
+  "lastUpdate": 1781700551132,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14512,6 +14512,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 121913874848,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e7ca39a71bb4d7ba7576cab8cbbeaf397c7111fa",
+          "message": "chore: remove direct dependency on github.com/docker/docker (#2617)\n\n* chore: remove direct dependency on github.com/docker/docker\n\nMigrates the remaining github.com/docker/docker helper-package imports\nleft over after #2512, so the deprecated module is no longer a direct\ndependency of pack. It now appears only as an indirect requirement via\nother modules in the build graph.\n\nReplacements:\n- pkg/stdcopy        -> github.com/moby/moby/api/pkg/stdcopy\n                       (termui fake gets a local 8-byte frame writer,\n                        since the new package does not export NewStdWriter)\n- pkg/jsonmessage    -> github.com/moby/moby/client/pkg/jsonmessage\n                       (testhelpers switches to jsonstream.Message)\n- pkg/ioutils        -> internal/ioutil.NewReadCloserWrapper\n- pkg/homedir        -> os.UserHomeDir() wrapper\n- daemon/names       -> local regexp constant (test only)\n- volume/mounts      -> internal/volume Parser interface + a minimal,\n                       parse-only Linux implementation. The Windows/LCOW\n                       switch is dropped (pack supports Linux containers\n                       only).\n\ngo mod tidy also drops several heavy transitive deps the old mounts\nparser pulled in (opencontainers/selinux, cyphar.com/go-pathrs,\nmoby/sys/atomicwriter, morikuni/aec).\n\nThe internal/build/testdata/fake-lifecycle fixture module is left on\ndocker/docker for now; it is a separate Go module compiled inside its\nown golang:1.23 image and does not contribute to pack's go.mod.\n\nRefs #2470\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* chore: keep volume/mounts on docker/docker for LCOW/WCOW support\n\nRevert the internal/volume parser introduced earlier in this branch.\nThe replacement was Linux-only and broke the Windows-host CI job\n(pkg/client/build_test.go `on_windows/...` cases), which exercises both\nLinux containers on Windows host (LCOW, e.g. `C:\\path:/x`) and Windows\ncontainers (WCOW, e.g. `C:\\path:c:\\x`). The docker/docker\nvolume/mounts package's Windows and LCOW parsers handle drive-letter-\naware splitting and source-path lowercasing that a Linux-only parser\ncannot reproduce.\n\nAfter this revert, github.com/docker/docker remains a direct dependency\nsolely through pkg/client/process_volumes.go (`volume/mounts`). All\nother helper-package migrations in this branch are unaffected:\nstdcopy, jsonmessage, ioutils, homedir, and daemon/names continue to\nuse their moby/moby split or stdlib replacements.\n\nRemoving the last volume/mounts usage requires either vendoring the\nWindows/LCOW parsers or designing a unified parser; tracking that as\nfollow-up work on #2470.\n\nRefs #2470\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n---------\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-06-17T07:46:23-05:00",
+          "tree_id": "fcce428a5ee1b6aa5b899cee8d8db66a27d3fa8a",
+          "url": "https://github.com/buildpacks/pack/commit/e7ca39a71bb4d7ba7576cab8cbbeaf397c7111fa"
+        },
+        "date": 1781700549928,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3842475085,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1065501524,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 84218009581,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
