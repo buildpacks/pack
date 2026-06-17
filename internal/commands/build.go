@@ -28,7 +28,7 @@ import (
 type BuildFlags struct {
 	Publish                bool
 	ClearCache             bool
-	DisableSystemBuilpacks bool
+	DisableSystemBuildpacks bool
 	TrustBuilder           bool
 	TrustExtraBuildpacks   bool
 	Interactive            bool
@@ -214,7 +214,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				CreationTime:             dateTime,
 				PreBuildpacks:            flags.PreBuildpacks,
 				PostBuildpacks:           flags.PostBuildpacks,
-				DisableSystemBuildpacks:  flags.DisableSystemBuilpacks,
+				DisableSystemBuildpacks:  flags.DisableSystemBuildpacks,
 				EnableUsernsHost:         flags.EnableUsernsHost,
 				LayoutConfig: &client.LayoutConfig{
 					Sparse:             flags.Sparse,
@@ -271,7 +271,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVar(&buildFlags.DateTime, "creation-time", "", "Desired create time in the output image config. Accepted values are Unix timestamps (e.g., '1641013200'), or 'now'. Platform API version must be at least 0.9 to use this feature.")
 	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
 	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", `Set the default process type. (default "web")`)
-	cmd.Flags().BoolVar(&buildFlags.DisableSystemBuilpacks, "disable-system-buildpacks", false, "Disable System Buildpacks")
+	cmd.Flags().BoolVar(&buildFlags.DisableSystemBuildpacks, "disable-system-buildpacks", false, "Disable System Buildpacks")
 	cmd.Flags().StringArrayVarP(&buildFlags.Env, "env", "e", []string{}, "Build-time environment variable, in the form 'VAR=VALUE' or 'VAR'.\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed.\nThis flag may be specified multiple times and will override\n  individual values defined by --env-file."+stringArrayHelp("env")+"\nNOTE: These are NOT available at image runtime.")
 	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed\nNOTE: These are NOT available at image runtime.\"")
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
