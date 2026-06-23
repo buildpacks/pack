@@ -3,5 +3,18 @@ ignore:
   - vulnerability: CVE-2021-22570 # false positive, see https://github.com/anchore/grype/issues/558
   - vulnerability: CVE-2024-41110 # non-impactful as we only use docker as a client
   - vulnerability: GHSA-v23v-6jw2-98fq # non-impactful as we only use docker as a client
-  - vulnerability: GHSA-x744-4wpc-v9h2 # AuthZ plugin bypass; not exploitable as pack only uses docker as a client. Fixed in moby/moby/v2 but not backported to docker/docker module.
-  - vulnerability: GHSA-pxq6-2prw-chj9 # plugin privilege validation off-by-one; not exploitable as pack only uses docker as a client. Fixed in moby/moby/v2 but not backported to docker/docker module.
+  # docker/docker daemon-side advisories: not exploitable as pack only uses docker as a client
+  # (imports api/types, client, volume/mounts and pkg/* helpers, never the daemon code paths).
+  # Fixed only in github.com/moby/moby/v2, not backported to the github.com/docker/docker module.
+  # NOTE: grype matches the printed primary ID, not aliases, so we list every ID form that can
+  # surface across the go-module (binary) scan and the released-image scan.
+  - vulnerability: GO-2026-4887 # AuthZ plugin bypass (CVE-2026-34040 / GHSA-x744-4wpc-v9h2)
+  - vulnerability: GHSA-x744-4wpc-v9h2
+  - vulnerability: GO-2026-4883 # plugin privilege validation off-by-one (CVE-2026-33997 / GHSA-pxq6-2prw-chj9)
+  - vulnerability: GHSA-pxq6-2prw-chj9
+  - vulnerability: GHSA-x86f-5xw2-fm2r # decompression-binary RCE via container filesystem (daemon-side)
+  - vulnerability: GHSA-rg2x-37c3-w2rh # docker cp bind-mount redirect race (CVE-2026-42306, daemon-side)
+  - vulnerability: GHSA-vp62-88p7-qqf5 # docker cp symlink-swap race (CVE-2026-41568, daemon-side)
+  # docker/cli: installed v29.4.3 is already newer than the fixed v29.2.0; grype mis-orders the
+  # +incompatible pseudo-version. Already remediated, kept here to silence the false positive.
+  - vulnerability: GO-2026-4610 # GHSA / CVE for docker/cli auth, fixed in 29.2.0 (we ship >= 29.4.3)
