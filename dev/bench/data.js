@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782216957263,
+  "lastUpdate": 1782229784650,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14638,6 +14638,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 94615862882,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5185a573a58d89c1128eb2a32a62cd8bf28c98b5",
+          "message": "build(deps): bump x/crypto, x/net, and go-git for security fixes (#2641)\n\nBumps the security-relevant Go modules in isolation, split out of the\ndependabot go-dependencies group (#2640) so the critical/high CVE fixes\ncan land without the moby/docker and go-containerregistry bumps that are\ncurrently breaking acceptance tests:\n\n- golang.org/x/crypto 0.51.0 -> 0.53.0 (GO-2026-5005/5006/5013-5023/5033)\n- golang.org/x/net 0.53.0 -> 0.55.0 (GO-2026-5025-5030)\n- github.com/go-git/go-git/v5 5.19.0 -> 5.19.1 (GHSA-crhj-59gh-8x96,\n  GHSA-m7cr-m3pv-hgrp, GHSA-w5pp-99ch-qj29)\n\nx/sync, x/sys, x/term, and x/text move forward transitively via x/crypto.\n\nThe moby/moby/client 0.5.0 + moby/moby/api 1.55.0 + docker/cli +\ngo-containerregistry 0.21.7 bumps from the group are intentionally held:\nthe daemon client jump is ahead of imgutil (pinned to moby/moby/client\n0.2.x) and breaks daemon rebase, and ggcr 0.21.7 breaks manifest annotate.\nNone of those resolve a fixable CVE.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-06-23T10:46:42-05:00",
+          "tree_id": "5287565eb0c798c984e4f66d1302be45bf5e12d8",
+          "url": "https://github.com/buildpacks/pack/commit/5185a573a58d89c1128eb2a32a62cd8bf28c98b5"
+        },
+        "date": 1782229783609,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3711611969,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 871951866,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 93560123945,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
