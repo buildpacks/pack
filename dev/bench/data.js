@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782229784650,
+  "lastUpdate": 1782231603697,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14680,6 +14680,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 93560123945,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7f2f74efba9ad316aaaf6ab210b53c2912632c47",
+          "message": "build(deps): bump Go directive to 1.25.11 for stdlib security fixes (#2642)\n\nCI build/test/release jobs install Go via go-version-file: go.mod, so the\ngo directive controls the stdlib version compiled into the release binary.\nBumping 1.25.10 -> 1.25.11 resolves the stdlib CVEs flagged by grype that\nneither the dependabot module bumps nor go module updates can address:\n\n- CVE-2026-42504 (GO-2026-5036), GO-2026-5038 (High)\n- CVE-2026-27145 (GO-2026-5037), CVE-2026-42507 (GO-2026-5039) (Medium)\n\nDockerfile (golang:1.25) and benchmark.yml (go-version: 1.25) already\ntrack the latest 1.25 patch, so no change is needed there.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-06-23T11:16:45-05:00",
+          "tree_id": "fc63123cd275cbc44726562cadc3cd115ae1aea4",
+          "url": "https://github.com/buildpacks/pack/commit/7f2f74efba9ad316aaaf6ab210b53c2912632c47"
+        },
+        "date": 1782231602311,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5036196043,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1557623202,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 122729031962,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
