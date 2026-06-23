@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782231603697,
+  "lastUpdate": 1782233744119,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14722,6 +14722,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 122729031962,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2df3b8c3b0955ea41aec010783ddfe70cbc17c56",
+          "message": "chore: suppress unreachable docker daemon CVEs in grype config (#2644)\n\nThe grype scan against the pack binary still flagged six docker findings\nthat our .grype.yaml intended to ignore. The existing ignore rules listed\nthe GHSA aliases, but grype matches the printed primary ID and the\ngo-module scan prints the GO-2026-* IDs, so the suppressions never fired.\n\nAll six are non-impactful for pack:\n\n- docker/docker GO-2026-4887, GO-2026-4883, GHSA-x86f-5xw2-fm2r,\n  GHSA-rg2x-37c3-w2rh, GHSA-vp62-88p7-qqf5 are daemon-side (AuthZ bypass,\n  plugin-privilege off-by-one, docker cp races, decompression RCE). pack\n  only uses docker as a client (api/types, client, volume/mounts, pkg/*\n  helpers) and never runs the daemon paths. None are fixed in the\n  github.com/docker/docker module; the fix exists only in the rewritten\n  github.com/moby/moby/v2 module, which the ecosystem has not adopted.\n- docker/cli GO-2026-4610 is already remediated: we ship v29.4.3, newer\n  than the fixed v29.2.0; grype mis-orders the +incompatible version.\n\nListing every ID form (GO + GHSA) makes the suppressions apply across\nboth the go-module binary scan and the released-image scan. With this,\n`grype out/pack` reports no vulnerabilities.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-06-23T11:53:35-05:00",
+          "tree_id": "057056b8617cbb92b3a6c4ca94ae36b363dbd2fa",
+          "url": "https://github.com/buildpacks/pack/commit/2df3b8c3b0955ea41aec010783ddfe70cbc17c56"
+        },
+        "date": 1782233743200,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3259361059,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 776006730,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 89078922384,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
