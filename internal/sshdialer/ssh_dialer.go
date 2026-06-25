@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/docker/cli/cli/connhelper"
-	"github.com/docker/docker/pkg/homedir"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
@@ -374,9 +373,17 @@ func loadSignerFromFile(path string, passphrase []byte, passPhraseCallback Secre
 	return signer, nil
 }
 
+// homeDir returns the current user's home directory, or an empty string if it
+// cannot be determined. It replaces github.com/docker/docker/pkg/homedir.Get,
+// which is not part of the moby/moby split modules.
+func homeDir() string {
+	h, _ := os.UserHomeDir()
+	return h
+}
+
 func createHostKeyCallback(userCallback HostKeyCallback) ssh.HostKeyCallback {
 	return func(hostPort string, remote net.Addr, pubKey ssh.PublicKey) error {
-		knownHosts := filepath.Join(homedir.Get(), ".ssh", "known_hosts")
+		knownHosts := filepath.Join(homeDir(), ".ssh", "known_hosts")
 
 		fileCallback, err := knownhosts.New(knownHosts)
 		if err != nil {

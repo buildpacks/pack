@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/buildpacks/pack/pkg/cache"
 	"github.com/buildpacks/pack/pkg/logging"
 
-	"github.com/docker/docker/daemon/names"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
 	"github.com/moby/moby/client"
@@ -21,6 +21,10 @@ import (
 
 	h "github.com/buildpacks/pack/testhelpers"
 )
+
+// restrictedNamePattern mirrors docker's container/volume name validation
+// (github.com/docker/docker/daemon/names.RestrictedNamePattern).
+var restrictedNamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
 
 func TestVolumeCache(t *testing.T) {
 	h.RequireDocker(t)
@@ -125,7 +129,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 				subject, _ := cache.NewVolumeCache(ref, cache.CacheInfo{}, "some-suffix", dockerClient, logger)
 
 				h.AssertContains(t, subject.Name(), "fedora_httpd_version1.0")
-				h.AssertTrue(t, names.RestrictedNamePattern.MatchString(subject.Name()))
+				h.AssertTrue(t, restrictedNamePattern.MatchString(subject.Name()))
 			})
 
 			when("PACK_VOLUME_KEY", func() {
@@ -288,7 +292,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 				subject, _ := cache.NewVolumeCache(ref, cache.CacheInfo{}, "some-suffix", dockerClient, logger)
 
 				h.AssertContains(t, subject.Name(), "fedora_httpd_version1.0")
-				h.AssertTrue(t, names.RestrictedNamePattern.MatchString(subject.Name()))
+				h.AssertTrue(t, restrictedNamePattern.MatchString(subject.Name()))
 			})
 		})
 	})
