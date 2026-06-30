@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782233744119,
+  "lastUpdate": 1782824674846,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14764,6 +14764,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 89078922384,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "badges@fossa.io",
+            "name": "fossabot",
+            "username": "fossabot"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "02d2e69a12409c0d72ea8e69356e4ce9e68f90aa",
+          "message": "Add license scan report and status (#2638)\n\nSigned off by: fossabot <badges@fossa.com>\n\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-06-30T08:02:34-05:00",
+          "tree_id": "a71457421af91e40de409d9b64032ca65f49bb8a",
+          "url": "https://github.com/buildpacks/pack/commit/02d2e69a12409c0d72ea8e69356e4ce9e68f90aa"
+        },
+        "date": 1782824673706,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3905919592,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1158663914,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 84026817059,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
