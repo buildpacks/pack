@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782824674846,
+  "lastUpdate": 1783601771089,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14806,6 +14806,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 84026817059,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a469ae3a5affb99aefbb9591cb8e0489e8f7708b",
+          "message": "build(deps): bump safe go-dependencies (kaniko, tcell, gomega, x/mod) (#2647)\n\nSplits the safe subset out of the grouped dependabot bump in #2645.\n\nThese four direct deps update without disturbing the docker/moby image\nstack, so they keep acceptance green:\n\n  - github.com/chainguard-dev/kaniko  v1.25.15 -> v1.25.16\n  - github.com/gdamore/tcell/v2       v2.13.9  -> v2.13.10\n  - github.com/onsi/gomega            v1.40.0  -> v1.42.1\n  - golang.org/x/mod                  v0.36.0  -> v0.37.0\n\nThe moby/moby/{api,client}, go-containerregistry, and docker/cli bumps\nfrom #2645 are intentionally held: imgutil still pins moby/moby/client\nv0.2.2 / api v1.52.1 / go-containerregistry v0.20.6 even on its main tip,\nso forcing pack ahead breaks the daemon rebase (\"could not find base\nlayer in image\") and manifest annotate acceptance suites.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-07-09T07:46:10-05:00",
+          "tree_id": "a998a3d4063c25f7cfdd0a990ed8e5963148ec36",
+          "url": "https://github.com/buildpacks/pack/commit/a469ae3a5affb99aefbb9591cb8e0489e8f7708b"
+        },
+        "date": 1783601770122,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3453681945,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 777724888,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 82660738534,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
