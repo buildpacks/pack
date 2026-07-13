@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783601771089,
+  "lastUpdate": 1783947256844,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14848,6 +14848,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 82660738534,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3253355fca02d856b5350cbe81b6d9ae772dfafe",
+          "message": "build(deps): bump Go to 1.25.12 and safe x/* deps to fix CVEs (#2653)\n\nFixes the CVEs reported in #2652 and takes the safe subset of the\ngrouped dependabot bump in #2650.\n\nThe two CVEs failing the released-image grype scan are both stdlib,\nfixed in Go 1.25.12, so the actual remediation is the go directive:\n\n  - GO-2026-4970 (High)   root escape via symlink plus trailing slash in os\n  - GO-2026-5856 (Medium) Encrypted Client Hello privacy leak in crypto/tls\n\nCI builds with go-version-file: go.mod, so bumping the directive is\nsufficient to rebuild the release image on 1.25.12.\n\nAlso takes the safe x/* bumps from #2650, which resolve without\ndisturbing the docker/moby image stack:\n\n  - golang.org/x/crypto  v0.53.0 -> v0.54.0\n  - golang.org/x/mod     v0.37.0 -> v0.38.0\n  - golang.org/x/sync    v0.21.0 -> v0.22.0\n  - golang.org/x/sys     v0.46.0 -> v0.47.0\n  - golang.org/x/term    v0.44.0 -> v0.45.0\n  - golang.org/x/text    v0.38.0 -> v0.40.0\n\nThe docker/cli, go-containerregistry and moby/moby/{api,client} bumps\nfrom #2650 are held: imgutil still pins the older moby split-client, so\nforcing pack ahead breaks daemon rebase and manifest annotate acceptance.\nTracked upstream in buildpacks/imgutil#307.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-07-13T07:51:26-05:00",
+          "tree_id": "21223d021ee6d2e6b1c4ff5cb15e948f7b549da5",
+          "url": "https://github.com/buildpacks/pack/commit/3253355fca02d856b5350cbe81b6d9ae772dfafe"
+        },
+        "date": 1783947255286,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3642509156,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1113778576,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 85967490665,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
