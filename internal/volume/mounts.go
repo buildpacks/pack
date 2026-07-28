@@ -12,8 +12,8 @@ type MountPoint struct {
 	RW          bool
 	Name        string
 	Driver      string
-	Type        mounttypes.Type `json:",omitempty"`
-	Mode        string          `json:"Relabel,omitempty"`
+	Type        mounttypes.Type        `json:",omitempty"`
+	Mode        string                 `json:"Relabel,omitempty"`
 	Propagation mounttypes.Propagation `json:",omitempty"`
 	Spec        mounttypes.Mount
 	CopyData    bool

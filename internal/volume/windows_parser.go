@@ -8,8 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/moby/moby/api/types/mount"
 	"regexp"
+
+	"github.com/moby/moby/api/types/mount"
 )
 
 // NewWindowsParser creates a parser with Windows semantics.

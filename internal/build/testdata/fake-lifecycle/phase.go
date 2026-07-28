@@ -11,8 +11,8 @@ import (
 	"syscall"
 
 	"github.com/buildpacks/lifecycle/auth"
-	dockercli "github.com/moby/moby/client"
 	v1remote "github.com/google/go-containerregistry/pkg/v1/remote"
+	dockercli "github.com/moby/moby/client"
 )
 
 func main() {
