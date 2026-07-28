@@ -39,7 +39,7 @@ var lcowValidators mountValidator = func(m *mount.Mount) error {
 		return ErrVolumeTargetIsRoot
 	}
 	if m.Type == mount.TypeNamedPipe {
-		return errors.New("Linux containers on Windows do not support named pipe mounts")
+		return errors.New("linux containers on Windows do not support named pipe mounts")
 	}
 	if !lcowMountDestinationRegex.MatchString(strings.ToLower(m.Target)) {
 		return fmt.Errorf("invalid mount path: '%s'", m.Target)
