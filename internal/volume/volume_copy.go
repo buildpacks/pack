@@ -1,0 +1,24 @@
+// Vendored from https://github.com/moby/moby/blob/7fd2be6664adc124debfebc63e2d02a7df096056/daemon/volume/mounts/volume_copy.go
+package volume
+
+import "strings"
+
+// {<copy mode>=isEnabled}
+var copyModes = map[string]bool{
+	"nocopy": false,
+}
+
+func copyModeExists(mode string) bool {
+	_, exists := copyModes[mode]
+	return exists
+}
+
+// GetCopyMode gets the copy mode from the mode string for mounts
+func getCopyMode(mode string, def bool) (bool, bool) {
+	for _, o := range strings.Split(mode, ",") {
+		if isEnabled, exists := copyModes[o]; exists {
+			return isEnabled, true
+		}
+	}
+	return def, false
+}
