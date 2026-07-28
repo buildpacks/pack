@@ -7,8 +7,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/moby/moby/api/types/mount"
 	"regexp"
+
+	"github.com/moby/moby/api/types/mount"
 )
 
 // NewLCOWParser creates a parser with Linux Containers on Windows semantics.
