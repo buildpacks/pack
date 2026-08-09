@@ -18,3 +18,10 @@ ignore:
   # docker/cli: installed v29.4.3 is already newer than the fixed v29.2.0; grype mis-orders the
   # +incompatible pseudo-version. Already remediated, kept here to silence the false positive.
   - vulnerability: GO-2026-4610 # GHSA / CVE for docker/cli auth, fixed in 29.2.0 (we ship >= 29.4.3)
+  # golang.org/x/crypto/openpgp is deprecated/unmaintained. The advisory is scoped to that one
+  # package but carries no fixed version (introduced at v0, fixed: N/A), so it matches every
+  # release of the module forever and cannot be remediated by bumping. pack never links openpgp:
+  # the only importer is go-github/v30 via acceptance/config, which is behind the `acceptance`
+  # build tag and is not part of the shipped binary. Confirmed by govulncheck ("your code doesn't
+  # appear to call") and by `go list -deps ./...` showing no x/crypto/openpgp package.
+  - vulnerability: GO-2026-5932 # x/crypto/openpgp unmaintained; not linked into the pack binary
