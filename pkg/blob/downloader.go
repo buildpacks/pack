@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/mitchellh/ioprogress"
 	"github.com/pkg/errors"
@@ -20,6 +21,10 @@ import (
 const (
 	cacheDirPrefix = "c"
 	cacheVersion   = "2"
+
+	// maxDownloadBytes is the maximum number of bytes that will be written to
+	// the download cache from a single HTTP response, guarding against disk exhaustion.
+	maxDownloadBytes int64 = 500 * 1024 * 1024 // 500 MB
 )
 
 type Logger interface {
@@ -50,7 +55,12 @@ func NewDownloader(logger Logger, baseCacheDir string, opts ...DownloaderOption)
 	d := &downloader{
 		logger:       logger,
 		baseCacheDir: baseCacheDir,
-		client:       http.DefaultClient,
+		client: &http.Client{
+			Timeout: 10 * time.Minute,
+			Transport: &http.Transport{
+				ResponseHeaderTimeout: 30 * time.Second,
+			},
+		},
 	}
 
 	for _, opt := range opts {
@@ -139,9 +149,13 @@ func (d *downloader) handleHTTP(ctx context.Context, uri string) (string, error)
 	}
 	defer fh.Close()
 
-	_, err = io.Copy(fh, reader)
+	n, err := io.Copy(fh, io.LimitReader(reader, maxDownloadBytes+1))
 	if err != nil {
 		return "", errors.Wrap(err, "writing cache")
+	}
+	if n > maxDownloadBytes {
+		_ = os.Remove(cachePath)
+		return "", fmt.Errorf("download from %s exceeded maximum allowed size of %d bytes", uri, maxDownloadBytes)
 	}
 
 	if err = os.WriteFile(etagFile, []byte(etag), 0744); err != nil {
@@ -168,6 +182,10 @@ func (d *downloader) downloadAsStream(ctx context.Context, uri string, etag stri
 	}
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		if resp.ContentLength > maxDownloadBytes {
+			resp.Body.Close()
+			return nil, "", fmt.Errorf("response from %s too large: %d bytes (max %d)", uri, resp.ContentLength, maxDownloadBytes)
+		}
 		d.logger.Infof("Downloading from %s", style.Symbol(uri))
 		return withProgress(d.logger.Writer(), resp.Body, resp.ContentLength), resp.Header.Get("Etag"), nil
 	}
