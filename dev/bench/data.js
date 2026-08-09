@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783947256844,
+  "lastUpdate": 1786289055111,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14890,6 +14890,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 85967490665,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8210eb15f191cad25a3f7745618417270ec07709",
+          "message": "build(deps): bump go-git, otel and klauspost/compress to fix CVEs (#2666)\n\nAddresses the vulnerabilities grype reports against the released\nv0.40.8 image:\n\n- github.com/go-git/go-git/v5 v5.19.1 -> v5.19.2\n  GHSA-hc8v-wwc9-vgxm (High), GHSA-qgq7-7hm3-q39j (Medium)\n- go.opentelemetry.io/otel v1.43.0 -> v1.44.0\n  GO-2026-5158 / CVE-2026-41178 (Medium), baggage header not length-capped\n- github.com/klauspost/compress v1.18.6 -> v1.18.7\n  GO-2026-5841 / GHSA-259r-337f-4rfw, OOB read in s2\n\nThe fifth finding, GO-2026-5932 on golang.org/x/crypto, has no fixed\nversion: it is the advisory marking golang.org/x/crypto/openpgp as\nunmaintained, introduced at v0 with no fix, so it matches every release\nof the module and cannot be remediated by bumping. pack does not link\nthat package -- its only importer is go-github/v30 through\nacceptance/config, which sits behind the `acceptance` build tag and is\nnot part of the shipped binary. Suppressed in .grype.yaml with that\nrationale; govulncheck agrees the code does not call it.\n\nDeliberately scoped to these three modules. The moby/ggcr/docker-cli\ngroup bump in #2663 also carries the go-git and compress fixes, but it\nis being held back until imgutil supports the newer moby client.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-08-09T10:21:19-05:00",
+          "tree_id": "409b6eae1884c1329e923cbde6f10d64123786fa",
+          "url": "https://github.com/buildpacks/pack/commit/8210eb15f191cad25a3f7745618417270ec07709"
+        },
+        "date": 1786289053362,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 5910244847,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1863524412,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 88452411526,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
