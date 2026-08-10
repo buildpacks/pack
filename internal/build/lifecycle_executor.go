@@ -79,6 +79,7 @@ type LifecycleOptions struct {
 	RunImage                        string
 	FetchRunImageWithLifecycleLayer func(name string) (string, error)
 	ProjectMetadata                 files.ProjectMetadata
+	ProjectDescriptor               string
 	ClearCache                      bool
 	Publish                         bool
 	TrustBuilder                    bool
