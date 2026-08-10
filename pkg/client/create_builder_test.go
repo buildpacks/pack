@@ -388,19 +388,15 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, out.String(), "Warning: run image 'some/run-image' is not accessible")
 			})
 
-			it("should fail when not publish and the run image cannot be fetched", func() {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(nil, errors.New("yikes"))
-
-				err := subject.CreateBuilder(context.TODO(), opts)
-				h.AssertError(t, err, "failed to fetch image: yikes")
-			})
-
-			it("should fail when publish and the run image cannot be fetched", func() {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways}).Return(nil, errors.New("yikes"))
+			it("should warn when publish and the run image cannot be fetched", func() {
+				prepareFetcherWithBuildImage()
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways}).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways}).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
 
 				opts.Publish = true
 				err := subject.CreateBuilder(context.TODO(), opts)
-				h.AssertError(t, err, "failed to fetch image: yikes")
+				h.AssertNil(t, err)
+				h.AssertContains(t, out.String(), "Warning: run image 'some/run-image' is not accessible")
 			})
 
 			it("should fail when the run image isn't a valid image", func() {
