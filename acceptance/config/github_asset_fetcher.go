@@ -41,20 +41,15 @@ type GithubAssetFetcher struct {
 	cacheDir     string
 }
 
-type (
-	assetCache map[string]map[string]cachedRepo
-	cachedRepo struct {
-		Assets   cachedAssets
-		Sources  cachedSources
-		Versions cachedVersions
-	}
-)
-
-type (
-	cachedAssets   map[string][]string
-	cachedSources  map[string]string
-	cachedVersions map[string]string
-)
+type assetCache map[string]map[string]cachedRepo
+type cachedRepo struct {
+	Assets   cachedAssets
+	Sources  cachedSources
+	Versions cachedVersions
+}
+type cachedAssets map[string][]string
+type cachedSources map[string]string
+type cachedVersions map[string]string
 
 func NewGithubAssetFetcher(t *testing.T, githubToken string) (*GithubAssetFetcher, error) {
 	t.Helper()
