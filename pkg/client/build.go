@@ -642,6 +642,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		LifecycleImage:           ephemeralBuilder.Name(),
 		RunImage:                 runImageName,
 		ProjectMetadata:          projectMetadata,
+		ProjectDescriptorPath:    opts.ProjectDescriptorPath,
 		ClearCache:               opts.ClearCache,
 		Publish:                  opts.Publish,
 		TrustBuilder:             opts.TrustBuilder(opts.Builder),
