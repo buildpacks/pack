@@ -207,6 +207,23 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("a mac address is given", func() {
+			it("forwards the mac address onto the client", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithMacAddress("01:23:45:67:89:ab")).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--mac-address", "01:23:45:67:89:ab"})
+				h.AssertNil(t, command.Execute())
+			})
+
+			it("returns an error for invalid mac addresses", func() {
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--mac-address", "invalid-mac"})
+
+				h.AssertError(t, command.Execute(), `invalid MAC address "invalid-mac"`)
+			})
+		})
+
 		when("--platform", func() {
 			it("sets platform", func() {
 				mockClient.EXPECT().
@@ -1216,6 +1233,15 @@ func EqBuildOptionsWithNetwork(network string) gomock.Matcher {
 		description: fmt.Sprintf("Network=%s", network),
 		equals: func(o client.BuildOptions) bool {
 			return o.ContainerConfig.Network == network
+		},
+	}
+}
+
+func EqBuildOptionsWithMacAddress(macAddress string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("MacAddress=%s", macAddress),
+		equals: func(o client.BuildOptions) bool {
+			return o.ContainerConfig.MacAddress == macAddress
 		},
 	}
 }

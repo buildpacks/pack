@@ -2564,6 +2564,31 @@ api = "0.2"
 			})
 		})
 
+		when("MacAddress option", func() {
+			it("passes the parsed value through", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:   "some/app",
+					Builder: defaultBuilderName,
+					ContainerConfig: ContainerConfig{
+						MacAddress: "01:23:45:67:89:ab",
+					},
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.MacAddress.String(), "01:23:45:67:89:ab")
+			})
+
+			it("returns an error for invalid values", func() {
+				err := subject.Build(context.TODO(), BuildOptions{
+					Image:   "some/app",
+					Builder: defaultBuilderName,
+					ContainerConfig: ContainerConfig{
+						MacAddress: "invalid-mac",
+					},
+				})
+
+				h.AssertError(t, err, `invalid MAC address "invalid-mac"`)
+			})
+		})
+
 		when("Lifecycle option", func() {
 			when("Platform API", func() {
 				for _, supportedPlatformAPI := range []string{"0.3", "0.4"} {

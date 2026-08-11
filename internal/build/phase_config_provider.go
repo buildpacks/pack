@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 
 	pcontainer "github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/internal/style"
@@ -25,6 +26,7 @@ type PhaseConfigProviderOperation func(*PhaseConfigProvider)
 type PhaseConfigProvider struct {
 	ctrConf             *container.Config
 	hostConf            *container.HostConfig
+	networkConf         *network.NetworkingConfig
 	name                string
 	os                  string
 	containerOps        []ContainerOperation
@@ -72,6 +74,10 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 		op(provider)
 	}
 
+	if len(lifecycleExec.opts.MacAddress) > 0 {
+		provider.withMACAddress(lifecycleExec.opts.MacAddress)
+	}
+
 	provider.ctrConf.Entrypoint = []string{""} // override entrypoint in case it is set
 	provider.ctrConf.Cmd = append([]string{"/cnb/lifecycle/" + name}, provider.ctrConf.Cmd...)
 
@@ -86,6 +92,9 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 	lifecycleExec.logger.Debug("Host Settings:")
 	lifecycleExec.logger.Debugf("  Binds: %s", style.Symbol(strings.Join(provider.hostConf.Binds, " ")))
 	lifecycleExec.logger.Debugf("  Network Mode: %s", style.Symbol(string(provider.hostConf.NetworkMode)))
+	if len(lifecycleExec.opts.MacAddress) > 0 {
+		lifecycleExec.logger.Debugf("  MAC Address: %s", style.Symbol(lifecycleExec.opts.MacAddress.String()))
+	}
 
 	if lifecycleExec.opts.Interactive {
 		provider.handler = lifecycleExec.opts.Termui.Handler()
@@ -106,8 +115,31 @@ func sanitized(origEnv []string) []string {
 	return sanitizedEnv
 }
 
+func (p *PhaseConfigProvider) withMACAddress(macAddress network.HardwareAddr) {
+	if p.networkConf == nil {
+		p.networkConf = new(network.NetworkingConfig)
+	}
+	if p.networkConf.EndpointsConfig == nil {
+		p.networkConf.EndpointsConfig = make(map[string]*network.EndpointSettings)
+	}
+
+	networkName := p.hostConf.NetworkMode.NetworkName()
+	if networkName == "" {
+		networkName = network.NetworkDefault
+	}
+
+	if p.networkConf.EndpointsConfig[networkName] == nil {
+		p.networkConf.EndpointsConfig[networkName] = &network.EndpointSettings{}
+	}
+	p.networkConf.EndpointsConfig[networkName].MacAddress = macAddress
+}
+
 func (p *PhaseConfigProvider) ContainerConfig() *container.Config {
 	return p.ctrConf
+}
+
+func (p *PhaseConfigProvider) NetworkConfig() *network.NetworkingConfig {
+	return p.networkConf
 }
 
 func (p *PhaseConfigProvider) ContainerOps() []ContainerOperation {
