@@ -160,6 +160,7 @@ func (c *InterruptCmd) TerminateAtStep(pattern string) {
 			err := c.cmd.Process.Signal(acceptanceOS.InterruptSignal)
 			c.assert.Nil(err)
 			h.AssertNil(c.testObject, err)
+			c.outputMux.Unlock()
 			return
 		}
 		c.outputMux.Unlock()
