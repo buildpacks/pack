@@ -121,7 +121,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if err != nil {
 				return err
 			}
-			trustBuilder := isTrusted || bldr.IsKnownTrustedBuilder(builder) || flags.TrustBuilder
+			trustBuilder := isTrusted || flags.TrustBuilder
 			if trustBuilder {
 				logger.Debugf("Builder %s is trusted", style.Symbol(builder))
 				if flags.LifecycleImage != "" {
