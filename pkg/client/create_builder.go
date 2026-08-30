@@ -215,7 +215,12 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 }
 
 func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOptions, target *dist.Target, multiArch bool) (*builder.Builder, error) {
-	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Build.Image, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy, Target: target})
+	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Build.Image, image.FetchOptions{
+		Daemon:          !opts.Publish,
+		PullPolicy:      opts.PullPolicy,
+		Target:          target,
+		PreserveHistory: true,
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "fetch build image")
 	}
