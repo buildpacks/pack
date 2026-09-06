@@ -145,6 +145,9 @@ func (o *ociLayoutPackage) GetLayer(diffID string) (io.ReadCloser, error) {
 	if index == -1 {
 		return nil, errors.Errorf("layer %s not found in rootfs", style.Symbol(diffID))
 	}
+	if index >= len(o.manifest.Layers) {
+		return nil, errors.Errorf("layer %s is referenced by the config rootfs but the manifest only has %d layer(s)", style.Symbol(diffID), len(o.manifest.Layers))
+	}
 
 	layerDescriptor := o.manifest.Layers[index]
 	layerPath := paths.CanonicalTarPath(pathFromDescriptor(layerDescriptor))
