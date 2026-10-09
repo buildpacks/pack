@@ -318,8 +318,8 @@ func NewClient(opts ...Option) (*Client, error) {
 			return nil, errors.Wrap(err, "getting pack home")
 		}
 		indexRootStoragePath := filepath.Join(packHome, "manifests")
-		if xdgPath, ok := os.LookupEnv(xdgRuntimePath); ok {
-			indexRootStoragePath = xdgPath
+		if xdgPath := os.Getenv(xdgRuntimePath); xdgPath != "" {
+			indexRootStoragePath = filepath.Join(xdgPath, "pack", "manifests")
 		}
 		client.indexFactory = index.NewIndexFactory(client.keychain, indexRootStoragePath)
 	}
