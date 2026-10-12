@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791833640238,
+  "lastUpdate": 1791842122705,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14974,6 +14974,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 113951923458,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "99894bcb29c6d830bab8811fdf2d05f328f2b739",
+          "message": "fix: propagate the Go 1.26 bump to the hard-coded Go pins (#2715)\n\n#2713 raised the go directive to 1.26.9, but two places still pin Go 1.25\nindependently of go.mod. Both set GOTOOLCHAIN=local, so there is no\nauto-download fallback and the build stops dead:\n\n  go: go.mod requires go >= 1.26.9 (running go 1.25.14; GOTOOLCHAIN=local)\n\n- `benchmark.yml` passed `go-version: 1.25` alongside `go-version-file: go.mod`.\n  go-version wins, so it installed 1.25. **This is failing on main right now**\n  (run 38299754784, the first push after #2713 merged). The step itself exited\n  0 because `go test | tee` masks the status, so the error surfaced only as\n  \"No benchmark result was found ... Benchmark output was ''\". Dropping the\n  hard-coded version leaves go-version-file as the single source of truth,\n  matching every other workflow in the repo.\n\n- `Dockerfile` pins `FROM golang:1.25 as builder`. This has not been noticed\n  because delivery-docker.yml only runs `on: release`, so no PR or push check\n  covers it -- the next release would have published the GitHub binaries fine\n  and then failed to build docker.io/buildpacksio/pack. Also corrects the\n  `as`/`AS` casing that buildx warns about on the same line.\n\nVerified locally: golang:1.25 reproduces the failure above and golang:1.26\nbuilds an image whose binary reports go1.26.9; the benchmark suite runs to\ncompletion on the go.mod toolchain (all three BenchmarkBuild cases report\nns/op, so benchmark.txt is non-empty).\n\ntools/go.mod is deliberately left on 1.25 -- it pins golangci-lint, which\ncannot read newer export data and needs its own bump.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-10-12T16:52:24-05:00",
+          "tree_id": "5b0c6644aca48966584852627139966fba57e5a3",
+          "url": "https://github.com/buildpacks/pack/commit/99894bcb29c6d830bab8811fdf2d05f328f2b739"
+        },
+        "date": 1791842121703,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4204642819,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1361029053,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 119130509322,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
