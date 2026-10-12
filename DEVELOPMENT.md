@@ -125,11 +125,64 @@ make prepare-for-pr
 ```
 
 ### Acceptance Tests
+
+Acceptance tests exercise `pack` end-to-end against real builders and lifecycles.
+They are structured as a **compatibility matrix**: each run picks versions of three
+interchangeable components and runs the suite against that combination.
+
+#### Acceptance matrix components
+
+| Component | Role |
+|-----------|------|
+| `pack` | The `pack` CLI under test (the binary that runs build/commands in the suite). |
+| `pack_create_builder` | The `pack` CLI used to create the builder image under test. |
+| `lifecycle` | The lifecycle binaries packaged into that builder. |
+
+#### Component values
+
+| Value | Meaning |
+|-------|---------|
+| `current` | Local changes: a `pack` built from this branch, or the lifecycle version currently known to this branch. |
+| `previous` | Last published release: the newest GitHub release of `pack`, or the n-1 public lifecycle release. |
+| `default` | **Lifecycle only.** Use the default lifecycle version declared by the `pack_create_builder` binary (whatever that pack release ships / resolves as default). |
+
+Typical CI labels such as `current` / `current previous` map onto these values.
+For example, testing local pack against an older lifecycle is
+`pack=current`, `pack_create_builder=current`, `lifecycle=previous`.
+
+#### Running combinations locally
+
+```shell
+# Default combination only (current pack, current create-builder pack, default lifecycle)
+make acceptance
+
+# Full cross-compatibility suite used in CI
+make acceptance-all
+```
+
+`make acceptance-all` loads the combination list from
+[`acceptance/testconfig/all.json`](acceptance/testconfig/all.json). To run a custom
+set without editing that file, set `ACCEPTANCE_SUITE_CONFIG` to a JSON array:
+
+```shell
+ACCEPTANCE_SUITE_CONFIG='[{"pack":"current","pack_create_builder":"current","lifecycle":"previous"}]' make acceptance
+```
+
+Each object in the array is one matrix row. Valid keys are `pack`,
+`pack_create_builder`, and `lifecycle` with the values described above.
+
+When a combination uses `previous` pack or lifecycle, the suite downloads those
+artifacts from GitHub (a `GITHUB_TOKEN` avoids rate limits). Paths and image refs
+can be overridden with the environment variables below if you already have local
+binaries or need fixture overrides for n-1 pack behavior.
+
+#### Environment variables
+
 Some options users can provide to our acceptance tests are:
 
 | ENV_VAR      | Description                                                            | Default                                                                                                                      |
 |--------------|------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
-| ACCEPTANCE_SUITE_CONFIG        | A set of configurations for how to run the acceptance tests, describing the version of `pack` used for testing, the version of `pack` used to create the builders used in the test, and the version of `lifecycle` binaries used to test with Github | `[{"pack": "current", "pack_create_builder": "current", "lifecycle": "default"}]'`                                           |
+| ACCEPTANCE_SUITE_CONFIG        | JSON array of matrix rows (`pack`, `pack_create_builder`, `lifecycle` values as above). Controls which version combinations run. | `[{"pack": "current", "pack_create_builder": "current", "lifecycle": "default"}]`                                           |
 | COMPILE_PACK_WITH_VERSION     | Tell `pack` what version to consider itself    | `dev`                                                                                                                        |
 | GITHUB_TOKEN | A Github Token, used when downloading `pack` and `lifecycle` releases from Github during the test setup | ""                                                                                                                           |
 | LIFECYCLE_IMAGE        | Image reference to be used in untrusted builder workflows    | docker.io/buildpacksio/lifecycle:<lifecycle version>                                                                         |
