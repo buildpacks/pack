@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786289055111,
+  "lastUpdate": 1791833640238,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -14932,6 +14932,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 88452411526,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3ddd8d79c65562cff05c15fbc8c91a161036883c",
+          "message": "fix: pass the format string directly to Debugf (#2712)\n\nDebugf is printf-style, so wrapping its arguments in fmt.Sprintf formats\nthe message twice. The second pass re-interprets any verb that survived\nthe first one, so an image name containing a percent sign comes out\nmangled:\n\n    Pulling image registry/img:100%!c(MISSING)overage\n\nPassing the format and its argument straight to Debugf formats once and\nprints the name as-is.\n\nThis also unblocks the pending Go bumps. vet's printf analyzer reports\nthe wrapped call as a non-constant format string, and `go test` runs vet\nby default, so on Go 1.26+ every platform fails in pkg/image before a\nsingle test executes. That is the only failure on #2698, #2694 and #2686.\n\nVerified with `make unit` (33/33) and `make verify` under both go1.25.12\nand go1.27.2.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-10-12T14:30:42-05:00",
+          "tree_id": "445b3a7df0bf3a1215f390bc14fe3ff802074990",
+          "url": "https://github.com/buildpacks/pack/commit/3ddd8d79c65562cff05c15fbc8c91a161036883c"
+        },
+        "date": 1791833638933,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4584596519,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1435299135,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 113951923458,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
