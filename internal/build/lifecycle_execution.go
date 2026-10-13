@@ -315,23 +315,23 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			}
 		}
 
-		group, _ := errgroup.WithContext(context.TODO())
+		group, groupCtx := errgroup.WithContext(ctx)
 		if l.platformAPI.AtLeast("0.10") && l.hasExtensionsForBuild() {
 			group.Go(func() error {
 				l.logger.Info(style.Step("EXTENDING (BUILD)"))
-				return l.ExtendBuild(ctx, kanikoCache, phaseFactory, l.extensionsAreExperimental())
+				return l.ExtendBuild(groupCtx, kanikoCache, phaseFactory, l.extensionsAreExperimental())
 			})
 		} else {
 			group.Go(func() error {
 				l.logger.Info(style.Step("BUILDING"))
-				return l.Build(ctx, phaseFactory)
+				return l.Build(groupCtx, phaseFactory)
 			})
 		}
 
 		if l.platformAPI.AtLeast("0.12") && l.hasExtensionsForRun() {
 			group.Go(func() error {
 				l.logger.Info(style.Step("EXTENDING (RUN)"))
-				return l.ExtendRun(ctx, kanikoCache, phaseFactory, ephemeralRunImage, l.extensionsAreExperimental())
+				return l.ExtendRun(groupCtx, kanikoCache, phaseFactory, ephemeralRunImage, l.extensionsAreExperimental())
 			})
 		}
 
