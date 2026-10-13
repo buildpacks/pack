@@ -7,24 +7,24 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/docker/docker/volume/mounts"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/internal/volume"
 )
 
 func processVolumes(imgOS string, volumes []string) (processed []string, warnings []string, err error) {
-	var parser mounts.Parser
+	var parser volume.Parser
 	switch "windows" {
 	case imgOS:
-		parser = mounts.NewWindowsParser()
+		parser = volume.NewWindowsParser()
 	case runtime.GOOS:
-		parser = mounts.NewLCOWParser()
+		parser = volume.NewLCOWParser()
 	default:
-		parser = mounts.NewLinuxParser()
+		parser = volume.NewLinuxParser()
 	}
 	for _, v := range volumes {
-		volume, err := parser.ParseMountRaw(v, "")
+		vol, err := parser.ParseMountRaw(v, "")
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "platform volume %q has invalid format", v)
 		}
@@ -34,12 +34,12 @@ func processVolumes(imgOS string, volumes []string) (processed []string, warning
 			sensitiveDirs = []string{`c:/cnb`, `c:\cnb`, `c:/layers`, `c:\layers`, `c:/workspace`, `c:\workspace`}
 		}
 		for _, p := range sensitiveDirs {
-			if strings.HasPrefix(strings.ToLower(volume.Spec.Target), p) {
-				warnings = append(warnings, fmt.Sprintf("Mounting to a sensitive directory %s", style.Symbol(volume.Spec.Target)))
+			if strings.HasPrefix(strings.ToLower(vol.Spec.Target), p) {
+				warnings = append(warnings, fmt.Sprintf("Mounting to a sensitive directory %s", style.Symbol(vol.Spec.Target)))
 			}
 		}
 
-		processed = append(processed, fmt.Sprintf("%s:%s:%s", volume.Spec.Source, volume.Spec.Target, processMode(volume.Mode)))
+		processed = append(processed, fmt.Sprintf("%s:%s:%s", vol.Spec.Source, vol.Spec.Target, processMode(vol.Mode)))
 	}
 	return processed, warnings, nil
 }
