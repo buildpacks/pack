@@ -387,9 +387,12 @@ func parseEnvFile(filename string) (map[string]string, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "open %s", filename)
 	}
-	for _, line := range strings.Split(string(f), "\n") {
+	// Normalise Windows CRLF to LF so that values read from env files created
+	// on Windows do not contain a trailing '\r' when processed on Linux/macOS.
+	normalised := strings.ReplaceAll(string(f), "\r\n", "\n")
+	for _, line := range strings.Split(normalised, "\n") {
 		line = strings.TrimSpace(line)
-		if line == "" {
+		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
 		out = addEnvVar(out, line)
