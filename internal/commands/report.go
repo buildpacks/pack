@@ -18,6 +18,11 @@ import (
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
+// quotedValueRe matches any double-quoted string in a TOML line.
+// Pre-compiled once at package initialisation to avoid repeated allocation
+// inside the hot sanitize() path.
+var quotedValueRe = regexp.MustCompile(`"(.*?)"`)
+
 func Report(logger logging.Logger, version, cfgPath string) *cobra.Command {
 	var explicit bool
 
@@ -83,9 +88,16 @@ Config:
 	})
 }
 
+// sanitize redacts the quoted values of sensitive TOML fields in a config
+// line so that they are not leaked by `pack report`.
+//
+// The match is intentionally exact: a TOML key is considered sensitive only
+// when the trimmed line begins with `<field-name>` followed immediately by
+// optional whitespace and `=`. This prevents false-positive redaction of
+// keys that merely share a prefix with a sensitive field (e.g. an
+// "image-mirror" key would previously be redacted because it starts with
+// the sensitive field "image").
 func sanitize(line string) string {
-	re := regexp.MustCompile(`"(.*?)"`)
-	redactedString := `"[REDACTED]"`
 	sensitiveFields := []string{
 		"default-builder-image",
 		"image",
@@ -94,8 +106,12 @@ func sanitize(line string) string {
 		"url",
 	}
 	for _, field := range sensitiveFields {
-		if strings.HasPrefix(strings.TrimSpace(line), field) {
-			return re.ReplaceAllString(line, redactedString)
+		// Build a pattern that matches the exact TOML key:
+		//   ^\s*<field>\s*=
+		// This ensures "image" does not match "image-mirror" etc.
+		keyRe := regexp.MustCompile(`(?i)^\s*` + regexp.QuoteMeta(field) + `\s*=`)
+		if keyRe.MatchString(line) {
+			return quotedValueRe.ReplaceAllString(line, `"[REDACTED]"`)
 		}
 	}
 
