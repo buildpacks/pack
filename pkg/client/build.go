@@ -420,7 +420,13 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		pathsConfig.hostRunImagePath = hostRunImagePath
 	}
 
-	runImage, warnings, err := c.validateRunImage(ctx, runImageName, fetchOptions, bldr.StackID)
+	runImageFetchOptions := fetchOptions
+	// Run image extensions create a local ephemeral run image from this base image.
+	if !opts.Layout() && (len(opts.Extensions) > 0 || len(bldr.OrderExtensions()) > 0) {
+		runImageFetchOptions.Daemon = true
+	}
+
+	runImage, warnings, err := c.validateRunImage(ctx, runImageName, runImageFetchOptions, bldr.StackID)
 	if err != nil {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
 	}
@@ -686,7 +692,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	lifecycleOpts.FetchRunImageWithLifecycleLayer = func(runImageName string) (string, error) {
 		ephemeralRunImageName := fmt.Sprintf("pack.local/run-image/%x:latest", randString(10))
-		runImage, err := c.imageFetcher.Fetch(ctx, runImageName, fetchOptions)
+		runImageFetchOptions := fetchOptions
+		// local.FromBaseImage requires the base image to be available in the daemon.
+		runImageFetchOptions.Daemon = true
+		runImage, err := c.imageFetcher.Fetch(ctx, runImageName, runImageFetchOptions)
 		if err != nil {
 			return "", err
 		}
