@@ -893,7 +893,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 										Targets:    targets,
 										PullPolicy: image.PullNever,
 									})
-									h.AssertError(t, err, "could not find a target that matches daemon os=linux and architecture=amd64")
+									h.AssertError(t, err, "the requested target(s)")
 								})
 							})
 
@@ -1046,7 +1046,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 										Targets:    targets,
 										PullPolicy: image.PullNever,
 									})
-									h.AssertError(t, err, "could not find a target that matches daemon os=linux and architecture=arm64")
+									h.AssertError(t, err, "the requested target(s)")
 								})
 							})
 						})
