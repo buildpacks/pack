@@ -19,13 +19,14 @@ import (
 
 // ExtensionPackageFlags define flags provided to the ExtensionPackage command
 type ExtensionPackageFlags struct {
-	PackageTomlPath string
-	Format          string
-	Targets         []string
-	Publish         bool
-	Policy          string
-	Path            string
-	AdditionalTags  []string
+	PackageTomlPath       string
+	Format                string
+	Targets               []string
+	Publish               bool
+	Policy                string
+	Path                  string
+	AppendImageNameSuffix bool
+	AdditionalTags        []string
 }
 
 // ExtensionPackager packages extensions
@@ -114,15 +115,20 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 				defer clean(filesToClean)
 			}
 
+			if !flags.Publish && flags.AppendImageNameSuffix {
+				logger.Warnf("--append-image-name-suffix will be ignored, use combined with --publish")
+			}
+
 			if err := packager.PackageExtension(cmd.Context(), client.PackageBuildpackOptions{
-				RelativeBaseDir: relativeBaseDir,
-				Name:            name,
-				Format:          flags.Format,
-				Config:          exPackageCfg,
-				Publish:         flags.Publish,
-				PullPolicy:      pullPolicy,
-				Targets:         multiArchCfg.Targets(),
-				AdditionalTags:  flags.AdditionalTags,
+				RelativeBaseDir:       relativeBaseDir,
+				Name:                  name,
+				Format:                flags.Format,
+				Config:                exPackageCfg,
+				Publish:               flags.Publish,
+				AppendImageNameSuffix: flags.AppendImageNameSuffix && flags.Publish,
+				PullPolicy:            pullPolicy,
+				Targets:               multiArchCfg.Targets(),
+				AdditionalTags:        flags.AdditionalTags,
 			}); err != nil {
 				return err
 			}
@@ -145,6 +151,7 @@ func ExtensionPackage(logger logging.Logger, cfg config.Config, packager Extensi
 	cmd.Flags().StringVarP(&flags.PackageTomlPath, "config", "c", "", "Path to package TOML config")
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save package as ("image" or "file")`)
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish the extension directly to the container registry specified in <name>, instead of the daemon (applies to "--format=image" only).`)
+	cmd.Flags().BoolVar(&flags.AppendImageNameSuffix, "append-image-name-suffix", false, "When publishing to a registry that doesn't allow overwrite existing tags use this flag to append a [os]-[arch] suffix to package <name>")
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to the Extension that needs to be packaged")
 	cmd.Flags().StringSliceVarP(&flags.Targets, "target", "t", nil,

@@ -181,6 +181,39 @@ func testExtensionPackageCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("--append-image-name-suffix", func() {
+			it("passes the flag to the packager when publishing", func() {
+				cmd := packageExtensionCommand(withExtensionPackager(fakeExtensionPackager))
+				cmd.SetArgs([]string{
+					"some-image-name",
+					"--config", "/path/to/some/file",
+					"--publish",
+					"--append-image-name-suffix",
+				})
+				h.AssertNil(t, cmd.Execute())
+
+				receivedOptions := fakeExtensionPackager.CreateCalledWithOptions
+				h.AssertEq(t, receivedOptions.AppendImageNameSuffix, true)
+			})
+
+			it("is ignored and warns when not publishing", func() {
+				cmd := packageExtensionCommand(
+					withExtensionPackager(fakeExtensionPackager),
+					withExtensionLogger(logger),
+				)
+				cmd.SetArgs([]string{
+					"some-image-name",
+					"--config", "/path/to/some/file",
+					"--append-image-name-suffix",
+				})
+				h.AssertNil(t, cmd.Execute())
+
+				receivedOptions := fakeExtensionPackager.CreateCalledWithOptions
+				h.AssertEq(t, receivedOptions.AppendImageNameSuffix, false)
+				h.AssertContains(t, outBuf.String(), "--append-image-name-suffix will be ignored")
+			})
+		})
+
 		when("no config path is specified", func() {
 			when("no path is specified", func() {
 				it("creates a default config with the uri set to the current working directory", func() {
