@@ -1023,3 +1023,67 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 }
+
+func TestArgumentParsing(t *testing.T) {
+	spec.Run(t, "Argument Parsing", testArgumentParsing, spec.Parallel(), spec.Report(report.Terminal{}))
+}
+
+func testArgumentParsing(t *testing.T, when spec.G, it spec.S) {
+	var (
+		mockController   *gomock.Controller
+		mockImageFetcher *testmocks.MockImageFetcher
+		subject          *Client
+		out              bytes.Buffer
+	)
+
+	it.Before(func() {
+		mockController = gomock.NewController(t)
+		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
+
+		var err error
+		subject, err = NewClient(WithLogger(logging.NewLogWithWriters(&out, &out)), WithFetcher(mockImageFetcher))
+		h.AssertNil(t, err)
+	})
+
+	it.After(func() {
+		mockController.Finish()
+	})
+
+	when("inspecting images with different argument configurations", func() {
+		it("properly displays the arguments", func() {
+			images := map[string]string{
+				"imageNoArgs":       `[]`,
+				"imageEmptyArgs":    `[""]`,
+				"imageNonEmptyArgs": `["-p", "8080"]`,
+			}
+
+			for imageName, args := range images {
+				mockImage := testmocks.NewImage(imageName, "", nil)
+				h.AssertNil(t, mockImage.SetLabel("io.buildpacks.build.metadata", fmt.Sprintf(`{
+                    "processes": [
+                        {
+                            "type": "web",
+                            "command": "/start/web-process",
+                            "args": %s,
+                            "direct": false
+                        }
+                    ]
+                }`, args)))
+
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), imageName, gomock.Any()).Return(mockImage, nil).Times(1)
+
+				info, err := subject.InspectImage(imageName, true)
+				h.AssertNil(t, err)
+
+				switch args {
+				case `[]`:
+					h.AssertEq(t, info.Processes.DefaultProcess.Args, []string{})
+				case `[""]`:
+					h.AssertEq(t, info.Processes.DefaultProcess.Args, []string{""})
+				default:
+					h.AssertEq(t, info.Processes.DefaultProcess.Args, []string{"-p", "8080"})
+				}
+			}
+		})
+	})
+}
