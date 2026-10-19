@@ -61,8 +61,8 @@ func NewLifecycleExecution(logger logging.Logger, docker DockerClient, tmpDir st
 	exec := &LifecycleExecution{
 		logger:       logger,
 		docker:       docker,
-		layersVolume: paths.FilterReservedNames("pack-layers-" + randString(10)),
-		appVolume:    paths.FilterReservedNames("pack-app-" + randString(10)),
+		layersVolume: "pack-layers-" + randString(10),
+		appVolume:    "pack-app-" + randString(10),
 		platformAPI:  latestSupportedPlatformAPI,
 		opts:         opts,
 		os:           osType,

@@ -82,48 +82,6 @@ func URIToFilePath(uri string) (string, error) {
 // when the part before its first "." equals one of these, case-insensitively,
 // so "nul", "CON", and "nul.txt" are all reserved.
 // https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file?redirectedfrom=MSDN#win32-file-namespaces
-var reservedNames = map[string]struct{}{
-	"con": {}, "prn": {}, "aux": {}, "nul": {},
-	"com1": {}, "com2": {}, "com3": {}, "com4": {}, "com5": {},
-	"com6": {}, "com7": {}, "com8": {}, "com9": {},
-	"lpt1": {}, "lpt2": {}, "lpt3": {}, "lpt4": {}, "lpt5": {},
-	"lpt6": {}, "lpt7": {}, "lpt8": {}, "lpt9": {},
-}
-
-// FilterReservedNames rewrites a name that collides with a Windows reserved
-// device name into a safe equivalent. These names are only reserved on Windows,
-// so on other platforms p is returned unchanged. Only the whole base name is
-// matched (case-insensitively), so ordinary names that merely contain a
-// reserved word as a substring, such as "config" or "my-company-cache", are
-// left untouched.
-func FilterReservedNames(p string) string {
-	if runtime.GOOS != "windows" {
-		return p
-	}
-
-	base := p
-	ext := ""
-	if i := strings.Index(p, "."); i >= 0 {
-		base, ext = p[:i], p[i:]
-	}
-
-	if _, ok := reservedNames[strings.ToLower(base)]; !ok {
-		return p
-	}
-
-	// Insert underscores between the characters of the base name so it is no
-	// longer a reserved device name, preserving the original casing and any
-	// extension (e.g. "nul.txt" -> "n_u_l.txt").
-	var sb strings.Builder
-	for i, r := range base {
-		if i > 0 {
-			sb.WriteByte('_')
-		}
-		sb.WriteRune(r)
-	}
-	return sb.String() + ext
-}
-
 // WindowsDir is equivalent to path.Dir or filepath.Dir but always for Windows paths
 // reproduced because Windows implementation is not exported
 func WindowsDir(p string) string {

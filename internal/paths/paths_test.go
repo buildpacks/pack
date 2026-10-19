@@ -60,55 +60,6 @@ func testPaths(t *testing.T, when spec.G, it spec.S) {
 		}
 	})
 
-	when("#FilterReservedNames", func() {
-		when("on windows", func() {
-			it.Before(func() {
-				h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
-			})
-
-			it("rewrites names whose base is a reserved device name", func() {
-				for input, expected := range map[string]string{
-					"nul":     "n_u_l",
-					"NUL":     "N_U_L",
-					"con":     "c_o_n",
-					"aux":     "a_u_x",
-					"prn":     "p_r_n",
-					"nul.txt": "n_u_l.txt",
-					"com1":    "c_o_m_1",
-					"lpt9":    "l_p_t_9",
-				} {
-					if subject := paths.FilterReservedNames(input); subject != expected {
-						t.Fatalf("expected %q to become %q, got %q", input, expected, subject)
-					}
-				}
-			})
-
-			it("leaves ordinary names untouched", func() {
-				// names that merely contain a reserved word as a substring, or
-				// that are not actually reserved (bare "com"/"lpt"), must not change
-				for _, input := range []string{"config", "my-company-cache", "connection", "auxiliary", "com", "lpt", "com0", "lpt10"} {
-					if subject := paths.FilterReservedNames(input); subject != input {
-						t.Fatalf("expected %q to be unchanged, got %q", input, subject)
-					}
-				}
-			})
-		})
-
-		when("not on windows", func() {
-			it.Before(func() {
-				h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
-			})
-
-			it("never modifies names", func() {
-				for _, input := range []string{"nul", "con", "aux", "nul.txt", "com1", "config", "my-company-cache"} {
-					if subject := paths.FilterReservedNames(input); subject != input {
-						t.Fatalf("expected %q to be unchanged on non-windows, got %q", input, subject)
-					}
-				}
-			})
-		})
-	})
-
 	when("#FilePathToURI", func() {
 		when("is windows", func() {
 			it.Before(func() {
