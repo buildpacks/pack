@@ -78,24 +78,10 @@ func URIToFilePath(uri string) (string, error) {
 	return osPath, nil
 }
 
-func FilterReservedNames(p string) string {
-	// The following keys are reserved on Windows
-	// https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file?redirectedfrom=MSDN#win32-file-namespaces
-	reservedNameConversions := map[string]string{
-		"aux": "a_u_x",
-		"com": "c_o_m",
-		"con": "c_o_n",
-		"lpt": "l_p_t",
-		"nul": "n_u_l",
-		"prn": "p_r_n",
-	}
-	for k, v := range reservedNameConversions {
-		p = strings.ReplaceAll(p, k, v)
-	}
-
-	return p
-}
-
+// reservedNames are the device names reserved on Windows. A name is reserved
+// when the part before its first "." equals one of these, case-insensitively,
+// so "nul", "CON", and "nul.txt" are all reserved.
+// https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file?redirectedfrom=MSDN#win32-file-namespaces
 // WindowsDir is equivalent to path.Dir or filepath.Dir but always for Windows paths
 // reproduced because Windows implementation is not exported
 func WindowsDir(p string) string {
