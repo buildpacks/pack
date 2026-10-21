@@ -1795,7 +1795,12 @@ api = "0.2"
 
 					it.After(func() {
 						os.Unsetenv("PACK_HOME")
-						h.AssertNil(t, os.RemoveAll(tmpDir))
+						err := os.RemoveAll(tmpDir)
+						if runtime.GOOS != "windows" {
+							// avoid "The process cannot access the file because it is being used by another process"
+							// error on Windows
+							h.AssertNil(t, err)
+						}
 					})
 
 					it("all buildpacks are added to ephemeral builder", func() {
