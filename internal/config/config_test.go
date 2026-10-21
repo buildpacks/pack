@@ -1,8 +1,12 @@
 package config_test
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"sync"
 	"testing"
 
 	"github.com/heroku/color"
@@ -106,6 +110,103 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				h.AssertContains(t, string(b), `default-builder-image = "some/builder"`)
 				h.AssertNotContains(t, string(b), "some-old-contents")
+			})
+		})
+
+		when("the file is written concurrently", func() {
+			// Regression test for https://github.com/buildpacks/pack/issues/2695:
+			// concurrent `pack build` runs rewrite volume-keys.toml at the same time.
+			// Readers must never observe a partially written file, and the file left
+			// behind must always be valid TOML.
+			it("never exposes a partial or corrupted file", func() {
+				// On Windows, renaming over a file that another goroutine has open
+				// for reading can fail with "Access is denied", so concurrent
+				// writers may get an error there instead of silently corrupting the file.
+				h.SkipIf(t, runtime.GOOS == "windows", "renaming over an open file can fail on windows")
+				volumeKeysPath := filepath.Join(tmpDir, "volume-keys.toml")
+				newCfg := func(writer int) config.VolumeConfig {
+					// Hundreds of entries make each write span multiple write(2)
+					// calls, which is what lets unsynchronized writers interleave.
+					keys := map[string]string{}
+					for i := 0; i < 500; i++ {
+						keys[fmt.Sprintf("example.com/some/image:tag-%d-%d", writer, i)] = "somerandomvolumekey"
+					}
+					return config.VolumeConfig{VolumeKeys: keys}
+				}
+				h.AssertNil(t, config.Write(newCfg(0), volumeKeysPath))
+
+				// Errors are collected rather than asserted inside goroutines,
+				// because t.FailNow must only be called from the test goroutine.
+				var (
+					wg   sync.WaitGroup
+					mu   sync.Mutex
+					errs []error
+				)
+				record := func(err error) {
+					if err != nil {
+						mu.Lock()
+						errs = append(errs, err)
+						mu.Unlock()
+					}
+				}
+				for w := 1; w <= 8; w++ {
+					wg.Add(2)
+					go func(w int) {
+						defer wg.Done()
+						for i := 0; i < 20; i++ {
+							record(config.Write(newCfg(w), volumeKeysPath))
+						}
+					}(w)
+					go func() {
+						defer wg.Done()
+						for i := 0; i < 20; i++ {
+							_, err := config.ReadVolumeKeys(volumeKeysPath)
+							record(err)
+						}
+					}()
+				}
+				wg.Wait()
+
+				h.AssertNil(t, errors.Join(errs...))
+				cfg, err := config.ReadVolumeKeys(volumeKeysPath)
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(cfg.VolumeKeys), 500)
+			})
+		})
+
+		when("encoding fails", func() {
+			it("leaves the existing file untouched", func() {
+				h.AssertNil(t, os.WriteFile(configPath, []byte("some-old-contents"), 0600))
+
+				// TOML cannot encode a channel, so Encode returns an error.
+				err := config.Write(map[string]interface{}{"bad": make(chan int)}, configPath)
+				h.AssertNotNil(t, err)
+
+				b, err := os.ReadFile(configPath)
+				h.AssertNil(t, err)
+				h.AssertEq(t, string(b), "some-old-contents")
+				assertOnlyEntry(t, tmpDir, "config.toml")
+			})
+		})
+
+		when("writing succeeds", func() {
+			it("leaves no temporary files behind", func() {
+				h.AssertNil(t, config.Write(config.Config{DefaultBuilder: "some/builder"}, configPath))
+				h.AssertNil(t, config.Write(config.Config{DefaultBuilder: "other/builder"}, configPath))
+				assertOnlyEntry(t, tmpDir, "config.toml")
+			})
+
+			it("keeps the permissions of the existing file", func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "unix permission bits are not supported on windows")
+				h.AssertNil(t, os.WriteFile(configPath, []byte("some-old-contents"), 0600))
+				// Chmod explicitly so the result does not depend on the process umask.
+				h.AssertNil(t, os.Chmod(configPath, 0640))
+
+				h.AssertNil(t, config.Write(config.Config{DefaultBuilder: "some/builder"}, configPath))
+
+				fi, err := os.Stat(configPath)
+				h.AssertNil(t, err)
+				h.AssertEq(t, fi.Mode().Perm(), os.FileMode(0640))
 			})
 		})
 
@@ -265,4 +366,17 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, cfgPath, filepath.Join(tmpDir, "config.toml"))
 		})
 	})
+}
+
+// assertOnlyEntry asserts that dir contains exactly one entry named name,
+// i.e. that Write did not leave any temporary files behind.
+func assertOnlyEntry(t *testing.T, dir, name string) {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	h.AssertNil(t, err)
+	var names []string
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	h.AssertEq(t, names, []string{name})
 }
