@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792592406917,
+  "lastUpdate": 1792600535253,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15184,6 +15184,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 251291679092,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9b483c2428d832957efc7fe3d96bbef1395ca001",
+          "message": "test: don't assert temp-dir cleanup on Windows in the registry buildpack test (#2722)\n\n`TestBuild/.../buildpack_is_from_a_registry/all_buildpacks_are_added_to_\nephemeral_builder` fails intermittently on the Windows runner:\n\n    build_test.go:1798: Expected nil: unlinkat\n    C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\registry<N>\\bp-<N>.tar:\n    The process cannot access the file because it is being used by another process.\n\nIt failed three consecutive runs of main today, and the first attempt on #2721,\na PR that changed only .grype.yaml. Since release -> build-additional-archs ->\ntest, a red Windows leg blocks cutting a release.\n\nThis block creates a buildpack layer tar under tmpDir (ifakes.CreateBuildpackTar)\nand hands it to the build through a fake package (fakePackage.AddLayer).\npkg/buildpack exposes that layer as an openerBlob whose reader is opened lazily\nvia pkg.GetLayer -- a plain os.Open for imgutil/fakes.Image. A reader that\noutlives the build keeps a handle on the file, and os.RemoveAll then fails with a\nsharing violation. POSIX allows unlinking an open file, which is why Linux and\nmacOS never see it.\n\nUses the guard this repo already applies to exactly this error, introduced in\n686ecb5c (\"Fixing flaky error on windows\", 2023) and now in 20 places including\npkg/buildpack/buildpack_test.go, pkg/archive/archive_test.go and\npkg/client/inspect_buildpack_test.go: still assert the cleanup everywhere except\nWindows, so a real cleanup regression is caught on the other platforms.\n\n`runtime` is already imported in this file.\n\nVerified: `go test -count=2 -run TestBuild ./pkg/client/` ok, `go vet` clean,\n`make verify` 0 issues.\n\nCo-authored-by: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-10-21T11:32:52-05:00",
+          "tree_id": "63849ea1962dd23b2520776a9bc9c108a07b0f18",
+          "url": "https://github.com/buildpacks/pack/commit/9b483c2428d832957efc7fe3d96bbef1395ca001"
+        },
+        "date": 1792600534244,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3359598673,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 855321259,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 100682416256,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
