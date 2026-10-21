@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792587410919,
+  "lastUpdate": 1792588840448,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15058,6 +15058,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 97933430589,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "12173e027831e9c85007cb05cdbcc063157c9378",
+          "message": "build(deps): bump Go to 1.26.10 for CVE-2026-111943 (#2720)\n\ngo1.26.10 fixes GO-2026-6809 (CVE-2026-111943), which distrusts a set of\ncompromised intermediate certificates in crypto/x509. govulncheck reports\nit as called on main via crypto/x509.Certificate.Verify.\n\nMeasured on main before and after:\n\n  before (go 1.26.9):  4 called vulnerabilities\n  after  (go 1.26.10): 3 called vulnerabilities\n\nThe three that remain have no fix available to pack: GO-2026-4883 and\nGO-2026-4887 (docker/docker daemon, fixed only in moby/moby v2) and\nGO-2026-6255 (buildkit, whose fix requires go-containerregistry v0.21.6 --\nblocked on google/go-containerregistry#2469).\n\nOnly go.mod changes: since #2715 removed the hard-coded Go pins, go.mod is\nthe single source of truth for the toolchain. `go mod tidy` is a no-op.\n\nCo-authored-by: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-10-21T08:17:21-05:00",
+          "tree_id": "23a8d8514351058e0a29fc761a166c1b30c7ff30",
+          "url": "https://github.com/buildpacks/pack/commit/12173e027831e9c85007cb05cdbcc063157c9378"
+        },
+        "date": 1792588838894,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 6817297729,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1962950629,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 95908502921,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
