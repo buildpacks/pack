@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791842122705,
+  "lastUpdate": 1792587410919,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15016,6 +15016,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 119130509322,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1d549642ba5ff40e11d3bc276e8ed18523276113",
+          "message": "test: assert the annotation we set, not the total annotation count (#2717)\n\nThe `manifest annotate` acceptance case asserted that the annotated descriptor\ncarries exactly one annotation. That holds only because\ngo-containerregistry v0.21.5 drops the source manifest's own annotations when it\nbuilds the index descriptor.\n\nFrom v0.21.6 those annotations are propagated, so annotating a busybox-based\nmanifest yields three:\n\n    \"annotations\": {\n      \"foo\": \"bar\",\n      \"org.opencontainers.image.url\": \"https://github.com/docker-library/busybox\",\n      \"org.opencontainers.image.version\": \"1.36.1-glibc\"\n    }\n\nThe count is incidental -- it depends on whatever the source image happens to\ndeclare -- and it is not something `pack manifest annotate` controls. Assert\ninstead that the annotation we asked for is present, which is what the test is\nactually about.\n\nThis is one of two things blocking a go-containerregistry bump past v0.21.5.\nThe other is a real upstream regression, reported as\ngoogle/go-containerregistry#2469: `mutate.AppendLayers` stops maintaining\n`RootFS.DiffIDs` and `History` when the config media type is empty, which is\nwhy three `rebase` acceptance cases fail on v0.21.6 with \"could not find base\nlayer in image\". That one needs an upstream fix, so this commit does not bump\nthe dependency.\n\nVerified: the manifest acceptance subset passes on both v0.21.5 and v0.21.6\nwith this change (7/7 in each).\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-10-21T07:54:06-05:00",
+          "tree_id": "4ccebd38aa9b91c9664a255123a8e5021477c2b9",
+          "url": "https://github.com/buildpacks/pack/commit/1d549642ba5ff40e11d3bc276e8ed18523276113"
+        },
+        "date": 1792587410030,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 3281826280,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 879115331,
+            "unit": "ns/op",
+            "extra": "2 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 97933430589,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
