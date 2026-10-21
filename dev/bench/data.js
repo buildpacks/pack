@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792590575008,
+  "lastUpdate": 1792592406917,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15142,6 +15142,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 105719034505,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c9f52ca2bfed2bb7e6a0c783869e215f91da0ade",
+          "message": "deps: ignore two advisories whose code paths pack does not link (#2721)\n\nBoth are reported against the released image by the Mon/Thu release canary\n(`grype --fail-on medium`), both are unreachable in pack, and neither has a\nremediation available to us today.\n\nGHSA-7236-3392-c5c6 / GO-2026-6255 (moby/buildkit v0.30.0, Medium) describes a\ncustom BuildKit frontend disabling Seccomp/AppArmor for the build container\nduring a solve. pack never runs a solve. It has zero direct buildkit imports;\n`go list -deps ./...` links only frontend/dockerfile/{command,instructions,\nlinter,parser,shell} (via lifecycle/buildpack, for image extensions) plus\nutil/{stack,suggest}. buildkit/solver, buildkit/executor,\nbuildkit/frontend/gateway, buildkit/client and buildkit/session are absent.\n\nGHSA-685w-q87j-wqw3 / CVE-2026-85747 (docker/distribution v2.8.3, Medium) is a\nmissing digest verification in registry/client.(*manifests).Get. That type is\nonly constructible through client.NewRepository, and across the entire linked\npackage set exactly one package imports docker/distribution/registry/client --\ndistribution/registry/client/auth -- which uses only client.Do,\nclient.HandleErrorResponse and client.SuccessStatus. No ManifestService is ever\nconstructed. The module is in our graph solely because lifecycle/auth calls\nregistry.ConvertToHostname from docker/docker/registry.\n\nRemoval conditions are recorded inline:\n\n  - buildkit: fixed in v0.31.1, which requires go-containerregistry v0.21.6.\n    v0.21.6 changed mutate.image.Layers() to resolve manifest descriptors by\n    digest, which needs the daemon layer digests imgutil only began reporting\n    after our current pin -- so this is an imgutil -> ggcr -> buildkit chain,\n    not a version change.\n  - docker/distribution: no fix exists for this module. The v2 line ends at\n    v2.8.3 and the fix ships only in distribution/distribution/v3 v3.1.2.\n    It clears when lifecycle drops docker/docker/registry, which also clears\n    the GO-2026-4883 and GO-2026-4887 entries above it.\n\nGO-2026-6225 (docker-credential-acr-env) is deliberately left unsuppressed: its\nseverity is Unknown so it does not trip --fail-on medium, and it stays visible\nin the scan output.\n\nVerified against a locally built v0.40.10 image:\n\n  before: 3 matches, 2 Medium, `--fail-on medium` exits 2\n  after:  1 match (the Unknown), `--fail-on medium` exits 0",
+          "timestamp": "2026-10-21T09:14:42-05:00",
+          "tree_id": "8f8a20aa82626abbaa7b358c635e87bde29bd315",
+          "url": "https://github.com/buildpacks/pack/commit/c9f52ca2bfed2bb7e6a0c783869e215f91da0ade"
+        },
+        "date": 1792592405490,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Untrusted_Builder",
+            "value": 4608500676,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Trusted_Builder",
+            "value": 1384441483,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 251291679092,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
