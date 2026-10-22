@@ -124,3 +124,8 @@ func (l *lifecycle) binaries() []string {
 func SupportedLinuxArchitecture(arch string) bool {
 	return arch == "arm64" || arch == "ppc64le" || arch == "s390x" || arch == "x86-64"
 }
+
+// SupportedFreeBSDArchitecture returns true for each binary architecture available at https://github.com/buildpacks/lifecycle/releases/
+func SupportedFreeBSDArchitecture(arch string) bool {
+	return arch == "amd64" || arch == "arm64"
+}
