@@ -69,6 +69,7 @@ type FetchOptions struct {
 	PullPolicy         PullPolicy
 	LayoutOption       LayoutOption
 	InsecureRegistries []string
+	PreserveHistory    bool
 }
 
 func NewFetcher(logger logging.Logger, docker DockerClient, opts ...FetcherOption) *Fetcher {
@@ -94,19 +95,19 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 	}
 
 	if (options.LayoutOption != LayoutOption{}) {
-		return f.fetchLayoutImage(name, options.LayoutOption)
+		return f.fetchLayoutImage(name, options.LayoutOption, options.PreserveHistory)
 	}
 
 	if !options.Daemon {
-		return f.fetchRemoteImage(name, options.Target, options.InsecureRegistries)
+		return f.fetchRemoteImage(name, options.Target, options.InsecureRegistries, options.PreserveHistory)
 	}
 
 	switch options.PullPolicy {
 	case PullNever:
-		img, err := f.fetchDaemonImage(name)
+		img, err := f.fetchDaemonImage(name, options.PreserveHistory)
 		return img, err
 	case PullIfNotPresent:
-		img, err := f.fetchDaemonImage(name)
+		img, err := f.fetchDaemonImage(name, options.PreserveHistory)
 		if err == nil || !errors.Is(err, ErrNotFound) {
 			return img, err
 		}
@@ -132,14 +133,14 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		return nil, err
 	}
 
-	return f.fetchDaemonImage(name)
+	return f.fetchDaemonImage(name, options.PreserveHistory)
 }
 
 func (f *Fetcher) CheckReadAccess(repo string, options FetchOptions) bool {
 	if !options.Daemon || options.PullPolicy == PullAlways {
 		return f.checkRemoteReadAccess(repo)
 	}
-	if _, err := f.fetchDaemonImage(repo); err != nil {
+	if _, err := f.fetchDaemonImage(repo, false); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			// Image doesn't exist in the daemon
 			// 	Pull Never: should fail
@@ -170,8 +171,13 @@ func (f *Fetcher) checkRemoteReadAccess(repo string) bool {
 	}
 }
 
-func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
-	image, err := local.NewImage(name, f.docker, local.FromBaseImage(name))
+func (f *Fetcher) fetchDaemonImage(name string, preserveHistory bool) (imgutil.Image, error) {
+	options := []imgutil.ImageOption{local.FromBaseImage(name)}
+	if preserveHistory {
+		options = append(options, local.WithHistory())
+	}
+
+	image, err := local.NewImage(name, f.docker, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +189,7 @@ func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 	return image, nil
 }
 
-func (f *Fetcher) fetchRemoteImage(name string, target *dist.Target, insecureRegistries []string) (imgutil.Image, error) {
+func (f *Fetcher) fetchRemoteImage(name string, target *dist.Target, insecureRegistries []string, preserveHistory bool) (imgutil.Image, error) {
 	var (
 		image   imgutil.Image
 		options []imgutil.ImageOption
@@ -194,6 +200,9 @@ func (f *Fetcher) fetchRemoteImage(name string, target *dist.Target, insecureReg
 		for _, registry := range insecureRegistries {
 			options = append(options, remote.WithRegistrySetting(registry, true))
 		}
+	}
+	if preserveHistory {
+		options = append(options, remote.WithHistory())
 	}
 
 	if target == nil {
@@ -214,7 +223,7 @@ func (f *Fetcher) fetchRemoteImage(name string, target *dist.Target, insecureReg
 	return image, nil
 }
 
-func (f *Fetcher) fetchLayoutImage(name string, options LayoutOption) (imgutil.Image, error) {
+func (f *Fetcher) fetchLayoutImage(name string, options LayoutOption, preserveHistory bool) (imgutil.Image, error) {
 	var (
 		image imgutil.Image
 		err   error
@@ -225,10 +234,16 @@ func (f *Fetcher) fetchLayoutImage(name string, options LayoutOption) (imgutil.I
 		return nil, err
 	}
 
+	var imageOptions []imgutil.ImageOption
+	if preserveHistory {
+		imageOptions = append(imageOptions, layout.WithHistory())
+	}
+
 	if options.Sparse {
-		image, err = sparse.NewImage(options.Path, v1Image)
+		image, err = sparse.NewImage(options.Path, v1Image, imageOptions...)
 	} else {
-		image, err = layout.NewImage(options.Path, layout.FromBaseImageInstance(v1Image))
+		imageOptions = append(imageOptions, layout.FromBaseImageInstance(v1Image))
+		image, err = layout.NewImage(options.Path, imageOptions...)
 	}
 
 	if err != nil {
