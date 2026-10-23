@@ -55,31 +55,19 @@ func DefaultRegistry() Registry {
 }
 
 func DefaultConfigPath() (string, error) {
-	home, err := PackHome()
+	dir, err := ConfigDir()
 	if err != nil {
-		return "", errors.Wrap(err, "getting pack home")
+		return "", errors.Wrap(err, "getting config directory")
 	}
-	return filepath.Join(home, "config.toml"), nil
+	return filepath.Join(dir, "config.toml"), nil
 }
 
 func DefaultVolumeKeysPath() (string, error) {
-	home, err := PackHome()
+	dir, err := StateDir()
 	if err != nil {
-		return "", errors.Wrap(err, "getting pack home")
+		return "", errors.Wrap(err, "getting state directory")
 	}
-	return filepath.Join(home, "volume-keys.toml"), nil
-}
-
-func PackHome() (string, error) {
-	packHome := os.Getenv("PACK_HOME")
-	if packHome == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", errors.Wrap(err, "getting user home")
-		}
-		packHome = filepath.Join(home, ".pack")
-	}
-	return packHome, nil
+	return filepath.Join(dir, "volume-keys.toml"), nil
 }
 
 func Read(path string) (Config, error) {
@@ -113,8 +101,10 @@ func Write(cfg interface{}, path string) error {
 	return toml.NewEncoder(w).Encode(cfg)
 }
 
+// MkdirAll creates path and any missing parents with the 0700 permissions that the XDG Base
+// Directory spec requires.
 func MkdirAll(path string) error {
-	return os.MkdirAll(path, 0750)
+	return os.MkdirAll(path, 0700)
 }
 
 func SetRunImageMirrors(cfg Config, image string, mirrors []string) Config {

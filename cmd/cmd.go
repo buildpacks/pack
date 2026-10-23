@@ -107,12 +107,12 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 		rootCmd.AddCommand(commands.NewManifestCommand(logger, packClient))
 	}
 
-	packHome, err := config.PackHome()
+	dataDir, err := config.DataDir()
 	if err != nil {
 		return nil, err
 	}
 
-	rootCmd.AddCommand(commands.CompletionCommand(logger, packHome))
+	rootCmd.AddCommand(commands.CompletionCommand(logger, dataDir))
 	rootCmd.AddCommand(commands.Report(logger, packClient.Version(), cfgPath))
 	rootCmd.AddCommand(commands.Version(logger, packClient.Version()))
 
