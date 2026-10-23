@@ -22,11 +22,11 @@ func TestCompletionCommand(t *testing.T) {
 
 func testCompletionCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		command  *cobra.Command
-		logger   logging.Logger
-		outBuf   bytes.Buffer
-		dataDir  string
-		assert   = h.NewAssertionManager(t)
+		command *cobra.Command
+		logger  logging.Logger
+		outBuf  bytes.Buffer
+		dataDir string
+		assert  = h.NewAssertionManager(t)
 	)
 
 	it.Before(func() {
