@@ -32,6 +32,7 @@ func testConfigExperimental(t *testing.T, when spec.G, it spec.S) {
 		outBuf       bytes.Buffer
 		tempPackHome string
 		configPath   string
+		cacheDir     string
 	)
 
 	it.Before(func() {
@@ -41,12 +42,17 @@ func testConfigExperimental(t *testing.T, when spec.G, it spec.S) {
 		tempPackHome, err = os.MkdirTemp("", "pack-home")
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
+		// PACK_HOME determines the cache directory, so pointing it somewhere other than the
+		// config file's directory checks the layout repo isn't put next to the config file.
+		cacheDir = filepath.Join(tempPackHome, "cache-dir")
+		h.AssertNil(t, os.Setenv("PACK_HOME", cacheDir))
 
 		cmd = commands.ConfigExperimental(logger, config.Config{}, configPath)
 		cmd.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
 	})
 
 	it.After(func() {
+		h.AssertNil(t, os.Unsetenv("PACK_HOME"))
 		h.AssertNil(t, os.RemoveAll(tempPackHome))
 	})
 
@@ -78,8 +84,8 @@ func testConfigExperimental(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				h.AssertEq(t, cfg.Experimental, true)
 
-				// oci layout repo is configured
-				layoutDir := filepath.Join(filepath.Dir(configPath), "layout-repo")
+				// oci layout repo is configured in the cache directory
+				layoutDir := filepath.Join(cacheDir, "layout-repo")
 				h.AssertEq(t, cfg.LayoutRepositoryDir, layoutDir)
 			})
 

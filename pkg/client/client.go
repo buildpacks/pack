@@ -37,11 +37,6 @@ import (
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
-const (
-	// Env variable to set the root folder for manifest list local storage
-	xdgRuntimePath = "XDG_RUNTIME_DIR"
-)
-
 var (
 	// Version is the version of `pack`. It is injected at compile time.
 	Version = "0.0.0"
@@ -294,11 +289,11 @@ func NewClient(opts ...Option) (*Client, error) {
 	}
 
 	if client.downloader == nil {
-		packHome, err := iconfig.PackHome()
+		cacheDir, err := iconfig.CacheDir()
 		if err != nil {
-			return nil, errors.Wrap(err, "getting pack home")
+			return nil, errors.Wrap(err, "getting cache directory")
 		}
-		client.downloader = blob.NewDownloader(client.logger, filepath.Join(packHome, "download-cache"))
+		client.downloader = blob.NewDownloader(client.logger, filepath.Join(cacheDir, "download-cache"))
 	}
 
 	if client.imageFetcher == nil {
@@ -313,15 +308,11 @@ func NewClient(opts ...Option) (*Client, error) {
 	}
 
 	if client.indexFactory == nil {
-		packHome, err := iconfig.PackHome()
+		runtimeDir, err := iconfig.RuntimeDir()
 		if err != nil {
-			return nil, errors.Wrap(err, "getting pack home")
+			return nil, errors.Wrap(err, "getting runtime directory")
 		}
-		indexRootStoragePath := filepath.Join(packHome, "manifests")
-		if xdgPath, ok := os.LookupEnv(xdgRuntimePath); ok {
-			indexRootStoragePath = xdgPath
-		}
-		client.indexFactory = index.NewIndexFactory(client.keychain, indexRootStoragePath)
+		client.indexFactory = index.NewIndexFactory(client.keychain, filepath.Join(runtimeDir, "manifests"))
 	}
 
 	if client.buildpackDownloader == nil {

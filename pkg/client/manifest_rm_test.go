@@ -71,7 +71,7 @@ func testRemoveManifest(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				indexRepoName = h.NewRandomIndexRepoName()
-				indexPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+				indexPath = filepath.Join(tmpDir, "pack", "manifests", imgutil.MakeFileSafeName(indexRepoName))
 
 				// Initialize the Index with 2 image manifest
 				idx, digest = h.RandomCNBIndexAndDigest(t, indexRepoName, 1, 2)
