@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 ARG base_image=gcr.io/distroless/static
 
-FROM golang:1.25 as builder
+FROM golang:1.26 AS builder
 ARG pack_version
 ENV PACK_VERSION=$pack_version
 WORKDIR /app

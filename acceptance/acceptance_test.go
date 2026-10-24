@@ -933,7 +933,12 @@ func testWithoutSpecificBuilderRequirement(
 
 					index := h.ReadIndexManifest(t, indexLocalPath)
 					h.AssertEq(t, len(index.Manifests), 1)
-					h.AssertEq(t, len(index.Manifests[0].Annotations), 1)
+					// Assert the annotation we asked for is present, rather than the total
+					// count. The descriptor may also carry annotations inherited from the
+					// source manifest (go-containerregistry >= v0.21.6 propagates the
+					// manifest's own annotations, e.g. org.opencontainers.image.version),
+					// which is not something this command controls.
+					h.AssertEq(t, index.Manifests[0].Annotations["foo"], "bar")
 				})
 			})
 
