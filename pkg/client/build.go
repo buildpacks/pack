@@ -235,6 +235,10 @@ type BuildOptions struct {
 	// Enable user namespace isolation for the build containers
 	EnableUsernsHost bool
 
+	// ExportRetry, when set, decides whether a failed export is tried again (the exporter alone, against the layers
+	// already built) and how long to wait first. attempt is 1 for the first retry. nil: an export failure is final.
+	ExportRetry func(attempt int, err error) (time.Duration, bool)
+
 	InsecureRegistries []string
 }
 
@@ -702,6 +706,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Layout:                   opts.Layout(),
 		Keychain:                 c.keychain,
 		EnableUsernsHost:         opts.EnableUsernsHost,
+		ExportRetry:              opts.ExportRetry,
 		ExecutionEnvironment:     opts.CNBExecutionEnv,
 		InsecureRegistries:       effectiveInsecureRegistries,
 	}
