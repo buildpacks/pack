@@ -29,6 +29,7 @@ type Logger interface {
 
 type ImageFetcher interface {
 	Fetch(ctx context.Context, name string, options image.FetchOptions) (imgutil.Image, error)
+	FetchForPlatform(ctx context.Context, name string, options image.FetchOptions) (imgutil.Image, error)
 	CheckReadAccess(repo string, options image.FetchOptions) bool
 }
 
@@ -204,7 +205,13 @@ func fromOCILayoutBlob(blob blob.Blob, kind string) (mainModule BuildModule, dep
 }
 
 func extractPackaged(ctx context.Context, kind string, pkgImageRef string, fetcher ImageFetcher, fetchOptions image.FetchOptions) (mainModule BuildModule, depModules []BuildModule, err error) {
-	pkgImage, err := fetcher.Fetch(ctx, pkgImageRef, fetchOptions)
+	fetch := fetcher.Fetch
+	// The daemon may hold other platforms' variants of a multi-platform package; inspecting it
+	// without a platform finds no labels, or another architecture's buildpacks.
+	if fetchOptions.Daemon && fetchOptions.Target != nil && fetchOptions.Target.Arch != "" {
+		fetch = fetcher.FetchForPlatform
+	}
+	pkgImage, err := fetch(ctx, pkgImageRef, fetchOptions)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "fetching image")
 	}
