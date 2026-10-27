@@ -204,14 +204,21 @@ func fromOCILayoutBlob(blob blob.Blob, kind string) (mainModule BuildModule, dep
 	return mainModule, depModules, nil
 }
 
-func extractPackaged(ctx context.Context, kind string, pkgImageRef string, fetcher ImageFetcher, fetchOptions image.FetchOptions) (mainModule BuildModule, depModules []BuildModule, err error) {
-	fetch := fetcher.Fetch
-	// The daemon may hold other platforms' variants of a multi-platform package; inspecting it
-	// without a platform finds no labels, or another architecture's buildpacks.
+// fetchPackage fetches the target's variant of a package image when building to a daemon. The daemon may
+// hold other platforms' variants, and inspecting it without a platform finds no labels or another
+// architecture's buildpacks.
+func fetchPackage(ctx context.Context, fetcher ImageFetcher, pkgImageRef string, fetchOptions image.FetchOptions) (imgutil.Image, error) {
 	if fetchOptions.Daemon && fetchOptions.Target != nil && fetchOptions.Target.Arch != "" {
-		fetch = fetcher.FetchForPlatform
+		if pkgImage, err := fetcher.FetchForPlatform(ctx, pkgImageRef, fetchOptions); err == nil {
+			return pkgImage, nil
+		}
+		// A package that was never pushed has no registry digest to resolve; use the daemon's copy.
 	}
-	pkgImage, err := fetch(ctx, pkgImageRef, fetchOptions)
+	return fetcher.Fetch(ctx, pkgImageRef, fetchOptions)
+}
+
+func extractPackaged(ctx context.Context, kind string, pkgImageRef string, fetcher ImageFetcher, fetchOptions image.FetchOptions) (mainModule BuildModule, depModules []BuildModule, err error) {
+	pkgImage, err := fetchPackage(ctx, fetcher, pkgImageRef, fetchOptions)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "fetching image")
 	}

@@ -226,6 +226,23 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("daemon=true and the package can't be resolved in a registry", func() {
+				it("should fall back to the daemon's package image", func() {
+					downloadOptions = buildpack.DownloadOptions{
+						Target:     &dist.Target{OS: "linux", Arch: "arm64"},
+						ImageName:  packageImage.Name(),
+						Daemon:     true,
+						PullPolicy: image.PullAlways,
+					}
+
+					mockImageFetcher.EXPECT().FetchForPlatform(gomock.Any(), packageImage.Name(), gomock.Any()).Return(nil, errors.New("MANIFEST_UNKNOWN"))
+					shouldFetchPackageImageWith(true, image.PullAlways, &dist.Target{OS: "linux", Arch: "arm64"})
+					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
+					h.AssertNil(t, err)
+					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
+				})
+			})
+
 			when("daemon=false and the target has an architecture", func() {
 				it("should fetch the remote package image, which already selects the platform", func() {
 					downloadOptions = buildpack.DownloadOptions{
