@@ -109,6 +109,10 @@ type LifecycleOptions struct {
 	CreationTime                    *time.Time
 	Keychain                        authn.Keychain
 	EnableUsernsHost                bool
+	// ExportRetry decides whether a failed export is tried again, and how long to wait first. Only the exporter
+	// runs again, against the layers already built, so nothing is rebuilt; blobs the registry already holds are not
+	// uploaded twice. attempt is 1 for the first retry. nil: an export failure is final.
+	ExportRetry func(attempt int, err error) (time.Duration, bool)
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker DockerClient) *LifecycleExecutor {
