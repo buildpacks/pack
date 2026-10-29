@@ -460,12 +460,13 @@ func (l *LifecycleExecution) Create(ctx context.Context, buildCache, launchCache
 	}
 
 	if l.opts.Publish || l.opts.Layout {
-		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
+		registryImages := []string{l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage}
+		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, registryImages...)
 		if err != nil {
 			return err
 		}
 
-		opts = append(opts, WithRoot(), WithRegistryAccess(authConfig))
+		opts = append(opts, WithRoot(), WithRegistryAccess(authConfig, registryImages...))
 	} else {
 		opts = append(opts,
 			WithDaemonAccess(l.opts.DockerHost),
@@ -574,7 +575,7 @@ func (l *LifecycleExecution) Restore(ctx context.Context, buildCache Cache, kani
 		if err != nil {
 			return err
 		}
-		registryOp = WithRegistryAccess(authConfig)
+		registryOp = WithRegistryAccess(authConfig, registryImages...)
 	}
 
 	// for export to OCI layout
@@ -719,7 +720,8 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 
 	var analyze RunnerCleaner
 	if l.opts.Publish || l.opts.Layout {
-		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
+		registryImages := []string{l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage}
+		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, registryImages...)
 		if err != nil {
 			return err
 		}
@@ -730,7 +732,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, buildCache, launchCach
 			WithLogPrefix("analyzer"),
 			WithImage(l.opts.LifecycleImage),
 			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.opts.Builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.opts.Builder.GID())),
-			WithRegistryAccess(authConfig),
+			WithRegistryAccess(authConfig, registryImages...),
 			WithRoot(),
 			WithArgs(l.withLogLevel(args...)...),
 			WithNetwork(l.opts.Network),
@@ -934,14 +936,15 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 
 	var export RunnerCleaner
 	if l.opts.Publish || l.opts.Layout {
-		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage)
+		registryImages := []string{l.opts.Image.String(), l.opts.RunImage, l.opts.CacheImage, l.opts.PreviousImage}
+		authConfig, err := auth.BuildEnvVar(l.opts.Keychain, registryImages...)
 		if err != nil {
 			return err
 		}
 
 		opts = append(
 			opts,
-			WithRegistryAccess(authConfig),
+			WithRegistryAccess(authConfig, registryImages...),
 			WithRoot(),
 		)
 		export = phaseFactory.New(NewPhaseConfigProvider("exporter", l, opts...))
