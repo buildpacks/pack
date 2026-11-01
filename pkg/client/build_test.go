@@ -156,6 +156,90 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNilE(t, fakeLifecycleImage.Cleanup())
 	})
 
+	when("#getFileFilter", func() {
+		when("exclude patterns", func() {
+			it("creates filter that excludes files matching patterns", func() {
+				descriptor := projectTypes.Descriptor{
+					Build: projectTypes.Build{
+						Exclude: []string{"*.log", "tmp/"},
+					},
+				}
+
+				filter, err := getFileFilter(descriptor)
+				h.AssertNil(t, err)
+				h.AssertNotNil(t, filter)
+
+				// Files matching patterns should be excluded (filter returns false)
+				h.AssertEq(t, filter("app.log"), false)
+				h.AssertEq(t, filter("tmp/cache.dat"), false)
+				h.AssertEq(t, filter("tmp"), false) // Directory "tmp" should be excluded due to "tmp/" pattern
+
+				// Files not matching patterns should be included (filter returns true)
+				h.AssertEq(t, filter("app.js"), true)
+				h.AssertEq(t, filter("src/main.go"), true)
+			})
+		})
+
+		when("include patterns", func() {
+			it("creates filter that includes only files matching patterns", func() {
+				descriptor := projectTypes.Descriptor{
+					Build: projectTypes.Build{
+						Include: []string{"src/", "*.md"},
+					},
+				}
+
+				filter, err := getFileFilter(descriptor)
+				h.AssertNil(t, err)
+				h.AssertNotNil(t, filter)
+
+				// Files matching patterns should be included (filter returns true)
+				h.AssertEq(t, filter("src/main.go"), true)
+				h.AssertEq(t, filter("README.md"), true)
+
+				// Files not matching patterns should be excluded (filter returns false)
+				h.AssertEq(t, filter("app.log"), false)
+				h.AssertEq(t, filter("tmp/cache.dat"), false)
+			})
+
+			it("includes parent directories when specific files are included", func() {
+				descriptor := projectTypes.Descriptor{
+					Build: projectTypes.Build{
+						Include: []string{"*.jar", "media/mountain.jpg", "/media/person.png"},
+					},
+				}
+
+				filter, err := getFileFilter(descriptor)
+				h.AssertNil(t, err)
+				h.AssertNotNil(t, filter)
+
+				// Direct matches should be included
+				h.AssertEq(t, filter("cookie.jar"), true)
+				h.AssertEq(t, filter("media/mountain.jpg"), true)
+				h.AssertEq(t, filter("media/person.png"), true)
+
+				// Parent directories should be included to allow traversal
+				h.AssertEq(t, filter("media"), true)
+
+				// Files not matching patterns should be excluded
+				h.AssertEq(t, filter("secrets/api_keys.json"), false)
+				h.AssertEq(t, filter("test.sh"), false)
+				h.AssertEq(t, filter("secrets"), false)
+			})
+		})
+
+		when("both exclude and include are empty", func() {
+			it("returns nil filter", func() {
+				descriptor := projectTypes.Descriptor{
+					Build: projectTypes.Build{},
+				}
+
+				filter, err := getFileFilter(descriptor)
+				h.AssertNil(t, err)
+				h.AssertNil(t, filter)
+			})
+		})
+	})
+
 	when("#Build", func() {
 		when("ephemeral builder is not needed", func() {
 			it("does not create one", func() {
