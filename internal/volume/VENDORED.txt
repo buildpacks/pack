@@ -1,0 +1,4 @@
+Vendored from: https://github.com/moby/moby
+Upstream Path: https://github.com/moby/moby/tree/7fd2be6664adc124debfebc63e2d02a7df096056/daemon/volume/mounts
+Commit SHA: 7fd2be6664adc124debfebc63e2d02a7df096056
+Date: 2026-07-28
