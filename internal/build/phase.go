@@ -5,6 +5,7 @@ import (
 	"io"
 
 	dcontainer "github.com/moby/moby/api/types/container"
+	dnetwork "github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 
@@ -19,6 +20,7 @@ type Phase struct {
 	handler             container.Handler
 	ctrConf             *dcontainer.Config
 	hostConf            *dcontainer.HostConfig
+	networkConf         *dnetwork.NetworkingConfig
 	ctr                 client.ContainerCreateResult
 	uid, gid            int
 	appPath             string
@@ -30,8 +32,9 @@ type Phase struct {
 func (p *Phase) Run(ctx context.Context) error {
 	var err error
 	p.ctr, err = p.docker.ContainerCreate(ctx, client.ContainerCreateOptions{
-		Config:     p.ctrConf,
-		HostConfig: p.hostConf,
+		Config:           p.ctrConf,
+		HostConfig:       p.hostConf,
+		NetworkingConfig: p.networkConf,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "failed to create '%s' container", p.name)

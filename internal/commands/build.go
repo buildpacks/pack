@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -45,6 +46,7 @@ type BuildFlags struct {
 	Platform               string
 	Policy                 string
 	Network                string
+	MacAddress             string
 	DescriptorPath         string
 	DefaultProcessType     string
 	LifecycleImage         string
@@ -195,8 +197,9 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Buildpacks:           buildpacks,
 				Extensions:           extensions,
 				ContainerConfig: client.ContainerConfig{
-					Network: flags.Network,
-					Volumes: flags.Volumes,
+					Network:    flags.Network,
+					MacAddress: flags.MacAddress,
+					Volumes:    flags.Volumes,
 				},
 				DefaultProcessType:       flags.DefaultProcessType,
 				ProjectDescriptorBaseDir: filepath.Dir(actualDescriptorPath),
@@ -275,6 +278,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringArrayVarP(&buildFlags.Env, "env", "e", []string{}, "Build-time environment variable, in the form 'VAR=VALUE' or 'VAR'.\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed.\nThis flag may be specified multiple times and will override\n  individual values defined by --env-file."+stringArrayHelp("env")+"\nNOTE: These are NOT available at image runtime.")
 	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed\nNOTE: These are NOT available at image runtime.\"")
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
+	cmd.Flags().StringVar(&buildFlags.MacAddress, "mac-address", "", "MAC address to set on the build container network endpoint")
 	cmd.Flags().StringArrayVar(&buildFlags.PreBuildpacks, "pre-buildpack", []string{}, "Buildpacks to prepend to the groups in the builder's order")
 	cmd.Flags().StringArrayVar(&buildFlags.PostBuildpacks, "post-buildpack", []string{}, "Buildpacks to append to the groups in the builder's order")
 	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "Publish the application image directly to the container registry specified in <image-name>, instead of the daemon. The run image must also reside in the registry.")
@@ -336,6 +340,12 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, inputImageRef clie
 
 	if flags.UID < 0 {
 		return errors.New("uid flag must be in the range of 0-2147483647")
+	}
+
+	if flags.MacAddress != "" {
+		if _, err := net.ParseMAC(flags.MacAddress); err != nil {
+			return errors.Wrapf(err, "invalid MAC address %q", flags.MacAddress)
+		}
 	}
 
 	if flags.Interactive && !cfg.Experimental {

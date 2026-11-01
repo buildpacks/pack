@@ -1,10 +1,13 @@
 package fakes
 
 import (
+	"net"
+
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/moby/moby/api/types/network"
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
@@ -129,6 +132,17 @@ func WithBuilder(builder *FakeBuilder) func(*build.LifecycleOptions) {
 func WithEnableUsernsHost() func(*build.LifecycleOptions) {
 	return func(opts *build.LifecycleOptions) {
 		opts.EnableUsernsHost = true
+	}
+}
+
+// WithMacAddress creates a LifecycleOptions option that sets the container MAC address.
+func WithMacAddress(macAddress string) func(*build.LifecycleOptions) {
+	return func(opts *build.LifecycleOptions) {
+		parsed, err := net.ParseMAC(macAddress)
+		if err != nil {
+			panic(err)
+		}
+		opts.MacAddress = network.HardwareAddr(parsed)
 	}
 }
 

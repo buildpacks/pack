@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"
 	dcontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
@@ -74,6 +75,31 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				phaseConfigProvider := build.NewPhaseConfigProvider(expectedPhaseName, lifecycle)
 
 				h.AssertEq(t, phaseConfigProvider.HostConfig().UsernsMode, dcontainer.UsernsMode("host"))
+			})
+		})
+
+		when("mac address is set", func() {
+			it("sets the mac address on the default network endpoint", func() {
+				expectedMACAddress := "01:23:45:67:89:ab"
+				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithMacAddress(expectedMACAddress))
+
+				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
+
+				endpoint := phaseConfigProvider.NetworkConfig().EndpointsConfig[network.NetworkDefault]
+				h.AssertNotNil(t, endpoint)
+				h.AssertEq(t, endpoint.MacAddress.String(), expectedMACAddress)
+			})
+
+			it("sets the mac address on the selected network endpoint", func() {
+				expectedMACAddress := "01:23:45:67:89:ab"
+				expectedNetwork := "some-network"
+				lifecycle := newTestLifecycleExec(t, false, "some-temp-dir", fakes.WithMacAddress(expectedMACAddress))
+
+				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle, build.WithNetwork(expectedNetwork))
+
+				endpoint := phaseConfigProvider.NetworkConfig().EndpointsConfig[expectedNetwork]
+				h.AssertNotNil(t, endpoint)
+				h.AssertEq(t, endpoint.MacAddress.String(), expectedMACAddress)
 			})
 		})
 
