@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -23,6 +25,12 @@ type ConfigurableLogger interface {
 	WantVerbose(f bool)
 }
 
+// clientHolder defers client initialization until PersistentPreRunE,
+// allowing root persistent flags
+type clientHolder struct {
+	commands.PackClient
+}
+
 // NewPackCommand generates a Pack command
 //
 //nolint:staticcheck
@@ -33,15 +41,23 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 		return nil, err
 	}
 
-	packClient, err := initClient(logger, cfg)
-	if err != nil {
-		return nil, err
-	}
+	holder := &clientHolder{}
+	var dockerHost string
 
 	rootCmd := &cobra.Command{
 		Use:   "pack",
 		Short: "CLI for building apps using Cloud Native Buildpacks",
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if dockerHost != "" && dockerHost != "inherit" {
+				os.Setenv("DOCKER_HOST", dockerHost)
+			}
+
+			packClient, err := initClient(logger, cfg)
+			if err != nil {
+				return err
+			}
+			holder.PackClient = packClient
+
 			if fs := cmd.Flags(); fs != nil {
 				if forceColor, err := fs.GetBool("force-color"); err == nil && !forceColor {
 					if flag, err := fs.GetBool("no-color"); err == nil && flag {
@@ -63,6 +79,8 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 					logger.WantTime(flag)
 				}
 			}
+
+			return nil
 		},
 	}
 
@@ -71,40 +89,47 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.PersistentFlags().Bool("timestamps", false, "Enable timestamps in output")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Show less output")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Show more output")
+	rootCmd.PersistentFlags().StringVar(&dockerHost, "docker-host", "",
+		`Address to docker daemon to connect to.
+If not set (or set to empty string) the standard socket location will be used.
+Special value 'inherit' may be used in which case DOCKER_HOST environment variable will be used.
+This flag is available on all subcommands; for 'build', it controls which daemon is
+exposed to the build container's lifecycle phases.
+`)
 	rootCmd.Flags().Bool("version", false, "Show current 'pack' version")
 
 	commands.AddHelpFlag(rootCmd, "pack")
 
-	rootCmd.AddCommand(commands.Build(logger, cfg, packClient))
-	rootCmd.AddCommand(commands.NewBuilderCommand(logger, cfg, packClient))
-	rootCmd.AddCommand(commands.NewBuildpackCommand(logger, cfg, packClient, buildpackage.NewConfigReader()))
-	rootCmd.AddCommand(commands.NewExtensionCommand(logger, cfg, packClient, buildpackage.NewConfigReader()))
-	rootCmd.AddCommand(commands.NewConfigCommand(logger, cfg, cfgPath, packClient))
-	rootCmd.AddCommand(commands.InspectImage(logger, imagewriter.NewFactory(), cfg, packClient))
+	rootCmd.AddCommand(commands.Build(logger, cfg, holder))
+	rootCmd.AddCommand(commands.NewBuilderCommand(logger, cfg, holder))
+	rootCmd.AddCommand(commands.NewBuildpackCommand(logger, cfg, holder, buildpackage.NewConfigReader()))
+	rootCmd.AddCommand(commands.NewExtensionCommand(logger, cfg, holder, buildpackage.NewConfigReader()))
+	rootCmd.AddCommand(commands.NewConfigCommand(logger, cfg, cfgPath, holder))
+	rootCmd.AddCommand(commands.InspectImage(logger, imagewriter.NewFactory(), cfg, holder))
 	rootCmd.AddCommand(commands.NewStackCommand(logger))
-	rootCmd.AddCommand(commands.Rebase(logger, cfg, packClient))
-	rootCmd.AddCommand(commands.NewSBOMCommand(logger, cfg, packClient))
+	rootCmd.AddCommand(commands.Rebase(logger, cfg, holder))
+	rootCmd.AddCommand(commands.NewSBOMCommand(logger, cfg, holder))
 
-	rootCmd.AddCommand(commands.InspectBuildpack(logger, cfg, packClient))
-	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, packClient, builderwriter.NewFactory()))
+	rootCmd.AddCommand(commands.InspectBuildpack(logger, cfg, holder))
+	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, holder, builderwriter.NewFactory()))
 
-	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, cfgPath, packClient))
+	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, cfgPath, holder))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg, cfgPath))
-	rootCmd.AddCommand(commands.SuggestBuilders(logger, packClient))
+	rootCmd.AddCommand(commands.SuggestBuilders(logger, holder))
 	rootCmd.AddCommand(commands.TrustBuilder(logger, cfg, cfgPath))
 	rootCmd.AddCommand(commands.UntrustBuilder(logger, cfg, cfgPath))
 	rootCmd.AddCommand(commands.ListTrustedBuilders(logger, cfg))
-	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, packClient))
-	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, packClient, buildpackage.NewConfigReader()))
+	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, holder))
+	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, holder, buildpackage.NewConfigReader()))
 
 	if cfg.Experimental {
 		rootCmd.AddCommand(commands.AddBuildpackRegistry(logger, cfg, cfgPath))
 		rootCmd.AddCommand(commands.ListBuildpackRegistries(logger, cfg))
-		rootCmd.AddCommand(commands.RegisterBuildpack(logger, cfg, packClient))
+		rootCmd.AddCommand(commands.RegisterBuildpack(logger, cfg, holder))
 		rootCmd.AddCommand(commands.SetDefaultRegistry(logger, cfg, cfgPath))
 		rootCmd.AddCommand(commands.RemoveRegistry(logger, cfg, cfgPath))
-		rootCmd.AddCommand(commands.YankBuildpack(logger, cfg, packClient))
-		rootCmd.AddCommand(commands.NewManifestCommand(logger, packClient))
+		rootCmd.AddCommand(commands.YankBuildpack(logger, cfg, holder))
+		rootCmd.AddCommand(commands.NewManifestCommand(logger, holder))
 	}
 
 	packHome, err := config.PackHome()
@@ -113,10 +138,10 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	}
 
 	rootCmd.AddCommand(commands.CompletionCommand(logger, packHome))
-	rootCmd.AddCommand(commands.Report(logger, packClient.Version(), cfgPath))
-	rootCmd.AddCommand(commands.Version(logger, packClient.Version()))
+	rootCmd.AddCommand(commands.Report(logger, client.Version, cfgPath))
+	rootCmd.AddCommand(commands.Version(logger, client.Version))
 
-	rootCmd.Version = packClient.Version()
+	rootCmd.Version = client.Version
 	rootCmd.SetVersionTemplate(`{{.Version}}{{"\n"}}`)
 	rootCmd.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
 	rootCmd.SetErr(logging.GetWriterForLevel(logger, logging.ErrorLevel))
