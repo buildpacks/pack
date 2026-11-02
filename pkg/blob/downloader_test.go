@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/heroku/color"
 	"github.com/onsi/gomega/ghttp"
@@ -158,6 +160,44 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 					it("should return error", func() {
 						_, err := subject.Download(context.TODO(), "not-supported://file.tgz")
 						h.AssertError(t, err, "unsupported protocol 'not-supported'")
+					})
+				})
+
+				when("response Content-Length exceeds limit", func() {
+					it("returns an error without writing to disk", func() {
+						srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+							w.Header().Set("Content-Length", fmt.Sprintf("%d", 500*1024*1024+1))
+							w.WriteHeader(http.StatusOK)
+						}))
+						defer srv.Close()
+
+						_, err := subject.Download(context.TODO(), srv.URL+"/huge.tgz")
+						h.AssertError(t, err, "too large")
+
+						// No cache file should have been written (c2 dir may exist but must be empty).
+						entries, _ := os.ReadDir(filepath.Join(cacheDir, "c2"))
+						h.AssertEq(t, len(entries), 0)
+					})
+				})
+
+				when("server does not respond in time", func() {
+					it("times out and returns an error", func() {
+						hangCh := make(chan struct{})
+						srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+							<-hangCh
+						}))
+						defer func() {
+							close(hangCh)
+							srv.Close()
+						}()
+
+						fastClient := &http.Client{Timeout: 50 * time.Millisecond}
+						dl := blob.NewDownloader(&logger{io.Discard}, cacheDir, blob.WithClient(fastClient))
+
+						_, err := dl.Download(context.TODO(), srv.URL+"/slow.tgz")
+						if err == nil {
+							t.Error("expected timeout error, got nil")
+						}
 					})
 				})
 			})
