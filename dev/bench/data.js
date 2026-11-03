@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793735248018,
+  "lastUpdate": 1793736808920,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15286,6 +15286,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 519644843860,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "87874775+officialasishkumar@users.noreply.github.com",
+            "name": "Asish Kumar",
+            "username": "officialasishkumar"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f250204846333a351f76db331f3c612717d185f0",
+          "message": "fix: include CA certificates in the pack base image (#2609)\n\nThe delivery-docker workflow builds the Dockerfile twice: the tiny image\n(buildpacksio/pack and :latest) from gcr.io/distroless/static, and the\nbase image (buildpacksio/pack:<version>-base and :base) from ubuntu:jammy.\n\nThe distroless base bundles a CA certificate store, but the ubuntu:jammy\nimage does not ship the ca-certificates package. As a result the -base\nimage has no trusted roots, and any pack command that talks to a registry\nover TLS fails:\n\n    ERROR: ... Get \"https://index.docker.io/v2/\": tls: failed to verify\n    certificate: x509: certificate signed by unknown authority\n\nCopy the CA bundle from the golang builder stage (which is Debian based\nand includes ca-certificates) into the final image. This restores trusted\nroots for the ubuntu:jammy -base image and is a harmless no-op for the\ndistroless image, which already ships the same bundle at that path, so a\nsingle line fixes every published base image.\n\nVerified by building the Dockerfile with both base images and performing\nan HTTPS request to a registry from inside each: ubuntu:jammy fails\nwithout the copy and succeeds with it, and the distroless image keeps\nworking.\n\nResolves #2488\n\nSigned-off-by: Asish Kumar <officialasishkumar@gmail.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-11-03T15:07:43-05:00",
+          "tree_id": "a65c5244cc8035b5bcce855c4ffde3f03d04d5ea",
+          "url": "https://github.com/buildpacks/pack/commit/f250204846333a351f76db331f3c612717d185f0"
+        },
+        "date": 1793736798206,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 205883043620,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
