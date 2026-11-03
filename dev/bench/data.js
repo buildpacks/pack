@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793648186891,
+  "lastUpdate": 1793735248018,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15256,6 +15256,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 201972630110,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jogdandpranav2007@gmail.com",
+            "name": "Pranav-IIITM",
+            "username": "Pranav-IIITM"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cddf381d0118bea152dbd358fae810e312270439",
+          "message": "test: only assert the last line of quiet-mode local build output (#2730)\n\nRunners whose Docker daemon uses containerd image storage print a\nperformance warning before the image reference, which broke the\nexact-match assertion.\n\nSigned-off-by: Pranav-IIITM <jogdandpranav2007@gmail.com>",
+          "timestamp": "2026-11-02T14:31:28-05:00",
+          "tree_id": "b8260583444f90c8c9ae89a21a8e086897247185",
+          "url": "https://github.com/buildpacks/pack/commit/cddf381d0118bea152dbd358fae810e312270439"
+        },
+        "date": 1793735217078,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 519644843860,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
