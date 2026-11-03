@@ -1,0 +1,13 @@
+This directory contains code vendored from the Moby Project
+(https://github.com/moby/moby), specifically daemon/volume/mounts.
+
+    Docker
+    Copyright 2013-2018 Docker, Inc.
+
+    This product includes software developed at Docker, Inc.
+    (https://www.docker.com).
+
+The vendored files are licensed under the Apache License, Version 2.0, a copy
+of which is included in this directory as LICENSE. They have been modified;
+internal/volume/VENDORED.txt records the upstream revision they were taken from
+and lists every change made to them.
