@@ -71,8 +71,7 @@ func GetLocatorType(locator string, relativeBaseDir string, buildpacksFromBuilde
 
 	if paths.IsURI(locator) {
 		if HasDockerLocator(locator) {
-			ref := strings.TrimPrefix(locator, "docker://")
-			if _, err := name.ParseReference(ref); err == nil {
+			if _, err := name.ParseReference(ParsePackageLocator(locator)); err == nil {
 				return PackageLocator, nil
 			}
 		}
