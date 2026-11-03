@@ -108,6 +108,10 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			expectedType: buildpack.PackageLocator,
 		},
 		{
+			locator:      "docker://localhost:5000/foo/bar",
+			expectedType: buildpack.PackageLocator,
+		},
+		{
 			locator:      "docker://registry.com/cnbs/some-bp@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 			expectedType: buildpack.PackageLocator,
 		},
