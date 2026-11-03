@@ -51,7 +51,7 @@ jobs:
           # Create label to use for exact search
           gh label create "$label" || true
           
-          search_output=$(gh issue list --search "$title" --label "$label")
+          search_output=$(gh issue list --search "\"$title\" in:title" --label "$label")
           
           body="Latest $GITHUB_REPOSITORY release v${{ steps.read-go.outputs.latest-release-version }} is built with Go version ${{ steps.read-go.outputs.latest-release-go-version }}; newer version ${{ steps.read-go.outputs.latest-go-version }} is available."
           
@@ -88,7 +88,7 @@ jobs:
             # Create label to use for exact search
             gh label create "$label" || true
 
-            search_output=$(gh issue list --search "$title" --label "$label")
+            search_output=$(gh issue list --search "\"$title\" in:title" --label "$label")
 
             GITHUB_WORKFLOW_URL=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
             body="Latest docker.io/buildpacksio/pack v${{ steps.read-go.outputs.latest-release-version }} triggered CVE(s) from Grype. For further details, see: $GITHUB_WORKFLOW_URL"

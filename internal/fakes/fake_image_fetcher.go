@@ -18,16 +18,18 @@ type FetchArgs struct {
 }
 
 type FakeImageFetcher struct {
-	LocalImages  map[string]imgutil.Image
-	RemoteImages map[string]imgutil.Image
-	FetchCalls   map[string]*FetchArgs
+	LocalImages           map[string]imgutil.Image
+	RemoteImages          map[string]imgutil.Image
+	FetchCalls            map[string]*FetchArgs
+	FetchForPlatformCalls map[string]*FetchArgs
 }
 
 func NewFakeImageFetcher() *FakeImageFetcher {
 	return &FakeImageFetcher{
-		LocalImages:  map[string]imgutil.Image{},
-		RemoteImages: map[string]imgutil.Image{},
-		FetchCalls:   map[string]*FetchArgs{},
+		LocalImages:           map[string]imgutil.Image{},
+		RemoteImages:          map[string]imgutil.Image{},
+		FetchCalls:            map[string]*FetchArgs{},
+		FetchForPlatformCalls: map[string]*FetchArgs{},
 	}
 }
 
@@ -61,8 +63,8 @@ func (f *FakeImageFetcher) CheckReadAccess(_ string, _ image.FetchOptions) bool 
 }
 
 func (f *FakeImageFetcher) FetchForPlatform(ctx context.Context, name string, options image.FetchOptions) (imgutil.Image, error) {
-	// For the fake implementation, FetchForPlatform behaves the same as Fetch
-	// since we don't need to simulate the platform-specific digest resolution
+	f.FetchForPlatformCalls[name] = &FetchArgs{Daemon: options.Daemon, PullPolicy: options.PullPolicy, Target: options.Target, LayoutOption: options.LayoutOption}
+	// For the fake, platform-specific digest resolution is a no-op; delegate to Fetch.
 	return f.Fetch(ctx, name, options)
 }
 

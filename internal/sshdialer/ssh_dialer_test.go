@@ -17,7 +17,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/docker/docker/pkg/homedir"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -27,6 +26,11 @@ import (
 	"github.com/buildpacks/pack/internal/sshdialer"
 	th "github.com/buildpacks/pack/testhelpers"
 )
+
+func homeDir() string {
+	h, _ := os.UserHomeDir()
+	return h
+}
 
 type args struct {
 	connStr          string
@@ -566,9 +570,9 @@ func withKnowHosts(connConfig *SSHServer) setUpEnvFn {
 	return func(t *testing.T) func() {
 		t.Helper()
 
-		knownHosts := filepath.Join(homedir.Get(), ".ssh", "known_hosts")
+		knownHosts := filepath.Join(homeDir(), ".ssh", "known_hosts")
 
-		err := os.MkdirAll(filepath.Join(homedir.Get(), ".ssh"), 0700)
+		err := os.MkdirAll(filepath.Join(homeDir(), ".ssh"), 0700)
 		th.AssertNil(t, err)
 
 		_, err = os.Stat(knownHosts)
@@ -607,9 +611,9 @@ func withBadKnownHosts(connConfig *SSHServer) setUpEnvFn {
 	return func(t *testing.T) func() {
 		t.Helper()
 
-		knownHosts := filepath.Join(homedir.Get(), ".ssh", "known_hosts")
+		knownHosts := filepath.Join(homeDir(), ".ssh", "known_hosts")
 
-		err := os.MkdirAll(filepath.Join(homedir.Get(), ".ssh"), 0700)
+		err := os.MkdirAll(filepath.Join(homeDir(), ".ssh"), 0700)
 		th.AssertNil(t, err)
 
 		_, err = os.Stat(knownHosts)
@@ -650,9 +654,9 @@ func withBadKnownHosts(connConfig *SSHServer) setUpEnvFn {
 func withBrokenKnownHosts(t *testing.T) func() {
 	t.Helper()
 
-	knownHosts := filepath.Join(homedir.Get(), ".ssh", "known_hosts")
+	knownHosts := filepath.Join(homeDir(), ".ssh", "known_hosts")
 
-	err := os.MkdirAll(filepath.Join(homedir.Get(), ".ssh"), 0700)
+	err := os.MkdirAll(filepath.Join(homeDir(), ".ssh"), 0700)
 	th.AssertNil(t, err)
 
 	_, err = os.Stat(knownHosts)
@@ -676,9 +680,9 @@ func withBrokenKnownHosts(t *testing.T) func() {
 func withInaccessibleKnownHosts(t *testing.T) func() {
 	t.Helper()
 
-	knownHosts := filepath.Join(homedir.Get(), ".ssh", "known_hosts")
+	knownHosts := filepath.Join(homeDir(), ".ssh", "known_hosts")
 
-	err := os.MkdirAll(filepath.Join(homedir.Get(), ".ssh"), 0700)
+	err := os.MkdirAll(filepath.Join(homeDir(), ".ssh"), 0700)
 	th.AssertNil(t, err)
 
 	_, err = os.Stat(knownHosts)
@@ -699,9 +703,9 @@ func withInaccessibleKnownHosts(t *testing.T) func() {
 func withEmptyKnownHosts(t *testing.T) func() {
 	t.Helper()
 
-	knownHosts := filepath.Join(homedir.Get(), ".ssh", "known_hosts")
+	knownHosts := filepath.Join(homeDir(), ".ssh", "known_hosts")
 
-	err := os.MkdirAll(filepath.Join(homedir.Get(), ".ssh"), 0700)
+	err := os.MkdirAll(filepath.Join(homeDir(), ".ssh"), 0700)
 	th.AssertNil(t, err)
 
 	_, err = os.Stat(knownHosts)

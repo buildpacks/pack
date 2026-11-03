@@ -16,9 +16,9 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/auth"
-	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/moby/moby/client"
+	"github.com/moby/moby/client/pkg/jsonmessage"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 
@@ -124,7 +124,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		// `image with reference <image> was found but does not match the specified platform: wanted linux/amd64, actual: linux` or
 		// `image with reference <image> was found but its platform (linux) does not match the specified platform (linux/amd64)`
 		if strings.Contains(err.Error(), "does not match the specified platform") {
-			f.logger.Debugf(fmt.Sprintf("Pulling image %s", style.Symbol(name)))
+			f.logger.Debugf("Pulling image %s", style.Symbol(name))
 			err = f.pullImage(ctx, name, nil)
 		}
 	}
@@ -258,12 +258,18 @@ func (f *Fetcher) FetchForPlatform(ctx context.Context, name string, options Fet
 
 	platformStr := options.Target.ValuesAsPlatform()
 
+	// Log the pull attempt upfront so it appears in output regardless of whether
+	// digest resolution succeeds (mirrors the log emitted by Fetch for non-FetchForPlatform paths).
+	if options.Daemon {
+		f.logger.Debugf("Pulling image %s with platform %s", style.Symbol(name), style.Symbol(platformStr))
+	}
+
 	// When PullPolicy is PullNever, skip platform-specific digest resolution as it requires
 	// network access to fetch the manifest list. Instead, use the image as-is from the daemon.
 	// Note: This may cause issues with containerd storage. Users should pre-pull the platform-specific
 	// digest if they encounter errors.
 	if options.Daemon && options.PullPolicy == PullNever {
-		f.logger.Debugf("Using lifecycle %s with platform %s (skipping digest resolution due to --pull-policy never)", name, platformStr)
+		f.logger.Debugf("Using image %s with platform %s (skipping digest resolution due to --pull-policy never)", name, platformStr)
 		return f.Fetch(ctx, name, options)
 	}
 
@@ -285,7 +291,7 @@ func (f *Fetcher) FetchForPlatform(ctx context.Context, name string, options Fet
 	}
 
 	// Log the resolution for visibility
-	f.logger.Debugf("Using lifecycle %s; pulling digest %s for platform %s", name, resolvedName, platformStr)
+	f.logger.Debugf("Using image %s; pulling digest %s for platform %s", name, resolvedName, platformStr)
 
 	return f.Fetch(ctx, resolvedName, options)
 }
