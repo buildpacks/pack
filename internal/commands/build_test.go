@@ -173,6 +173,18 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("the image name matches the default builder name", func() {
+				it("refuses to build", func() {
+					cfg := config.Config{DefaultBuilder: "some-org/default-builder:latest"}
+					command = commands.Build(logger, cfg, mockClient)
+
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"some-org/default-builder:test", "--builder", "test", "--trust-builder"})
+					h.AssertNotNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "name must not match default builder image name")
+				})
+			})
+
 			when("the builder is not trusted", func() {
 				it("warns the user that the builder is untrusted", func() {
 					mockClient.EXPECT().
