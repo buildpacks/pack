@@ -18,6 +18,7 @@ import (
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/golang/mock/gomock"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
@@ -301,6 +302,80 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("#Save", func() {
+			it("adds history for layers created by pack", func() {
+				h.AssertNil(t, baseImage.SetHistory([]v1.History{{CreatedBy: "Base image layer"}}))
+				subject.AddBuildpack(bp1v1)
+
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+
+				history, err := baseImage.History()
+				h.AssertNil(t, err)
+				h.AssertEq(t, history, []v1.History{
+					{CreatedBy: "Base image layer"},
+					{CreatedBy: "Buildpacks Builder Config"},
+					{CreatedBy: "Buildpacks Lifecycle"},
+					{CreatedBy: "Buildpack: buildpack-1-id@buildpack-1-version-1"},
+					{CreatedBy: "Buildpacks Stack"},
+					{CreatedBy: "Buildpacks Run Images"},
+					{CreatedBy: "Buildpacks Environment"},
+				})
+			})
+
+			it("adds history for optional builder layers", func() {
+				subject.AddBuildpack(bp1v1)
+				subject.SetOrder(dist.Order{{
+					Group: []dist.ModuleRef{{ModuleInfo: bp1v1.Descriptor().Info()}},
+				}})
+				subject.SetSystem(dist.System{
+					Pre: dist.SystemBuildpacks{
+						Buildpacks: []dist.ModuleRef{{ModuleInfo: bp1v1.Descriptor().Info()}},
+					},
+				})
+				subject.SetBuildConfigEnv(map[string]string{"SOME_KEY": "some-value"})
+
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+
+				history, err := baseImage.History()
+				h.AssertNil(t, err)
+				h.AssertEq(t, history, []v1.History{
+					{CreatedBy: "Buildpacks Builder Config"},
+					{CreatedBy: "Buildpacks Lifecycle"},
+					{CreatedBy: "Buildpack: buildpack-1-id@buildpack-1-version-1"},
+					{CreatedBy: "Buildpacks Order"},
+					{CreatedBy: "Buildpacks System"},
+					{CreatedBy: "Buildpacks Stack"},
+					{CreatedBy: "Buildpacks Run Images"},
+					{CreatedBy: "Buildpacks Build Config"},
+					{CreatedBy: "Buildpacks Environment"},
+				})
+			})
+
+			it("adds history for a buildpack replacement whiteout layer", func() {
+				existingLayers := dist.ModuleLayers{
+					bp1v1.Descriptor().Info().ID: {
+						bp1v1.Descriptor().Info().Version: {
+							LayerDiffID: "sha256:previous-buildpack-layer",
+						},
+					},
+				}
+				h.AssertNil(t, dist.SetLabel(baseImage, dist.BuildpackLayersLabel, existingLayers))
+				subject.AddBuildpack(bp1v1)
+
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+
+				history, err := baseImage.History()
+				h.AssertNil(t, err)
+				h.AssertEq(t, history, []v1.History{
+					{CreatedBy: "Buildpacks Builder Config"},
+					{CreatedBy: "Buildpacks Lifecycle"},
+					{CreatedBy: "Buildpack: buildpack-1-id@buildpack-1-version-1 (removing previous contents)"},
+					{CreatedBy: "Buildpack: buildpack-1-id@buildpack-1-version-1"},
+					{CreatedBy: "Buildpacks Stack"},
+					{CreatedBy: "Buildpacks Run Images"},
+					{CreatedBy: "Buildpacks Environment"},
+				})
+			})
+
 			it("creates a builder from the image and renames it", func() {
 				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
@@ -1987,6 +2062,22 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				it("it return one array with all buildpacks on it", func() {
 					h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)), 1)
 					h.AssertEq(t, len(bldr.FlattenedModules(buildpack.KindBuildpack)[0]), 3)
+				})
+			})
+
+			it("adds history for the flattened buildpack layer", func() {
+				bldr.AddBuildpack(bp1v1)
+				bldr.SetValidateMixins(false)
+				h.AssertNil(t, bldr.Save(logger, builder.CreatorMetadata{}))
+
+				history, err := baseImage.History()
+				h.AssertNil(t, err)
+				h.AssertEq(t, history, []v1.History{
+					{CreatedBy: "Buildpacks Builder Config"},
+					{CreatedBy: "Buildpacks: buildpack-1-id@buildpack-1-version-1, buildpack-1-id@buildpack-1-version-2, buildpack-2-id@buildpack-2-version-1"},
+					{CreatedBy: "Buildpacks Stack"},
+					{CreatedBy: "Buildpacks Run Images"},
+					{CreatedBy: "Buildpacks Environment"},
 				})
 			})
 
