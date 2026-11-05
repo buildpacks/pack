@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -21,7 +20,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/google/go-github/v30/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
@@ -65,19 +64,25 @@ func NewGithubAssetFetcher(t *testing.T, githubToken string) (*GithubAssetFetche
 	}
 
 	ctx := context.TODO()
-	httpClient := new(http.Client)
+	var opts []github.ClientOptionsFunc
 	if githubToken != "" {
 		t.Log("using provided github token")
 		tokenSource := oauth2.StaticTokenSource(&oauth2.Token{
 			AccessToken: githubToken,
 		})
-		httpClient = oauth2.NewClient(ctx, tokenSource)
+		httpClient := oauth2.NewClient(ctx, tokenSource)
+		opts = append(opts, github.WithHTTPClient(httpClient))
+	}
+
+	githubClient, err := github.NewClient(opts...)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating github client")
 	}
 
 	return &GithubAssetFetcher{
 		ctx:          ctx,
 		testObject:   t,
-		githubClient: github.NewClient(httpClient),
+		githubClient: githubClient,
 		cacheDir:     cacheDir,
 	}, nil
 }
@@ -217,7 +222,7 @@ func (f *GithubAssetFetcher) FetchReleaseVersion(owner, repo string, n int) (str
 	// exclude drafts and pre-releases
 	var releases []*github.RepositoryRelease
 	for _, release := range rawReleases {
-		if !*release.Draft && !*release.Prerelease {
+		if !release.Draft && !release.Prerelease {
 			releases = append(releases, release)
 		}
 	}
@@ -228,7 +233,7 @@ func (f *GithubAssetFetcher) FetchReleaseVersion(owner, repo string, n int) (str
 	// sort all release versions
 	versions := make([]*semver.Version, len(releases))
 	for i, release := range releases {
-		version, err := semver.NewVersion(*release.TagName)
+		version, err := semver.NewVersion(release.TagName)
 		if err != nil {
 			return "", errors.Wrap(err, "parsing semver")
 		}
