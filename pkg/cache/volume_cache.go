@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/chainguard-dev/kaniko/pkg/util/proc"
 	"github.com/google/go-containerregistry/pkg/name"
 	dockerClient "github.com/moby/moby/client"
 
@@ -16,6 +15,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/paths"
+	"github.com/buildpacks/pack/internal/third_party/osscontainertools/kaniko/proc"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
