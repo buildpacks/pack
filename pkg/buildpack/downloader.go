@@ -146,7 +146,7 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 		if opts.Target != nil {
 			imageOS = opts.Target.OS
 		}
-		mainBP, depBPs, err = decomposeBlob(blob, kind, imageOS, c.logger)
+		mainBP, depBPs, err = decomposeBlob(blob, kind, imageOS, c.logger, opts.Target)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from %s", style.Symbol(moduleURI))
 		}
@@ -158,14 +158,14 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 
 // decomposeBlob decomposes a buildpack or extension blob into the main module (order buildpack or extension) and
 // (for buildpack blobs) its dependent buildpacks.
-func decomposeBlob(blob blob.Blob, kind string, imageOS string, logger Logger) (mainModule BuildModule, depModules []BuildModule, err error) {
+func decomposeBlob(blob blob.Blob, kind string, imageOS string, logger Logger, target *dist.Target) (mainModule BuildModule, depModules []BuildModule, err error) {
 	isOCILayout, err := IsOCILayoutBlob(blob)
 	if err != nil {
 		return mainModule, depModules, errors.Wrapf(err, "inspecting %s blob", kind)
 	}
 
 	if isOCILayout {
-		mainModule, depModules, err = fromOCILayoutBlob(blob, kind)
+		mainModule, depModules, err = fromOCILayoutBlob(blob, kind, target)
 		if err != nil {
 			return mainModule, depModules, errors.Wrapf(err, "extracting %ss", kind)
 		}
@@ -188,12 +188,20 @@ func decomposeBlob(blob blob.Blob, kind string, imageOS string, logger Logger) (
 	return mainModule, depModules, nil
 }
 
-func fromOCILayoutBlob(blob blob.Blob, kind string) (mainModule BuildModule, depModules []BuildModule, err error) {
+func fromOCILayoutBlob(blob blob.Blob, kind string, target *dist.Target) (mainModule BuildModule, depModules []BuildModule, err error) {
 	switch kind {
 	case KindBuildpack:
-		mainModule, depModules, err = BuildpacksFromOCILayoutBlob(blob)
+		if target == nil {
+			mainModule, depModules, err = BuildpacksFromOCILayoutBlob(blob)
+		} else {
+			mainModule, depModules, err = BuildpacksFromOCILayoutBlobForTarget(blob, *target)
+		}
 	case KindExtension:
-		mainModule, err = ExtensionsFromOCILayoutBlob(blob)
+		if target == nil {
+			mainModule, err = ExtensionsFromOCILayoutBlob(blob)
+		} else {
+			mainModule, err = ExtensionsFromOCILayoutBlobForTarget(blob, *target)
+		}
 	default:
 		return nil, nil, fmt.Errorf("unknown module kind: %s", kind)
 	}
