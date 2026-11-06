@@ -1,7 +1,6 @@
 package buildpack
 
 import (
-	"archive/tar"
 	"compress/gzip"
 	"fmt"
 	"io"
@@ -353,6 +352,18 @@ func (b *PackageBuilder) resolvedStacks() []dist.Stack {
 }
 
 func (b *PackageBuilder) SaveAsFile(path string, target dist.Target, labels map[string]string) error {
+	filePackage, err := NewFilePackageBuilder()
+	if err != nil {
+		return err
+	}
+	defer filePackage.Close()
+	if err := filePackage.Add(b, target, labels); err != nil {
+		return err
+	}
+	return filePackage.Save(path)
+}
+
+func (b *PackageBuilder) saveAsLayout(layoutDir string, target dist.Target, labels map[string]string) error {
 	if err := b.validate(); err != nil {
 		return err
 	}
@@ -391,30 +402,17 @@ func (b *PackageBuilder) SaveAsFile(path string, target dist.Target, labels map[
 			return err
 		}
 	}
-	layoutDir, err := os.MkdirTemp(tmpDir, "oci-layout")
+	p, err := layout.FromPath(layoutDir)
 	if err != nil {
-		return errors.Wrap(err, "creating oci-layout temp dir")
+		return errors.Wrap(err, "opening package layout")
 	}
 
-	p, err := layout.Write(layoutDir, empty.Index)
-	if err != nil {
-		return errors.Wrap(err, "writing index")
-	}
-
-	if err := p.AppendImage(layoutImage); err != nil {
+	if err := p.AppendImage(layoutImage, layout.WithPlatform(v1.Platform{
+		OS: target.OS, Architecture: target.Arch, Variant: target.ArchVariant,
+	})); err != nil {
 		return errors.Wrap(err, "writing layout")
 	}
-
-	outputFile, err := os.Create(path)
-	if err != nil {
-		return errors.Wrap(err, "creating output file")
-	}
-	defer outputFile.Close()
-
-	tw := tar.NewWriter(outputFile)
-	defer tw.Close()
-
-	return archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, false, nil)
+	return nil
 }
 
 func newLayoutImage(target dist.Target) (*layoutImage, error) {
@@ -427,6 +425,7 @@ func newLayoutImage(target dist.Target) (*layoutImage, error) {
 
 	configFile.OS = target.OS
 	configFile.Architecture = target.Arch
+	configFile.Variant = target.ArchVariant
 	i, err = mutate.ConfigFile(i, configFile)
 	if err != nil {
 		return nil, err
