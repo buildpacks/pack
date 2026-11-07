@@ -15,7 +15,6 @@ import (
 	cerrdefs "github.com/containerd/errdefs"
 
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -34,10 +33,10 @@ func NewVolumeCache(imageRef name.Reference, cacheType CacheInfo, suffix string,
 			return nil, err
 		}
 		sum := sha256.Sum256([]byte(imageRef.Name() + volumeKey))
-		vol := paths.FilterReservedNames(fmt.Sprintf("%s-%x", sanitizedRef(imageRef), sum[:6]))
+		vol := fmt.Sprintf("%s-%x", sanitizedRef(imageRef), sum[:6])
 		volumeName = fmt.Sprintf("pack-cache-%s.%s", vol, suffix)
 	} else {
-		volumeName = paths.FilterReservedNames(cacheType.Source)
+		volumeName = cacheType.Source
 	}
 
 	return &VolumeCache{
