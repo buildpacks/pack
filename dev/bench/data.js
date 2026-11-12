@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793736808920,
+  "lastUpdate": 1794499294009,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15316,6 +15316,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 205883043620,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a4a1bb20a05d91f6cb84d20625cb0728dc30547",
+          "message": "deps: bump the default lifecycle to 0.21.29 (#2723)\n\n* deps: bump the default lifecycle to 0.21.25\n\nDefaultLifecycleVersion has been 0.21.0 since #2512 in January, so every builder\ncreated by pack embeds a lifecycle 25 patch releases behind. This is the largest\nsingle security gap left in the project: the lifecycle binary is what actually\nruns the build.\n\nMeasured with grype against the two lifecycle images, no suppressions:\n\n                  findings  Critical  High  Medium  with a fix available\n  0.21.0             61         4      36     18          53\n  0.21.25             5         2       1      1           0\n\nAmong the 53 is GHSA-fqw6-gf59-qr4w / CVE-2026-46680, a High containerd\nrunAsNonRoot evasion affecting 1.7.27-1.7.31 (0.21.0 ships 1.7.29). 0.21.0 is\nalso built with go1.25.5 and carries buildkit 0.26.2, kaniko 1.25.5, otel 1.38.0\nand x/text 0.31.0, all of which have since been patched upstream.\n\nThe five that remain in 0.21.25 have no fix available: two containerd CRI\ncheckpoint advisories and one CRI plugin advisory that are unfixed in the v1\nmodule (fixed only in containerd/v2, and reachable only through the CRI\ncheckpoint-restore paths, which lifecycle does not use), GO-2026-5622, and the\nunmaintained docker-credential-acr-env.\n\nPlatform API support is unchanged in the range pack negotiates: 0.21.25 declares\nplatform APIs 0.7-0.15 and pack supports 0.3-0.15, so the negotiated version is\nstill 0.15.\n\nThis is the lifecycle *binary* default only. The lifecycle *library* in go.mod\nstays at v0.21.0, because v0.21.21 changed the meaning of layers.Extract's second\nparameter and breaks `pack sbom download`; that is tracked separately.\n\nacceptance/testdata/pack_fixtures/report_output.txt pins the same constant and\nhas to move with it -- the first acceptance run failed two `report` cases on\nexactly that.\n\nVerified: `make unit` 33 packages ok, full acceptance suite ok (95/95).\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n\n* deps: bump the default lifecycle to 0.21.27\n\n0.21.26 fixes a restorer deadlock on rebuilds with extensions\n(buildpacks/lifecycle#1747) and 0.21.27 bumps golang.org/x/net.\ngrype findings on the lifecycle image are unchanged from 0.21.25.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* deps: bump the default lifecycle to 0.21.29\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n---------\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-11-12T10:57:03-05:00",
+          "tree_id": "4b9d9d4ab212b066af11d2f98cda9794a2701645",
+          "url": "https://github.com/buildpacks/pack/commit/3a4a1bb20a05d91f6cb84d20625cb0728dc30547"
+        },
+        "date": 1794499292840,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 189233027531,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
