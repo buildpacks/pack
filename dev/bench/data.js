@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794506666249,
+  "lastUpdate": 1794510682327,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15376,6 +15376,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 213446129894,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "papastathiscr@gmail.com",
+            "name": "Costas Papastathis",
+            "username": "pacostas"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ac6e3c3864f18b878500a57db99b830e6f57f375",
+          "message": "Adding resolute builder and updating the existing ones, to which architectures they support (#2739)\n\nSigned-off-by: Costas Papastathis <papastathiscr@gmail.com>",
+          "timestamp": "2026-11-12T14:05:28-05:00",
+          "tree_id": "e9ddf5889666bf55ae13cd1b34063509b4d3752b",
+          "url": "https://github.com/buildpacks/pack/commit/ac6e3c3864f18b878500a57db99b830e6f57f375"
+        },
+        "date": 1794510681201,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 239621681085,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
