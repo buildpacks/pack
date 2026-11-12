@@ -97,7 +97,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 				when("valid manifest is provided", func() {
 					it.Before(func() {
 						indexRepoName = h.NewRandomIndexRepoName()
-						indexPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+						indexPath = filepath.Join(tmpDir, "pack", "manifests", imgutil.MakeFileSafeName(indexRepoName))
 						// Initialize the Index with 2 image manifest
 						idx := h.RandomCNBIndex(t, indexRepoName, 1, 2)
 						h.AssertNil(t, idx.SaveDir())
@@ -124,7 +124,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 				when("invalid manifest reference name is used", func() {
 					it.Before(func() {
 						indexRepoName = h.NewRandomIndexRepoName()
-						indexPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+						indexPath = filepath.Join(tmpDir, "pack", "manifests", imgutil.MakeFileSafeName(indexRepoName))
 						// Initialize the Index with 2 image manifest
 						idx := h.RandomCNBIndex(t, indexRepoName, 1, 2)
 						mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
@@ -146,7 +146,7 @@ func testAddManifest(t *testing.T, when spec.G, it spec.S) {
 				when("when manifest reference doesn't exist in the registry", func() {
 					it.Before(func() {
 						indexRepoName = h.NewRandomIndexRepoName()
-						indexPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+						indexPath = filepath.Join(tmpDir, "pack", "manifests", imgutil.MakeFileSafeName(indexRepoName))
 						// Initialize the Index with 2 image manifest
 						idx := h.RandomCNBIndex(t, indexRepoName, 1, 2)
 						mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)

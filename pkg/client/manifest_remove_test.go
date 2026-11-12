@@ -80,7 +80,7 @@ func testDeleteManifest(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				indexRepoName = h.NewRandomIndexRepoName()
-				indexPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+				indexPath = filepath.Join(tmpDir, "pack", "manifests", imgutil.MakeFileSafeName(indexRepoName))
 				idx = h.RandomCNBIndex(t, indexRepoName, 1, 1)
 				mockIndexFactory.EXPECT().LoadIndex(gomock.Eq(indexRepoName), gomock.Any()).Return(idx, nil)
 
