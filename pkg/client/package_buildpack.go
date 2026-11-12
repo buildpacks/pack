@@ -293,5 +293,21 @@ func (c *Client) daemonTarget(ctx context.Context, targets []dist.Target) (dist.
 			return t, nil
 		}
 	}
-	return dist.Target{}, errors.Errorf("could not find a target that matches daemon os=%s and architecture=%s", serverResult.Os, serverResult.Arch)
+	requestedTargets := ""
+	for i, t := range targets {
+		if i > 0 {
+			requestedTargets += ", "
+		}
+		if t.Arch != "" {
+			requestedTargets += fmt.Sprintf("%s/%s", t.OS, t.Arch)
+		} else {
+			requestedTargets += t.OS
+		}
+	}
+	return dist.Target{}, errors.Errorf(
+		"the requested target(s) %s do not match the local Docker daemon's os=%s and architecture=%s; "+
+			"to build for a different architecture, use the --publish flag to save the image to a registry instead of the daemon "+
+			"(a local registry can be used for testing purposes)",
+		style.Symbol(requestedTargets), style.Symbol(serverResult.Os), style.Symbol(serverResult.Arch),
+	)
 }
