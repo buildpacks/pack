@@ -294,6 +294,66 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					"CNB_REGISTRY_AUTH="+authConfig,
 				)
 			})
+
+			when("the credentials cover the registry of every image", func() {
+				it("skips the vendor keychains", func() {
+					lifecycle := newTestLifecycleExec(t, false, "some-temp-dir")
+					authConfig := `{"registry.example.com":"Basic c29tZTpjcmVk"}`
+
+					phaseConfigProvider := build.NewPhaseConfigProvider(
+						"some-name",
+						lifecycle,
+						build.WithRegistryAccess(authConfig, "registry.example.com/app:tag", "registry.example.com/run", ""),
+					)
+
+					h.AssertSliceContains(
+						t,
+						phaseConfigProvider.ContainerConfig().Env,
+						"CNB_REGISTRY_AUTH="+authConfig,
+						"CNB_REGISTRY_AUTH_KEYCHAIN_SKIP_AMAZON=true",
+						"CNB_REGISTRY_AUTH_KEYCHAIN_SKIP_AZURE=true",
+					)
+				})
+			})
+
+			when("the credentials miss the registry of an image", func() {
+				it("keeps the vendor keychains", func() {
+					lifecycle := newTestLifecycleExec(t, false, "some-temp-dir")
+					authConfig := `{"registry.example.com":"Basic c29tZTpjcmVk"}`
+
+					phaseConfigProvider := build.NewPhaseConfigProvider(
+						"some-name",
+						lifecycle,
+						build.WithRegistryAccess(authConfig, "registry.example.com/app:tag", "123456789012.dkr.ecr.us-east-1.amazonaws.com/run"),
+					)
+
+					h.AssertSliceNotContains(
+						t,
+						phaseConfigProvider.ContainerConfig().Env,
+						"CNB_REGISTRY_AUTH_KEYCHAIN_SKIP_AMAZON=true",
+						"CNB_REGISTRY_AUTH_KEYCHAIN_SKIP_AZURE=true",
+					)
+				})
+			})
+
+			when("there are no credentials", func() {
+				it("keeps the vendor keychains", func() {
+					lifecycle := newTestLifecycleExec(t, false, "some-temp-dir")
+
+					phaseConfigProvider := build.NewPhaseConfigProvider(
+						"some-name",
+						lifecycle,
+						build.WithRegistryAccess("{}", "registry.example.com/app:tag"),
+					)
+
+					h.AssertSliceNotContains(
+						t,
+						phaseConfigProvider.ContainerConfig().Env,
+						"CNB_REGISTRY_AUTH_KEYCHAIN_SKIP_AMAZON=true",
+						"CNB_REGISTRY_AUTH_KEYCHAIN_SKIP_AZURE=true",
+					)
+				})
+			})
 		})
 
 		when("called with WithRoot", func() {
@@ -411,6 +471,33 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					)
 
 					h.AssertContains(t, outBuf.String(), "System Envs: 'CNB_REGISTRY_AUTH=<redacted> CNB_PLATFORM_API=0.4'")
+				})
+
+				it("shows the skipped vendor keychains", func() {
+					var outBuf bytes.Buffer
+					logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
+
+					docker, err := client.New(client.FromEnv)
+					h.AssertNil(t, err)
+
+					defaultBuilder, err := fakes.NewFakeBuilder()
+					h.AssertNil(t, err)
+
+					opts := build.LifecycleOptions{
+						AppPath: "some-app-path",
+						Builder: defaultBuilder,
+					}
+
+					lifecycleExec, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
+					h.AssertNil(t, err)
+
+					_ = build.NewPhaseConfigProvider(
+						"some-name",
+						lifecycleExec,
+						build.WithRegistryAccess(`{"registry.example.com":"Basic c29tZTpjcmVk"}`, "registry.example.com/app"),
+					)
+
+					h.AssertContains(t, outBuf.String(), "System Envs: 'CNB_REGISTRY_AUTH=<redacted> CNB_REGISTRY_AUTH_KEYCHAIN_SKIP_AMAZON=true CNB_REGISTRY_AUTH_KEYCHAIN_SKIP_AZURE=true CNB_PLATFORM_API=0.4'")
 				})
 			})
 		})
