@@ -14,3 +14,6 @@ artifacts/
 # Travis unencrypted file
 .travis/key.pem
 
+# ProofX signing key
+.proofx/
+
