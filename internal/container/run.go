@@ -9,6 +9,8 @@ import (
 	dcontainer "github.com/moby/moby/api/types/container"
 	dockerClient "github.com/moby/moby/client"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 type Handler func(bodyChan <-chan dcontainer.WaitResponse, errChan <-chan error, reader io.Reader) error
@@ -87,9 +89,17 @@ func DefaultHandler(out, errOut io.Writer) Handler {
 	}
 }
 
+// optionallyCloseWriter flushes writers that pack created for a phase and that
+// buffer output, namely *logging.PrefixWriter, whose Close flushes any pending
+// partial line without closing the writer it wraps.
+//
+// Writers owned by the caller must not be closed here. When a builder is
+// trusted the logger's writer (often os.Stdout) is passed through unwrapped, and
+// closing an arbitrary io.Closer would close the caller's stream. That is
+// surprising and breaks consumers using pack as a library. See #1214.
 func optionallyCloseWriter(writer io.Writer) error {
-	if closer, ok := writer.(io.Closer); ok {
-		return closer.Close()
+	if prefixWriter, ok := writer.(*logging.PrefixWriter); ok {
+		return prefixWriter.Close()
 	}
 
 	return nil
