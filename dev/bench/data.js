@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794510682327,
+  "lastUpdate": 1794523759779,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15406,6 +15406,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 239621681085,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "68678250+mzihlmann@users.noreply.github.com",
+            "name": "Martin Zihlmann",
+            "username": "mzihlmann"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "523c9ce6249428ab28a8192620d63060bbbfb651",
+          "message": "chore: drop kaniko dependency (#2677)\n\n* chore: inline container runtime detection and drop the kaniko dependency\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\nSigned-off-by: Martin Zihlmann <martizih@outlook.com>\n\n* chore: move container runtime detection into internal/container\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nSigned-off-by: Martin Zihlmann <martizih@outlook.com>\n\n* chore: inline runtime name matching\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nSigned-off-by: Martin Zihlmann <martizih@outlook.com>\n\n---------\n\nSigned-off-by: Martin Zihlmann <martizih@outlook.com>\nCo-authored-by: Claude Opus 5 <noreply@anthropic.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-11-12T17:44:01-05:00",
+          "tree_id": "a2931ef22bddec8001267061cf2c9999ffb0c474",
+          "url": "https://github.com/buildpacks/pack/commit/523c9ce6249428ab28a8192620d63060bbbfb651"
+        },
+        "date": 1794523758641,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 227782699534,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
