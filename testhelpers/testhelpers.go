@@ -925,6 +925,19 @@ func (f *FakeAddedLayerImage) AddLayerWithDiffID(path, diffID string) error {
 	return f.Image.AddLayerWithDiffID(path, diffID)
 }
 
+func (f *FakeAddedLayerImage) AddLayerWithDiffIDAndHistory(path, diffID string, history v1.History) error {
+	// This fake tracks build module layers, not builder metadata layers.
+	if strings.HasPrefix(history.CreatedBy, "Buildpack: ") ||
+		strings.HasPrefix(history.CreatedBy, "Buildpacks: ") ||
+		strings.HasPrefix(history.CreatedBy, "Extension: ") ||
+		strings.HasPrefix(history.CreatedBy, "Extensions: ") {
+		if !strings.HasSuffix(history.CreatedBy, " (removing previous contents)") {
+			f.addedLayersOrder = append(f.addedLayersOrder, path)
+		}
+	}
+	return f.Image.AddLayerWithDiffIDAndHistory(path, diffID, history)
+}
+
 type FakeWithUnderlyingImage struct {
 	*fakes.Image
 	underlyingImage v1.Image

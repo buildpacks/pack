@@ -17,6 +17,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/builder"
@@ -483,7 +484,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata, a
 	if err != nil {
 		return err
 	}
-	if err := b.image.AddLayer(dirsTar); err != nil {
+	if err := addLayerWithHistory(b.image, dirsTar, "Buildpacks Builder Config"); err != nil {
 		return errors.Wrap(err, "adding default dirs layer")
 	}
 
@@ -496,7 +497,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata, a
 		if err != nil {
 			return err
 		}
-		if err := b.image.AddLayer(lifecycleTar); err != nil {
+		if err := addLayerWithHistory(b.image, lifecycleTar, "Buildpacks Lifecycle"); err != nil {
 			return errors.Wrap(err, "adding lifecycle layer")
 		}
 	}
@@ -564,7 +565,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata, a
 		if err != nil {
 			return err
 		}
-		if err := b.image.AddLayer(orderTar); err != nil {
+		if err := addLayerWithHistory(b.image, orderTar, "Buildpacks Order"); err != nil {
 			return errors.Wrap(err, "adding order.tar layer")
 		}
 		if err := dist.SetLabel(b.image, OrderLabel, b.order); err != nil {
@@ -585,7 +586,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata, a
 		if err != nil {
 			return err
 		}
-		if err := b.image.AddLayer(systemTar); err != nil {
+		if err := addLayerWithHistory(b.image, systemTar, "Buildpacks System"); err != nil {
 			return errors.Wrap(err, "adding system.tar layer")
 		}
 		if err := dist.SetLabel(b.image, SystemLabel, b.system); err != nil {
@@ -597,7 +598,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata, a
 	if err != nil {
 		return err
 	}
-	if err := b.image.AddLayer(stackTar); err != nil {
+	if err := addLayerWithHistory(b.image, stackTar, "Buildpacks Stack"); err != nil {
 		return errors.Wrap(err, "adding stack.tar layer")
 	}
 
@@ -605,7 +606,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata, a
 	if err != nil {
 		return err
 	}
-	if err := b.image.AddLayer(runImageTar); err != nil {
+	if err := addLayerWithHistory(b.image, runImageTar, "Buildpacks Run Images"); err != nil {
 		return errors.Wrap(err, "adding run.tar layer")
 	}
 
@@ -616,7 +617,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata, a
 			return errors.Wrap(err, "retrieving build-config-env layer")
 		}
 
-		if err := b.image.AddLayer(buildConfigEnvTar); err != nil {
+		if err := addLayerWithHistory(b.image, buildConfigEnvTar, "Buildpacks Build Config"); err != nil {
 			return errors.Wrap(err, "adding build-config-env layer")
 		}
 	}
@@ -630,7 +631,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata, a
 		return err
 	}
 
-	if err := b.image.AddLayer(envTar); err != nil {
+	if err := addLayerWithHistory(b.image, envTar, "Buildpacks Environment"); err != nil {
 		return errors.Wrap(err, "adding env layer")
 	}
 
@@ -660,6 +661,15 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata, a
 
 // Helpers
 
+func addLayerWithHistory(image imgutil.Image, layerPath, createdBy string) error {
+	diffID, err := dist.LayerDiffID(layerPath)
+	if err != nil {
+		return err
+	}
+
+	return image.AddLayerWithDiffIDAndHistory(layerPath, diffID.String(), v1.History{CreatedBy: createdBy})
+}
+
 func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.ModuleLayers) error {
 	collectionToAdd := map[string]moduleWithDiffID{}
 	toAdd, errs := explodeModules(kind, tmpDir, additionalModules, logger)
@@ -681,7 +691,11 @@ func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir 
 					return err
 				}
 
-				if err := image.AddLayer(whiteoutsTar); err != nil {
+				if err := addLayerWithHistory(image, whiteoutsTar, fmt.Sprintf(
+					"%s: %s (removing previous contents)",
+					istrings.Title(kind),
+					info.FullName(),
+				)); err != nil {
 					return errors.Wrap(err, "adding whiteout layer tar")
 				}
 			}
@@ -712,7 +726,9 @@ func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir 
 	for _, k := range keys {
 		module := collectionToAdd[k]
 		logger.Debugf("Adding %s %s (diffID=%s)", kind, style.Symbol(module.module.Descriptor().Info().FullName()), module.diffID)
-		if err := image.AddLayerWithDiffID(module.tarPath, module.diffID); err != nil {
+		if err := image.AddLayerWithDiffIDAndHistory(module.tarPath, module.diffID, v1.History{
+			CreatedBy: fmt.Sprintf("%s: %s", istrings.Title(kind), module.module.Descriptor().Info().FullName()),
+		}); err != nil {
 			return errors.Wrapf(err,
 				"adding layer tar for %s %s",
 				kind,
@@ -728,6 +744,7 @@ func (b *Builder) addExplodedModules(kind string, logger logging.Logger, tmpDir 
 
 func (b *Builder) addFlattenedModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, flattenModules [][]buildpack.BuildModule, layers dist.ModuleLayers) ([]buildpack.BuildModule, error) {
 	collectionToAdd := map[string]moduleWithDiffID{}
+	historyByDiffID := map[string]string{}
 	var (
 		buildModuleExcluded []buildpack.BuildModule
 		finalTarPath        string
@@ -752,13 +769,22 @@ func (b *Builder) addFlattenedModules(kind string, logger logging.Logger, tmpDir
 			return nil, errors.Wrapf(err, "calculating diff layer %s", finalTarPath)
 		}
 
+		var moduleNames []string
+		moduleNamesAdded := map[string]struct{}{}
 		for _, module := range additionalModules {
-			collectionToAdd[module.Descriptor().Info().FullName()] = moduleWithDiffID{
+			fullName := module.Descriptor().Info().FullName()
+			if _, ok := moduleNamesAdded[fullName]; !ok {
+				moduleNames = append(moduleNames, fullName)
+				moduleNamesAdded[fullName] = struct{}{}
+			}
+			collectionToAdd[fullName] = moduleWithDiffID{
 				tarPath: finalTarPath,
 				diffID:  diffID.String(),
 				module:  module,
 			}
 		}
+		sort.Strings(moduleNames)
+		historyByDiffID[diffID.String()] = fmt.Sprintf("%ss: %s", istrings.Title(kind), strings.Join(moduleNames, ", "))
 	}
 
 	// Fixes 1453
@@ -778,7 +804,9 @@ func (b *Builder) addFlattenedModules(kind string, logger logging.Logger, tmpDir
 		}
 		if addLayer {
 			logger.Debugf("Adding %s %s (diffID=%s)", kind, style.Symbol(bp.Descriptor().Info().FullName()), module.diffID)
-			if err = image.AddLayerWithDiffID(module.tarPath, module.diffID); err != nil {
+			if err = image.AddLayerWithDiffIDAndHistory(module.tarPath, module.diffID, v1.History{
+				CreatedBy: historyByDiffID[module.diffID],
+			}); err != nil {
 				return nil, errors.Wrapf(err,
 					"adding layer tar for %s %s",
 					kind,
