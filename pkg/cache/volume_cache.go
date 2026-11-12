@@ -14,8 +14,7 @@ import (
 	cerrdefs "github.com/containerd/errdefs"
 
 	"github.com/buildpacks/pack/internal/config"
-  "github.com/buildpacks/pack/internal/container"
-	"github.com/buildpacks/pack/internal/paths"
+	"github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
