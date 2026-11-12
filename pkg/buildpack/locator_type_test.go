@@ -120,6 +120,14 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			expectedType: buildpack.PackageLocator,
 		},
 		{
+			locator:      "localhost:5000/example/registry-cnb",
+			expectedType: buildpack.PackageLocator,
+		},
+		{
+			locator:      "registry.example.com:5000/example/foo@1.0.0",
+			expectedType: buildpack.InvalidLocator,
+		},
+		{
 			locator:      "cnbs/some-bp@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 			expectedType: buildpack.PackageLocator,
 		},
@@ -154,6 +162,14 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 		{
 			locator:      "example/registry-cnb",
 			expectedType: buildpack.RegistryLocator,
+		},
+		{
+			locator:      "localhost:5000/example/registry-cnb",
+			expectedType: buildpack.PackageLocator,
+		},
+		{
+			locator:      "registry.example.com:5000/example/foo@1.0.0",
+			expectedType: buildpack.InvalidLocator,
 		},
 		{
 			locator:      "cnbs/sample-package@hello-universe",
