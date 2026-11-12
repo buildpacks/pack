@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794499294009,
+  "lastUpdate": 1794506666249,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15346,6 +15346,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 189233027531,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "afcffa0d80e13f7b32896d1c2ae77dba5ff92162",
+          "message": "deps: bump klauspost/compress to v1.20.2 and Go to 1.26.11 (#2741)\n\nFixes GO-2026-6865 and GO-2026-6859. Neither moves the held\nimgutil/moby/ggcr/buildkit set.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-11-12T12:59:09-05:00",
+          "tree_id": "5b6f02e633f3506d9a522f53e186b27d33a5c0cc",
+          "url": "https://github.com/buildpacks/pack/commit/afcffa0d80e13f7b32896d1c2ae77dba5ff92162"
+        },
+        "date": 1794506664636,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 213446129894,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
