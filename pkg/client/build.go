@@ -898,12 +898,54 @@ func getFileFilter(descriptor projectTypes.Descriptor) (func(string) bool, error
 	if len(descriptor.Build.Exclude) > 0 {
 		excludes := ignore.CompileIgnoreLines(descriptor.Build.Exclude...)
 		return func(fileName string) bool {
-			return !excludes.MatchesPath(fileName)
+			// Check if the file/directory matches directly
+			if excludes.MatchesPath(fileName) {
+				return false
+			}
+			// For directories, also check if adding a trailing slash would match
+			// This handles patterns like "foo/" that should exclude the "foo" directory
+			if excludes.MatchesPath(fileName + "/") {
+				return false
+			}
+			return true
 		}, nil
 	}
 	if len(descriptor.Build.Include) > 0 {
 		includes := ignore.CompileIgnoreLines(descriptor.Build.Include...)
-		return includes.MatchesPath, nil
+		return func(fileName string) bool {
+			// Check if the file/directory matches directly
+			if includes.MatchesPath(fileName) {
+				return true
+			}
+			// For directories, also check if adding a trailing slash would match
+			if includes.MatchesPath(fileName + "/") {
+				return true
+			}
+
+			// For directories, check if any included file is within this directory
+			// This allows parent directories to be traversed to reach included files
+			// For example, if "media/mountain.jpg" is included, "media" directory should also be included
+			for _, pattern := range descriptor.Build.Include {
+				// Check if this pattern would match something under the current directory
+				// by testing if the pattern starts with the current directory path
+				testPath := fileName + "/"
+				if len(fileName) > 0 && pattern != fileName {
+					// If the pattern contains the current path as a prefix, include the directory
+					if strings.HasPrefix(pattern, testPath) || strings.HasPrefix(pattern, fileName+"/") {
+						return true
+					}
+					// Also check without leading slash for absolute patterns
+					if strings.HasPrefix(pattern, "/") {
+						cleanPattern := strings.TrimPrefix(pattern, "/")
+						if strings.HasPrefix(cleanPattern, testPath) || strings.HasPrefix(cleanPattern, fileName+"/") {
+							return true
+						}
+					}
+				}
+			}
+
+			return false
+		}, nil
 	}
 
 	return nil, nil
