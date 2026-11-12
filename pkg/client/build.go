@@ -179,6 +179,9 @@ type BuildOptions struct {
 	// ProjectDescriptorBaseDir is the base directory to find relative resources referenced by the ProjectDescriptor
 	ProjectDescriptorBaseDir string
 
+
+	ProjectDescriptorPath String
+
 	// ProjectDescriptor describes the project and any configuration specific to the project
 	ProjectDescriptor projectTypes.Descriptor
 
