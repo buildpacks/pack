@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/lifecycle/platform/files"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/moby/moby/api/types/network"
 
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/container"
@@ -95,6 +96,7 @@ type LifecycleOptions struct {
 	HTTPSProxy                      string
 	NoProxy                         string
 	Network                         string
+	MacAddress                      network.HardwareAddr
 	AdditionalTags                  []string
 	Volumes                         []string
 	InsecureRegistries              []string
