@@ -3,6 +3,7 @@ package config_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/heroku/color"
@@ -132,6 +133,18 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				fi, err := os.Stat(path)
 				h.AssertNil(t, err)
 				h.AssertEq(t, fi.Mode().IsDir(), true)
+			})
+
+			it("creates the directory with 0700 permissions", func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "Windows doesn't support Unix permissions")
+
+				path := filepath.Join(tmpDir, "a-new-parent", "a-new-dir")
+				h.AssertNil(t, config.MkdirAll(path))
+				for _, dir := range []string{path, filepath.Dir(path)} {
+					fi, err := os.Stat(dir)
+					h.AssertNil(t, err)
+					h.AssertEq(t, fi.Mode().Perm(), os.FileMode(0700))
+				}
 			})
 		})
 
@@ -263,6 +276,11 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 			cfgPath, err := config.DefaultConfigPath()
 			h.AssertNil(t, err)
 			h.AssertEq(t, cfgPath, filepath.Join(tmpDir, "config.toml"))
+
+			// Checked in the same test, since these tests run in parallel and would race on PACK_HOME.
+			volumeKeysPath, err := config.DefaultVolumeKeysPath()
+			h.AssertNil(t, err)
+			h.AssertEq(t, volumeKeysPath, filepath.Join(tmpDir, "volume-keys.toml"))
 		})
 	})
 }

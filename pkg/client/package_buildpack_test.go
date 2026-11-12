@@ -536,7 +536,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, os.Setenv("XDG_RUNTIME_DIR", tmpDir))
 
 				repoName = "basic/multi-platform-package-" + h.RandString(12)
-				indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(repoName))
+				indexLocalPath = filepath.Join(tmpDir, "pack", "manifests", imgutil.MakeFileSafeName(repoName))
 			})
 
 			it.After(func() {

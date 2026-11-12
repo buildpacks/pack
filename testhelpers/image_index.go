@@ -106,7 +106,7 @@ func RandomCNBIndex(t *testing.T, repoName string, layers, count int64) *imgutil
 	options := &imgutil.IndexOptions{
 		BaseIndex: randomIndex,
 		LayoutIndexOptions: imgutil.LayoutIndexOptions{
-			XdgPath: os.Getenv("XDG_RUNTIME_DIR"),
+			XdgPath: filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "pack", "manifests"),
 		},
 	}
 	idx, err := imgutil.NewCNBIndex(repoName, *options)

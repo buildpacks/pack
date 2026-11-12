@@ -35,7 +35,11 @@ func ConfigExperimental(logger logging.Logger, cfg config.Config, cfgPath string
 				}
 				cfg.Experimental = val
 				if cfg.Experimental {
-					cfg.LayoutRepositoryDir = filepath.Join(filepath.Dir(cfgPath), "layout-repo")
+					cacheDir, err := config.CacheDir()
+					if err != nil {
+						return errors.Wrap(err, "getting cache directory")
+					}
+					cfg.LayoutRepositoryDir = filepath.Join(cacheDir, "layout-repo")
 				} else {
 					cfg.LayoutRepositoryDir = ""
 				}
