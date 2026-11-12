@@ -31,6 +31,7 @@ import (
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	internalConfig "github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/internal/layer"
 	pname "github.com/buildpacks/pack/internal/name"
 	"github.com/buildpacks/pack/internal/paths"
@@ -38,7 +39,6 @@ import (
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/internal/termui"
-	"github.com/buildpacks/pack/internal/third_party/osscontainertools/kaniko/proc"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/cache"
@@ -56,9 +56,7 @@ const (
 	minLifecycleVersionSupportingCreatorWithExtensions = "0.19.0"
 )
 
-var RunningInContainer = func() bool {
-	return proc.GetContainerRuntime(0, 0) != proc.RuntimeNotFound
-}
+var RunningInContainer = container.RunningInContainer
 
 // LifecycleExecutor executes the lifecycle which satisfies the Cloud Native Buildpacks Lifecycle specification.
 // Implementations of the Lifecycle must execute the following phases by calling the

@@ -14,8 +14,8 @@ import (
 	cerrdefs "github.com/containerd/errdefs"
 
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/internal/paths"
-	"github.com/buildpacks/pack/internal/third_party/osscontainertools/kaniko/proc"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -129,6 +129,4 @@ func sanitizedRef(ref name.Reference) string {
 	return fmt.Sprintf("%s_%s", result, ref.Identifier())
 }
 
-var RunningInContainer = func() bool {
-	return proc.GetContainerRuntime(0, 0) != proc.RuntimeNotFound
-}
+var RunningInContainer = container.RunningInContainer
