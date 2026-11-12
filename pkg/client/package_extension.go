@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/layer"
+	"github.com/buildpacks/pack/internal/name"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/dist"
@@ -103,7 +104,14 @@ func (c *Client) packageExtensionTarget(ctx context.Context, opts PackageBuildpa
 			return digest, err
 		}
 	case FormatImage:
-		img, err := packageBuilder.SaveAsImage(opts.Name, opts.Publish, target, opts.Labels, opts.AdditionalTags...)
+		packageName := opts.Name
+		if multiArch && opts.AppendImageNameSuffix {
+			packageName, err = name.AppendSuffix(packageName, target)
+			if err != nil {
+				return "", errors.Wrap(err, "invalid image name")
+			}
+		}
+		img, err := packageBuilder.SaveAsImage(packageName, opts.Publish, target, opts.Labels, opts.AdditionalTags...)
 		if err != nil {
 			return digest, errors.Wrapf(err, "saving image")
 		}
