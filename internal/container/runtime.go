@@ -69,8 +69,10 @@ func RunningInContainer() bool {
 		os.Getenv("container"),
 		readFileString("/run/systemd/container"),
 	} {
-		if mentionsRuntime(s) {
-			return true
+		for _, runtime := range containerRuntimes {
+			if strings.Contains(s, runtime) {
+				return true
+			}
 		}
 	}
 
@@ -81,15 +83,6 @@ func RunningInContainer() bool {
 	// An overlay mount on "/" may indicate we're under containerd or other runtime.
 	m, _ := regexp.MatchString("^[^ ]+ / overlay", readFileString("/proc/mounts"))
 	return m
-}
-
-func mentionsRuntime(s string) bool {
-	for _, runtime := range containerRuntimes {
-		if strings.Contains(s, runtime) {
-			return true
-		}
-	}
-	return false
 }
 
 func fileExists(file string) bool {
