@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -340,13 +341,49 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		}
 
 		l.logger.Info(style.Step("EXPORTING"))
-		return l.Export(ctx, buildCache, launchCache, kanikoCache, phaseFactory)
+		err = l.Export(ctx, buildCache, launchCache, kanikoCache, phaseFactory)
+		return l.retryExport(ctx, err, func() error {
+			return l.Export(ctx, buildCache, launchCache, kanikoCache, phaseFactory)
+		})
 	}
 
 	if l.platformAPI.AtLeast("0.10") && l.hasExtensions() && !l.opts.UseCreatorWithExtensions {
 		return errors.New("builder has an order for extensions which is not supported when using the creator; re-run without '--trust-builder' or re-tag builder to avoid trusting it")
 	}
-	return l.Create(ctx, buildCache, launchCache, phaseFactory)
+	err = l.Create(ctx, buildCache, launchCache, phaseFactory)
+	if l.hasExtensions() {
+		// The standalone exporter would need the kaniko cache the creator kept to itself.
+		return err
+	}
+	return l.retryExport(ctx, err, func() error {
+		// The creator built into the layers and app volumes, which stay until Cleanup: the standalone exporter
+		// picks up from there.
+		return l.Export(ctx, buildCache, launchCache, nil, phaseFactory)
+	})
+}
+
+// exportFailedStatus is how a lifecycle phase that exited with the platform's export error code (62) surfaces.
+const exportFailedStatus = "failed with status code: 62"
+
+// retryExport runs export again while err is an export failure (exit 62) and opts.ExportRetry says so. A registry
+// that drops the connection mid-upload (HTTP/2 GOAWAY, reset, 5xx, 429) fails the export after the build is done;
+// exporting again from the same layers turns that into a short re-push instead of a failed job.
+func (l *LifecycleExecution) retryExport(ctx context.Context, err error, export func() error) error {
+	for attempt := 1; err != nil && l.opts.ExportRetry != nil && strings.Contains(err.Error(), exportFailedStatus); attempt++ {
+		wait, retry := l.opts.ExportRetry(attempt, err)
+		if !retry {
+			return err
+		}
+		l.logger.Warnf("Export failed (%s); exporting again in %s from the layers already built (retry %d)", err, wait, attempt)
+		select {
+		case <-ctx.Done():
+			return err
+		case <-time.After(wait):
+		}
+		l.logger.Info(style.Step("EXPORTING"))
+		err = export()
+	}
+	return err
 }
 
 func (l *LifecycleExecution) Cleanup() error {
@@ -894,7 +931,8 @@ func (l *LifecycleExecution) Export(ctx context.Context, buildCache, launchCache
 
 	opts := []PhaseConfigProviderOperation{
 		WithLogPrefix("exporter"),
-		WithImage(l.opts.LifecycleImage),
+		// The creator flow has no separate lifecycle image: the builder carries the exporter.
+		If(l.opts.LifecycleImage != "", WithImage(l.opts.LifecycleImage)),
 		WithEnv(
 			fmt.Sprintf("%s=%d", builder.EnvUID, l.opts.Builder.UID()),
 			fmt.Sprintf("%s=%d", builder.EnvGID, l.opts.Builder.GID()),
