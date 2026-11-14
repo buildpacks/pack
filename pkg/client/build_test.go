@@ -295,7 +295,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						AppPath: filepath.Join("testdata", "some-app"),
 					}))
 
-					h.AssertEq(t, strings.TrimSpace(outBuf.String()), "some/app@sha256:363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4")
+					// The daemon may print a containerd storage warning first, so only check the last line.
+					lines := strings.Split(strings.TrimSpace(outBuf.String()), "\n")
+					h.AssertEq(t, lines[len(lines)-1], "some/app@sha256:363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4")
 				})
 			})
 		})
@@ -1795,7 +1797,12 @@ api = "0.2"
 
 					it.After(func() {
 						os.Unsetenv("PACK_HOME")
-						h.AssertNil(t, os.RemoveAll(tmpDir))
+						err := os.RemoveAll(tmpDir)
+						if runtime.GOOS != "windows" {
+							// avoid "The process cannot access the file because it is being used by another process"
+							// error on Windows
+							h.AssertNil(t, err)
+						}
 					})
 
 					it("all buildpacks are added to ephemeral builder", func() {
