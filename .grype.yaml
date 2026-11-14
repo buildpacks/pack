@@ -25,3 +25,32 @@ ignore:
   # build tag and is not part of the shipped binary. Confirmed by govulncheck ("your code doesn't
   # appear to call") and by `go list -deps ./...` showing no x/crypto/openpgp package.
   - vulnerability: GO-2026-5932 # x/crypto/openpgp unmaintained; not linked into the pack binary
+  # moby/buildkit: the advisory describes a custom BuildKit *frontend* sending a crafted build
+  # request that disables Seccomp/AppArmor for the build container during a solve. pack never
+  # runs a BuildKit solve: it has no direct buildkit import at all, and the only buildkit
+  # packages in `go list -deps ./...` are the Dockerfile parser
+  # (frontend/dockerfile/{command,instructions,linter,parser,shell}, pulled in by
+  # lifecycle/buildpack for image extensions) plus the util/{stack,suggest} error helpers.
+  # buildkit/solver, buildkit/executor, buildkit/frontend/gateway, buildkit/client and
+  # buildkit/session are all absent, so the vulnerable code path is not in the binary. Every
+  # govulncheck trace is a package init() of one of those parser packages.
+  # The fix is buildkit v0.31.1, which requires go-containerregistry v0.21.6. ggcr v0.21.6
+  # changed mutate.image.Layers() to resolve manifest descriptors by digest, which needs the
+  # daemon layer digests that imgutil only started reporting after our current pin, so the bump
+  # is a three-step chain (imgutil -> ggcr -> buildkit) rather than a version change.
+  - vulnerability: GHSA-7236-3392-c5c6 # buildkit custom-frontend Seccomp/AppArmor bypass (GO-2026-6255)
+  - vulnerability: GO-2026-6255
+  # docker/distribution: registry/client.(*manifests).Get fetches a manifest by digest but never
+  # hashes the response body back against the requested digest, so a malicious registry or MITM
+  # can substitute content on a digest-pinned request. Not reachable from pack: the vulnerable
+  # type is only constructible via client.NewRepository, and across the whole linked package set
+  # exactly one package imports docker/distribution/registry/client --
+  # distribution/registry/client/auth -- which uses only client.Do, client.HandleErrorResponse
+  # and client.SuccessStatus. No ManifestService is ever constructed. The module is in our graph
+  # solely because lifecycle/auth calls registry.ConvertToHostname from docker/docker/registry.
+  # No fix exists for this module: the v2 line ends at v2.8.3 and the fix ships only in
+  # github.com/distribution/distribution/v3 v3.1.2, which would be a migration, not a bump.
+  # Removal condition: lifecycle drops its docker/docker/registry import, which also clears
+  # GO-2026-4883 and GO-2026-4887 above.
+  - vulnerability: GHSA-685w-q87j-wqw3 # distribution client does not verify returned digest (CVE-2026-85747)
+  - vulnerability: CVE-2026-85747
