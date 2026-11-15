@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794755344302,
+  "lastUpdate": 1794757647005,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15526,6 +15526,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 202198059427,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rjf11@mail.aub.edu",
+            "name": "Raphael Fakhri",
+            "username": "RaphaelFakhri"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dd03c097c3cb521f1b4977114fce42a258d60c3e",
+          "message": "fix: compare repository names when checking the default builder in pack build (#2736)\n\nisForbiddenTag compared the repository of the image being built with the\nregistry of the configured default builder, so the check never matched.\nAs a result, pack build accepted an image name that matches the default\nbuilder (for example when --builder or project.toml selects another\nbuilder) and could overwrite the default builder image.\n\nCompare the repository of both references, as the other checks in the\nfunction already do.\n\nSigned-off-by: Raphael Fakhri <153192858+RaphaelFakhri@users.noreply.github.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-11-15T10:43:21-05:00",
+          "tree_id": "9457476a1325e51d83118624f3252e9f6d30e04b",
+          "url": "https://github.com/buildpacks/pack/commit/dd03c097c3cb521f1b4977114fce42a258d60c3e"
+        },
+        "date": 1794757645623,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 198313293685,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
