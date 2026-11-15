@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794702321192,
+  "lastUpdate": 1794705055582,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15466,6 +15466,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 247980903680,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "794ce1affab1b0bae6b0b93cd147a3d5d98aab25",
+          "message": "deps: bump the lifecycle library to v0.21.29 and drop docker/docker (#2745)\n\n* build: lint with golangci-lint v2.15.0\n\nv2.0.2 cannot load a Go 1.27 module. The newer staticcheck and govet\nflag five spots, fixed here (fmt.Fprintf, reflect.Pointer), and nine\nuses of pack's own deprecated fields, which pack keeps for backwards\ncompatibility; those are excluded by package path so deprecations from\nother modules are still reported.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* deps: bump the lifecycle library to v0.21.29\n\nlifecycle stopped depending on github.com/docker/docker in v0.21.15, so\nthis removes the module from pack entirely (pack's own import of it was\nremoved by vendoring volume/mounts). It also drops the unmaintained\nchrismellard/docker-credential-acr-env helper.\n\n- Go 1.27.4, required by lifecycle v0.21.29 (go.mod, Dockerfile).\n- spf13/pflag 1.1.0, required by lifecycle, prints boolean flags as\n  `--flag[=true|false]` in help output; update the stack help fixture.\n- The fake-lifecycle test module moves to the same lifecycle version.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* deps: pin imgutil with #312 and drop the grype ignores\n\nimgutil 3665d0bdb3f4 no longer sends a partial platform to the daemon,\nwhich failed every build that used a buildpack package image\n(buildpacks/imgutil#312).\n\nEvery entry in .grype.yaml was for a module that is now gone or fixed:\ndocker/docker, docker/distribution, buildkit (now v0.34.2), docker/cli,\nx/crypto/openpgp and protobuf. The binary and the published image scan\nclean without any ignores.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* test: use the stdlib closed errors in the Windows ssh dialer test\n\ngo-winio v0.6.4, pulled in by the lifecycle bump, deprecates\nErrPipeListenerClosed and ErrFileClosed in favour of net.ErrClosed and\nos.ErrClosed, which they are now aliases of. staticcheck flags both on\nWindows. ErrPipeListenerClosed duplicated the net.ErrClosed check.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* build: install golangci-lint from its own module, not tools/\n\nThe Makefile installs golangci-lint with `go install ...@<version>`,\nwhich ignores tools/go.mod, so pinning it there too only added a second\nversion to keep in sync (they had drifted: v2.0.2 in the Makefile,\nv2.0.2+ in go.mod) and pulled the linter's dependency tree into the\nmodule license scans. Three of those dependencies are GPL-3.0\n(golangci-lint, nonamedreturns, structtags); none are linked into pack.\n\nThe Makefile's version is now the only pin. Dependabot never covered\ntools/, so this does not change how the linter is bumped.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* test: regenerate the docker client mock\n\nmoby/moby/client v0.6.2, pulled in by the lifecycle bump, adds\nImageAttestations to APIClient.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n---------\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-11-14T20:05:31-05:00",
+          "tree_id": "558f8c92567ae70b33f2e83a861e9d7c01fbaaf3",
+          "url": "https://github.com/buildpacks/pack/commit/794ce1affab1b0bae6b0b93cd147a3d5d98aab25"
+        },
+        "date": 1794705054315,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 226562036322,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
