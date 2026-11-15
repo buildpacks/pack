@@ -27,6 +27,12 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
+    rules:
+      # pack keeps its own deprecated fields for backwards compatibility and still
+      # reads/sets them on purpose; only flag deprecations from other modules.
+      - linters:
+          - staticcheck
+        text: 'SA1019: \(?github\.com/buildpacks/pack/'
     paths:
       - third_party$
       - builtin$
