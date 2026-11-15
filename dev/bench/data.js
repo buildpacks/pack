@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794705055582,
+  "lastUpdate": 1794755344302,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15496,6 +15496,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 226562036322,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2b3d2bf590eeff3e3f231e21cb0ac92ddb02d937",
+          "message": "build(deps): bump the go-dependencies group across 1 directory with 8 updates (#2746)\n\nBumps the go-dependencies group with 8 updates in the / directory:\n\n| Package | From | To |\n| --- | --- | --- |\n| [github.com/dustin/go-humanize](https://github.com/dustin/go-humanize) | `1.0.1` | `1.1.0` |\n| [github.com/go-git/go-git/v5](https://github.com/go-git/go-git) | `5.19.2` | `5.19.3` |\n| [github.com/onsi/gomega](https://github.com/onsi/gomega) | `1.42.1` | `1.44.0` |\n| [golang.org/x/crypto](https://github.com/golang/crypto) | `0.58.0` | `0.59.0` |\n| [golang.org/x/mod](https://github.com/golang/mod) | `0.42.0` | `0.43.0` |\n| [golang.org/x/oauth2](https://github.com/golang/oauth2) | `0.37.0` | `0.38.0` |\n| [golang.org/x/term](https://github.com/golang/term) | `0.47.0` | `0.48.0` |\n| [golang.org/x/text](https://github.com/golang/text) | `0.43.0` | `0.44.0` |\n\n\n\nUpdates `github.com/dustin/go-humanize` from 1.0.1 to 1.1.0\n- [Commits](https://github.com/dustin/go-humanize/compare/v1.0.1...v1.1.0)\n\nUpdates `github.com/go-git/go-git/v5` from 5.19.2 to 5.19.3\n- [Release notes](https://github.com/go-git/go-git/releases)\n- [Changelog](https://github.com/go-git/go-git/blob/main/HISTORY.md)\n- [Commits](https://github.com/go-git/go-git/compare/v5.19.2...v5.19.3)\n\nUpdates `github.com/onsi/gomega` from 1.42.1 to 1.44.0\n- [Release notes](https://github.com/onsi/gomega/releases)\n- [Changelog](https://github.com/onsi/gomega/blob/master/CHANGELOG.md)\n- [Commits](https://github.com/onsi/gomega/compare/v1.42.1...v1.44.0)\n\nUpdates `golang.org/x/crypto` from 0.58.0 to 0.59.0\n- [Commits](https://github.com/golang/crypto/compare/v0.58.0...v0.59.0)\n\nUpdates `golang.org/x/mod` from 0.42.0 to 0.43.0\n- [Commits](https://github.com/golang/mod/compare/v0.42.0...v0.43.0)\n\nUpdates `golang.org/x/oauth2` from 0.37.0 to 0.38.0\n- [Commits](https://github.com/golang/oauth2/compare/v0.37.0...v0.38.0)\n\nUpdates `golang.org/x/term` from 0.47.0 to 0.48.0\n- [Commits](https://github.com/golang/term/compare/v0.47.0...v0.48.0)\n\nUpdates `golang.org/x/text` from 0.43.0 to 0.44.0\n- [Release notes](https://github.com/golang/text/releases)\n- [Commits](https://github.com/golang/text/compare/v0.43.0...v0.44.0)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/dustin/go-humanize\n  dependency-version: 1.1.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: github.com/go-git/go-git/v5\n  dependency-version: 5.19.3\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n- dependency-name: github.com/onsi/gomega\n  dependency-version: 1.44.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/crypto\n  dependency-version: 0.59.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/mod\n  dependency-version: 0.43.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/oauth2\n  dependency-version: 0.38.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/term\n  dependency-version: 0.48.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: golang.org/x/text\n  dependency-version: 0.44.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-11-15T10:04:05-05:00",
+          "tree_id": "1ec79d36939e84345ca3d65d0284841526ee3752",
+          "url": "https://github.com/buildpacks/pack/commit/2b3d2bf590eeff3e3f231e21cb0ac92ddb02d937"
+        },
+        "date": 1794755342729,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 202198059427,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
