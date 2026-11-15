@@ -11,9 +11,8 @@ import (
 	"syscall"
 
 	"github.com/buildpacks/lifecycle/auth"
-	"github.com/docker/docker/api/types/container"
-	dockercli "github.com/docker/docker/client"
 	v1remote "github.com/google/go-containerregistry/pkg/v1/remote"
+	dockercli "github.com/moby/moby/client"
 )
 
 func main() {
@@ -76,7 +75,7 @@ func testDaemon() {
 		fmt.Printf("failed to create new docker client: %s\n", err)
 		os.Exit(1)
 	}
-	_, err = cli.ContainerList(context.TODO(), container.ListOptions{})
+	_, err = cli.ContainerList(context.TODO(), dockercli.ContainerListOptions{})
 	if err != nil {
 		fmt.Printf("failed to access docker daemon: %s\n", err)
 		os.Exit(1)
