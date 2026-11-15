@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794523759779,
+  "lastUpdate": 1794702321192,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15436,6 +15436,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 227782699534,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "57492e20abaddccc3ea2d2aac6d02a8a01b7251f",
+          "message": "Complete the docker/docker removal: correct provenance, drift detection and tests for the vendored volume parser (#2667)\n\n* Remove docker/docker deprecated package by vendoring the volume mounts package in moby/daemon/volume/mounts\n\nSigned-off-by: mattsanta <mattsanta@google.com>\n\n* style: fix goimports formatting\n\nSigned-off-by: mattsanta <mattsanta@google.com>\n\n* fix: address linter warnings and test build failures\n\nSigned-off-by: mattsanta <mattsanta@google.com>\n\n* fix: re-vendor volume/mounts from moby head and correct the provenance\n\nThe vendored files recorded moby/moby@7fd2be66 (2026-07-28), but the code was\nactually copied from github.com/docker/docker@v28.5.2/volume/mounts -- the very\nmodule this change removes. Diffing the copy against both candidates makes it\nunambiguous: linux_parser.go differed from the recorded SHA by 58 lines but from\nv28.5.2 by 9, and those 9 are all mechanical (package rename, import repointing,\ntwo lint fixes).\n\nThat matters less for behaviour than for the drift mechanism agreed on #2470: a\nweekly job asking \"has upstream changed since 2026-07-28?\" would answer \"no\"\nwhile the copy sat roughly a year behind.\n\nRe-vendored from moby/moby@e0126942, the current head of daemon/volume/mounts,\nwhich brings across the validateExclusiveOptions refactor, strings.SplitSeq and\nthe change making propagation non-configurable for image mounts. None of those\nare reachable from pack, which only parses --volume specs into bind and volume\nmounts, so this is a provenance fix rather than a behaviour change.\n\nAdds tools/vendor-volume-mounts.sh so the copy is reproducible instead of\nhand-made. It fetches the pinned revision and applies the three mechanical\nsubstitutions -- package rename, moby-internal lazyregexp to stdlib regexp, and\nvolume.DefaultDriverName inlined as \"local\". Running it with --check re-derives\nthe files and fails on any difference, so drift cannot go unnoticed again.\n\nmounts.go stays hand-reduced to the parsing subset and is excluded from --check;\nVENDORED.txt now spells out exactly what was removed and why.\n\nCo-authored-by: mattsanta <mattsanta@google.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* fix: carry moby's Apache-2.0 attribution with the vendored code\n\nThe vendored parser had no license or attribution alongside it. pack and moby\nare both Apache-2.0 so there is no conflict, but section 4 still requires\nretaining the copyright and attribution notices when redistributing a modified\ncopy, and FOSSA License Compliance gates this repo.\n\nAdds moby's LICENSE verbatim and a NOTICE naming the upstream project, the\ncopyright holder, and the fact that the files are modified, pointing at\nVENDORED.txt for what changed.\n\nCo-authored-by: mattsanta <mattsanta@google.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* test: cover the vendored volume parser and processVolumes\n\nThe vendored parser arrived with no tests, and mounts.go is hand-reduced rather\nthan copied verbatim, so nothing held the reduction to upstream's behaviour.\npack's own processVolumes had no tests either.\n\nAdds 14 cases over the three parsers, with the valid/invalid corpora taken from\nmoby's own suite so the reduced MountPoint and the stdlib regexp substitution\nare measured against upstream's definition of correct. Also asserts the specific\nfields processVolumes reads, which is what the reduction has to keep intact.\n\nAdds 18 cases for processVolumes itself: mode handling (including that an\nunspecified mode is deliberately mounted read-only), the sensitive-directory\nwarnings for /cnb, /layers and /workspace, and error wrapping. Pinned to linux\nbecause the parser is chosen from the image OS and host OS together, and other\nunix hosts use a different implementation entirely.\n\nWritten with spec and testify per CLAUDE.md rather than porting upstream's\ntests verbatim, which would have pulled in gotest.tools/v3 as a third assertion\nlibrary.\n\nTwo expectations were wrong on the first pass and are documented where they\nsit: the Linux parser applies no volume-name rules at all, and\nValidateVolumeName matches reserved Windows words case-sensitively -- it is the\nparse path that lowercases first.\n\nCo-authored-by: mattsanta <mattsanta@google.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* ci: watch the vendored volume/mounts copy for drift\n\nImplements the detection mechanism agreed on #2470. Nothing in the module graph\npins vendored code, so the only thing keeping internal/volume honest is a check\nthat goes and looks.\n\nTwo independent failure modes, two checks:\n\n- Our copy stops matching the revision it claims to come from. Covered by\n  tools/vendor-volume-mounts.sh --check, which re-derives the files from the\n  pinned SHA and diffs. Runs on PRs touching internal/volume, so a hand-edit\n  fails unless the pin moves with it.\n\n- That revision stops being the latest. Covered by\n  tools/check-vendored-upstream.sh, run weekly, which asks GitHub for commits\n  touching daemon/volume/mounts since the pinned date and opens (or comments on)\n  a tracking issue listing them.\n\nBoth read the pin from internal/volume/VENDORED.txt so there is one source of\ntruth, and both are runnable locally rather than only inside Actions.\n\nVerified against a deliberately stale pin: the upstream check reports the five\nintervening commits and exits non-zero, and correctly excludes the pinned commit\nitself from the window.\n\nLabelled 'dependencies' rather than the 'area/volume' suggested on the issue,\nwhich does not exist in this repo.\n\nCo-authored-by: mattsanta <mattsanta@google.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* test: build the fake lifecycle with Go 1.26\n\nGo 1.25 is out of support since the Go 1.27 release; match pack's toolchain.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n---------\n\nSigned-off-by: mattsanta <mattsanta@google.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: mattsanta <mattsanta@google.com>\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-11-14T19:19:37-05:00",
+          "tree_id": "9062d2ba10f32040c43dfe8fad8caca24693a296",
+          "url": "https://github.com/buildpacks/pack/commit/57492e20abaddccc3ea2d2aac6d02a8a01b7251f"
+        },
+        "date": 1794702319596,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 247980903680,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
