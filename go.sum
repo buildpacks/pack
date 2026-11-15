@@ -102,8 +102,8 @@ github.com/aws/smithy-go v1.28.6/go.mod h1:YE2RhdIuDbA5E5bTdciG9KrW3+TiEONeUWCqx
 github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.12.0 h1:JFWXO6QPihCknDdnL6VaQE57km4ZKheHIGd9YiOGcTo=
 github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.12.0/go.mod h1:046/oLyFlYdAghYQE2yHXi/E//VM5Cf3/dFmA+3CZ0c=
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
-github.com/buildpacks/imgutil v0.0.0-20261021214501-195bdfd62620 h1:hWQNmuCA6zrNKhO77bwVTJd04y5dSMgkEnFAWPA0bBk=
-github.com/buildpacks/imgutil v0.0.0-20261021214501-195bdfd62620/go.mod h1:EBy9ZOatKkTBAWOgN2Y0aNV4P40dOdGyzzB9q2a5HBE=
+github.com/buildpacks/imgutil v0.0.0-20261114233731-3665d0bdb3f4 h1:Y5DdhnfOEeJoCyAEpachOYR4yx4hrk51fLlrI/VWb5w=
+github.com/buildpacks/imgutil v0.0.0-20261114233731-3665d0bdb3f4/go.mod h1:EBy9ZOatKkTBAWOgN2Y0aNV4P40dOdGyzzB9q2a5HBE=
 github.com/buildpacks/lifecycle v0.21.29 h1:ERMAPg2LAGs7/QCcO9FW5u9mzfLhxGwGNALiMWNQRv4=
 github.com/buildpacks/lifecycle v0.21.29/go.mod h1:Hx36yhEtUwHRup+uYd+B5GKXXsLpoZCwPRkck5MPNDc=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
