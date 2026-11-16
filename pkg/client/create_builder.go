@@ -172,9 +172,7 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 			if !opts.Publish {
 				img, err := c.imageFetcher.Fetch(ctx, i, image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy, Target: target})
 				if err != nil {
-					if errors.Cause(err) != image.ErrNotFound {
-						return errors.Wrap(err, "failed to fetch image")
-					}
+					c.logger.Warnf("run image %s is not accessible", style.Symbol(i))
 				} else {
 					runImages = append(runImages, img)
 					continue
@@ -183,9 +181,6 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 
 			img, err := c.imageFetcher.Fetch(ctx, i, image.FetchOptions{Daemon: false, PullPolicy: opts.PullPolicy, Target: target})
 			if err != nil {
-				if errors.Cause(err) != image.ErrNotFound {
-					return errors.Wrap(err, "failed to fetch image")
-				}
 				c.logger.Warnf("run image %s is not accessible", style.Symbol(i))
 			} else {
 				runImages = append(runImages, img)
