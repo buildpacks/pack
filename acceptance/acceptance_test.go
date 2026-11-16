@@ -877,7 +877,7 @@ func testWithoutSpecificBuilderRequirement(
 					output := pack.RunSuccessfully("manifest", "create", indexRepoName, repoName1, repoName2)
 					assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulIndexLocallyCreated(indexRepoName)
 
-					indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+					indexLocalPath = filepath.Join(tmpDir, "pack", "manifests", imgutil.MakeFileSafeName(indexRepoName))
 					index := h.ReadIndexManifest(t, indexLocalPath)
 					h.AssertEq(t, len(index.Manifests), 2)
 					h.AssertEq(t, index.MediaType, types.OCIImageIndex)
@@ -903,7 +903,7 @@ func testWithoutSpecificBuilderRequirement(
 
 				// create an index locally
 				pack.RunSuccessfully("manifest", "create", indexRepoName, repoName1)
-				indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+				indexLocalPath = filepath.Join(tmpDir, "pack", "manifests", imgutil.MakeFileSafeName(indexRepoName))
 			})
 
 			when("add", func() {
