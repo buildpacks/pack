@@ -669,6 +669,25 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, out.String(), "failed to find a lifecycle binary")
 			})
 
+			it("should download the freebsd lifecycle for a freebsd build image", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Lifecycle.URI = ""
+				opts.Config.Lifecycle.Version = "3.4.5"
+				h.AssertNil(t, fakeBuildImage.SetOS("freebsd"))
+				h.AssertNil(t, fakeBuildImage.SetArchitecture("arm64"))
+
+				mockDownloader.EXPECT().Download(
+					gomock.Any(),
+					"https://github.com/buildpacks/lifecycle/releases/download/v3.4.5/lifecycle-v3.4.5+freebsd.arm64.tgz",
+				).Return(
+					blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil,
+				)
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+			})
+
 			when("windows", func() {
 				it("should download from predetermined uri", func() {
 					opts.Config.Extensions = nil      // TODO: downloading extensions doesn't work yet; to be implemented in https://github.com/buildpacks/pack/issues/1489
@@ -690,7 +709,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					mockDownloader.EXPECT().Download(
 						gomock.Any(),
-						"https://github.com/buildpacks/lifecycle/releases/download/v3.4.5/lifecycle-v3.4.5+windows.x86-64.tgz",
+						// Windows binaries stop at v0.20.5, so later versions are capped.
+						"https://github.com/buildpacks/lifecycle/releases/download/v0.20.5/lifecycle-v0.20.5+windows.x86-64.tgz",
 					).Return(
 						blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil,
 					)
@@ -766,11 +786,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					mockDownloader.EXPECT().Download(
 						gomock.Any(),
-						fmt.Sprintf(
-							"https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+windows.x86-64.tgz",
-							builder.DefaultLifecycleVersion,
-							builder.DefaultLifecycleVersion,
-						),
+						"https://github.com/buildpacks/lifecycle/releases/download/v0.20.5/lifecycle-v0.20.5+windows.x86-64.tgz",
 					).Return(
 						blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil,
 					)

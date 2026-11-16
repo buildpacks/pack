@@ -456,24 +456,70 @@ func validateModule(kind string, module buildpack.BuildModule, source, expectedI
 }
 
 func (c *Client) uriFromLifecycleVersion(version semver.Version, os string, architecture string) string {
-	arch := "x86-64"
-
-	if os == "windows" {
+	switch os {
+	case "windows":
+		// Windows container support was deprecated at lifecycle v0.20.5.
+		// See: https://medium.com/buildpacks/deprecation-announcement-windows-container-feature-in-cloud-native-buildpacks-bbb70351343d
+		lastWindowsVersion := semver.MustParse("0.20.5")
+		if version.GreaterThan(lastWindowsVersion) {
+			c.logger.Warnf("Windows lifecycle binaries are not available after v0.20.5; capping version to v0.20.5")
+			version = *lastWindowsVersion
+		}
+		arch := windowsArch(architecture)
 		return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+windows.%s.tgz", version.String(), version.String(), arch)
-	}
 
-	if architecture == "amd64" {
-		architecture = "x86-64"
-	}
+	case "freebsd":
+		arch := freebsdArch(architecture)
+		if arch == "" {
+			arch = "amd64"
+			c.logger.Warnf("failed to find a lifecycle binary for requested architecture %s on FreeBSD, defaulting to %s", style.Symbol(architecture), style.Symbol(arch))
+		}
+		return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+freebsd.%s.tgz", version.String(), version.String(), arch)
 
-	if builder.SupportedLinuxArchitecture(architecture) {
-		arch = architecture
-	} else {
-		// FIXME: this should probably be an error case in the future, see https://github.com/buildpacks/pack/issues/2163
-		c.logger.Warnf("failed to find a lifecycle binary for requested architecture %s, defaulting to %s", style.Symbol(architecture), style.Symbol(arch))
+	default: // linux
+		arch := linuxArch(architecture)
+		if arch == "" {
+			arch = "x86-64"
+			c.logger.Warnf("failed to find a lifecycle binary for requested architecture %s, defaulting to %s", style.Symbol(architecture), style.Symbol(arch))
+		}
+		return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+linux.%s.tgz", version.String(), version.String(), arch)
 	}
+}
 
-	return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+linux.%s.tgz", version.String(), version.String(), arch)
+// linuxArch maps the input architecture to the lifecycle binary suffix for Linux.
+// Returns empty string for unsupported architectures.
+func linuxArch(architecture string) string {
+	switch architecture {
+	case "amd64", "x86-64":
+		return "x86-64"
+	case "arm64":
+		return "arm64"
+	case "ppc64le":
+		return "ppc64le"
+	case "s390x":
+		return "s390x"
+	default:
+		return ""
+	}
+}
+
+// freebsdArch maps the input architecture to the lifecycle binary suffix for FreeBSD.
+// Returns empty string for unsupported architectures.
+func freebsdArch(architecture string) string {
+	switch architecture {
+	case "amd64", "x86-64":
+		return "amd64"
+	case "arm64":
+		return "arm64"
+	default:
+		return ""
+	}
+}
+
+// windowsArch maps the input architecture to the lifecycle binary suffix for Windows.
+func windowsArch(architecture string) string {
+	// Only x86-64 was ever published for Windows.
+	return "x86-64"
 }
 
 func stripTopDirAndWrite(layerReader io.ReadCloser, outputPath string) (*OS.File, error) {
