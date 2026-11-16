@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794757647005,
+  "lastUpdate": 1794850335063,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15556,6 +15556,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 198313293685,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "yuminkim.dev@gmail.com",
+            "name": "Yumin Kim",
+            "username": "yuminn-k"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "da215ec4282eb57978628bfea200e9cde73cbf07",
+          "message": "Write warnings to stderr in quiet mode (#2734)\n\nIn quiet mode stdout should only carry the command result (for\n`pack build -q`, the image reference), but warnings were still written\nto stdout. On a daemon using the containerd image store, the\ncontainerd-storage warning ended up in front of the image reference, so\n`ref=$(pack build -q ...)` captured three lines instead of one.\n\nSend warnings to the error writer when quiet is set, and restore the\nexact-match assertion in the quiet-mode local build test that was\nrelaxed in #2730.\n\nSigned-off-by: YuMin Kim <yuminkim.dev@gmail.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-11-16T12:28:07-05:00",
+          "tree_id": "c3873f3a58e02c90653d7d01c4e00b540902c01a",
+          "url": "https://github.com/buildpacks/pack/commit/da215ec4282eb57978628bfea200e9cde73cbf07"
+        },
+        "date": 1794850333943,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 205204347093,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
