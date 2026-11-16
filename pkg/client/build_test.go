@@ -70,6 +70,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		fakeMirror2                  *fakes.Image
 		tmpDir                       string
 		outBuf                       bytes.Buffer
+		errBuf                       bytes.Buffer
 		logger                       *logging.LogWithWriters
 		fakeLifecycleImage           *fakes.Image
 
@@ -129,7 +130,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		docker, err := dockerclient.New(dockerclient.FromEnv)
 		h.AssertNil(t, err)
 
-		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &errBuf)
 
 		dlCacheDir, err := os.MkdirTemp(tmpDir, "dl-cache")
 		h.AssertNil(t, err)
@@ -295,9 +296,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						AppPath: filepath.Join("testdata", "some-app"),
 					}))
 
-					// The daemon may print a containerd storage warning first, so only check the last line.
-					lines := strings.Split(strings.TrimSpace(outBuf.String()), "\n")
-					h.AssertEq(t, lines[len(lines)-1], "some/app@sha256:363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4")
+					h.AssertEq(t, strings.TrimSpace(outBuf.String()), "some/app@sha256:363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4")
 				})
 			})
 		})
