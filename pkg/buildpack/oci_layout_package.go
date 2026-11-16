@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"path"
@@ -42,7 +43,7 @@ func IsOCILayoutBlob(blob blob2.Blob) (bool, error) {
 
 // BuildpacksFromOCILayoutBlob constructs buildpacks from a blob in OCI layout format.
 func BuildpacksFromOCILayoutBlob(blob Blob) (mainBP BuildModule, dependencies []BuildModule, err error) {
-	layoutPackage, err := newOCILayoutPackage(blob, KindBuildpack)
+	layoutPackage, err := newOCILayoutPackage(blob, KindBuildpack, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -52,7 +53,7 @@ func BuildpacksFromOCILayoutBlob(blob Blob) (mainBP BuildModule, dependencies []
 
 // ExtensionsFromOCILayoutBlob constructs extensions from a blob in OCI layout format.
 func ExtensionsFromOCILayoutBlob(blob Blob) (mainExt BuildModule, err error) {
-	layoutPackage, err := newOCILayoutPackage(blob, KindExtension)
+	layoutPackage, err := newOCILayoutPackage(blob, KindExtension, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +62,7 @@ func ExtensionsFromOCILayoutBlob(blob Blob) (mainExt BuildModule, err error) {
 }
 
 func ConfigFromOCILayoutBlob(blob Blob) (config v1.ImageConfig, err error) {
-	layoutPackage, err := newOCILayoutPackage(blob, KindBuildpack)
+	layoutPackage, err := newOCILayoutPackage(blob, KindBuildpack, nil)
 	if err != nil {
 		return v1.ImageConfig{}, err
 	}
@@ -74,32 +75,39 @@ type ociLayoutPackage struct {
 	blob      Blob
 }
 
-func newOCILayoutPackage(blob Blob, kind string) (*ociLayoutPackage, error) {
+// BuildpacksFromOCILayoutBlobForTarget selects a platform before extracting its modules.
+func BuildpacksFromOCILayoutBlobForTarget(blob Blob, target dist.Target) (BuildModule, []BuildModule, error) {
+	pkg, err := newOCILayoutPackage(blob, KindBuildpack, &target)
+	if err != nil {
+		return nil, nil, err
+	}
+	return extractBuildpacks(pkg)
+}
+
+// ExtensionsFromOCILayoutBlobForTarget selects the requested extension platform.
+func ExtensionsFromOCILayoutBlobForTarget(blob Blob, target dist.Target) (BuildModule, error) {
+	pkg, err := newOCILayoutPackage(blob, KindExtension, &target)
+	if err != nil {
+		return nil, err
+	}
+	return extractExtensions(pkg)
+}
+
+func newOCILayoutPackage(blob Blob, kind string, target *dist.Target) (*ociLayoutPackage, error) {
 	index := &v1.Index{}
 
 	if err := unmarshalJSONFromBlob(blob, v1.ImageIndexFile, index); err != nil {
 		return nil, err
 	}
 
-	var manifestDescriptor *v1.Descriptor
-	for _, m := range index.Manifests {
-		if m.MediaType == "application/vnd.docker.distribution.manifest.v2+json" || m.MediaType == v1.MediaTypeImageManifest {
-			manifestDescriptor = &m // nolint:exportloopref
-			break
+	manifest, imageInfo, err := findLayoutImage(blob, *index, target, 0)
+	if stderrors.Is(err, errLayoutPlatformNotFound) {
+		if target == nil {
+			return nil, errors.New("unable to find manifest")
 		}
+		return nil, errors.Errorf("unable to find manifest for target %s", target.ValuesAsPlatform())
 	}
-
-	if manifestDescriptor == nil {
-		return nil, errors.New("unable to find manifest")
-	}
-
-	manifest := &v1.Manifest{}
-	if err := unmarshalJSONFromBlob(blob, pathFromDescriptor(*manifestDescriptor), manifest); err != nil {
-		return nil, err
-	}
-
-	imageInfo := &v1.Image{}
-	if err := unmarshalJSONFromBlob(blob, pathFromDescriptor(manifest.Config), imageInfo); err != nil {
+	if err != nil {
 		return nil, err
 	}
 	var layersLabel string

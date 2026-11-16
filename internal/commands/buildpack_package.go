@@ -56,6 +56,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 		Long: "buildpack package allows users to package (a) buildpack(s) into OCI format, which can then to be hosted in " +
 			"image repositories or persisted on disk as a '.cnb' file. You can also package a number of buildpacks " +
 			"together, to enable easier distribution of a set of buildpacks. " +
+			"When --format=file is used with multiple targets, one '.cnb' file contains all requested platforms. " +
 			"Packaged buildpacks can be used as inputs to `pack build` (using the `--buildpack` flag), " +
 			"and they can be included in the configs used in `pack builder create` and `pack buildpack package`. For more " +
 			"on how to package a buildpack, see: https://buildpacks.io/docs/buildpack-author-guide/package-a-buildpack/.",
