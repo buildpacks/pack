@@ -200,6 +200,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				},
 				DefaultProcessType:       flags.DefaultProcessType,
 				ProjectDescriptorBaseDir: filepath.Dir(actualDescriptorPath),
+				ProjectDescriptorPath:    actualDescriptorPath,
 				ProjectDescriptor:        descriptor,
 				Cache:                    flags.Cache,
 				CacheImage:               flags.CacheImage,
