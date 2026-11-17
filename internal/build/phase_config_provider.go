@@ -1,11 +1,14 @@
 package build
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
+	"github.com/buildpacks/lifecycle/auth"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/moby/moby/api/types/container"
 
 	pcontainer "github.com/buildpacks/pack/internal/container"
@@ -97,7 +100,7 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 func sanitized(origEnv []string) []string {
 	var sanitizedEnv []string
 	for _, env := range origEnv {
-		if strings.HasPrefix(env, "CNB_REGISTRY_AUTH") {
+		if strings.HasPrefix(env, "CNB_REGISTRY_AUTH=") {
 			sanitizedEnv = append(sanitizedEnv, "CNB_REGISTRY_AUTH=<redacted>")
 			continue
 		}
@@ -237,10 +240,40 @@ func WithNetwork(networkMode string) PhaseConfigProviderOperation {
 	}
 }
 
-func WithRegistryAccess(authConfig string) PhaseConfigProviderOperation {
+// WithRegistryAccess passes the credentials pack resolved for images to the lifecycle. When they
+// cover the registry of every image, it also skips the lifecycle's vendor keychains: they could only
+// look up the same credentials again, and the ECR and ACR helpers do so slowly, via instance metadata.
+func WithRegistryAccess(authConfig string, images ...string) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
 		provider.ctrConf.Env = append(provider.ctrConf.Env, fmt.Sprintf(`CNB_REGISTRY_AUTH=%s`, authConfig))
+		if coversRegistries(authConfig, images) {
+			for _, vendor := range []string{"AMAZON", "AZURE"} {
+				provider.ctrConf.Env = append(provider.ctrConf.Env, fmt.Sprintf(auth.EnvRegistryAuthKeychainSkipFormat, vendor)+"=true")
+			}
+		}
 	}
+}
+
+func coversRegistries(authConfig string, images []string) bool {
+	var headers map[string]string
+	if err := json.Unmarshal([]byte(authConfig), &headers); err != nil {
+		return false
+	}
+	covered := false
+	for _, image := range images {
+		if image == "" {
+			continue
+		}
+		ref, err := name.ParseReference(image, name.WeakValidation)
+		if err != nil {
+			return false
+		}
+		if _, ok := headers[ref.Context().Registry.Name()]; !ok {
+			return false
+		}
+		covered = true
+	}
+	return covered
 }
 
 func WithRoot() PhaseConfigProviderOperation {
