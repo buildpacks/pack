@@ -138,6 +138,14 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			}).Return(packageImage, nil)
 		}
 
+		shouldFetchPackageImageForPlatformWith := func(pull image.PullPolicy, target *dist.Target) {
+			mockImageFetcher.EXPECT().FetchForPlatform(gomock.Any(), packageImage.Name(), image.FetchOptions{
+				Daemon:     true,
+				PullPolicy: pull,
+				Target:     target,
+			}).Return(packageImage, nil)
+		}
+
 		when("package image lives in cnb registry", func() {
 			it.Before(func() {
 				packageImage = createPackage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7")
@@ -152,7 +160,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						PullPolicy:   image.PullAlways,
 					}
 
-					shouldFetchPackageImageWith(true, image.PullAlways, &dist.Target{OS: "linux", Arch: "amd64"})
+					shouldFetchPackageImageForPlatformWith(image.PullAlways, &dist.Target{OS: "linux", Arch: "amd64"})
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "urn:cnb:registry:example/foo@1.1.0", downloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
@@ -195,7 +203,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						ImageName:  "some/package:tag",
 					}
 
-					shouldFetchPackageImageWith(true, image.PullAlways, &dist.Target{OS: "linux", Arch: "amd64"})
+					shouldFetchPackageImageForPlatformWith(image.PullAlways, &dist.Target{OS: "linux", Arch: "amd64"})
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
@@ -212,6 +220,39 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					shouldFetchPackageImageWith(true, image.PullAlways, &dist.Target{OS: "linux"})
+					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
+					h.AssertNil(t, err)
+					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
+				})
+			})
+
+			when("daemon=true and the package can't be resolved in a registry", func() {
+				it("should fall back to the daemon's package image", func() {
+					downloadOptions = buildpack.DownloadOptions{
+						Target:     &dist.Target{OS: "linux", Arch: "arm64"},
+						ImageName:  packageImage.Name(),
+						Daemon:     true,
+						PullPolicy: image.PullAlways,
+					}
+
+					mockImageFetcher.EXPECT().FetchForPlatform(gomock.Any(), packageImage.Name(), gomock.Any()).Return(nil, errors.New("MANIFEST_UNKNOWN"))
+					shouldFetchPackageImageWith(true, image.PullAlways, &dist.Target{OS: "linux", Arch: "arm64"})
+					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
+					h.AssertNil(t, err)
+					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
+				})
+			})
+
+			when("daemon=false and the target has an architecture", func() {
+				it("should fetch the remote package image, which already selects the platform", func() {
+					downloadOptions = buildpack.DownloadOptions{
+						Target:     &dist.Target{OS: "linux", Arch: "arm64"},
+						ImageName:  packageImage.Name(),
+						Daemon:     false,
+						PullPolicy: image.PullAlways,
+					}
+
+					shouldFetchPackageImageWith(false, image.PullAlways, &dist.Target{OS: "linux", Arch: "arm64"})
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", downloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info().ID, "example/foo")
