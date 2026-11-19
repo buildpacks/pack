@@ -49,6 +49,7 @@ var supportedOSArchs = map[string][]string{
 var supportedArchVariants = map[string][]string{
 	"386":      {"softfloat", "sse2"},
 	"arm":      {"v5", "v6", "v7"},
+	"arm64":    {"v8", "v9"},
 	"amd64":    {"v1", "v2", "v3", "v4"},
 	"mips":     {"hardfloat", "softfloat"},
 	"mipsle":   {"hardfloat", "softfloat"},

@@ -31,5 +31,12 @@ func testPlatforms(t *testing.T, when spec.G, it spec.S) {
 			b := target.SupportsPlatform("linux", "arm", "v6")
 			h.AssertTrue(t, b)
 		})
+		it("should support the arm64 variants v8 and v9", func() {
+			h.AssertTrue(t, target.SupportsPlatform("linux", "arm64", "v8"))
+			h.AssertTrue(t, target.SupportsPlatform("linux", "arm64", "v9"))
+		})
+		it("should return false for an unknown arm64 variant", func() {
+			h.AssertFalse(t, target.SupportsPlatform("linux", "arm64", "v1"))
+		})
 	})
 }
