@@ -44,6 +44,19 @@ func testParseTargets(t *testing.T, when spec.G, it spec.S) {
 				ArchVariant: "v6",
 			})
 		})
+		it("should parse arm64 targets with the v8 and v9 variants", func() {
+			for _, variant := range []string{"v8", "v9"} {
+				outBuf.Reset()
+				output, err := target.ParseTarget("linux/arm64/"+variant, logging.NewLogWithWriters(&outBuf, &outBuf))
+				h.AssertNil(t, err)
+				h.AssertEq(t, outBuf.String(), "")
+				h.AssertEq(t, output, dist.Target{
+					OS:          "linux",
+					Arch:        "arm64",
+					ArchVariant: variant,
+				})
+			}
+		})
 		it("should return an error", func() {
 			_, err := target.ParseTarget("", logging.NewLogWithWriters(&outBuf, &outBuf))
 			h.AssertNotNil(t, err)
