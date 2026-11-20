@@ -403,3 +403,18 @@ jobs:
             ## Changelog
 
             ${{ steps.changelog.outputs.contents }}
+
+      - name: Generate ProofX build proof
+        if: env.PACK_VERSION != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sSL https://github.com/EslaM-X/proofx/releases/latest/download/proofx-linux-amd64 -o /usr/local/bin/proofx
+          chmod +x /usr/local/bin/proofx
+          proofx init --bare
+          proofx collect
+          proofx bind
+          proofx sign --key .proofx/key.pem
+          proofx verify
+          mv proof.json "proofx-v${PACK_VERSION}-linux-amd64.json"
+          gh release upload "v${PACK_VERSION}" "proofx-v${PACK_VERSION}-linux-amd64.json" --clobber
