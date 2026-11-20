@@ -1,0 +1,120 @@
+name: "Create Docs Issue"
+# NOTE: This workflow is privileged, and shouldn't be used to checkout the repo or run any of the PR code
+# See more in: https://securitylab.github.com/research/github-actions-preventing-pwn-requests
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  pull-requests: write
+
+concurrency:
+  group: docs-issue-${{ github.event.pull_request.number }}
+
+jobs:
+  docs-issue:
+    if: github.event.pull_request.merged == true && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    env:
+      DOCS_BOT_TOKEN: ${{ secrets.DOCS_BOT_TOKEN }}
+    steps:
+      - name: Check whether a docs issue is needed
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+
+            const body = (pr.body || '').replace(/\r\n/g, '\n').replace(/<!--[\s\S]*?-->/g, '');
+            const section = body.split(/^##[ \t]+Documentation[ \t]*$/m)[1]?.split(/^## /m)[0];
+            const yes = section && /^[ \t]*[-*][ \t]*\[[xX]\][ \t]*Yes\b(.*)$/m.exec(section);
+            const no = section && /^[ \t]*[-*][ \t]*\[[xX]\][ \t]*No\b/m.test(section);
+
+            // Only "Yes" with the number still blank; anything already linked is left alone.
+            const linked = yes && /#\d+|https?:\/\//.test(yes[1]);
+            core.setOutput('needed', String(Boolean(yes && !no && !linked)));
+
+      - name: Create the docs issue
+        id: issue
+        if: steps.check.outputs.needed == 'true' && env.DOCS_BOT_TOKEN != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.DOCS_BOT_TOKEN }}
+          script: |
+            // Settings
+            const DOCS_REPO = `${context.repo.owner}/docs`;
+            const MARKER_PREFIX = 'pack-pr';
+
+            const [owner, repo] = DOCS_REPO.split('/');
+            const pr = context.payload.pull_request;
+            const packPr = `${context.repo.owner}/${context.repo.repo}#${pr.number}`;
+            const marker = `<!-- ${MARKER_PREFIX}: ${packPr} -->`;
+
+            // The search index lags behind new issues, so look through the most recent ones instead.
+            const { data: recent } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'all',
+              sort: 'created',
+              direction: 'desc',
+              per_page: 100,
+            });
+            let issue = recent.find(i => (i.body || '').includes(marker));
+
+            if (!issue) {
+              const lines = [`${packPr} was merged and marked as needing documentation.`];
+              if (pr.milestone) lines.push(`It ships in pack milestone ${pr.milestone.title}.`);
+              lines.push(
+                '',
+                `@${pr.user.login}, could you open a docs PR for this change? Please merge it around the pack release, because buildpacks.io redeploys as soon as docs \`main\` changes.`,
+                '',
+                marker,
+              );
+              ({ data: issue } = await github.rest.issues.create({
+                owner,
+                repo,
+                title: `Document ${packPr}: ${pr.title}`,
+                body: lines.join('\n'),
+              }));
+            }
+            core.setOutput('number', issue.number);
+
+      - name: Link the docs issue on the PR
+        if: steps.issue.outputs.number != ''
+        uses: actions/github-script@v7
+        env:
+          DOCS_ISSUE: ${{ steps.issue.outputs.number }}
+        with:
+          script: |
+            // Settings
+            const DOCS_REPO = `${context.repo.owner}/docs`;
+            const MARKER = '<!-- docs-issue -->';
+
+            const link = `${DOCS_REPO}#${process.env.DOCS_ISSUE}`;
+            const { data: pr } = await github.rest.pulls.get({
+              ...context.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+
+            // Re-read just before writing and replace only the "Yes, see ..." line, so other edits are kept.
+            // GITHUB_TOKEN edits don't trigger workflows, so this doesn't re-run the docs check.
+            const body = pr.body || '';
+            const updated = body.replace(/^([ \t]*[-*][ \t]*\[[xX]\][ \t]*Yes\b).*$/m, `$1, see ${link}`);
+            if (updated !== body) {
+              await github.rest.pulls.update({ ...context.repo, pull_number: pr.number, body: updated });
+            }
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...context.repo,
+              issue_number: pr.number,
+            });
+            if (!comments.some(c => c.user.type === 'Bot' && c.body.includes(MARKER))) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: pr.number,
+                body: `${MARKER}\nThis PR was marked as needing documentation, so ${link} was opened to track the docs change.`,
+              });
+            }
