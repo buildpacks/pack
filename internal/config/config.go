@@ -100,17 +100,60 @@ func ReadVolumeKeys(path string) (VolumeConfig, error) {
 	return cfg, nil
 }
 
+// Write atomically replaces the file at path with cfg encoded as TOML.
+//
+// The config is encoded into a temporary file in the same directory which is
+// then renamed over path. Truncating and rewriting path in place is not safe
+// when several pack processes write it concurrently (for example, parallel
+// `pack build` runs updating volume-keys.toml): readers could observe a
+// partially written file and writers could interleave, leaving a corrupted
+// file behind that makes every subsequent build fail.
+// See https://github.com/buildpacks/pack/issues/2695.
 func Write(cfg interface{}, path string) error {
-	if err := MkdirAll(filepath.Dir(path)); err != nil {
+	dir := filepath.Dir(path)
+	if err := MkdirAll(dir); err != nil {
 		return err
 	}
-	w, err := os.Create(path)
+
+	existing, err := os.Stat(path)
+	if err == nil {
+		// Renaming over path only needs write access to the directory, so an
+		// existing file the user made read-only would silently be replaced.
+		// Fail as the previous in-place rewrite did instead. O_WRONLY without
+		// O_TRUNC checks write permission without modifying the file.
+		f, err := os.OpenFile(path, os.O_WRONLY, 0)
+		if err != nil {
+			return err
+		}
+		f.Close()
+	}
+
+	tmp, err := os.CreateTemp(dir, filepath.Base(path)+".tmp-*")
 	if err != nil {
 		return err
 	}
-	defer w.Close()
+	// Removing the temp file is a no-op once it has been renamed to path.
+	defer os.Remove(tmp.Name())
 
-	return toml.NewEncoder(w).Encode(cfg)
+	// os.CreateTemp creates the file with mode 0600. Keep the mode of an
+	// existing file so that rewriting it does not change its permissions;
+	// new files stay 0600, as the process umask cannot be queried portably
+	// and a restrictive mode is the safe default for files under PACK_HOME.
+	if existing != nil {
+		if err := tmp.Chmod(existing.Mode().Perm()); err != nil {
+			tmp.Close()
+			return err
+		}
+	}
+
+	if err := toml.NewEncoder(tmp).Encode(cfg); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
 }
 
 func MkdirAll(path string) error {
