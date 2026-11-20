@@ -47,8 +47,13 @@ func NewDescriptor(projectTomlContents string) (types.Descriptor, toml.MetaData,
 
 	return types.Descriptor{
 		Project: types.Project{
-			Name:     versionedDescriptor.Project.Name,
-			Licenses: versionedDescriptor.Project.Licenses,
+			ID:               versionedDescriptor.Project.ID,
+			Name:             versionedDescriptor.Project.Name,
+			Version:          versionedDescriptor.Project.Version,
+			Authors:          versionedDescriptor.Project.Authors,
+			Licenses:         versionedDescriptor.Project.Licenses,
+			DocumentationURL: versionedDescriptor.Project.DocumentationURL,
+			SourceURL:        versionedDescriptor.Project.SourceURL,
 		},
 		Build: types.Build{
 			Include:    versionedDescriptor.IO.Buildpacks.Include,
