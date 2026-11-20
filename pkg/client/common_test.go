@@ -2,6 +2,9 @@ package client
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/buildpacks/lifecycle/auth"
@@ -146,6 +149,61 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 				// issue: https://github.com/buildpacks/pack/issues/2078
 				runImageName = subject.resolveRunImage("", "", "", stackInfo.RunImage, nil, publish, image.FetchOptions{})
 				assert.Equal(runImageName, "stack/run-image")
+			})
+		})
+	})
+
+	when("#getRegistry", func() {
+		when("neither PACK_HOME nor ~/.pack is in use", func() {
+			var (
+				home        string
+				originalEnv map[string]*string
+			)
+
+			it.Before(func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "pack always uses ~/.pack on Windows")
+
+				home = t.TempDir()
+				originalEnv = map[string]*string{}
+				for key, value := range map[string]string{
+					"HOME":            home,
+					"PACK_HOME":       "",
+					"XDG_CONFIG_HOME": "",
+					"XDG_CACHE_HOME":  "",
+				} {
+					if original, ok := os.LookupEnv(key); ok {
+						originalEnv[key] = &original
+					} else {
+						originalEnv[key] = nil
+					}
+					h.AssertNil(t, os.Setenv(key, value))
+				}
+			})
+
+			it.After(func() {
+				for key, original := range originalEnv {
+					if original == nil {
+						h.AssertNil(t, os.Unsetenv(key))
+					} else {
+						h.AssertNil(t, os.Setenv(key, *original))
+					}
+				}
+			})
+
+			it("uses the cache directory without creating ~/.pack", func() {
+				var outBuf bytes.Buffer
+				registryCache, err := getRegistry(logging.NewLogWithWriters(&outBuf, &outBuf), "")
+				h.AssertNil(t, err)
+
+				cacheDir := filepath.Join(home, ".cache", "pack")
+				h.AssertEq(t, filepath.Dir(registryCache.Root), cacheDir)
+
+				fi, err := os.Stat(cacheDir)
+				h.AssertNil(t, err)
+				h.AssertEq(t, fi.Mode().Perm(), os.FileMode(0700))
+
+				_, err = os.Stat(filepath.Join(home, ".pack"))
+				h.AssertEq(t, os.IsNotExist(err), true)
 			})
 		})
 	})

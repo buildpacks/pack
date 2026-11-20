@@ -1,12 +1,12 @@
 package commands
 
 import (
-	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
@@ -14,28 +14,28 @@ type CompletionFlags struct {
 	Shell string
 }
 
-type completionFunc func(packHome string, cmd *cobra.Command) (path string, err error)
+type completionFunc func(dataDir string, cmd *cobra.Command) (path string, err error)
 
 var shellExtensions = map[string]completionFunc{
-	"bash": func(packHome string, cmd *cobra.Command) (path string, err error) {
-		p := filepath.Join(packHome, "completion.sh")
+	"bash": func(dataDir string, cmd *cobra.Command) (path string, err error) {
+		p := filepath.Join(dataDir, "completion.sh")
 		return p, cmd.GenBashCompletionFile(p)
 	},
-	"fish": func(packHome string, cmd *cobra.Command) (path string, err error) {
-		p := filepath.Join(packHome, "completion.fish")
+	"fish": func(dataDir string, cmd *cobra.Command) (path string, err error) {
+		p := filepath.Join(dataDir, "completion.fish")
 		return p, cmd.GenFishCompletionFile(p, true)
 	},
-	"powershell": func(packHome string, cmd *cobra.Command) (path string, err error) {
-		p := filepath.Join(packHome, "completion.ps1")
+	"powershell": func(dataDir string, cmd *cobra.Command) (path string, err error) {
+		p := filepath.Join(dataDir, "completion.ps1")
 		return p, cmd.GenPowerShellCompletionFile(p)
 	},
-	"zsh": func(packHome string, cmd *cobra.Command) (path string, err error) {
-		p := filepath.Join(packHome, "completion.zsh")
+	"zsh": func(dataDir string, cmd *cobra.Command) (path string, err error) {
+		p := filepath.Join(dataDir, "completion.zsh")
 		return p, cmd.GenZshCompletionFile(p)
 	},
 }
 
-func CompletionCommand(logger logging.Logger, packHome string) *cobra.Command {
+func CompletionCommand(logger logging.Logger, dataDir string) *cobra.Command {
 	var flags CompletionFlags
 	var completionCmd = &cobra.Command{
 		Use:   "completion",
@@ -67,11 +67,11 @@ To configure your zsh shell to load completions for each session, add the follow
 				return errors.Errorf("%s is unsupported shell", flags.Shell)
 			}
 
-			if err := os.MkdirAll(packHome, os.ModePerm); err != nil {
+			if err := config.MkdirAll(dataDir); err != nil {
 				return err
 			}
 
-			completionPath, err := completionFunc(packHome, cmd.Parent())
+			completionPath, err := completionFunc(dataDir, cmd.Parent())
 			if err != nil {
 				return err
 			}
