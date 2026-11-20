@@ -1703,7 +1703,7 @@ func (c *Client) logImageNameAndSha(ctx context.Context, publish bool, imageRef 
 	}
 
 	// Remove tag, if it exists, from the image name
-	imgName := strings.TrimSuffix(imageRef.String(), imageRef.Identifier())
+	imgName := strings.TrimSuffix(imageRef.String(), ":"+imageRef.Identifier())
 	imgNameAndSha := fmt.Sprintf("%s@%s\n", imgName, parseDigestFromImageID(id))
 
 	// Access the logger's Writer directly to bypass ReportSuccessfulQuietBuild mode
