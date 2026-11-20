@@ -59,7 +59,7 @@ func (c *CacheOpts) Set(value string) error {
 		return err
 	}
 
-	cache := &c.Build
+	cache, bindDir := &c.Build, "build-cache"
 	for _, field := range fields {
 		parts := strings.SplitN(field, "=", 2)
 		if len(parts) != 2 {
@@ -70,9 +70,9 @@ func (c *CacheOpts) Set(value string) error {
 		if key == "type" {
 			switch value {
 			case "build":
-				cache = &c.Build
+				cache, bindDir = &c.Build, "build-cache"
 			case "launch":
-				cache = &c.Launch
+				cache, bindDir = &c.Launch, "launch-cache"
 			default:
 				return errors.Errorf("invalid cache type '%s'", value)
 			}
@@ -106,11 +106,10 @@ func (c *CacheOpts) Set(value string) error {
 		}
 	}
 
-	err = sanitize(c)
-	if err != nil {
-		return err
-	}
-	return nil
+	// Only the cache this flag configures is sanitized. The flag is passed once per
+	// cache type, and sanitizing the other cache again would append its bind
+	// directory a second time.
+	return sanitize(cache, bindDir)
 }
 
 func (c *CacheOpts) String() string {
@@ -132,29 +131,18 @@ func (c *CacheOpts) Type() string {
 	return "cache"
 }
 
-func sanitize(c *CacheOpts) error {
-	for _, v := range []CacheInfo{c.Build, c.Launch} {
-		// volume cache name can be auto-generated
-		if v.Format != CacheVolume && v.Source == "" {
-			return errors.Errorf("cache '%s' is required", v.SourceName())
-		}
+func sanitize(c *CacheInfo, bindDir string) error {
+	// volume cache name can be auto-generated
+	if c.Format != CacheVolume && c.Source == "" {
+		return errors.Errorf("cache '%s' is required", c.SourceName())
 	}
 
-	var (
-		resolvedPath string
-		err          error
-	)
-	if c.Build.Format == CacheBind {
-		if resolvedPath, err = filepath.Abs(c.Build.Source); err != nil {
+	if c.Format == CacheBind {
+		resolvedPath, err := filepath.Abs(c.Source)
+		if err != nil {
 			return errors.Wrap(err, "resolve absolute path")
 		}
-		c.Build.Source = filepath.Join(resolvedPath, "build-cache")
-	}
-	if c.Launch.Format == CacheBind {
-		if resolvedPath, err = filepath.Abs(c.Launch.Source); err != nil {
-			return errors.Wrap(err, "resolve absolute path")
-		}
-		c.Launch.Source = filepath.Join(resolvedPath, "launch-cache")
+		c.Source = filepath.Join(resolvedPath, bindDir)
 	}
 	return nil
 }

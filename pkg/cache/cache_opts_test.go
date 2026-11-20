@@ -3,6 +3,7 @@ package cache
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -315,6 +316,43 @@ func testCacheOpts(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, testcase.output, output)
 				}
 			}
+		})
+
+		// --cache is documented as one flag per cache type, so Set runs once for each flag.
+		when("the flag is passed once for each cache type", func() {
+			var buildDir, launchDir string
+
+			it.Before(func() {
+				buildDir = t.TempDir()
+				launchDir = t.TempDir()
+			})
+
+			it("resolves a bind build cache only once when a launch cache follows", func() {
+				var cacheFlags CacheOpts
+				h.AssertNil(t, cacheFlags.Set(fmt.Sprintf("type=build;format=bind;source=%s", buildDir)))
+				h.AssertNil(t, cacheFlags.Set("type=launch;format=volume;name=test-launch-volume-cache"))
+
+				h.AssertEq(t, cacheFlags.Build.Source, filepath.Join(buildDir, "build-cache"))
+				h.AssertEq(t, cacheFlags.Launch.Source, "test-launch-volume-cache")
+			})
+
+			it("resolves a bind launch cache only once when a build cache follows", func() {
+				var cacheFlags CacheOpts
+				h.AssertNil(t, cacheFlags.Set(fmt.Sprintf("type=launch;format=bind;source=%s", launchDir)))
+				h.AssertNil(t, cacheFlags.Set("type=build;format=volume;name=test-build-volume-cache"))
+
+				h.AssertEq(t, cacheFlags.Launch.Source, filepath.Join(launchDir, "launch-cache"))
+				h.AssertEq(t, cacheFlags.Build.Source, "test-build-volume-cache")
+			})
+
+			it("resolves both bind caches only once", func() {
+				var cacheFlags CacheOpts
+				h.AssertNil(t, cacheFlags.Set(fmt.Sprintf("type=build;format=bind;source=%s", buildDir)))
+				h.AssertNil(t, cacheFlags.Set(fmt.Sprintf("type=launch;format=bind;source=%s", launchDir)))
+
+				h.AssertEq(t, cacheFlags.Build.Source, filepath.Join(buildDir, "build-cache"))
+				h.AssertEq(t, cacheFlags.Launch.Source, filepath.Join(launchDir, "launch-cache"))
+			})
 		})
 	})
 }
