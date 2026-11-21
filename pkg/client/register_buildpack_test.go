@@ -97,6 +97,16 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 				}), "invalid url: cannot parse username from url")
 		})
 
+		it("should throw error if URL has no path (git)", func() {
+			h.AssertError(t, subject.RegisterBuildpack(context.TODO(),
+				RegisterBuildpackOptions{
+					ImageName: "buildpack/image",
+					Type:      "git",
+					URL:       "https://github.com",
+					Name:      "official",
+				}), "invalid url: cannot parse username from url")
+		})
+
 		it("should throw error if using malformed URL (git)", func() {
 			h.AssertError(t, subject.RegisterBuildpack(context.TODO(),
 				RegisterBuildpackOptions{
