@@ -99,7 +99,7 @@ func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOp
 
 func parseUsernameFromURL(url string) (string, error) {
 	parts := strings.Split(url, "/")
-	if len(parts) < 3 {
+	if len(parts) < 4 {
 		return "", errors.New("invalid url: cannot parse username from url")
 	}
 	if parts[3] == "" {
