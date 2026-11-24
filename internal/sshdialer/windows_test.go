@@ -23,9 +23,7 @@ func fixupPrivateKeyMod(path string) {
 		true,
 		false,
 		acl.GrantName(((mode&0700)<<23)|((mode&0200)<<9), usr.Username))
-
-	// See https://github.com/hectane/go-acl/issues/1
-	if err != nil && err.Error() != "The operation completed successfully." {
+	if err != nil {
 		panic(err)
 	}
 }
