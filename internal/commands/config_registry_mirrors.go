@@ -95,7 +95,7 @@ func listRegistryMirrors(args []string, logger logging.Logger, cfg config.Config
 	buf := strings.Builder{}
 	buf.WriteString("Registry Mirrors:\n")
 	for registry, mirror := range cfg.RegistryMirrors {
-		buf.WriteString(fmt.Sprintf("  %s: %s\n", registry, style.Symbol(mirror)))
+		fmt.Fprintf(&buf, "  %s: %s\n", registry, style.Symbol(mirror))
 	}
 
 	logger.Info(buf.String())

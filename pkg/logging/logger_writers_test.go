@@ -145,11 +145,12 @@ func testLogWithWriters(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNotContains(t, output, "infof\n")
 		})
 
-		it("logs warnings to standard writer", func() {
+		it("logs warnings to error writer", func() {
 			logger.Warn("warn_")
 			logger.Warnf("warnf")
 
-			output := fOut()
+			h.AssertEq(t, fOut(), "")
+			output := fErr()
 			h.AssertContains(t, output, "warn_\n")
 			h.AssertContains(t, output, "warnf\n")
 		})

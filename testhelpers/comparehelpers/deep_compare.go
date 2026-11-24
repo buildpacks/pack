@@ -51,7 +51,7 @@ func deepContains(v1, v2 reflect.Value, depth int) bool {
 		return mapContains(v1, v2, depth+1)
 	case reflect.Interface:
 		return deepContains(v1.Elem(), v2, depth+1)
-	case reflect.Ptr, reflect.Struct, reflect.Func:
+	case reflect.Pointer, reflect.Struct, reflect.Func:
 		panic(fmt.Sprintf("unimplmemented comparison for type: %s", v1.Kind().String()))
 	default: // assume it is a atomic datatype
 		return reflect.DeepEqual(v1, v2)
