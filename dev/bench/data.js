@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794850335063,
+  "lastUpdate": 1795525409689,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15586,6 +15586,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 205204347093,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "328690a651ca594681516e41aca574d5b49c2c7c",
+          "message": "build(deps): bump the go-dependencies group with 3 updates (#2750)\n\nBumps the go-dependencies group with 3 updates: [github.com/docker/cli](https://github.com/docker/cli), [github.com/moby/moby/api](https://github.com/moby/moby) and [github.com/moby/moby/client](https://github.com/moby/moby).\n\n\nUpdates `github.com/docker/cli` from 29.9.3+incompatible to 29.10.0+incompatible\n- [Commits](https://github.com/docker/cli/compare/v29.9.3...v29.10.0)\n\nUpdates `github.com/moby/moby/api` from 1.56.1 to 1.57.0\n- [Release notes](https://github.com/moby/moby/releases)\n- [Commits](https://github.com/moby/moby/compare/api/v1.56.1...api/v1.57.0)\n\nUpdates `github.com/moby/moby/client` from 0.6.2 to 0.6.3\n- [Release notes](https://github.com/moby/moby/releases)\n- [Changelog](https://github.com/moby/moby/blob/v0.6.3/CHANGELOG.md)\n- [Commits](https://github.com/moby/moby/compare/v0.6.2...v0.6.3)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/docker/cli\n  dependency-version: 29.10.0+incompatible\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: github.com/moby/moby/api\n  dependency-version: 1.57.0\n  dependency-type: direct:production\n  update-type: version-update:semver-minor\n  dependency-group: go-dependencies\n- dependency-name: github.com/moby/moby/client\n  dependency-version: 0.6.3\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: go-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-11-24T07:58:56-05:00",
+          "tree_id": "3561c4e96b560232323bf84f0425d397efb533ff",
+          "url": "https://github.com/buildpacks/pack/commit/328690a651ca594681516e41aca574d5b49c2c7c"
+        },
+        "date": 1795525408380,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 185484413367,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
