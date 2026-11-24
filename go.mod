@@ -8,7 +8,7 @@ require (
 	github.com/buildpacks/imgutil v0.0.0-20261114233731-3665d0bdb3f4
 	github.com/buildpacks/lifecycle v0.21.29
 	github.com/containerd/errdefs v1.0.0
-	github.com/docker/cli v29.9.3+incompatible
+	github.com/docker/cli v29.10.0+incompatible
 	github.com/dustin/go-humanize v1.1.0
 	github.com/gdamore/tcell/v2 v2.13.10
 	github.com/go-git/go-git/v5 v5.19.3
@@ -20,8 +20,8 @@ require (
 	github.com/heroku/color v0.0.6
 	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
 	github.com/moby/go-archive v0.3.3
-	github.com/moby/moby/api v1.56.1
-	github.com/moby/moby/client v0.6.2
+	github.com/moby/moby/api v1.57.0
+	github.com/moby/moby/client v0.6.3
 	github.com/onsi/gomega v1.44.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
