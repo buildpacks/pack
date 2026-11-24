@@ -325,7 +325,7 @@ func AssertTarball(t *testing.T, path string) {
 }
 
 func isNil(value interface{}) bool {
-	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
+	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Pointer && reflect.ValueOf(value).IsNil())
 }
 
 func hasMatches(actual, exp string) bool {

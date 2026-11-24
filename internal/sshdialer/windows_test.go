@@ -5,6 +5,7 @@ package sshdialer_test
 import (
 	"errors"
 	"net"
+	"os"
 	"os/user"
 	"strings"
 
@@ -37,5 +38,5 @@ func listen(addr string) (net.Listener, error) {
 }
 
 func isErrClosed(err error) bool {
-	return errors.Is(err, net.ErrClosed) || errors.Is(err, winio.ErrPipeListenerClosed) || errors.Is(err, winio.ErrFileClosed)
+	return errors.Is(err, net.ErrClosed) || errors.Is(err, os.ErrClosed)
 }
