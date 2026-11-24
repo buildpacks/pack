@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795526957575,
+  "lastUpdate": 1795528167026,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15646,6 +15646,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 197018392779,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6e1905b4a4f856ebd3d53b25bc8f232ce989dd41",
+          "message": "build(deps): bump github.com/hectane/go-acl from 0.0.0-20190604041725-da78bae5fc95 to 1.0.0 (#2646)\n\n* build(deps): bump github.com/hectane/go-acl\n\nBumps [github.com/hectane/go-acl](https://github.com/hectane/go-acl) from 0.0.0-20190604041725-da78bae5fc95 to 1.0.0.\n- [Commits](https://github.com/hectane/go-acl/commits/v1.0.0)\n\n---\nupdated-dependencies:\n- dependency-name: github.com/hectane/go-acl\n  dependency-version: 1.0.0\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\n\n* test: drop the go-acl error workaround now fixed upstream\n\ngo-acl v1.0.0 fixes hectane/go-acl#1: the Windows API wrappers used to\nreturn the error from syscall.Proc.Call, which is always non-nil (it\ncarries the last OS error, \"The operation completed successfully.\" on\nsuccess). v1.0.0 checks the call's return code instead and returns\nwindows.Errno(ret), or nil when ret == 0.\n\nSo the error-string comparison guarding acl.Apply is now dead code, and\nworse, it would swallow a genuine failure that happened to carry that\nmessage. Check err directly.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n---------\n\nSigned-off-by: dependabot[bot] <support@github.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-11-24T13:44:41Z",
+          "tree_id": "86e6940905aec9dd3ad799d946b97ec622314669",
+          "url": "https://github.com/buildpacks/pack/commit/6e1905b4a4f856ebd3d53b25bc8f232ce989dd41"
+        },
+        "date": 1795528165798,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 194404595902,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
