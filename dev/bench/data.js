@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795525409689,
+  "lastUpdate": 1795526957575,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15616,6 +15616,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 185484413367,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "36687396+chimanjain@users.noreply.github.com",
+            "name": "Chiman Jain",
+            "username": "chimanjain"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8141485ab438c1bd7df65ad97d2b43418c38d0a9",
+          "message": "build(deps): upgrade go-github dependency to v89 (#2661)\n\nSigned-off-by: Chiman Jain <chimanjain15@gmail.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-11-24T13:24:26Z",
+          "tree_id": "9b7886885c6ae3b958c5f818d2c0b32370ffaac6",
+          "url": "https://github.com/buildpacks/pack/commit/8141485ab438c1bd7df65ad97d2b43418c38d0a9"
+        },
+        "date": 1795526956062,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 197018392779,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
