@@ -13,42 +13,60 @@ jobs:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
   add-milestone:
     runs-on: ubuntu-latest
+    # Only assign a milestone when the pull request appears, never on a later push.
+    # Re-running on 'synchronize' used to overwrite a milestone a maintainer had
+    # changed by hand, which silently undid release planning.
+    if: github.event.action == 'opened' || github.event.action == 'reopened'
     steps:
       - name: Add milestone
         uses: actions/github-script@v7
         id: assets
         with:
           script: |
-            var current = await github.rest.issues.get({
+            const current = await github.rest.issues.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.number, 
+              issue_number: context.payload.number,
             })
-            .then(result => result.milestone)
-            
-            if (current) {
-              console.log(`Issue already has a milestone assigned, skipping add milestone step`);
-              return
-            }
-            
-            var milestone = await github.rest.issues.listMilestones({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      state: 'open',
-                      sort: 'due_on',
-                      direction: 'asc'
-                   })
-                  .then(result => result.data[0])
-                  .catch(err => {throw "ERROR: " + err.message});
+            .then(result => result.data.milestone)
+            .catch(err => {throw "ERROR: " + err.message});
 
-            if (milestone) {
-                await github.rest.issues.update({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.payload.number,
-                  milestone: milestone.number,
-                  });
-                core.setOutput('milestone', milestone.number);
-              } else {
-              console.log(`No milestone found. Please create one first.`);
+            if (current) {
+              console.log(`Pull request already has milestone '${current.title}', skipping.`);
+              return;
             }
+
+            // Pick the open milestone whose due date is closest. The due date is what
+            // marks the release currently being worked on: sorting on it server side is
+            // not enough, because milestones without a due date are returned too and
+            // would win on repositories where no due date is set at all.
+            const milestones = await github.paginate(github.rest.issues.listMilestones, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            })
+            .catch(err => {throw "ERROR: " + err.message});
+
+            const dated = milestones
+              .filter(m => m.due_on)
+              .sort((a, b) => new Date(a.due_on) - new Date(b.due_on) || a.number - b.number);
+
+            if (dated.length === 0) {
+              console.log(
+                `None of the ${milestones.length} open milestone(s) has a due date, so there is ` +
+                `no next release to assign to. Set a due date on the milestone being worked on, ` +
+                `or assign this pull request by hand.`
+              );
+              return;
+            }
+
+            const milestone = dated[0];
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.number,
+              milestone: milestone.number,
+            });
+            console.log(`Assigned milestone '${milestone.title}' (due ${milestone.due_on}).`);
+            core.setOutput('milestone', milestone.number);
