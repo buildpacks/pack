@@ -35,12 +35,15 @@ jobs:
               .catch(err => {throw "ERROR: " + err.message});
 
             const labels = target.labels.map(label => typeof label === 'string' ? label : label.name);
-            const status = labels.filter(label => label.startsWith('status/'));
 
-            // Something that already carries a status has been categorised, by a template
-            // or by one of the bots that files its own issues, so leave it as it is.
-            if (status.length > 0) {
-              console.log(`#${issue_number} already carries ${status.join(', ')}, skipping.`);
+            // Anything already categorised is left alone. A status/ label means a template
+            // or one of the bots that file their own issues has set one. The dependencies
+            // label means dependabot, which sets it in dependabot.yml; those pull requests
+            // are kept as they are and reviewed as a group rather than through triage.
+            const categorised = labels.filter(label => label.startsWith('status/') || label === 'dependencies');
+
+            if (categorised.length > 0) {
+              console.log(`#${issue_number} already carries ${categorised.join(', ')}, skipping.`);
               return;
             }
 
