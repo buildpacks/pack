@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795614467405,
+  "lastUpdate": 1795616448351,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15706,6 +15706,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 193130017859,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8d78a82629a6db1b3466c74a8d71e67e17c0d5a8",
+          "message": "Replace automatic milestone assignment with status/triage (#1812)\n\n* WIP - initial version\n\nSigned-off-by: Juan Bustamante <jbustamante@vmware.com>\n\n* skipping the process to assign a milestone when the issue already has one\n\nSigned-off-by: Juan Bustamante <jbustamante@vmware.com>\n\n* Don't overwrite a milestone that is already set\n\nThe add-milestone job ran on every pull_request_target activity, including\n'synchronize', and called issues.update unconditionally. Pushing a commit to\na pull request therefore reset a milestone a maintainer had changed by hand,\nsilently undoing release planning.\n\nThree things were wrong:\n\n- The job ran on 'synchronize'. It now runs only on 'opened' and 'reopened',\n  so a later push can no longer reassign anything. The label job keeps running\n  on every push, where relabelling is still wanted.\n- The guard added earlier read `result.milestone` from issues.get, which\n  returns `{data: {...}}`. It was always undefined, so the guard never fired.\n  It now reads `result.data.milestone`.\n- The milestone was picked with `sort: due_on` and `data[0]`. Milestones\n  without a due date are returned by that call too, so with no due dates set\n  anywhere the oldest open milestone always won, regardless of which release\n  was actually in progress. The job now considers only milestones that have a\n  due date, picks the nearest one, and assigns nothing when none has one.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Stop auto-assigning a milestone to new pull requests\n\nThe add-milestone job assigned a milestone on every pull_request_target\nactivity, including 'synchronize'. Pushing a commit to a pull request reset a\nmilestone that had been changed by hand, so merging main into an older pull\nrequest was enough to lose its milestone and silently undo release planning.\n\nThe job is removed rather than guarded. Which release a change belongs to is a\ntriage decision, and no heuristic available to the workflow makes it well:\nthe milestone was picked with 'sort: due_on' and 'data[0]', but that call also\nreturns milestones with no due date, so with none set anywhere the oldest open\nmilestone always won regardless of which release was in progress. That is how\n0.41.0 came to hold 69 open items. New pull requests now arrive with no\nmilestone and get one during triage.\n\nThe label job is unchanged and still runs on every push.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Label new issues and pull requests status/triage\n\nReplaces the milestone that used to be assigned automatically with the label\nthat already means \"a maintainer needs to look at this and categorise it\", so\ntriage has a batch to work through and nothing arrives pre-sorted into a\nrelease it may not belong to.\n\nThe issue templates apply status/triage already, but three paths bypass them:\na blank issue, anything opened through the API or gh, and every pull request.\nIssues #2695, #2707, #2726, #2729, #2754, #2756, #2758, #2760 and #2761 all\narrived with no labels at all and had to be labelled by hand afterwards.\n\nAnything that already carries a status/ label is left alone, so the issues the\nbots file for CVEs and Go upgrades keep the status/ready or status/in-progress\nthey set themselves.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Require an issue template\n\nBlank issues were enabled, which is the default, so the templates' labels were\nbypassed whenever someone used \"Open a blank issue\". That is how #2754, #2756,\n#2758, #2760 and #2761 arrived with no type/ label and no status/ label, and\ntheir bodies follow none of the templates.\n\nTurning blank issues off means every issue goes through Bug, Chore or Feature\nrequest and arrives with both labels set. The Questions contact link to the\ncommunity discussions is unaffected.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n* Keep dependabot pull requests out of the triage batch\n\nDependabot sets the dependencies label itself in dependabot.yml, so treat that\nas already categorised, the same as a status/ label. Its pull requests stay as\nthey are and are reviewed as a group rather than one at a time through triage.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n---------\n\nSigned-off-by: Juan Bustamante <jbustamante@vmware.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-11-25T09:17:10-05:00",
+          "tree_id": "d9189c56bb9527f7c3623c3b9d637cad8dee90ab",
+          "url": "https://github.com/buildpacks/pack/commit/8d78a82629a6db1b3466c74a8d71e67e17c0d5a8"
+        },
+        "date": 1795616446877,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 174763096083,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
