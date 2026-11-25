@@ -222,6 +222,39 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 			h.AssertError(t, err, "missing 'buildpack.uri' configuration")
 		})
 	})
+
+	when("#ReadBuildpackDescriptor", func() {
+		var tmpDir string
+
+		it.Before(func() {
+			var err error
+			tmpDir, err = os.MkdirTemp("", "buildpack-descriptor-test")
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			_ = os.RemoveAll(tmpDir)
+		})
+
+		it("returns exec-env when a composite buildpack toml file is provided", func() {
+			buildPackTomlFilePath := filepath.Join(tmpDir, "buildpack-1.toml")
+
+			err := os.WriteFile(buildPackTomlFilePath, []byte(validCompositeBuildPackTomlWithExecEnv), os.ModePerm)
+			h.AssertNil(t, err)
+
+			packageConfigReader := buildpackage.NewConfigReader()
+
+			buildpackDescriptor, err := packageConfigReader.ReadBuildpackDescriptor(buildPackTomlFilePath)
+			h.AssertNil(t, err)
+
+			h.AssertTrue(t, len(buildpackDescriptor.Order()) == 1)
+			h.AssertTrue(t, len(buildpackDescriptor.Order()[0].Group) == 2)
+			h.AssertTrue(t, len(buildpackDescriptor.Order()[0].Group[0].ExecEnv) == 1)
+			h.AssertTrue(t, len(buildpackDescriptor.Order()[0].Group[1].ExecEnv) == 1)
+			h.AssertEq(t, buildpackDescriptor.Order()[0].Group[0].ExecEnv[0], "production.1")
+			h.AssertEq(t, buildpackDescriptor.Order()[0].Group[1].ExecEnv[0], "production.2")
+		})
+	})
 }
 
 const validPackageToml = `
@@ -305,4 +338,25 @@ image = "some/package-dep"
 const missingBuildpackPackageToml = `
 [[dependencies]]
 uri = "bp/b"
+`
+
+const validCompositeBuildPackTomlWithExecEnv = `
+api = "0.15"
+
+[buildpack]
+id = "samples/hello-universe"
+version = "0.0.1"
+name = "Hello Universe Buildpack"
+
+# Order used for detection
+[[order]]
+[[order.group]]
+id = "samples/hello-world"
+version = "0.0.1"
+exec-env = ["production.1"]
+
+[[order.group]]
+id = "samples/hello-moon"
+version = "0.0.1"
+exec-env = ["production.2"]
 `

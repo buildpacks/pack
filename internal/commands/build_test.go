@@ -17,11 +17,10 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/paths"
-
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -114,16 +113,88 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("the builder is suggested", func() {
+			when("the builder is known to be trusted and suggested", func() {
 				it("sets the trust builder option", func() {
 					mockClient.EXPECT().
 						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(true)).
 						Return(nil)
 
 					logger.WantVerbose(true)
-					command.SetArgs([]string{"image", "--builder", "heroku/builder:22"})
+					command.SetArgs([]string{"image", "--builder", "heroku/builder:26"})
 					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:22' is trusted")
+					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:26' is trusted")
+				})
+			})
+
+			when("the builder is known to be trusted but not suggested", func() {
+				it("sets the trust builder option", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(true)).
+						Return(nil)
+
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"image", "--builder", "heroku/builder:24"})
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:24' is trusted")
+				})
+			})
+
+			when("the image name matches a builder name", func() {
+				it("refuses to build", func() {
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"heroku/builder:test", "--builder", "heroku/builder:24"})
+					h.AssertNotNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "name must not match builder image name")
+				})
+			})
+
+			when("the image name matches a trusted-builder name", func() {
+				it("refuses to build", func() {
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"heroku/builder:test", "--builder", "test", "--trust-builder"})
+					h.AssertNotNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "name must not match trusted builder name")
+				})
+			})
+
+			when("the image name matches a lifecycle image name", func() {
+				it("refuses to build", func() {
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"buildpacksio/lifecycle:test", "--builder", "test", "--trust-builder"})
+					h.AssertNotNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "name must not match default lifecycle image name")
+				})
+
+				it("refuses to build when using fully qualified name", func() {
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"docker.io/buildpacksio/lifecycle:test", "--builder", "test", "--trust-builder"})
+					h.AssertNotNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "name must not match default lifecycle image name")
+				})
+			})
+
+			when("the image name matches the default builder name", func() {
+				it("refuses to build", func() {
+					cfg := config.Config{DefaultBuilder: "some-org/default-builder:latest"}
+					command = commands.Build(logger, cfg, mockClient)
+
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"some-org/default-builder:test", "--builder", "test", "--trust-builder"})
+					h.AssertNotNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "name must not match default builder image name")
+				})
+			})
+
+			when("the builder is not trusted", func() {
+				it("warns the user that the builder is untrusted", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(false)).
+						Return(nil)
+
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"image", "--builder", "org/builder:unknown"})
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Builder 'org/builder:unknown' is untrusted")
 				})
 			})
 		})
@@ -144,6 +215,17 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					Return(nil)
 
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--network", "my-network"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
+		when("--platform", func() {
+			it("sets platform", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithPlatform("linux/amd64")).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--platform", "linux/amd64"})
 				h.AssertNil(t, command.Execute())
 			})
 		})
@@ -766,13 +848,9 @@ builder = "my-builder"
 		when("previous-image flag is provided", func() {
 			when("image is invalid", func() {
 				it("error must be thrown", func() {
-					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithPreviousImage("previous-image")).
-						Return(errors.New(""))
-
 					command.SetArgs([]string{"--builder", "my-builder", "/x@/y/?!z", "--previous-image", "previous-image"})
 					err := command.Execute()
-					h.AssertError(t, err, "failed to build")
+					h.AssertError(t, err, "forbidden image name")
 				})
 			})
 
@@ -871,12 +949,154 @@ builder = "my-builder"
 			})
 		})
 
+		when("path to app dir or zip-formatted file is provided", func() {
+			it("builds with the specified path", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithPath("my-source")).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--path", "my-source"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
+		when("a local path with the same string as the specified image name exists", func() {
+			when("an app path is specified", func() {
+				it("doesn't warn that the positional argument will not be treated as the source path", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "testdata")).
+						Return(nil)
+
+					command.SetArgs([]string{"testdata", "--builder", "my-builder", "--path", "my-source"})
+					h.AssertNil(t, command.Execute())
+					h.AssertNotContainsMatch(t, outBuf.String(), `Warning: You are building an image named '([^']+)'\. If you mean it as an app directory path, run 'pack build <args> --path ([^']+)'`)
+				})
+			})
+
+			when("no app path is specified", func() {
+				it("warns that the positional argument will not be treated as the source path", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "testdata")).
+						Return(nil)
+
+					command.SetArgs([]string{"testdata", "--builder", "my-builder"})
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Warning: You are building an image named 'testdata'. If you mean it as an app directory path, run 'pack build <args> --path testdata'")
+				})
+			})
+		})
+
 		when("export to OCI layout is expected but experimental isn't set in the config", func() {
 			it("errors with a descriptive message", func() {
 				command.SetArgs([]string{"oci:image", "--builder", "my-builder"})
 				err := command.Execute()
 				h.AssertNotNil(t, err)
 				h.AssertError(t, err, "Exporting to OCI layout is currently experimental.")
+			})
+		})
+
+		when("--exec-env", func() {
+			when("is not provided", func() {
+				it("set 'production' as default value", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithExecEnv("production")).
+						Return(nil)
+
+					command.SetArgs([]string{"image", "--builder", "my-builder"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+
+			when("is provided", func() {
+				when("contains valid characters", func() {
+					it("forwards the exec-value (only letters) into the client", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithExecEnv("something")).
+							Return(nil)
+
+						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "something"})
+						h.AssertNil(t, command.Execute())
+					})
+
+					it("forwards the exec-value (only numbers) into the client", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithExecEnv("1234")).
+							Return(nil)
+
+						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "1234"})
+						h.AssertNil(t, command.Execute())
+					})
+
+					it("forwards the exec-value (mix letters and numbers) into the client", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithExecEnv("env1")).
+							Return(nil)
+
+						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "env1"})
+						h.AssertNil(t, command.Execute())
+					})
+
+					it("forwards the exec-value (mix letters, numbers and .) into the client", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithExecEnv("env1.1")).
+							Return(nil)
+
+						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "env1.1"})
+						h.AssertNil(t, command.Execute())
+					})
+
+					it("forwards the exec-value (mix letters, numbers and -) into the client", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithExecEnv("env-1")).
+							Return(nil)
+
+						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "env-1"})
+						h.AssertNil(t, command.Execute())
+					})
+
+					it("forwards the exec-value (mix letters, numbers, . and  -) into the client", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithExecEnv("env-1.1")).
+							Return(nil)
+
+						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "env-1.1"})
+						h.AssertNil(t, command.Execute())
+					})
+				})
+
+				when("contains invalid characters", func() {
+					it("errors with a descriptive message", func() {
+						command.SetArgs([]string{"image", "--builder", "my-builder", "--exec-env", "$production"})
+						err := command.Execute()
+						h.AssertNotNil(t, err)
+						h.AssertError(t, err, "exec-env MUST only contain numbers, letters, and the characters: . or -")
+					})
+				})
+			})
+		})
+
+		when("--insecure-registry is provided", func() {
+			it("sets one insecure registry", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithInsecureRegistries([]string{
+						"foo.bar",
+					})).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--insecure-registry", "foo.bar"})
+				h.AssertNil(t, command.Execute())
+			})
+
+			it("sets more than one insecure registry", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithInsecureRegistries([]string{
+						"foo.bar",
+						"foo.com",
+					})).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--insecure-registry", "foo.bar", "--insecure-registry", "foo.com"})
+				h.AssertNil(t, command.Execute())
 			})
 		})
 	})
@@ -958,6 +1178,15 @@ func EqBuildOptionsDefaultProcess(defaultProc string) gomock.Matcher {
 	}
 }
 
+func EqBuildOptionsWithPlatform(platform string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Platform=%s", platform),
+		equals: func(o client.BuildOptions) bool {
+			return o.Platform == platform
+		},
+	}
+}
+
 func EqBuildOptionsWithPullPolicy(policy image.PullPolicy) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("PullPolicy=%s", policy),
@@ -1016,7 +1245,7 @@ func EqBuildOptionsWithTrustedBuilder(trustBuilder bool) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Trust Builder=%t", trustBuilder),
 		equals: func(o client.BuildOptions) bool {
-			return o.TrustBuilder(o.Builder)
+			return o.TrustBuilder(o.Builder) == trustBuilder
 		},
 	}
 }
@@ -1106,6 +1335,15 @@ func EqBuildOptionsWithDateTime(t *time.Time) interface{} {
 	}
 }
 
+func EqBuildOptionsWithPath(path string) interface{} {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("AppPath=%s", path),
+		equals: func(o client.BuildOptions) bool {
+			return o.AppPath == path
+		},
+	}
+}
+
 func EqBuildOptionsWithLayoutConfig(image, previousImage string, sparse bool, layoutDir string) interface{} {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("image=%s, previous-image=%s, sparse=%t, layout-dir=%s", image, previousImage, sparse, layoutDir),
@@ -1118,6 +1356,27 @@ func EqBuildOptionsWithLayoutConfig(image, previousImage string, sparse bool, la
 				return result && o.LayoutConfig.Sparse == sparse && o.LayoutConfig.LayoutRepoDir == layoutDir
 			}
 			return false
+		},
+	}
+}
+
+func EqBuildOptionsWithExecEnv(s string) interface{} {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("exec-env=%s", s),
+		equals: func(o client.BuildOptions) bool {
+			return o.CNBExecutionEnv == s
+		},
+	}
+}
+
+func EqBuildOptionsWithInsecureRegistries(insecureRegistries []string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Insercure Registries=%s", insecureRegistries),
+		equals: func(o client.BuildOptions) bool {
+			if len(o.InsecureRegistries) != len(insecureRegistries) {
+				return false
+			}
+			return reflect.DeepEqual(o.InsecureRegistries, insecureRegistries)
 		},
 	}
 }

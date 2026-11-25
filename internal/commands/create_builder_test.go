@@ -2,6 +2,7 @@ package commands_test
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -171,11 +172,13 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("errors", func() {
+				mockClient.EXPECT().CreateBuilder(gomock.Any(), gomock.Any()).Return(errors.New("builder config contains image extensions, but the lifecycle Platform API version (0.12) is older than 0.13; support for image extensions with Platform API < 0.13 is currently experimental"))
+
 				command.SetArgs([]string{
 					"some/builder",
 					"--config", builderConfigPath,
 				})
-				h.AssertError(t, command.Execute(), "builder config contains image extensions; support for image extensions is currently experimental")
+				h.AssertError(t, command.Execute(), "support for image extensions with Platform API < 0.13 is currently experimental")
 			})
 		})
 	})

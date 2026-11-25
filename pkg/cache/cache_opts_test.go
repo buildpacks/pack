@@ -235,6 +235,16 @@ func testCacheOpts(t *testing.T, when spec.G, it spec.S) {
 						input:  fmt.Sprintf("type=launch;format=bind;source=%s/test-bind-volume-cache", homeDir),
 						output: fmt.Sprintf("type=build;format=volume;type=launch;format=bind;source=%s/test-bind-volume-cache/launch-cache;", homeDir),
 					},
+					{
+						name:   "Case sensitivity test with uppercase path",
+						input:  fmt.Sprintf("type=build;format=bind;source=%s/TestBindBuildCache", homeDir),
+						output: fmt.Sprintf("type=build;format=bind;source=%s/TestBindBuildCache/build-cache;type=launch;format=volume;", homeDir),
+					},
+					{
+						name:   "Case sensitivity test with mixed case path",
+						input:  fmt.Sprintf("type=build;format=bind;source=%s/TeStBiNdBuildCaChe", homeDir),
+						output: fmt.Sprintf("type=build;format=bind;source=%s/TeStBiNdBuildCaChe/build-cache;type=launch;format=volume;", homeDir),
+					},
 				}
 			} else {
 				testcases = []CacheOptTestCase{
@@ -252,6 +262,17 @@ func testCacheOpts(t *testing.T, when spec.G, it spec.S) {
 						name:   "Launch cache as bind",
 						input:  fmt.Sprintf("type=launch;format=bind;source=%s\\test-bind-volume-cache", homeDir),
 						output: fmt.Sprintf("type=build;format=volume;type=launch;format=bind;source=%s\\test-bind-volume-cache\\launch-cache;", homeDir),
+					},
+					// Case sensitivity test cases for Windows
+					{
+						name:   "Case sensitivity test with uppercase path",
+						input:  fmt.Sprintf("type=build;format=bind;source=%s\\TestBindBuildCache", homeDir),
+						output: fmt.Sprintf("type=build;format=bind;source=%s\\TestBindBuildCache\\build-cache;type=launch;format=volume;", homeDir),
+					},
+					{
+						name:   "Case sensitivity test with mixed case path",
+						input:  fmt.Sprintf("type=build;format=bind;source=%s\\TeStBiNdBuildCaChe", homeDir),
+						output: fmt.Sprintf("type=build;format=bind;source=%s\\TeStBiNdBuildCaChe\\build-cache;type=launch;format=volume;", homeDir),
 					},
 				}
 			}

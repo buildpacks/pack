@@ -26,7 +26,7 @@ func ExtensionInspect(logger logging.Logger, cfg config.Config, client PackClien
 	return cmd
 }
 
-func extensionInspect(logger logging.Logger, extensionName string, cfg config.Config, pack PackClient) error {
+func extensionInspect(logger logging.Logger, extensionName string, _ config.Config, pack PackClient) error {
 	logger.Infof("Inspecting extension: %s\n", style.Symbol(extensionName))
 
 	inspectedExtensionsOutput, err := inspectAllExtensions(

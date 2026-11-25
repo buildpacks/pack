@@ -10,21 +10,24 @@ import (
 	"testing"
 
 	"github.com/buildpacks/imgutil"
-
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
-	"github.com/docker/docker/client"
+	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/heroku/color"
+	"github.com/moby/moby/client"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
+	"github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-var docker client.CommonAPIClient
+var docker *client.Client
 var registryConfig *h.TestRegistryConfig
 
 func TestFetcher(t *testing.T) {
@@ -40,9 +43,9 @@ func TestFetcher(t *testing.T) {
 	os.Setenv("DOCKER_CONFIG", registryConfig.DockerConfigDir)
 
 	var err error
-	docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+	docker, err = client.New(client.FromEnv)
 	h.AssertNil(t, err)
-	spec.Run(t, "Fetcher", testFetcher, spec.Report(report.Terminal{}))
+	spec.Run(t, "Fetcher", testFetcher, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testFetcher(t *testing.T, when spec.G, it spec.S) {
@@ -57,27 +60,73 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		repo = "some-org/" + h.RandString(10)
 		repoName = registryConfig.RepoName(repo)
-		imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker)
+		imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose()), docker)
 
-		info, err := docker.Info(context.TODO())
+		infoResult, err := docker.Info(context.TODO(), client.InfoOptions{})
 		h.AssertNil(t, err)
-		osType = info.OSType
+		osType = infoResult.Info.OSType
 	})
 
 	when("#Fetch", func() {
 		when("daemon is false", func() {
 			when("PullAlways", func() {
 				when("there is a remote image", func() {
-					it.Before(func() {
-						img, err := remote.NewImage(repoName, authn.DefaultKeychain)
-						h.AssertNil(t, err)
+					when("default platform", func() {
+						// default is linux/runtime.GOARCH
+						it.Before(func() {
+							img, err := remote.NewImage(repoName, authn.DefaultKeychain)
+							h.AssertNil(t, err)
 
-						h.AssertNil(t, img.Save())
+							h.AssertNil(t, img.Save())
+						})
+
+						it("returns the remote image", func() {
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways})
+							h.AssertNil(t, err)
+						})
+
+						it("returns the remote image when insecure registry", func() {
+							insecureRegistry := fmt.Sprintf("%s:%s", registryConfig.RunRegistryHost, registryConfig.RunRegistryPort)
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways, InsecureRegistries: []string{insecureRegistry}})
+							h.AssertNil(t, err)
+						})
 					})
 
-					it("returns the remote image", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways})
-						h.AssertNil(t, err)
+					when("platform with variant and version", func() {
+						var target dist.Target
+
+						// default is linux/runtime.GOARCH
+						it.Before(func() {
+							img, err := remote.NewImage(repoName, authn.DefaultKeychain, remote.WithDefaultPlatform(imgutil.Platform{
+								OS:           runtime.GOOS,
+								Architecture: runtime.GOARCH,
+								Variant:      "v1",
+								OSVersion:    "my-version",
+							}))
+							h.AssertNil(t, err)
+							h.AssertNil(t, img.Save())
+						})
+
+						it("returns the remote image", func() {
+							target = dist.Target{
+								OS:          runtime.GOOS,
+								Arch:        runtime.GOARCH,
+								ArchVariant: "v1",
+								Distributions: []dist.Distribution{
+									{Name: "some-name", Version: "my-version"},
+								},
+							}
+
+							img, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways, Target: &target})
+							h.AssertNil(t, err)
+							variant, err := img.Variant()
+							h.AssertNil(t, err)
+							h.AssertEq(t, variant, "v1")
+
+							osVersion, err := img.OSVersion()
+							h.AssertNil(t, err)
+							h.AssertEq(t, osVersion, "my-version")
+						})
 					})
 				})
 
@@ -218,7 +267,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 				when("image platform is specified", func() {
 					it("passes the platform argument to the daemon", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: "some-unsupported-platform"})
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Target: &dist.Target{OS: "some-unsupported-platform"}})
 						h.AssertError(t, err, "unknown operating system or architecture")
 					})
 
@@ -229,8 +278,8 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, img.Save())
 						})
 
-						it("retry without setting platform", func() {
-							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: fmt.Sprintf("%s/%s", osType, runtime.GOARCH)})
+						it("retries without setting platform", func() {
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Target: &dist.Target{OS: osType, Arch: runtime.GOARCH}})
 							h.AssertNil(t, err)
 						})
 					})
@@ -337,7 +386,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 				when("image platform is specified", func() {
 					it("passes the platform argument to the daemon", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfNotPresent, Platform: "some-unsupported-platform"})
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfNotPresent, Target: &dist.Target{OS: "some-unsupported-platform"}})
 						h.AssertError(t, err, "unknown operating system or architecture")
 					})
 				})
@@ -400,6 +449,436 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 					// only manifest and config was written
 					h.AssertBlobsLen(t, imagePath, 2)
+				})
+			})
+		})
+	})
+
+	when("#FetchForPlatform", func() {
+		when("target is nil", func() {
+			it.Before(func() {
+				img, err := remote.NewImage(repoName, authn.DefaultKeychain)
+				h.AssertNil(t, err)
+				h.AssertNil(t, img.Save())
+			})
+
+			it("delegates to regular Fetch method", func() {
+				fetchedImg, err := imageFetcher.FetchForPlatform(context.TODO(), repoName, image.FetchOptions{
+					Daemon:     false,
+					PullPolicy: image.PullAlways,
+					Target:     nil,
+				})
+				h.AssertNil(t, err)
+				h.AssertNotNil(t, fetchedImg)
+			})
+		})
+
+		when("target is specified", func() {
+			when("multi-platform image", func() {
+				when("matching platform exists", func() {
+					it.Before(func() {
+						// Create a multi-platform image by creating an index
+						// For testing purposes, we'll create a single-platform image with the current architecture
+						img, err := remote.NewImage(repoName, authn.DefaultKeychain, remote.WithDefaultPlatform(imgutil.Platform{
+							OS:           runtime.GOOS,
+							Architecture: runtime.GOARCH,
+						}))
+						h.AssertNil(t, err)
+						h.AssertNil(t, img.Save())
+					})
+
+					it("successfully fetches the platform-specific image", func() {
+						target := dist.Target{
+							OS:   runtime.GOOS,
+							Arch: runtime.GOARCH,
+						}
+
+						fetchedImg, err := imageFetcher.FetchForPlatform(context.TODO(), repoName, image.FetchOptions{
+							Daemon:     false,
+							PullPolicy: image.PullAlways,
+							Target:     &target,
+						})
+						h.AssertNil(t, err)
+						h.AssertNotNil(t, fetchedImg)
+
+						// Verify the platform matches
+						os, err := fetchedImg.OS()
+						h.AssertNil(t, err)
+						h.AssertEq(t, os, runtime.GOOS)
+
+						arch, err := fetchedImg.Architecture()
+						h.AssertNil(t, err)
+						h.AssertEq(t, arch, runtime.GOARCH)
+					})
+				})
+
+				when("true manifest list with multiple platforms", func() {
+					it.Before(func() {
+						// Create a random image index with platform annotations
+						h.SetUpRandomRemoteIndexWithPlatforms(t, repoName, []struct{ OS, Arch string }{
+							{OS: "linux", Arch: "amd64"},
+							{OS: "linux", Arch: "arm64"},
+						})
+					})
+
+					it("resolves to the correct platform-specific digest for amd64", func() {
+						target := dist.Target{
+							OS:   "linux",
+							Arch: "amd64",
+						}
+
+						fetchedImg, err := imageFetcher.FetchForPlatform(context.TODO(), repoName, image.FetchOptions{
+							Daemon:     false,
+							PullPolicy: image.PullAlways,
+							Target:     &target,
+						})
+						h.AssertNil(t, err)
+						h.AssertNotNil(t, fetchedImg)
+
+						// Verify the platform matches
+						arch, err := fetchedImg.Architecture()
+						h.AssertNil(t, err)
+						h.AssertEq(t, arch, "amd64")
+
+						os, err := fetchedImg.OS()
+						h.AssertNil(t, err)
+						h.AssertEq(t, os, "linux")
+					})
+
+					it("resolves to the correct platform-specific digest for arm64", func() {
+						target := dist.Target{
+							OS:   "linux",
+							Arch: "arm64",
+						}
+
+						fetchedImg, err := imageFetcher.FetchForPlatform(context.TODO(), repoName, image.FetchOptions{
+							Daemon:     false,
+							PullPolicy: image.PullAlways,
+							Target:     &target,
+						})
+						h.AssertNil(t, err)
+						h.AssertNotNil(t, fetchedImg)
+
+						// Verify the platform matches
+						arch, err := fetchedImg.Architecture()
+						h.AssertNil(t, err)
+						h.AssertEq(t, arch, "arm64")
+
+						os, err := fetchedImg.OS()
+						h.AssertNil(t, err)
+						h.AssertEq(t, os, "linux")
+					})
+				})
+
+				when("matching platform does not exist", func() {
+					it.Before(func() {
+						// Create an image with a specific platform
+						img, err := remote.NewImage(repoName, authn.DefaultKeychain, remote.WithDefaultPlatform(imgutil.Platform{
+							OS:           runtime.GOOS,
+							Architecture: runtime.GOARCH,
+						}))
+						h.AssertNil(t, err)
+						h.AssertNil(t, img.Save())
+					})
+
+					it("returns an error", func() {
+						// Request a different platform that doesn't exist
+						differentArch := "nonexistent-arch"
+						target := dist.Target{
+							OS:   runtime.GOOS,
+							Arch: differentArch,
+						}
+
+						_, err := imageFetcher.FetchForPlatform(context.TODO(), repoName, image.FetchOptions{
+							Daemon:     false,
+							PullPolicy: image.PullAlways,
+							Target:     &target,
+						})
+						h.AssertError(t, err, "does not match requested platform")
+					})
+				})
+			})
+
+			when("single-platform image", func() {
+				when("platform matches", func() {
+					it.Before(func() {
+						img, err := remote.NewImage(repoName, authn.DefaultKeychain, remote.WithDefaultPlatform(imgutil.Platform{
+							OS:           runtime.GOOS,
+							Architecture: runtime.GOARCH,
+						}))
+						h.AssertNil(t, err)
+						h.AssertNil(t, img.Save())
+					})
+
+					it("successfully fetches the image", func() {
+						target := dist.Target{
+							OS:   runtime.GOOS,
+							Arch: runtime.GOARCH,
+						}
+
+						fetchedImg, err := imageFetcher.FetchForPlatform(context.TODO(), repoName, image.FetchOptions{
+							Daemon:     false,
+							PullPolicy: image.PullAlways,
+							Target:     &target,
+						})
+						h.AssertNil(t, err)
+						h.AssertNotNil(t, fetchedImg)
+					})
+				})
+
+				when("platform does not match", func() {
+					it.Before(func() {
+						img, err := remote.NewImage(repoName, authn.DefaultKeychain, remote.WithDefaultPlatform(imgutil.Platform{
+							OS:           runtime.GOOS,
+							Architecture: runtime.GOARCH,
+						}))
+						h.AssertNil(t, err)
+						h.AssertNil(t, img.Save())
+					})
+
+					it("returns a platform mismatch error", func() {
+						// Use a different OS to ensure mismatch
+						differentOS := "nonexistent-os"
+						target := dist.Target{
+							OS:   differentOS,
+							Arch: runtime.GOARCH,
+						}
+
+						_, err := imageFetcher.FetchForPlatform(context.TODO(), repoName, image.FetchOptions{
+							Daemon:     false,
+							PullPolicy: image.PullAlways,
+							Target:     &target,
+						})
+						h.AssertError(t, err, "does not match requested platform")
+					})
+				})
+			})
+
+			when("with insecure registries", func() {
+				it.Before(func() {
+					img, err := remote.NewImage(repoName, authn.DefaultKeychain, remote.WithDefaultPlatform(imgutil.Platform{
+						OS:           runtime.GOOS,
+						Architecture: runtime.GOARCH,
+					}))
+					h.AssertNil(t, err)
+					h.AssertNil(t, img.Save())
+				})
+
+				it("successfully fetches using insecure registry settings", func() {
+					target := dist.Target{
+						OS:   runtime.GOOS,
+						Arch: runtime.GOARCH,
+					}
+					insecureRegistry := fmt.Sprintf("%s:%s", registryConfig.RunRegistryHost, registryConfig.RunRegistryPort)
+
+					fetchedImg, err := imageFetcher.FetchForPlatform(context.TODO(), repoName, image.FetchOptions{
+						Daemon:             false,
+						PullPolicy:         image.PullAlways,
+						Target:             &target,
+						InsecureRegistries: []string{insecureRegistry},
+					})
+					h.AssertNil(t, err)
+					h.AssertNotNil(t, fetchedImg)
+				})
+			})
+
+			when("with platform variant", func() {
+				it.Before(func() {
+					img, err := remote.NewImage(repoName, authn.DefaultKeychain, remote.WithDefaultPlatform(imgutil.Platform{
+						OS:           runtime.GOOS,
+						Architecture: runtime.GOARCH,
+						Variant:      "v7",
+					}))
+					h.AssertNil(t, err)
+					h.AssertNil(t, img.Save())
+				})
+
+				it("successfully fetches the image with matching variant", func() {
+					target := dist.Target{
+						OS:          runtime.GOOS,
+						Arch:        runtime.GOARCH,
+						ArchVariant: "v7",
+					}
+
+					fetchedImg, err := imageFetcher.FetchForPlatform(context.TODO(), repoName, image.FetchOptions{
+						Daemon:     false,
+						PullPolicy: image.PullAlways,
+						Target:     &target,
+					})
+					h.AssertNil(t, err)
+					h.AssertNotNil(t, fetchedImg)
+
+					variant, err := fetchedImg.Variant()
+					h.AssertNil(t, err)
+					h.AssertEq(t, variant, "v7")
+				})
+			})
+		})
+
+		when("image does not exist", func() {
+			it("returns an error", func() {
+				target := dist.Target{
+					OS:   runtime.GOOS,
+					Arch: runtime.GOARCH,
+				}
+
+				nonExistentImage := registryConfig.RepoName("nonexistent/" + h.RandString(10))
+				_, err := imageFetcher.FetchForPlatform(context.TODO(), nonExistentImage, image.FetchOptions{
+					Daemon:     false,
+					PullPolicy: image.PullAlways,
+					Target:     &target,
+				})
+				h.AssertError(t, err, "")
+			})
+		})
+
+		when("pull policy is PullNever with daemon", func() {
+			var localImageName string
+
+			it.Before(func() {
+				// Use a different name for the local image to avoid conflicts
+				localImageName = "pack.local/test-" + h.RandString(10)
+
+				// Create a local daemon image with platform information
+				// Use osType (daemon OS) instead of runtime.GOOS to handle cases where
+				// Windows runner is running Linux containers
+				img, err := local.NewImage(localImageName, docker, local.WithDefaultPlatform(imgutil.Platform{
+					OS:           osType,
+					Architecture: runtime.GOARCH,
+				}))
+				h.AssertNil(t, err)
+				h.AssertNil(t, img.Save())
+			})
+
+			it.After(func() {
+				h.DockerRmi(docker, localImageName)
+			})
+
+			it("skips platform-specific digest resolution and uses tag directly", func() {
+				target := dist.Target{
+					OS:   osType,
+					Arch: runtime.GOARCH,
+				}
+
+				fetchedImg, err := imageFetcher.FetchForPlatform(context.TODO(), localImageName, image.FetchOptions{
+					Daemon:     true,
+					PullPolicy: image.PullNever,
+					Target:     &target,
+				})
+
+				// Should succeed without network access (digest resolution skipped)
+				h.AssertNil(t, err)
+				h.AssertNotNil(t, fetchedImg)
+
+				// Verify debug message about skipping digest resolution
+				h.AssertContains(t, outBuf.String(), "skipping digest resolution due to --pull-policy never")
+			})
+		})
+	})
+
+	when("#CheckReadAccess", func() {
+		var daemon bool
+
+		when("Daemon is true", func() {
+			it.Before(func() {
+				daemon = true
+			})
+
+			when("an error is thrown by the daemon", func() {
+				it.Before(func() {
+					mockController := gomock.NewController(t)
+					mockDockerClient := testmocks.NewMockAPIClient(mockController)
+					mockDockerClient.EXPECT().ServerVersion(gomock.Any(), gomock.Any()).Return(client.ServerVersionResult{}, errors.New("something wrong happened"))
+					imageFetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose()), mockDockerClient)
+				})
+				when("PullNever", func() {
+					it("read access must be false", func() {
+						h.AssertFalse(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullNever}))
+						h.AssertContains(t, outBuf.String(), "failed reading image 'pack.test/dummy' from the daemon")
+					})
+				})
+
+				when("PullIfNotPresent", func() {
+					it("read access must be false", func() {
+						h.AssertFalse(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullIfNotPresent}))
+						h.AssertContains(t, outBuf.String(), "failed reading image 'pack.test/dummy' from the daemon")
+					})
+				})
+			})
+
+			when("image exists only in the daemon", func() {
+				it.Before(func() {
+					img, err := local.NewImage("pack.test/dummy", docker)
+					h.AssertNil(t, err)
+					h.AssertNil(t, img.Save())
+				})
+				when("PullAlways", func() {
+					it("read access must be false", func() {
+						h.AssertFalse(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullAlways}))
+					})
+				})
+
+				when("PullNever", func() {
+					it("read access must be true", func() {
+						h.AssertTrue(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullNever}))
+					})
+				})
+
+				when("PullIfNotPresent", func() {
+					it("read access must be true", func() {
+						h.AssertTrue(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon, PullPolicy: image.PullIfNotPresent}))
+					})
+				})
+			})
+
+			when("image doesn't exist in the daemon but in remote", func() {
+				it.Before(func() {
+					img, err := remote.NewImage(repoName, authn.DefaultKeychain)
+					h.AssertNil(t, err)
+					h.AssertNil(t, img.Save())
+				})
+				when("PullAlways", func() {
+					it("read access must be true", func() {
+						h.AssertTrue(t, imageFetcher.CheckReadAccess(repoName, image.FetchOptions{Daemon: daemon, PullPolicy: image.PullAlways}))
+					})
+				})
+
+				when("PullNever", func() {
+					it("read access must be false", func() {
+						h.AssertFalse(t, imageFetcher.CheckReadAccess(repoName, image.FetchOptions{Daemon: daemon, PullPolicy: image.PullNever}))
+					})
+				})
+
+				when("PullIfNotPresent", func() {
+					it("read access must be true", func() {
+						h.AssertTrue(t, imageFetcher.CheckReadAccess(repoName, image.FetchOptions{Daemon: daemon, PullPolicy: image.PullIfNotPresent}))
+					})
+				})
+			})
+		})
+
+		when("Daemon is false", func() {
+			it.Before(func() {
+				daemon = false
+			})
+
+			when("remote image doesn't exists", func() {
+				it("fails when checking dummy image", func() {
+					h.AssertFalse(t, imageFetcher.CheckReadAccess("pack.test/dummy", image.FetchOptions{Daemon: daemon}))
+					h.AssertContains(t, outBuf.String(), "CheckReadAccess failed for the run image pack.test/dummy")
+				})
+			})
+
+			when("remote image exists", func() {
+				it.Before(func() {
+					img, err := remote.NewImage(repoName, authn.DefaultKeychain)
+					h.AssertNil(t, err)
+					h.AssertNil(t, img.Save())
+				})
+
+				it("read access is valid", func() {
+					h.AssertTrue(t, imageFetcher.CheckReadAccess(repoName, image.FetchOptions{Daemon: daemon}))
+					h.AssertContains(t, outBuf.String(), fmt.Sprintf("CheckReadAccess succeeded for the run image %s", repoName))
 				})
 			})
 		})

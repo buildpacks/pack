@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+echo "---> BUILD: System Pre buildpack"
+
+set -o errexit
+set -o pipefail
+
+layers_dir=$1
+platform_dir=$2
+
+# Create a layer to verify it ran
+mkdir -p "${layers_dir}/system-pre"
+cat > "${layers_dir}/system-pre.toml" <<EOF
+launch = true
+cache = true
+EOF
+
+echo "System Pre Buildpack was here" > "${layers_dir}/system-pre/marker"
+
+exit 0

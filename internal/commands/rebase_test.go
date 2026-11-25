@@ -50,6 +50,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 	when("#RebaseCommand", func() {
 		when("no image is provided", func() {
 			it("fails to run", func() {
+				command.SetArgs([]string{})
 				err := command.Execute()
 				h.AssertError(t, err, "accepts 1 arg")
 			})
@@ -80,6 +81,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 					AdditionalMirrors: map[string][]string{
 						runImage: {testMirror1, testMirror2},
 					},
+					InsecureRegistries: []string{},
 				}
 			})
 
@@ -122,6 +124,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertError(t, command.Execute(), "parsing pull policy")
 				})
 			})
+
 			when("--pull-policy not set", func() {
 				when("no policy set in config", func() {
 					it("uses the default policy", func() {
@@ -158,6 +161,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 			})
+
 			when("image name and previous image are provided", func() {
 				var expectedOpts client.RebaseOptions
 
@@ -182,7 +186,8 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 						AdditionalMirrors: map[string][]string{
 							runImage: {testMirror1, testMirror2},
 						},
-						PreviousImage: previousImage,
+						PreviousImage:      previousImage,
+						InsecureRegistries: []string{},
 					}
 					expectedOpts = opts
 				})
@@ -193,6 +198,35 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 						Return(nil)
 
 					command.SetArgs([]string{repoName, "--previous-image", "example.com/previous-image:tag"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+
+			when("--insecure-registry is provided", func() {
+				it("sets one insecure registry", func() {
+					opts.PullPolicy = image.PullAlways
+					opts.InsecureRegistries = []string{
+						"foo.bar",
+					}
+					mockClient.EXPECT().
+						Rebase(gomock.Any(), opts).
+						Return(nil)
+
+					command.SetArgs([]string{repoName, "--insecure-registry", "foo.bar"})
+					h.AssertNil(t, command.Execute())
+				})
+
+				it("sets more than one insecure registry", func() {
+					opts.PullPolicy = image.PullAlways
+					opts.InsecureRegistries = []string{
+						"foo.bar",
+						"foo.com",
+					}
+					mockClient.EXPECT().
+						Rebase(gomock.Any(), opts).
+						Return(nil)
+
+					command.SetArgs([]string{repoName, "--insecure-registry", "foo.bar", "--insecure-registry", "foo.com"})
 					h.AssertNil(t, command.Execute())
 				})
 			})

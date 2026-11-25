@@ -21,16 +21,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/imgutil"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+
 	"github.com/buildpacks/imgutil/fakes"
 
-	dockertypes "github.com/docker/docker/api/types"
-	dcontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/heroku/color"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	dcontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/jsonstream"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/container"
@@ -323,7 +325,7 @@ func AssertTarball(t *testing.T, path string) {
 }
 
 func isNil(value interface{}) bool {
-	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
+	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Pointer && reflect.ValueOf(value).IsNil())
 }
 
 func hasMatches(actual, exp string) bool {
@@ -332,13 +334,18 @@ func hasMatches(actual, exp string) bool {
 	return len(matches) > 0
 }
 
-var dockerCliVal client.CommonAPIClient
+// IndexOf returns the index of the first occurrence of substr in s, or -1 if not found
+func IndexOf(s, substr string) int {
+	return strings.Index(s, substr)
+}
+
+var dockerCliVal *client.Client
 var dockerCliOnce sync.Once
 var dockerCliErr error
 
-func dockerCli(t *testing.T) client.CommonAPIClient {
+func dockerCli(t *testing.T) *client.Client {
 	dockerCliOnce.Do(func() {
-		dockerCliVal, dockerCliErr = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+		dockerCliVal, dockerCliErr = client.New(client.FromEnv)
 	})
 	AssertNil(t, dockerCliErr)
 	return dockerCliVal
@@ -364,13 +371,13 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 	}
 }
 
-func CreateImage(t *testing.T, dockerCli client.CommonAPIClient, repoName, dockerFile string) {
+func CreateImage(t *testing.T, dockerCli *client.Client, repoName, dockerFile string) {
 	t.Helper()
 
 	buildContext := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)
 	defer buildContext.Close()
 
-	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dockertypes.ImageBuildOptions{
+	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, client.ImageBuildOptions{
 		Tags:           []string{repoName},
 		SuppressOutput: true,
 		Remove:         true,
@@ -383,11 +390,11 @@ func CreateImage(t *testing.T, dockerCli client.CommonAPIClient, repoName, docke
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
-func CreateImageFromDir(t *testing.T, dockerCli client.CommonAPIClient, repoName string, dir string) {
+func CreateImageFromDir(t *testing.T, dockerCli *client.Client, repoName string, dir string) {
 	t.Helper()
 
 	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true, false, nil)
-	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dockertypes.ImageBuildOptions{
+	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, client.ImageBuildOptions{
 		Tags:           []string{repoName},
 		Remove:         true,
 		ForceRemove:    true,
@@ -400,7 +407,7 @@ func CreateImageFromDir(t *testing.T, dockerCli client.CommonAPIClient, repoName
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
-func CheckImageBuildResult(response dockertypes.ImageBuildResponse, err error) error {
+func CheckImageBuildResult(response client.ImageBuildResult, err error) error {
 	if err != nil {
 		return err
 	}
@@ -421,7 +428,7 @@ func checkResponse(responseBody io.Reader) error {
 			continue
 		}
 
-		var msg jsonmessage.JSONMessage
+		var msg jsonstream.Message
 		err := json.Unmarshal(line, &msg)
 		if err != nil {
 			return errors.Wrapf(err, "expected JSON: %s", string(line))
@@ -439,7 +446,7 @@ func checkResponse(responseBody io.Reader) error {
 	return nil
 }
 
-func CreateImageOnRemote(t *testing.T, dockerCli client.CommonAPIClient, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
+func CreateImageOnRemote(t *testing.T, dockerCli *client.Client, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
 	t.Helper()
 	imageName := registryConfig.RepoName(repoName)
 	CreateImage(t, dockerCli, imageName, dockerFile)
@@ -447,14 +454,14 @@ func CreateImageOnRemote(t *testing.T, dockerCli client.CommonAPIClient, registr
 	return imageName
 }
 
-func DockerRmi(dockerCli client.CommonAPIClient, repoNames ...string) error {
+func DockerRmi(dockerCli *client.Client, repoNames ...string) error {
 	var err error
 	ctx := context.Background()
 	for _, name := range repoNames {
 		_, e := dockerCli.ImageRemove(
 			ctx,
 			name,
-			dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true},
+			client.ImageRemoveOptions{Force: true, PruneChildren: true},
 		)
 		if e != nil && err == nil {
 			err = e
@@ -463,8 +470,8 @@ func DockerRmi(dockerCli client.CommonAPIClient, repoNames ...string) error {
 	return err
 }
 
-func PushImage(dockerCli client.CommonAPIClient, ref string, registryConfig *TestRegistryConfig) error {
-	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: registryConfig.RegistryAuth()})
+func PushImage(dockerCli *client.Client, ref string, registryConfig *TestRegistryConfig) error {
+	rc, err := dockerCli.ImagePush(context.Background(), ref, client.ImagePushOptions{RegistryAuth: registryConfig.RegistryAuth()})
 	if err != nil {
 		return errors.Wrap(err, "pushing image")
 	}
@@ -507,14 +514,14 @@ func HTTPGetE(url string, headers map[string]string) (string, error) {
 
 func ImageID(t *testing.T, repoName string) string {
 	t.Helper()
-	inspect, _, err := dockerCli(t).ImageInspectWithRaw(context.Background(), repoName)
+	inspect, err := dockerCli(t).ImageInspect(context.Background(), repoName)
 	AssertNil(t, err)
 	return strings.TrimPrefix(inspect.ID, "sha256:")
 }
 
 func Digest(t *testing.T, repoName string) string {
 	t.Helper()
-	inspect, _, err := dockerCli(t).ImageInspectWithRaw(context.Background(), repoName)
+	inspect, err := dockerCli(t).ImageInspect(context.Background(), repoName)
 	AssertNil(t, err)
 	if len(inspect.RepoDigests) < 1 {
 		t.Fatalf("image '%s' has no repo digests", repoName)
@@ -528,7 +535,7 @@ func Digest(t *testing.T, repoName string) string {
 
 func TopLayerDiffID(t *testing.T, repoName string) string {
 	t.Helper()
-	inspect, _, err := dockerCli(t).ImageInspectWithRaw(context.Background(), repoName)
+	inspect, err := dockerCli(t).ImageInspect(context.Background(), repoName)
 	AssertNil(t, err)
 	if len(inspect.RootFS.Layers) < 1 {
 		t.Fatalf("image '%s' has no layers", repoName)
@@ -552,15 +559,15 @@ func RunE(cmd *exec.Cmd) (string, error) {
 	return string(output), nil
 }
 
-func PullImageWithAuth(dockerCli client.CommonAPIClient, ref, registryAuth string) error {
-	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{RegistryAuth: registryAuth})
+func PullImageWithAuth(dockerCli *client.Client, ref, registryAuth string) error {
+	pullResult, err := dockerCli.ImagePull(context.Background(), ref, client.ImagePullOptions{RegistryAuth: registryAuth})
 	if err != nil {
 		return err
 	}
-	if _, err := io.Copy(io.Discard, rc); err != nil {
+	if _, err := io.Copy(io.Discard, pullResult); err != nil {
 		return err
 	}
-	return rc.Close()
+	return pullResult.Close()
 }
 
 func CopyFile(t *testing.T, src, dst string) {
@@ -661,10 +668,28 @@ func SkipUnless(t *testing.T, expression bool, reason string) {
 	}
 }
 
-func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id string, stdout io.Writer, stderr io.Writer) error {
-	bodyChan, errChan := container.ContainerWaitWrapper(ctx, dockerCli, id, dcontainer.WaitConditionNextExit)
+// dockerClientAdapter adapts moby client to internal/container.DockerClient interface
+type dockerClientAdapter struct {
+	*client.Client
+}
 
-	logs, err := dockerCli.ContainerAttach(ctx, id, dcontainer.AttachOptions{
+func (a *dockerClientAdapter) ContainerWait(ctx context.Context, containerID string, options client.ContainerWaitOptions) client.ContainerWaitResult {
+	return a.Client.ContainerWait(ctx, containerID, options)
+}
+
+func (a *dockerClientAdapter) ContainerAttach(ctx context.Context, container string, options client.ContainerAttachOptions) (client.ContainerAttachResult, error) {
+	return a.Client.ContainerAttach(ctx, container, options)
+}
+
+func (a *dockerClientAdapter) ContainerStart(ctx context.Context, container string, options client.ContainerStartOptions) (client.ContainerStartResult, error) {
+	return a.Client.ContainerStart(ctx, container, options)
+}
+
+func RunContainer(ctx context.Context, dockerCli *client.Client, id string, stdout io.Writer, stderr io.Writer) error {
+	adapter := &dockerClientAdapter{Client: dockerCli}
+	bodyChan, errChan := container.ContainerWaitWrapper(ctx, adapter, id, dcontainer.WaitConditionNextExit)
+
+	logsResult, err := dockerCli.ContainerAttach(ctx, id, client.ContainerAttachOptions{
 		Stream: true,
 		Stdout: true,
 		Stderr: true,
@@ -673,13 +698,14 @@ func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id stri
 		return err
 	}
 
-	if err := dockerCli.ContainerStart(ctx, id, dcontainer.StartOptions{}); err != nil {
+	_, err = dockerCli.ContainerStart(ctx, id, client.ContainerStartOptions{})
+	if err != nil {
 		return errors.Wrap(err, "container start")
 	}
 
 	copyErr := make(chan error)
 	go func() {
-		_, err := stdcopy.StdCopy(stdout, stderr, logs.Reader)
+		_, err := stdcopy.StdCopy(stdout, stderr, logsResult.Reader)
 		copyErr <- err
 	}()
 
@@ -897,4 +923,21 @@ func (f *FakeAddedLayerImage) AddedLayersOrder() []string {
 func (f *FakeAddedLayerImage) AddLayerWithDiffID(path, diffID string) error {
 	f.addedLayersOrder = append(f.addedLayersOrder, path)
 	return f.Image.AddLayerWithDiffID(path, diffID)
+}
+
+type FakeWithUnderlyingImage struct {
+	*fakes.Image
+	underlyingImage v1.Image
+}
+
+func (t *FakeWithUnderlyingImage) UnderlyingImage() v1.Image {
+	return t.underlyingImage
+}
+
+func NewFakeWithUnderlyingV1Image(repoName string, identifier imgutil.Identifier, underlyingImage v1.Image) *FakeWithUnderlyingImage {
+	fakeCNBImage := fakes.NewImage(repoName, "", identifier)
+	return &FakeWithUnderlyingImage{
+		Image:           fakeCNBImage,
+		underlyingImage: underlyingImage,
+	}
 }

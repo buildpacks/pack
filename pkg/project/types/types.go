@@ -11,15 +11,17 @@ type Script struct {
 }
 
 type Buildpack struct {
-	ID      string `toml:"id"`
-	Version string `toml:"version"`
-	URI     string `toml:"uri"`
-	Script  Script `toml:"script"`
+	ID      string   `toml:"id"`
+	Version string   `toml:"version"`
+	URI     string   `toml:"uri"`
+	Script  Script   `toml:"script"`
+	ExecEnv []string `toml:"exec-env"`
 }
 
 type EnvVar struct {
-	Name  string `toml:"name"`
-	Value string `toml:"value"`
+	Name    string   `toml:"name"`
+	Value   string   `toml:"value"`
+	ExecEnv []string `toml:"exec-env"`
 }
 
 type Build struct {
@@ -33,10 +35,13 @@ type Build struct {
 }
 
 type Project struct {
-	Name      string    `toml:"name"`
-	Version   string    `toml:"version"`
-	SourceURL string    `toml:"source-url"`
-	Licenses  []License `toml:"licenses"`
+	ID               string    `toml:"id"`
+	Name             string    `toml:"name"`
+	Version          string    `toml:"version"`
+	Authors          []string  `toml:"authors"`
+	DocumentationURL string    `toml:"documentation-url"`
+	SourceURL        string    `toml:"source-url"`
+	Licenses         []License `toml:"licenses"`
 }
 
 type License struct {

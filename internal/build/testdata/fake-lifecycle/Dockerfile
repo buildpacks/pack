@@ -1,9 +1,10 @@
-FROM golang
+# syntax=docker/dockerfile:1
+FROM golang:1.27
 
 RUN mkdir /lifecycle
 WORKDIR /go/src/step
 COPY . .
-RUN GO111MODULE=on go build -o /cnb/lifecycle/phase ./phase.go
+RUN GO111MODULE=on GOFLAGS=-mod=mod go build -o /cnb/lifecycle/phase ./phase.go
 
 ENV CNB_USER_ID 111
 ENV CNB_GROUP_ID 222

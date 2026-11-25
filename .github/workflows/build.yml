@@ -20,10 +20,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: [macos, linux, windows-lcow, windows-wcow]
+        config: [macos, linux, windows]
         include:
           - config: macos
-            os: macos
+            # since macos-14 the latest runner is arm64
+            os: macos-arm64
             runner: macos-latest
             no_docker: "true"
             pack_bin: pack
@@ -32,15 +33,10 @@ jobs:
             runner: ubuntu-latest
             no_docker: "false"
             pack_bin: pack
-          - config: windows-lcow
+          - config: windows
             os: windows
-            runner: [self-hosted, windows, lcow]
-            no_docker: "false"
-            pack_bin: pack.exe
-          - config: windows-wcow
-            os: windows
-            runner: [windows-2019]
-            no_docker: "false"
+            runner: windows-latest
+            no_docker: "true"
             pack_bin: pack.exe
     runs-on: ${{ matrix.runner }}
     env:
@@ -72,10 +68,10 @@ jobs:
           }
         shell: powershell
       - name: Set up go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: "1.22"
           check-latest: true
+          go-version-file: 'go.mod'
       - name: Set up go env for Unix
         if: runner.os != 'Windows'
         run: |
@@ -88,38 +84,11 @@ jobs:
           echo "GOPATH=$(go env GOPATH)"| Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
           echo "$(go env GOPATH)\bin" | Out-File -FilePath $Env:GITHUB_PATH -Encoding utf8 -Append
         shell: powershell
+      - name: Install Make on Windows
+        if: runner.os == 'Windows'
+        run: choco install make -y
       - name: Verify
         run: make verify
-      - name: Register runner IP
-        if: matrix.config == 'windows-wcow'
-        shell: powershell
-        run: |
-          # Get IP from default gateway interface
-          $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
-
-          # Allow container-to-host registry traffic (from public interface, to the same interface)
-          New-NetfirewallRule -DisplayName test-registry -LocalAddress $IPAddress -RemoteAddress $IPAddress
-
-          # create or update daemon config to allow host as insecure-registry
-          $config=@{}
-          if (Test-Path C:\ProgramData\docker\config\daemon.json) {
-            $config=(Get-Content C:\ProgramData\docker\config\daemon.json | ConvertFrom-json)
-          }
-          $config | Add-Member -Force -Name "insecure-registries" -value @("$IPAddress/32") -MemberType NoteProperty
-          ConvertTo-json $config | Out-File -Encoding ASCII C:\ProgramData\docker\config\daemon.json
-
-          Restart-Service docker
-
-          # dump docker info for auditing
-          docker version
-          docker info
-
-          # Modify etc\hosts to include runner IP
-          $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
-          "# Modified by CNB: https://github.com/buildpacks/ci/tree/main/gh-runners/windows
-          ${IPAddress} host.docker.internal
-          ${IPAddress} gateway.docker.internal
-          " | Out-File -Filepath C:\Windows\System32\drivers\etc\hosts -Encoding utf8
       - name: Test
         env:
           TEST_COVERAGE: 1
@@ -157,7 +126,6 @@ jobs:
           PACK_BUILD: ${{ github.run_number }}
         shell: powershell
       - uses: actions/upload-artifact@v4
-        if: matrix.config != 'windows-lcow'
         with:
           name: pack-${{ matrix.os }}
           path: out/${{ env.PACK_BIN }}
@@ -167,11 +135,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - name: freebsd
+            goarch: amd64
+            goos: freebsd
+          - name: freebsd-arm64
+            goarch: arm64
+            goos: freebsd
           - name: linux-arm64
             goarch: arm64
             goos: linux
-          - name: macos-arm64
-            goarch: arm64
+          - name: macos
+            # since macos-14 default runner is arm, we need to build for intel architecture later
+            goarch: amd64
             goos: darwin
           - name: linux-s390x
             goarch: s390x
@@ -184,10 +159,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: "1.22"
           check-latest: true
+          go-version-file: 'go.mod'
       - name: Build
         run: |
           [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]} || version=0.0.0
@@ -223,12 +198,24 @@ jobs:
 
           echo "PACK_MILESTONE=${milestone}" >> $GITHUB_ENV
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
       - name: Package artifacts - macos
         run: |
           chmod +x pack-macos/pack
           filename=pack-v${{ env.PACK_VERSION }}-macos.tgz
           tar -C pack-macos -vzcf $filename pack
+          shasum -a 256 $filename > $filename.sha256
+      - name: Package artifacts - freebsd
+        run: |
+          chmod +x pack-freebsd/pack
+          filename=pack-v${{ env.PACK_VERSION }}-freebsd.tgz
+          tar -C pack-freebsd -vzcf $filename pack
+          shasum -a 256 $filename > $filename.sha256
+      - name: Package artifacts - freebsd-arm64
+        run: |
+          chmod +x pack-freebsd-arm64/pack
+          filename=pack-v${{ env.PACK_VERSION }}-freebsd-arm64.tgz
+          tar -C pack-freebsd-arm64 -vzcf $filename pack
           shasum -a 256 $filename > $filename.sha256
       - name: Package artifacts - linux-arm64
         run: |
@@ -287,7 +274,7 @@ jobs:
           milestone: ${{ env.PACK_MILESTONE }}
       - name: Create Pre-Release
         if: ${{ env.PACK_VERSION != env.PACK_MILESTONE }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -300,9 +287,23 @@ jobs:
           body: |
             ## Prerequisites
 
-            - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/getting-started/) must be available to execute builds.
+            - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/get-started) must be available to execute builds.
 
             ## Install
+
+            #### FreeBSD
+
+            ##### AMD64
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-freebsd.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
+
+            ##### ARM64
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-freebsd-arm64.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
 
             #### Linux
 
@@ -368,7 +369,7 @@ jobs:
 
       - name: Create Beta Release
         if: ${{ env.PACK_VERSION == env.PACK_MILESTONE }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -379,7 +380,7 @@ jobs:
           body: |
             ## Prerequisites
 
-            - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/getting-started/) must be available to execute builds.
+            - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/get-started) must be available to execute builds.
 
             ## Install
 

@@ -1,0 +1,9 @@
+api = "0.7"
+
+[buildpack]
+  id = "system/fail-detect"
+  version = "system-fail-detect-version"
+  name = "System Fail Detect Buildpack"
+
+[[stacks]]
+  id = "pack.test.stack"

@@ -32,6 +32,9 @@ var (
 		api.MustParse("0.10"),
 		api.MustParse("0.11"),
 		api.MustParse("0.12"),
+		api.MustParse("0.13"),
+		api.MustParse("0.14"),
+		api.MustParse("0.15"),
 	}
 )
 
@@ -44,6 +47,7 @@ type Builder interface {
 	RunImages() []builder.RunImageMetadata
 	Image() imgutil.Image
 	OrderExtensions() dist.Order
+	System() dist.System
 }
 
 type LifecycleExecutor struct {
@@ -71,7 +75,7 @@ type LifecycleOptions struct {
 	Builder                         Builder
 	BuilderImage                    string // differs from Builder.Name() and Builder.Image().Name() in that it includes the registry context
 	LifecycleImage                  string
-	LifecycleApis                   []string // optional - populated only if custom lifecycle image is downloaded, from that lifecycle's container's Labels.
+	LifecycleApis                   []string // optional - populated only if custom lifecycle image is downloaded, from that lifecycle image's labels.
 	RunImage                        string
 	FetchRunImageWithLifecycleLayer func(name string) (string, error)
 	ProjectMetadata                 files.ProjectMetadata
@@ -85,6 +89,7 @@ type LifecycleOptions struct {
 	Termui                          Termui
 	DockerHost                      string
 	Cache                           cache.CacheOpts
+	ExecutionEnvironment            string
 	CacheImage                      string
 	HTTPProxy                       string
 	HTTPSProxy                      string
@@ -92,6 +97,7 @@ type LifecycleOptions struct {
 	Network                         string
 	AdditionalTags                  []string
 	Volumes                         []string
+	InsecureRegistries              []string
 	DefaultProcessType              string
 	FileFilter                      func(string) bool
 	Workspace                       string
@@ -102,6 +108,7 @@ type LifecycleOptions struct {
 	SBOMDestinationDir              string
 	CreationTime                    *time.Time
 	Keychain                        authn.Keychain
+	EnableUsernsHost                bool
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker DockerClient) *LifecycleExecutor {

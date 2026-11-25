@@ -54,6 +54,15 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 [[order]]
 [[order.group]]
   id = "buildpack/1"
+  exec-env = ["production"]
+
+[[build.env]]
+  name = "key1"
+  value = "value1"
+  suffix = "append"
+  delim = "%"
+  exec-env = ["test"]
+
 `), 0666))
 			})
 
@@ -76,6 +85,15 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, builderConfig.Buildpacks[2].ImageName, "")
 
 				h.AssertEq(t, builderConfig.Order[0].Group[0].ID, "buildpack/1")
+				h.AssertTrue(t, len(builderConfig.Order[0].Group[0].ExecEnv) == 1)
+				h.AssertEq(t, builderConfig.Order[0].Group[0].ExecEnv[0], "production")
+
+				h.AssertTrue(t, len(builderConfig.Build.Env) == 1)
+				h.AssertEq(t, builderConfig.Build.Env[0].Name, "key1")
+				h.AssertEq(t, builderConfig.Build.Env[0].Value, "value1")
+				h.AssertEq(t, string(builderConfig.Build.Env[0].Suffix), "append")
+				h.AssertTrue(t, len(builderConfig.Build.Env[0].ExecEnv) == 1)
+				h.AssertEq(t, builderConfig.Build.Env[0].ExecEnv[0], "test")
 			})
 		})
 
@@ -155,6 +173,39 @@ uri = "noop-buildpack.tgz"
 					_, _, err := builder.ReadConfig(builderConfigPath)
 					h.AssertError(t, err, "unknown configuration element 'buidlpack'")
 				})
+			})
+		})
+
+		when("system buildpack is defined", func() {
+			it.Before(func() {
+				h.AssertNil(t, os.WriteFile(builderConfigPath, []byte(`
+[[system.pre.buildpacks]]
+  id = "id-1"
+  version = "1.0"
+  optional = false
+
+[[system.post.buildpacks]]
+  id = "id-2"
+  version = "2.0"
+  optional = true
+`), 0666))
+			})
+
+			it("returns a builder config", func() {
+				builderConfig, _, err := builder.ReadConfig(builderConfigPath)
+				h.AssertNil(t, err)
+				h.AssertEq(t, len(builderConfig.System.Pre.Buildpacks), 1)
+				h.AssertEq(t, len(builderConfig.System.Post.Buildpacks), 1)
+
+				// Verify system.pre.buildpacks
+				h.AssertEq(t, builderConfig.System.Pre.Buildpacks[0].ID, "id-1")
+				h.AssertEq(t, builderConfig.System.Pre.Buildpacks[0].Version, "1.0")
+				h.AssertEq(t, builderConfig.System.Pre.Buildpacks[0].Optional, false)
+
+				// Verify system.post.buildpacks
+				h.AssertEq(t, builderConfig.System.Post.Buildpacks[0].ID, "id-2")
+				h.AssertEq(t, builderConfig.System.Post.Buildpacks[0].Version, "2.0")
+				h.AssertEq(t, builderConfig.System.Post.Buildpacks[0].Optional, true)
 			})
 		})
 	})

@@ -14,7 +14,10 @@ class Pack < Formula
   elsif OS.mac?
     url "{{MACOS_URL}}"
     sha256 "{{MACOS_SHA}}"
-  else 
+  elsif OS.linux? && Hardware::CPU.arm?
+    url "{{LINUX_ARM64_URL}}"
+    sha256 "{{LINUX_ARM64_SHA}}"
+  else
     url "{{LINUX_URL}}"
     sha256 "{{LINUX_SHA}}"
   end

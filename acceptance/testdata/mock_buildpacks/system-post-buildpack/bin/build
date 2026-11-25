@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+echo "---> BUILD: System Post buildpack"
+
+set -o errexit
+set -o pipefail
+
+layers_dir=$1
+platform_dir=$2
+
+# Create a layer to verify it ran
+mkdir -p "${layers_dir}/system-post"
+cat > "${layers_dir}/system-post.toml" <<EOF
+launch = true
+cache = true
+EOF
+
+echo "System Post Buildpack was here" > "${layers_dir}/system-post/marker"
+
+exit 0

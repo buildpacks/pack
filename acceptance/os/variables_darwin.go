@@ -1,5 +1,4 @@
 //go:build acceptance && darwin && amd64
-// +build acceptance,darwin,amd64
 
 package os
 

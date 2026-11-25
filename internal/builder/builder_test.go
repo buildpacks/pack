@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -458,6 +459,18 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				layerTar, err := baseImage.FindLayerWithPath("/cnb/order.toml")
 				h.AssertNil(t, err)
 				h.AssertOnTarEntry(t, layerTar, "/cnb/order.toml", h.ContentEquals("some content"))
+			})
+
+			it("adds additional tags as requested", func() {
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}, "additional-tag-one", "additional-tag-two"))
+				h.AssertEq(t, baseImage.IsSaved(), true)
+				h.AssertEq(t, baseImage.Name(), "some/builder")
+				savedNames := baseImage.SavedNames()
+				slices.Sort(savedNames)
+				h.AssertEq(t, 3, len(savedNames))
+				h.AssertEq(t, "additional-tag-one", savedNames[0])
+				h.AssertEq(t, "additional-tag-two", savedNames[1])
+				h.AssertEq(t, "some/builder", savedNames[2])
 			})
 
 			when("validating order", func() {
@@ -920,8 +933,35 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertTrue(t, strings.Contains(layers[2], h.LayerFileName(ext2v1)))
 				})
 			})
-		})
 
+			when("system buildpacks", func() {
+				it.Before(func() {
+					subject.SetLifecycle(mockLifecycle)
+					subject.AddBuildpack(bp1v1)
+					subject.SetSystem(dist.System{
+						Pre: dist.SystemBuildpacks{
+							Buildpacks: []dist.ModuleRef{
+								{ModuleInfo: dist.ModuleInfo{ID: bp1v1.Descriptor().Info().ID}}},
+						},
+					})
+				})
+
+				it("should write system buildpacks to system.toml)", func() {
+					err := subject.Save(logger, builder.CreatorMetadata{})
+					h.AssertNil(t, err)
+
+					layerTar, err := baseImage.FindLayerWithPath("/cnb/system.toml")
+					h.AssertNil(t, err)
+					h.AssertOnTarEntry(t, layerTar, "/cnb/system.toml", h.ContentEquals(`[system]
+  [system.pre]
+
+    [[system.pre.buildpacks]]
+      id = "buildpack-1-id"
+      version = "buildpack-1-version-1"
+`))
+				})
+			})
+		})
 		when("#SetLifecycle", func() {
 			it.Before(func() {
 				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))

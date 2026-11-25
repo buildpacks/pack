@@ -9,11 +9,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
+
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
-	"github.com/docker/docker/api/types/system"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
+	mobysystem "github.com/moby/moby/api/types/system"
+	dockerclient "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -49,7 +53,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockBuildpackDownloader *testmocks.MockBuildpackDownloader
 			mockImageFactory        *testmocks.MockImageFactory
 			mockImageFetcher        *testmocks.MockImageFetcher
-			mockDockerClient        *testmocks.MockCommonAPIClient
+			mockDockerClient        *testmocks.MockAPIClient
 			fakeBuildImage          *fakes.Image
 			fakeRunImage            *fakes.Image
 			fakeRunImageMirror      *fakes.Image
@@ -66,6 +70,26 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		var prepareFetcherWithBuildImage = func() {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any()).Return(fakeBuildImage, nil)
+		}
+
+		var prepareExtensions = func() {
+			// Extensions require Platform API >= 0.13
+			opts.Config.Lifecycle.URI = "file:///some-lifecycle-platform-0-13"
+			opts.Config.Extensions = []pubbldr.ModuleConfig{
+				{
+					ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3", Homepage: "http://one.extension"},
+					ImageOrURI: dist.ImageOrURI{
+						BuildpackURI: dist.BuildpackURI{
+							URI: "https://example.fake/ext-one.tgz",
+						},
+					},
+				},
+			}
+			opts.Config.OrderExtensions = []dist.OrderEntry{{
+				Group: []dist.ModuleRef{
+					{ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3"}, Optional: true},
+				}},
+			}
 		}
 
 		var createBuildpack = func(descriptor dist.BuildpackDescriptor) buildpack.BuildModule {
@@ -89,7 +113,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDownloader = testmocks.NewMockBlobDownloader(mockController)
 			mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
 			mockImageFactory = testmocks.NewMockImageFactory(mockController)
-			mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
+			mockDockerClient = testmocks.NewMockAPIClient(mockController)
 			mockBuildpackDownloader = testmocks.NewMockBuildpackDownloader(mockController)
 
 			fakeBuildImage = fakes.NewImage("some/build-image", "", nil)
@@ -110,12 +134,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/ext-one.tgz").Return(exampleExtensionBlob, nil).AnyTimes()
 			mockDownloader.EXPECT().Download(gomock.Any(), "some/buildpack/dir").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
 			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil).AnyTimes()
-			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle-platform-0-1").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle-platform-0.1")), nil).AnyTimes()
+			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle-platform-0-1").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.3")), nil).AnyTimes()
+			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle-platform-0-13").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.13")), nil).AnyTimes()
 
-			bp, err := buildpack.FromBuildpackRootBlob(exampleBuildpackBlob, archive.DefaultTarWriterFactory())
+			bp, err := buildpack.FromBuildpackRootBlob(exampleBuildpackBlob, archive.DefaultTarWriterFactory(), nil)
 			h.AssertNil(t, err)
 			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one.tgz", gomock.Any()).Return(bp, nil, nil).AnyTimes()
-			ext, err := buildpack.FromExtensionRootBlob(exampleExtensionBlob, archive.DefaultTarWriterFactory())
+			ext, err := buildpack.FromExtensionRootBlob(exampleExtensionBlob, archive.DefaultTarWriterFactory(), nil)
 			h.AssertNil(t, err)
 			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/ext-one.tgz", gomock.Any()).Return(ext, nil, nil).AnyTimes()
 
@@ -129,7 +154,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			)
 			h.AssertNil(t, err)
 
-			mockDockerClient.EXPECT().Info(context.TODO()).Return(system.Info{OSType: "linux"}, nil).AnyTimes()
+			mockDockerClient.EXPECT().Info(context.TODO(), gomock.Any()).Return(dockerclient.SystemInfoResult{Info: mobysystem.Info{OSType: "linux"}}, nil).AnyTimes()
 
 			opts = client.CreateBuilderOptions{
 				RelativeBaseDir: "/",
@@ -146,24 +171,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					},
-					Extensions: []pubbldr.ModuleConfig{
-						{
-							ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3", Homepage: "http://one.extension"},
-							ImageOrURI: dist.ImageOrURI{
-								BuildpackURI: dist.BuildpackURI{
-									URI: "https://example.fake/ext-one.tgz",
-								},
-							},
-						},
-					},
 					Order: []dist.OrderEntry{{
 						Group: []dist.ModuleRef{
 							{ModuleInfo: dist.ModuleInfo{ID: "bp.one", Version: "1.2.3"}, Optional: false},
-						}},
-					},
-					OrderExtensions: []dist.OrderEntry{{
-						Group: []dist.ModuleRef{
-							{ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3"}, Optional: true},
 						}},
 					},
 					Stack: pubbldr.StackConfig{
@@ -218,8 +228,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should fail when the stack ID from the builder config does not match the stack ID from the build image", func() {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(fakeBuildImage, nil)
 				h.AssertNil(t, fakeBuildImage.SetLabel("io.buildpacks.stack.id", "other.stack.id"))
+				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
 
 				err := subject.CreateBuilder(context.TODO(), opts)
@@ -324,6 +334,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should fail when extension ID does not match downloaded extension", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				prepareExtensions()
 				opts.Config.Extensions[0].ID = "does.not.match"
 
 				err := subject.CreateBuilder(context.TODO(), opts)
@@ -334,6 +345,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should fail when extension version does not match downloaded extension", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				prepareExtensions()
 				opts.Config.Extensions[0].Version = "0.0.0"
 
 				err := subject.CreateBuilder(context.TODO(), opts)
@@ -471,7 +483,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						prepareFetcherWithRunImages()
 
 						h.AssertNil(t, fakeBuildImage.SetOS("windows"))
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(fakeBuildImage, nil)
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any()).Return(fakeBuildImage, nil)
 
 						err := subject.CreateBuilder(context.TODO(), opts)
 						h.AssertError(t, err, "failed to create builder: Windows containers support is currently experimental.")
@@ -512,6 +524,77 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("validating lifecycle Platform API for extensions", func() {
+			when("lifecycle supports Platform API >= 0.13", func() {
+				it("should allow extensions without experimental flag", func() {
+					// Uses default lifecycle which has Platform API 0.13
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Lifecycle.URI = "file:///some-lifecycle-platform-0-13"
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertNil(t, err)
+				})
+			})
+
+			when("lifecycle supports Platform API < 0.13", func() {
+				when("experimental flag is not set", func() {
+					it("should fail when builder has extensions", func() {
+						prepareFetcherWithBuildImage()
+						prepareFetcherWithRunImages()
+						prepareExtensions()
+						// Override to use lifecycle with Platform API 0.3 (< 0.13) for this test
+						opts.Config.Lifecycle.URI = "file:///some-lifecycle"
+
+						err := subject.CreateBuilder(context.TODO(), opts)
+						h.AssertError(t, err, "support for image extensions with Platform API < 0.13 is currently experimental")
+					})
+				})
+
+				when("experimental flag is set", func() {
+					it("should succeed when builder has extensions", func() {
+						packClientWithExperimental, err := client.NewClient(
+							client.WithLogger(logger),
+							client.WithDownloader(mockDownloader),
+							client.WithImageFactory(mockImageFactory),
+							client.WithFetcher(mockImageFetcher),
+							client.WithDockerClient(mockDockerClient),
+							client.WithBuildpackDownloader(mockBuildpackDownloader),
+							client.WithExperimental(true),
+						)
+						h.AssertNil(t, err)
+
+						prepareFetcherWithBuildImage()
+						prepareFetcherWithRunImages()
+						prepareExtensions()
+						// Remove buildpacks to avoid API compatibility issues
+						opts.Config.Buildpacks = nil
+						opts.Config.Order = nil
+						// Override to use lifecycle with Platform API 0.3 (< 0.13) for this test
+						opts.Config.Lifecycle.URI = "file:///some-lifecycle"
+
+						err = packClientWithExperimental.CreateBuilder(context.TODO(), opts)
+						h.AssertNil(t, err)
+					})
+				})
+			})
+
+			when("builder has no extensions", func() {
+				it("should succeed regardless of Platform API version", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					// Remove extensions from config
+					opts.Config.Extensions = nil
+					opts.Config.OrderExtensions = nil
+					// Use lifecycle with Platform API 0.3 (< 0.13)
+					opts.Config.Lifecycle.URI = "file:///some-lifecycle"
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertNil(t, err)
+				})
+			})
+		})
+
 		when("only lifecycle version is provided", func() {
 			it("should download from predetermined uri", func() {
 				prepareFetcherWithBuildImage()
@@ -546,6 +629,44 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertNil(t, err)
+			})
+
+			it("should download x86-64 lifecycle when architecture is amd64", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Lifecycle.URI = ""
+				opts.Config.Lifecycle.Version = "3.4.5"
+				h.AssertNil(t, fakeBuildImage.SetArchitecture("amd64"))
+
+				mockDownloader.EXPECT().Download(
+					gomock.Any(),
+					"https://github.com/buildpacks/lifecycle/releases/download/v3.4.5/lifecycle-v3.4.5+linux.x86-64.tgz",
+				).Return(
+					blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil,
+				)
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+				h.AssertNotContains(t, out.String(), "failed to find a lifecycle binary")
+			})
+
+			it("should warn and default to x86-64 for unknown architecture", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Lifecycle.URI = ""
+				opts.Config.Lifecycle.Version = "3.4.5"
+				h.AssertNil(t, fakeBuildImage.SetArchitecture("riscv64"))
+
+				mockDownloader.EXPECT().Download(
+					gomock.Any(),
+					"https://github.com/buildpacks/lifecycle/releases/download/v3.4.5/lifecycle-v3.4.5+linux.x86-64.tgz",
+				).Return(
+					blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil,
+				)
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+				h.AssertContains(t, out.String(), "failed to find a lifecycle binary")
 			})
 
 			when("windows", func() {
@@ -660,6 +781,129 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("lifecycle URI is a docker image", func() {
+			var lifecycleImageName = "buildpacksio/lifecycle:latest"
+
+			setupFakeLifecycleImage := func() *h.FakeWithUnderlyingImage {
+				// Write the tar content to a file in tmpDir
+				lifecycleLayerPath := filepath.Join("testdata", "lifecycle", "lifecycle.tar")
+				lifecycleTag, err := name.NewTag(lifecycleImageName)
+				h.AssertNil(t, err)
+
+				v1LifecycleImage, err := tarball.ImageFromPath(lifecycleLayerPath, &lifecycleTag)
+				h.AssertNil(t, err)
+
+				return h.NewFakeWithUnderlyingV1Image(lifecycleImageName, nil, v1LifecycleImage)
+			}
+
+			it("should download lifecycle from docker registry", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+
+				fakeLifecycleImage := setupFakeLifecycleImage()
+
+				opts.Config.Lifecycle.URI = "docker://" + lifecycleImageName
+				opts.Config.Lifecycle.Version = ""
+				opts.RelativeBaseDir = tmpDir
+
+				// Expect the image fetcher to fetch the lifecycle image
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), lifecycleImageName, image.FetchOptions{Daemon: false}).Return(fakeLifecycleImage, nil)
+
+				// Create the expected lifecycle.tar file that will be referenced
+				lifecyclePath := filepath.Join(tmpDir, "lifecycle.tar")
+
+				// The downloader will be called with the extracted lifecycle tar
+				mockDownloader.EXPECT().Download(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uri string) (blob.Blob, error) {
+					// The URI should be a file:// URI pointing to lifecycle.tar
+					h.AssertTrue(t, strings.Contains(uri, "lifecycle.tar"))
+
+					// Write a minimal lifecycle tar for the test
+					f, err := os.Create(lifecyclePath)
+					h.AssertNil(t, err)
+					defer f.Close()
+
+					// Copy the test lifecycle content
+					testLifecycle := blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4"))
+					return testLifecycle, nil
+				})
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+			})
+
+			it("should handle docker URI without docker:// prefix", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+
+				fakeLifecycleImage := setupFakeLifecycleImage()
+
+				opts.Config.Lifecycle.URI = "docker:/" + lifecycleImageName
+				opts.Config.Lifecycle.Version = ""
+				opts.RelativeBaseDir = tmpDir
+
+				// Expect the image fetcher to fetch the lifecycle image
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), lifecycleImageName, image.FetchOptions{Daemon: false}).Return(fakeLifecycleImage, nil)
+
+				// The downloader will be called with the extracted lifecycle tar
+				mockDownloader.EXPECT().Download(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, uri string) (blob.Blob, error) {
+					testLifecycle := blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4"))
+					return testLifecycle, nil
+				})
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+			})
+
+			when("fetching lifecycle image fails", func() {
+				it("should return an error", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+
+					opts.Config.Lifecycle.URI = "docker://" + lifecycleImageName
+					opts.Config.Lifecycle.Version = ""
+					opts.RelativeBaseDir = tmpDir
+
+					// Expect the image fetcher to fail
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), lifecycleImageName, image.FetchOptions{Daemon: false}).Return(nil, errors.New("failed to fetch image"))
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "Could not parse uri from lifecycle image")
+				})
+			})
+
+			when("lifecycle image has no layers", func() {
+				it("should return an error", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+
+					opts.Config.Lifecycle.URI = "docker://" + lifecycleImageName
+					opts.Config.Lifecycle.Version = ""
+					opts.RelativeBaseDir = tmpDir
+
+					// Create an image with no layers
+					emptyLifecycleImage := fakes.NewImage(lifecycleImageName, "", nil)
+
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), lifecycleImageName, image.FetchOptions{Daemon: false}).Return(emptyLifecycleImage, nil)
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "Could not parse uri from lifecycle image")
+				})
+			})
+
+			when("both lifecycle URI and version are provided", func() {
+				it("should return an error", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+
+					opts.Config.Lifecycle.URI = "docker://" + lifecycleImageName
+					opts.Config.Lifecycle.Version = "1.2.3"
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "'lifecycle' can only declare 'version' or 'uri', not both")
+				})
+			})
+		})
+
 		when("buildpack mixins are not satisfied", func() {
 			it("should return an error", func() {
 				prepareFetcherWithBuildImage()
@@ -710,6 +954,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should set extensions and order-extensions metadata", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				prepareExtensions()
 
 				bldr := successfullyCreateBuilder()
 
@@ -762,6 +1007,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should warn when deprecated Buildpack API version is used", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				prepareExtensions()
 				bldr := successfullyCreateBuilder()
 
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{"0.2", "0.3"})
@@ -772,16 +1018,17 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("shouldn't warn when Buildpack API version used isn't deprecated", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				prepareExtensions()
 				opts.Config.Buildpacks[0].URI = "https://example.fake/bp-one-with-api-4.tgz"
 				opts.Config.Extensions[0].URI = "https://example.fake/ext-one-with-api-9.tgz"
 
 				buildpackBlob := blob.NewBlob(filepath.Join("testdata", "buildpack-api-0.4"))
-				bp, err := buildpack.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
+				bp, err := buildpack.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory(), nil)
 				h.AssertNil(t, err)
 				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz", gomock.Any()).Return(bp, nil, nil)
 
 				extensionBlob := blob.NewBlob(filepath.Join("testdata", "extension-api-0.9"))
-				extension, err := buildpack.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory())
+				extension, err := buildpack.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory(), nil)
 				h.AssertNil(t, err)
 				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/ext-one-with-api-9.tgz", gomock.Any()).Return(extension, nil, nil)
 
@@ -824,16 +1071,16 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					bp2v1Blob := blob.NewBlob(filepath.Join("testdata", "buildpack-non-deterministic", "buildpack-2-version-1"))
 					bp2v2Blob := blob.NewBlob(filepath.Join("testdata", "buildpack-non-deterministic", "buildpack-2-version-2"))
 
-					bp1v1, err = buildpack.FromBuildpackRootBlob(bp1v1Blob, archive.DefaultTarWriterFactory())
+					bp1v1, err = buildpack.FromBuildpackRootBlob(bp1v1Blob, archive.DefaultTarWriterFactory(), nil)
 					h.AssertNil(t, err)
 
-					bp1v2, err = buildpack.FromBuildpackRootBlob(bp1v2Blob, archive.DefaultTarWriterFactory())
+					bp1v2, err = buildpack.FromBuildpackRootBlob(bp1v2Blob, archive.DefaultTarWriterFactory(), nil)
 					h.AssertNil(t, err)
 
-					bp2v1, err = buildpack.FromBuildpackRootBlob(bp2v1Blob, archive.DefaultTarWriterFactory())
+					bp2v1, err = buildpack.FromBuildpackRootBlob(bp2v1Blob, archive.DefaultTarWriterFactory(), nil)
 					h.AssertNil(t, err)
 
-					bp2v2, err = buildpack.FromBuildpackRootBlob(bp2v2Blob, archive.DefaultTarWriterFactory())
+					bp2v2, err = buildpack.FromBuildpackRootBlob(bp2v2Blob, archive.DefaultTarWriterFactory(), nil)
 					h.AssertNil(t, err)
 
 					return []buildpack.BuildModule{bp2v2, bp2v1, bp1v1, bp1v2}
@@ -850,27 +1097,28 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				it("should add dependencies buildpacks layers order by ID and version", func() {
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any()).Return(fakeLayerImage, nil)
 					prepareFetcherWithRunImages()
+					prepareExtensions()
 					opts.Config.Buildpacks[0].URI = "https://example.fake/bp-one-with-api-4.tgz"
 					opts.Config.Extensions[0].URI = "https://example.fake/ext-one-with-api-9.tgz"
 					bpDependencies := prepareBuildpackDependencies()
 
 					buildpackBlob := blob.NewBlob(filepath.Join("testdata", "buildpack-api-0.4"))
-					bp, err := buildpack.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
+					bp, err := buildpack.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory(), nil)
 					h.AssertNil(t, err)
 					mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz", gomock.Any()).DoAndReturn(
 						func(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error) {
 							// test options
-							h.AssertEq(t, opts.Platform, "linux/amd64")
+							h.AssertEq(t, opts.Target.ValuesAsPlatform(), "linux/amd64")
 							return bp, bpDependencies, nil
 						})
 
 					extensionBlob := blob.NewBlob(filepath.Join("testdata", "extension-api-0.9"))
-					extension, err := buildpack.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory())
+					extension, err := buildpack.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory(), nil)
 					h.AssertNil(t, err)
 					mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/ext-one-with-api-9.tgz", gomock.Any()).DoAndReturn(
 						func(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error) {
 							// test options
-							h.AssertEq(t, opts.Platform, "linux/amd64")
+							h.AssertEq(t, opts.Target.ValuesAsPlatform(), "linux/amd64")
 							return extension, nil, nil
 						})
 
@@ -898,7 +1146,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			opts.Config.Buildpacks[0].URI = directoryPath
 
 			buildpackBlob := blob.NewBlob(directoryPath)
-			buildpack, err := buildpack.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
+			buildpack, err := buildpack.FromBuildpackRootBlob(buildpackBlob, archive.DefaultTarWriterFactory(), nil)
 			h.AssertNil(t, err)
 			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), directoryPath, gomock.Any()).Return(buildpack, nil, nil)
 
@@ -909,12 +1157,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		it("supports directory extensions", func() {
 			prepareFetcherWithBuildImage()
 			prepareFetcherWithRunImages()
+			prepareExtensions()
 			opts.RelativeBaseDir = ""
 			directoryPath := "testdata/extension"
 			opts.Config.Extensions[0].URI = directoryPath
 
 			extensionBlob := blob.NewBlob(directoryPath)
-			extension, err := buildpack.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory())
+			extension, err := buildpack.FromExtensionRootBlob(extensionBlob, archive.DefaultTarWriterFactory(), nil)
 			h.AssertNil(t, err)
 			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), directoryPath, gomock.Any()).Return(extension, nil, nil)
 
@@ -1030,13 +1279,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				blob1 := blob.NewBlob(filepath.Join("testdata", "buildpack-flatten", "buildpack-1"))
 				for i := 2; i <= 7; i++ {
 					b := blob.NewBlob(filepath.Join("testdata", "buildpack-flatten", fmt.Sprintf("buildpack-%d", i)))
-					bp, err := buildpack.FromBuildpackRootBlob(b, archive.DefaultTarWriterFactory())
+					bp, err := buildpack.FromBuildpackRootBlob(b, archive.DefaultTarWriterFactory(), nil)
 					h.AssertNil(t, err)
 					depBPs = append(depBPs, bp)
 				}
 				mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/flatten-bp-1.tgz").Return(blob1, nil).AnyTimes()
 
-				bp, err := buildpack.FromBuildpackRootBlob(blob1, archive.DefaultTarWriterFactory())
+				bp, err := buildpack.FromBuildpackRootBlob(blob1, archive.DefaultTarWriterFactory(), nil)
 				h.AssertNil(t, err)
 				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/flatten-bp-1.tgz", gomock.Any()).Return(bp, depBPs, nil).AnyTimes()
 
@@ -1117,6 +1366,124 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					layers := fakeLayerImage.AddedLayersOrder()
 					h.AssertEq(t, len(layers), 3)
+				})
+			})
+		})
+
+		when("daemon target selection for multi-platform builders", func() {
+			when("publish is false", func() {
+				when("daemon is linux/amd64", func() {
+					it.Before(func() {
+						mockDockerClient.EXPECT().ServerVersion(gomock.Any(), gomock.Any()).Return(dockerclient.ServerVersionResult{
+							Os:   "linux",
+							Arch: "amd64",
+						}, nil).AnyTimes()
+					})
+
+					when("multiple targets are provided", func() {
+						it("selects the matching OS and architecture", func() {
+							prepareFetcherWithBuildImage()
+							prepareFetcherWithRunImages()
+
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "arm64"},
+								{OS: "linux", Arch: "amd64"}, // should match
+								{OS: "windows", Arch: "amd64"},
+							}
+
+							h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+
+							// Verify that only one image was created (for the matching target)
+							h.AssertEq(t, fakeBuildImage.IsSaved(), true)
+						})
+					})
+
+					when("no exact architecture match exists", func() {
+						it("returns error", func() {
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "arm64"},
+								{OS: "linux", Arch: "arm"},
+							}
+
+							err := subject.CreateBuilder(context.TODO(), opts)
+							h.AssertError(t, err, "could not find a target that matches daemon os=linux and architecture=amd64")
+						})
+					})
+
+					when("target with empty architecture exists", func() {
+						it("selects the OS-only match", func() {
+							prepareFetcherWithBuildImage()
+							prepareFetcherWithRunImages()
+
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "arm64"},
+								{OS: "linux", Arch: ""}, // should match
+								{OS: "windows", Arch: "amd64"},
+							}
+
+							h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+
+							// Verify that the builder was created
+							h.AssertEq(t, fakeBuildImage.IsSaved(), true)
+						})
+					})
+				})
+
+				when("daemon is linux/arm64", func() {
+					it.Before(func() {
+						mockDockerClient.EXPECT().ServerVersion(gomock.Any(), gomock.Any()).Return(dockerclient.ServerVersionResult{
+							Os:   "linux",
+							Arch: "arm64",
+						}, nil).AnyTimes()
+					})
+
+					when("targets are ordered with amd64 first", func() {
+						it("selects arm64 even when amd64 appears first", func() {
+							prepareFetcherWithBuildImage()
+							prepareFetcherWithRunImages()
+
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "amd64"}, // appears first
+								{OS: "linux", Arch: "arm64"}, // should match
+								{OS: "windows", Arch: "arm64"},
+							}
+
+							h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+
+							// Verify that the builder was created
+							h.AssertEq(t, fakeBuildImage.IsSaved(), true)
+						})
+					})
+
+					when("only amd64 targets available", func() {
+						it("returns error", func() {
+							opts.Targets = []dist.Target{
+								{OS: "linux", Arch: "amd64"},
+								{OS: "windows", Arch: "amd64"},
+							}
+
+							err := subject.CreateBuilder(context.TODO(), opts)
+							h.AssertError(t, err, "could not find a target that matches daemon os=linux and architecture=arm64")
+						})
+					})
+				})
+
+				when("empty targets list", func() {
+					it("creates builder without calling daemonTarget", func() {
+						prepareFetcherWithBuildImage()
+						prepareFetcherWithRunImages()
+
+						// Empty targets should use the default behavior
+						opts.Targets = []dist.Target{}
+
+						// ServerVersion should NOT be called for empty targets
+						mockDockerClient.EXPECT().ServerVersion(gomock.Any(), gomock.Any()).Times(0)
+
+						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+
+						// Verify that the builder was created
+						h.AssertEq(t, fakeBuildImage.IsSaved(), true)
+					})
 				})
 			})
 		})

@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/docker/cli/cli/connhelper"
-	"github.com/docker/docker/pkg/homedir"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
@@ -138,19 +137,19 @@ func isWindowsMachine(sshClient *ssh.Client) (bool, error) {
 func networkAndAddressFromRemoteDockerHost(sshClient *ssh.Client) (network string, addr string, err error) {
 	session, err := sshClient.NewSession()
 	if err != nil {
-		return
+		return network, addr, err
 	}
 	defer session.Close()
 
 	out, err := session.CombinedOutput("set")
 	if err != nil {
-		return
+		return network, addr, err
 	}
 
 	remoteDockerHost := "unix:///var/run/docker.sock"
 	isWin, err := isWindowsMachine(sshClient)
 	if err != nil {
-		return
+		return network, addr, err
 	}
 
 	if isWin {
@@ -168,7 +167,7 @@ func networkAndAddressFromRemoteDockerHost(sshClient *ssh.Client) (network strin
 
 	remoteDockerHostURL, err := urlPkg.Parse(remoteDockerHost)
 	if err != nil {
-		return
+		return network, addr, err
 	}
 	switch remoteDockerHostURL.Scheme {
 	case "unix":
@@ -272,7 +271,6 @@ func NewSSHClientConfig(url *urlPkg.URL, config Config) (*ssh.ClientConfig, erro
 			ssh.KeyAlgoRSASHA512,
 			ssh.KeyAlgoRSASHA256,
 			ssh.KeyAlgoRSA,
-			ssh.KeyAlgoDSA,
 		},
 		Timeout: sshTimeout * time.Second,
 	}
@@ -375,9 +373,17 @@ func loadSignerFromFile(path string, passphrase []byte, passPhraseCallback Secre
 	return signer, nil
 }
 
+// homeDir returns the current user's home directory, or an empty string if it
+// cannot be determined. It replaces github.com/docker/docker/pkg/homedir.Get,
+// which is not part of the moby/moby split modules.
+func homeDir() string {
+	h, _ := os.UserHomeDir()
+	return h
+}
+
 func createHostKeyCallback(userCallback HostKeyCallback) ssh.HostKeyCallback {
 	return func(hostPort string, remote net.Addr, pubKey ssh.PublicKey) error {
-		knownHosts := filepath.Join(homedir.Get(), ".ssh", "known_hosts")
+		knownHosts := filepath.Join(homeDir(), ".ssh", "known_hosts")
 
 		fileCallback, err := knownhosts.New(knownHosts)
 		if err != nil {

@@ -50,6 +50,11 @@ jobs:
                 core.setOutput("linux_url", asset.browser_download_url);
               }
 
+              if (asset.name.endsWith("linux-arm64.tgz")) {
+                core.setOutput("linux_arm64_name", asset.name);
+                core.setOutput("linux_arm64_url", asset.browser_download_url);
+              }
+
               if (asset.name.endsWith("macos.tgz")) {
                 core.setOutput("macos_name", asset.name);
                 core.setOutput("macos_url", asset.browser_download_url);
@@ -67,6 +72,10 @@ jobs:
           linux_sha256=$(sha256sum ${{ steps.assets.outputs.linux_name }} | cut -d ' ' -f1)
           echo "linux_sha256=$linux_sha256" >> $GITHUB_OUTPUT
 
+          curl -sSL ${{ steps.assets.outputs.linux_arm64_url }} -o ${{ steps.assets.outputs.linux_arm64_name }}
+          linux_arm64_sha256=$(sha256sum ${{ steps.assets.outputs.linux_arm64_name }} | cut -d ' ' -f1)
+          echo "linux_arm64_sha256=$linux_arm64_sha256" >> $GITHUB_OUTPUT
+
           curl -sSL ${{ steps.assets.outputs.macos_url }} -o ${{ steps.assets.outputs.macos_name }}
           macos_sha256=$(sha256sum ${{ steps.assets.outputs.macos_name }} | cut -d ' ' -f1)
           echo "macos_sha256=$macos_sha256" >> $GITHUB_OUTPUT
@@ -83,6 +92,8 @@ jobs:
         env:
           LINUX_URL: ${{ steps.assets.outputs.linux_url }}
           LINUX_SHA: ${{ steps.checksums.outputs.linux_sha256 }}
+          LINUX_ARM64_URL: ${{ steps.assets.outputs.linux_arm64_url }}
+          LINUX_ARM64_SHA: ${{ steps.checksums.outputs.linux_arm64_sha256 }}
           MACOS_URL: ${{ steps.assets.outputs.macos_url }}
           MACOS_SHA: ${{ steps.checksums.outputs.macos_sha256 }}
           MACOS_ARM64_URL: ${{ steps.assets.outputs.macos_arm64_url }}

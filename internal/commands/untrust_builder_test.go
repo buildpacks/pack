@@ -129,7 +129,7 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs([]string{builder})
 
 				err := command.Execute()
-				h.AssertError(t, err, fmt.Sprintf("Builder %s is a suggested builder, and is trusted by default", style.Symbol(builder)))
+				h.AssertError(t, err, fmt.Sprintf("Builder %s is a known trusted builder. Currently pack doesn't support making these builders untrusted", style.Symbol(builder)))
 			})
 		})
 	})

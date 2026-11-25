@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	v03 "github.com/buildpacks/pack/pkg/project/v03"
+
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
@@ -26,6 +28,7 @@ type VersionDescriptor struct {
 var parsers = map[string]func(string) (types.Descriptor, toml.MetaData, error){
 	"0.1": v01.NewDescriptor,
 	"0.2": v02.NewDescriptor,
+	"0.3": v03.NewDescriptor,
 }
 
 func ReadProjectDescriptor(pathToFile string, logger logging.Logger) (types.Descriptor, error) {
@@ -68,21 +71,32 @@ func ReadProjectDescriptor(pathToFile string, logger logging.Logger) (types.Desc
 func warnIfTomlContainsKeysNotSupportedBySchema(schemaVersion string, tomlMetaData toml.MetaData, logger logging.Logger) {
 	unsupportedKeys := []string{}
 
-	// filter out any keys from [_]
-	for _, undecodedKey := range tomlMetaData.Undecoded() {
-		keyName := undecodedKey.String()
-		if keyName != "_" && !strings.HasPrefix(keyName, "_.schema-version") {
+	for _, undecoded := range tomlMetaData.Undecoded() {
+		keyName := undecoded.String()
+		if unsupportedKey(keyName, schemaVersion) {
 			unsupportedKeys = append(unsupportedKeys, keyName)
 		}
 	}
 
 	if len(unsupportedKeys) != 0 {
 		logger.Warnf("The following keys declared in project.toml are not supported in schema version %s:\n", schemaVersion)
-		for _, unsupportedKey := range unsupportedKeys {
-			logger.Warnf("- %s\n", unsupportedKey)
+		for _, unsupported := range unsupportedKeys {
+			logger.Warnf("- %s\n", unsupported)
 		}
-		logger.Warn("The above keys will be ignored. If this is not intentional, maybe try updating your schema version.\n")
+		logger.Warn("The above keys will be ignored. If this is not intentional, try updating your schema version.\n")
 	}
+}
+
+func unsupportedKey(keyName, schemaVersion string) bool {
+	switch schemaVersion {
+	case "0.1":
+		// filter out any keys from [metadata] and any other custom table defined by end-users
+		return strings.HasPrefix(keyName, "project.") || strings.HasPrefix(keyName, "build.") || strings.Contains(keyName, "io.buildpacks")
+	case "0.2":
+		// filter out any keys from [_.metadata] and any other custom table defined by end-users
+		return strings.Contains(keyName, "io.buildpacks") || (strings.HasPrefix(keyName, "_.") && !strings.HasPrefix(keyName, "_.metadata"))
+	}
+	return true
 }
 
 func validate(p types.Descriptor) error {

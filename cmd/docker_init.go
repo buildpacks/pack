@@ -12,15 +12,14 @@ import (
 	"os"
 	"strings"
 
-	dockerClient "github.com/docker/docker/client"
+	dockerClient "github.com/moby/moby/client"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
 
 	"github.com/buildpacks/pack/internal/sshdialer"
-	"github.com/buildpacks/pack/pkg/client"
 )
 
-func tryInitSSHDockerClient() (dockerClient.CommonAPIClient, error) {
+func tryInitSSHDockerClient() (*dockerClient.Client, error) {
 	dockerHost := os.Getenv("DOCKER_HOST")
 	_url, err := url.Parse(dockerHost)
 	isSSH := err == nil && _url.Scheme == "ssh"
@@ -50,13 +49,12 @@ func tryInitSSHDockerClient() (dockerClient.CommonAPIClient, error) {
 	}
 
 	dockerClientOpts := []dockerClient.Opt{
-		dockerClient.WithVersion(client.DockerAPIVersion),
 		dockerClient.WithHTTPClient(httpClient),
 		dockerClient.WithHost("http://dummy"),
 		dockerClient.WithDialContext(dialContext),
 	}
 
-	return dockerClient.NewClientWithOpts(dockerClientOpts...)
+	return dockerClient.New(dockerClientOpts...)
 }
 
 // readSecret prompts for a secret and returns value input by user from stdin
@@ -70,7 +68,7 @@ func readSecret(prompt string) (pw []byte, err error) {
 		fmt.Fprint(os.Stderr, prompt)
 		pw, err = term.ReadPassword(fd)
 		fmt.Fprintln(os.Stderr)
-		return
+		return pw, err
 	}
 
 	var b [1]byte

@@ -1,10 +1,16 @@
 package client
 
 import (
+	"archive/tar"
 	"context"
 	"fmt"
+	"io"
+	OS "os"
+	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/buildpacks/pack/internal/name"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
@@ -17,6 +23,7 @@ import (
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -42,6 +49,10 @@ type CreateBuilderOptions struct {
 	// Requires BuilderName to be a valid registry location.
 	Publish bool
 
+	// Append [os]-[arch] suffix to the image tag when publishing a multi-arch to a registry
+	// Requires Publish to be true
+	AppendImageNameSuffix bool
+
 	// Buildpack registry name. Defines where all registry buildpacks will be pulled from.
 	Registry string
 
@@ -50,30 +61,75 @@ type CreateBuilderOptions struct {
 
 	// List of modules to be flattened
 	Flatten buildpack.FlattenModuleInfos
+
+	// Target platforms to build builder images for
+	Targets []dist.Target
+
+	// Temporary directory to use for downloading lifecycle images.
+	TempDirectory string
+
+	// Additional image tags to push to, each will contain contents identical to Image
+	AdditionalTags []string
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.
 // If any configuration is invalid, it will error and exit without creating any images.
 func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) error {
-	if err := c.validateConfig(ctx, opts); err != nil {
+	targets, err := c.processBuilderCreateTargets(ctx, opts)
+	if err != nil {
 		return err
 	}
 
-	bldr, err := c.createBaseBuilder(ctx, opts)
+	if len(targets) == 0 {
+		_, err = c.createBuilderTarget(ctx, opts, nil, false)
+		if err != nil {
+			return err
+		}
+	} else {
+		var digests []string
+		multiArch := len(targets) > 1 && opts.Publish
+
+		for _, target := range targets {
+			digest, err := c.createBuilderTarget(ctx, opts, &target, multiArch)
+			if err != nil {
+				return err
+			}
+			digests = append(digests, digest)
+		}
+
+		if multiArch && len(digests) > 1 {
+			return c.CreateManifest(ctx, CreateManifestOptions{
+				IndexRepoName: opts.BuilderName,
+				RepoNames:     digests,
+				Publish:       true,
+			})
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) createBuilderTarget(ctx context.Context, opts CreateBuilderOptions, target *dist.Target, multiArch bool) (string, error) {
+	if err := c.validateConfig(ctx, opts, target); err != nil {
+		return "", err
+	}
+
+	bldr, err := c.createBaseBuilder(ctx, opts, target, multiArch)
 	if err != nil {
-		return errors.Wrap(err, "failed to create builder")
+		return "", errors.Wrap(err, "failed to create builder")
 	}
 
 	if err := c.addBuildpacksToBuilder(ctx, opts, bldr); err != nil {
-		return errors.Wrap(err, "failed to add buildpacks to builder")
+		return "", errors.Wrap(err, "failed to add buildpacks to builder")
 	}
 
 	if err := c.addExtensionsToBuilder(ctx, opts, bldr); err != nil {
-		return errors.Wrap(err, "failed to add extensions to builder")
+		return "", errors.Wrap(err, "failed to add extensions to builder")
 	}
 
 	bldr.SetOrder(opts.Config.Order)
 	bldr.SetOrderExtensions(opts.Config.OrderExtensions)
+	bldr.SetSystem(opts.Config.System)
 
 	if opts.Config.Stack.ID != "" {
 		bldr.SetStack(opts.Config.Stack)
@@ -81,27 +137,40 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	bldr.SetRunImage(opts.Config.Run)
 	bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
 
-	return bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version})
+	err = bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version}, opts.AdditionalTags...)
+	if err != nil {
+		return "", err
+	}
+
+	if multiArch {
+		// We need to keep the identifier to create the image index
+		id, err := bldr.Image().Identifier()
+		if err != nil {
+			return "", errors.Wrapf(err, "determining image manifest digest")
+		}
+		return id.String(), nil
+	}
+	return "", nil
 }
 
-func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions) error {
+func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions, target *dist.Target) error {
 	if err := pubbldr.ValidateConfig(opts.Config); err != nil {
 		return errors.Wrap(err, "invalid builder config")
 	}
 
-	if err := c.validateRunImageConfig(ctx, opts); err != nil {
+	if err := c.validateRunImageConfig(ctx, opts, target); err != nil {
 		return errors.Wrap(err, "invalid run image config")
 	}
 
 	return nil
 }
 
-func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOptions) error {
+func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOptions, target *dist.Target) error {
 	var runImages []imgutil.Image
 	for _, r := range opts.Config.Run.Images {
 		for _, i := range append([]string{r.Image}, r.Mirrors...) {
 			if !opts.Publish {
-				img, err := c.imageFetcher.Fetch(ctx, i, image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy})
+				img, err := c.imageFetcher.Fetch(ctx, i, image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy, Target: target})
 				if err != nil {
 					if errors.Cause(err) != image.ErrNotFound {
 						return errors.Wrap(err, "failed to fetch image")
@@ -112,7 +181,7 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 				}
 			}
 
-			img, err := c.imageFetcher.Fetch(ctx, i, image.FetchOptions{Daemon: false, PullPolicy: opts.PullPolicy})
+			img, err := c.imageFetcher.Fetch(ctx, i, image.FetchOptions{Daemon: false, PullPolicy: opts.PullPolicy, Target: target})
 			if err != nil {
 				if errors.Cause(err) != image.ErrNotFound {
 					return errors.Wrap(err, "failed to fetch image")
@@ -145,8 +214,8 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 	return nil
 }
 
-func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOptions) (*builder.Builder, error) {
-	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Build.Image, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
+func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOptions, target *dist.Target, multiArch bool) (*builder.Builder, error) {
+	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Build.Image, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy, Target: target})
 	if err != nil {
 		return nil, errors.Wrap(err, "fetch build image")
 	}
@@ -157,11 +226,19 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	if opts.Flatten != nil && len(opts.Flatten.FlattenModules()) > 0 {
 		builderOpts = append(builderOpts, builder.WithFlattened(opts.Flatten))
 	}
-	if opts.Labels != nil && len(opts.Labels) > 0 {
+	if len(opts.Labels) > 0 {
 		builderOpts = append(builderOpts, builder.WithLabels(opts.Labels))
 	}
 
-	bldr, err := builder.New(baseImage, opts.BuilderName, builderOpts...)
+	builderName := opts.BuilderName
+	if multiArch && opts.AppendImageNameSuffix {
+		builderName, err = name.AppendSuffix(builderName, *target)
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid image name")
+		}
+	}
+
+	bldr, err := builder.New(baseImage, builderName, builderOpts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid build-image")
 	}
@@ -190,18 +267,23 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 		)
 	}
 
-	lifecycle, err := c.fetchLifecycle(ctx, opts.Config.Lifecycle, opts.RelativeBaseDir, os, architecture)
+	lifecycle, err := c.fetchLifecycle(ctx, opts, os, architecture)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetch lifecycle")
 	}
 
+	// Validate lifecycle version for image extensions
+	if err := c.validateLifecycleVersion(opts.Config, lifecycle); err != nil {
+		return nil, err
+	}
 	bldr.SetLifecycle(lifecycle)
 	bldr.SetBuildConfigEnv(opts.BuildConfigEnv)
 
 	return bldr, nil
 }
 
-func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleConfig, relativeBaseDir, os string, architecture string) (builder.Lifecycle, error) {
+func (c *Client) fetchLifecycle(ctx context.Context, opts CreateBuilderOptions, os string, architecture string) (builder.Lifecycle, error) {
+	config := opts.Config.Lifecycle
 	if config.Version != "" && config.URI != "" {
 		return nil, errors.Errorf(
 			"%s can only declare %s or %s, not both",
@@ -212,20 +294,25 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 	var uri string
 	var err error
 	switch {
+	case buildpack.HasDockerLocator(config.URI):
+		uri, err = c.uriFromLifecycleImage(ctx, opts.TempDirectory, config)
+		if err != nil {
+			return nil, errors.Wrap(err, "Could not parse uri from lifecycle image")
+		}
 	case config.Version != "":
 		v, err := semver.NewVersion(config.Version)
 		if err != nil {
 			return nil, errors.Wrapf(err, "%s must be a valid semver", style.Symbol("lifecycle.version"))
 		}
 
-		uri = uriFromLifecycleVersion(*v, os, architecture)
+		uri = c.uriFromLifecycleVersion(*v, os, architecture)
 	case config.URI != "":
-		uri, err = paths.FilePathToURI(config.URI, relativeBaseDir)
+		uri, err = paths.FilePathToURI(config.URI, opts.RelativeBaseDir)
 		if err != nil {
 			return nil, err
 		}
 	default:
-		uri = uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion), os, architecture)
+		uri = c.uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion), os, architecture)
 	}
 
 	blob, err := c.downloader.Download(ctx, uri)
@@ -271,15 +358,17 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 		return errors.Wrapf(err, "getting builder architecture")
 	}
 
+	target := &dist.Target{OS: builderOS, Arch: builderArch}
+	c.logger.Debugf("Downloading buildpack for platform: %s", target.ValuesAsPlatform())
+
 	mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, config.URI, buildpack.DownloadOptions{
 		Daemon:          !opts.Publish,
 		ImageName:       config.ImageName,
-		ImageOS:         builderOS,
-		Platform:        fmt.Sprintf("%s/%s", builderOS, builderArch),
 		ModuleKind:      kind,
 		PullPolicy:      opts.PullPolicy,
 		RegistryName:    opts.Registry,
 		RelativeBaseDir: opts.RelativeBaseDir,
+		Target:          target,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "downloading %s", kind)
@@ -323,6 +412,24 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Modu
 	return nil
 }
 
+func (c *Client) processBuilderCreateTargets(ctx context.Context, opts CreateBuilderOptions) ([]dist.Target, error) {
+	var targets []dist.Target
+
+	if len(opts.Targets) > 0 {
+		if opts.Publish {
+			targets = opts.Targets
+		} else {
+			// find a target that matches the daemon
+			daemonTarget, err := c.daemonTarget(ctx, opts.Targets)
+			if err != nil {
+				return targets, err
+			}
+			targets = append(targets, daemonTarget)
+		}
+	}
+	return targets, nil
+}
+
 func validateModule(kind string, module buildpack.BuildModule, source, expectedID, expectedVersion string) error {
 	info := module.Descriptor().Info()
 	if expectedID != "" && info.ID != expectedID {
@@ -348,16 +455,139 @@ func validateModule(kind string, module buildpack.BuildModule, source, expectedI
 	return nil
 }
 
-func uriFromLifecycleVersion(version semver.Version, os string, architecture string) string {
+func (c *Client) uriFromLifecycleVersion(version semver.Version, os string, architecture string) string {
 	arch := "x86-64"
 
 	if os == "windows" {
 		return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+windows.%s.tgz", version.String(), version.String(), arch)
 	}
 
-	if architecture == "arm64" {
+	if architecture == "amd64" {
+		architecture = "x86-64"
+	}
+
+	if builder.SupportedLinuxArchitecture(architecture) {
 		arch = architecture
+	} else {
+		// FIXME: this should probably be an error case in the future, see https://github.com/buildpacks/pack/issues/2163
+		c.logger.Warnf("failed to find a lifecycle binary for requested architecture %s, defaulting to %s", style.Symbol(architecture), style.Symbol(arch))
 	}
 
 	return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+linux.%s.tgz", version.String(), version.String(), arch)
+}
+
+func stripTopDirAndWrite(layerReader io.ReadCloser, outputPath string) (*OS.File, error) {
+	file, err := OS.Create(outputPath)
+	if err != nil {
+		return nil, err
+	}
+
+	tarWriter := tar.NewWriter(file)
+	tarReader := tar.NewReader(layerReader)
+	tarReader.Next()
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		pathSep := string(OS.PathSeparator)
+		cnbPrefix := fmt.Sprintf("%scnb%s", pathSep, pathSep)
+		newHeader := *header
+		newHeader.Name = strings.TrimPrefix(header.Name, cnbPrefix)
+
+		if err := tarWriter.WriteHeader(&newHeader); err != nil {
+			return nil, err
+		}
+
+		if _, err := io.Copy(tarWriter, tarReader); err != nil {
+			return nil, err
+		}
+	}
+
+	return file, nil
+}
+
+func (c *Client) uriFromLifecycleImage(ctx context.Context, basePath string, config pubbldr.LifecycleConfig) (uri string, err error) {
+	var lifecycleImage imgutil.Image
+	imageName := buildpack.ParsePackageLocator(config.URI)
+	c.logger.Debugf("Downloading lifecycle image: %s", style.Symbol(imageName))
+
+	lifecycleImage, err = c.imageFetcher.Fetch(ctx, imageName, image.FetchOptions{Daemon: false})
+	if err != nil {
+		return "", err
+	}
+
+	lifecyclePath := filepath.Join(basePath, "lifecycle.tar")
+	underlyingImage := lifecycleImage.UnderlyingImage()
+	if underlyingImage == nil {
+		return "", errors.New("lifecycle image has no underlying image")
+	}
+
+	layers, err := underlyingImage.Layers()
+	if err != nil {
+		return "", err
+	}
+
+	if len(layers) == 0 {
+		return "", errors.New("lifecycle image has no layers")
+	}
+
+	// Assume the last layer has the lifecycle
+	lifecycleLayer := layers[len(layers)-1]
+
+	layerReader, err := lifecycleLayer.Uncompressed()
+	if err != nil {
+		return "", err
+	}
+	defer layerReader.Close()
+
+	file, err := stripTopDirAndWrite(layerReader, lifecyclePath)
+	if err != nil {
+		return "", err
+	}
+
+	defer file.Close()
+
+	uri, err = paths.FilePathToURI(lifecyclePath, "")
+	if err != nil {
+		return "", err
+	}
+	return uri, err
+}
+
+func hasExtensions(builderConfig pubbldr.Config) bool {
+	return len(builderConfig.Extensions) > 0 || len(builderConfig.OrderExtensions) > 0
+}
+
+func (c *Client) validateLifecycleVersion(builderConfig pubbldr.Config, lifecycle builder.Lifecycle) error {
+	if !hasExtensions(builderConfig) {
+		return nil
+	}
+
+	descriptor := lifecycle.Descriptor()
+
+	// Extensions are stable starting from Platform API 0.13
+	// Check the latest supported Platform API version
+	if len(descriptor.APIs.Platform.Supported) == 0 {
+		// No Platform API information available, skip validation
+		return nil
+	}
+
+	platformAPI := descriptor.APIs.Platform.Supported.Latest()
+	if platformAPI.LessThan("0.13") {
+		if !c.experimental {
+			return errors.Errorf(
+				"builder config contains image extensions, but the lifecycle Platform API version (%s) is older than 0.13; "+
+					"support for image extensions with Platform API < 0.13 is currently experimental",
+				platformAPI.String(),
+			)
+		}
+	}
+
+	return nil
 }

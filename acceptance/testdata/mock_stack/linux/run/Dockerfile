@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM ubuntu:bionic
 
 ENV CNB_USER_ID=2222

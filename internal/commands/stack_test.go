@@ -44,7 +44,7 @@ Available Commands:
   suggest     (deprecated) List the recommended stacks
 
 Flags:
-  -h, --help   help for stack
+  -h, --help[=true|false]   help for stack
 
 Use "stack [command] --help" for more information about a command.
 `)

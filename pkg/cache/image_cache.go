@@ -3,10 +3,9 @@ package cache
 import (
 	"context"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
+	cerrdefs "github.com/containerd/errdefs"
 	"github.com/google/go-containerregistry/pkg/name"
+	dockerClient "github.com/moby/moby/client"
 )
 
 type ImageCache struct {
@@ -15,8 +14,8 @@ type ImageCache struct {
 }
 
 type DockerClient interface {
-	ImageRemove(ctx context.Context, image string, options types.ImageRemoveOptions) ([]image.DeleteResponse, error)
-	VolumeRemove(ctx context.Context, volumeID string, force bool) error
+	ImageRemove(ctx context.Context, image string, options dockerClient.ImageRemoveOptions) (dockerClient.ImageRemoveResult, error)
+	VolumeRemove(ctx context.Context, volumeID string, options dockerClient.VolumeRemoveOptions) (dockerClient.VolumeRemoveResult, error)
 }
 
 func NewImageCache(imageRef name.Reference, dockerClient DockerClient) *ImageCache {
@@ -31,10 +30,10 @@ func (c *ImageCache) Name() string {
 }
 
 func (c *ImageCache) Clear(ctx context.Context) error {
-	_, err := c.docker.ImageRemove(ctx, c.Name(), types.ImageRemoveOptions{
+	_, err := c.docker.ImageRemove(ctx, c.Name(), dockerClient.ImageRemoveOptions{
 		Force: true,
 	})
-	if err != nil && !client.IsErrNotFound(err) {
+	if err != nil && !cerrdefs.IsNotFound(err) {
 		return err
 	}
 	return nil

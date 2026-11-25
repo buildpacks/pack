@@ -1,5 +1,4 @@
 //go:build benchmarks
-// +build benchmarks
 
 package benchmarks
 
@@ -10,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	dockerCli "github.com/docker/docker/client"
+	dockerCli "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -33,7 +32,7 @@ var (
 
 func BenchmarkBuild(b *testing.B) {
 	setEnv()
-	dockerClient, err := dockerCli.NewClientWithOpts(dockerCli.FromEnv, dockerCli.WithVersion("1.38"))
+	dockerClient, err := dockerCli.New(dockerCli.FromEnv)
 	if err != nil {
 		b.Error(errors.Wrap(err, "creating docker client"))
 	}

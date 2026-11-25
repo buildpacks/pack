@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+echo "---> BUILD: System Fail Detect buildpack (should never run)"
+
+# This should never be reached
+exit 1

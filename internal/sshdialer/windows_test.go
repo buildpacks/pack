@@ -1,11 +1,11 @@
 //go:build windows
-// +build windows
 
 package sshdialer_test
 
 import (
 	"errors"
 	"net"
+	"os"
 	"os/user"
 	"strings"
 
@@ -23,9 +23,7 @@ func fixupPrivateKeyMod(path string) {
 		true,
 		false,
 		acl.GrantName(((mode&0700)<<23)|((mode&0200)<<9), usr.Username))
-
-	// See https://github.com/hectane/go-acl/issues/1
-	if err != nil && err.Error() != "The operation completed successfully." {
+	if err != nil {
 		panic(err)
 	}
 }
@@ -38,5 +36,5 @@ func listen(addr string) (net.Listener, error) {
 }
 
 func isErrClosed(err error) bool {
-	return errors.Is(err, net.ErrClosed) || errors.Is(err, winio.ErrPipeListenerClosed) || errors.Is(err, winio.ErrFileClosed)
+	return errors.Is(err, net.ErrClosed) || errors.Is(err, os.ErrClosed)
 }

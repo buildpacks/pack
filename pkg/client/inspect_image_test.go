@@ -39,7 +39,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 	var (
 		subject                        *Client
 		mockImageFetcher               *testmocks.MockImageFetcher
-		mockDockerClient               *testmocks.MockCommonAPIClient
+		mockDockerClient               *testmocks.MockAPIClient
 		mockController                 *gomock.Controller
 		mockImage                      *testmocks.MockImage
 		mockImageNoRebasable           *testmocks.MockImage
@@ -51,7 +51,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
-		mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
+		mockDockerClient = testmocks.NewMockAPIClient(mockController)
 
 		var err error
 		subject, err = NewClient(WithLogger(logging.NewLogWithWriters(&out, &out)), WithFetcher(mockImageFetcher), WithDockerClient(mockDockerClient))

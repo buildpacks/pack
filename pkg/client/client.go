@@ -1,5 +1,5 @@
 /*
-Package client provides all the functionally provided by pack as a library through a go api.
+Package client provides all the functionality provided by pack as a library through a go api.
 
 # Prerequisites
 
@@ -22,21 +22,32 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
-	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	dockerClient "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/build"
 	iconfig "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/index"
 	"github.com/buildpacks/pack/pkg/logging"
 )
 
-//go:generate mockgen -package testmocks -destination ../testmocks/mock_docker_client.go github.com/docker/docker/client CommonAPIClient
+const (
+	// Env variable to set the root folder for manifest list local storage
+	xdgRuntimePath = "XDG_RUNTIME_DIR"
+)
+
+var (
+	// Version is the version of `pack`. It is injected at compile time.
+	Version = "0.0.0"
+)
+
+//go:generate mockgen -package testmocks -destination ../testmocks/mock_docker_client.go github.com/moby/moby/client APIClient
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_image_fetcher.go github.com/buildpacks/pack/pkg/client ImageFetcher
 
@@ -52,6 +63,18 @@ type ImageFetcher interface {
 	// PullIfNotPresent and daemon = false, gives us the same behavior as PullAlways.
 	// There is a single invalid configuration, PullNever and daemon = false, this will always fail.
 	Fetch(ctx context.Context, name string, options image.FetchOptions) (imgutil.Image, error)
+
+	// CheckReadAccess verifies if an image is accessible with read permissions
+	// When FetchOptions.Daemon is true and the image doesn't exist in the daemon,
+	// the behavior is dictated by the pull policy, which can have the following behavior
+	//   - PullNever: returns false
+	//   - PullAlways Or PullIfNotPresent: it will check read access for the remote image.
+	// When FetchOptions.Daemon is false it will check read access for the remote image.
+	CheckReadAccess(repo string, options image.FetchOptions) bool
+
+	// FetchForPlatform fetches an image and resolves it to a platform-specific digest before fetching.
+	// This ensures that multi-platform images are always resolved to the correct platform-specific manifest.
+	FetchForPlatform(ctx context.Context, name string, options image.FetchOptions) (imgutil.Image, error)
 }
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_blob_downloader.go github.com/buildpacks/pack/pkg/client BlobDownloader
@@ -69,7 +92,23 @@ type BlobDownloader interface {
 type ImageFactory interface {
 	// NewImage initializes an image object with required settings so that it
 	// can be written either locally or to a registry.
-	NewImage(repoName string, local bool, imageOS string) (imgutil.Image, error)
+	NewImage(repoName string, local bool, target dist.Target) (imgutil.Image, error)
+}
+
+//go:generate mockgen -package testmocks -destination ../testmocks/mock_index_factory.go github.com/buildpacks/pack/pkg/client IndexFactory
+
+// IndexFactory is an interface representing the ability to create a ImageIndex/ManifestList.
+type IndexFactory interface {
+	// Exists return true if the given index exits in the local storage
+	Exists(repoName string) bool
+	// CreateIndex creates ManifestList locally
+	CreateIndex(repoName string, opts ...imgutil.IndexOption) (imgutil.ImageIndex, error)
+	// LoadIndex loads ManifestList from local storage with the given name
+	LoadIndex(reponame string, opts ...imgutil.IndexOption) (imgutil.ImageIndex, error)
+	// FetchIndex fetches ManifestList from Registry with the given name
+	FetchIndex(name string, opts ...imgutil.IndexOption) (imgutil.ImageIndex, error)
+	// FindIndex will find Index locally then on remote
+	FindIndex(name string, opts ...imgutil.IndexOption) (imgutil.ImageIndex, error)
 }
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_buildpack_downloader.go github.com/buildpacks/pack/pkg/client BuildpackDownloader
@@ -78,13 +117,6 @@ type ImageFactory interface {
 type BuildpackDownloader interface {
 	// Download parses a buildpack URI and downloads the buildpack and any dependencies buildpacks from the appropriate source
 	Download(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error)
-}
-
-//go:generate mockgen -package testmocks -destination ../testmocks/mock_access_checker.go github.com/buildpacks/pack/pkg/client AccessChecker
-
-// AccessChecker is an interface for checking remote images for read access
-type AccessChecker interface {
-	Check(repo string) bool
 }
 
 // Client is an orchestration object, it contains all parameters needed to
@@ -97,7 +129,7 @@ type Client struct {
 	keychain            authn.Keychain
 	imageFactory        ImageFactory
 	imageFetcher        ImageFetcher
-	accessChecker       AccessChecker
+	indexFactory        IndexFactory
 	downloader          BlobDownloader
 	lifecycleExecutor   LifecycleExecutor
 	buildpackDownloader BuildpackDownloader
@@ -105,6 +137,47 @@ type Client struct {
 	experimental    bool
 	registryMirrors map[string]string
 	version         string
+}
+
+func (c *Client) processSystem(system dist.System, buildpacks []buildpack.BuildModule, disableSystem bool) (dist.System, error) {
+	if disableSystem {
+		return dist.System{}, nil
+	}
+
+	if len(buildpacks) == 0 {
+		return system, nil
+	}
+
+	resolved := dist.System{}
+
+	// Create a map of available buildpacks for faster lookup
+	availableBPs := make(map[string]bool)
+	for _, bp := range buildpacks {
+		bpInfo := bp.Descriptor().Info()
+		availableBPs[bpInfo.ID+"@"+bpInfo.Version] = true
+	}
+
+	// Process pre-buildpacks
+	for _, preBp := range system.Pre.Buildpacks {
+		key := preBp.ID + "@" + preBp.Version
+		if availableBPs[key] {
+			resolved.Pre.Buildpacks = append(resolved.Pre.Buildpacks, preBp)
+		} else if !preBp.Optional {
+			return dist.System{}, errors.Errorf("required system buildpack %s@%s is not available", preBp.ID, preBp.Version)
+		}
+	}
+
+	// Process post-buildpacks
+	for _, postBp := range system.Post.Buildpacks {
+		key := postBp.ID + "@" + postBp.Version
+		if availableBPs[key] {
+			resolved.Post.Buildpacks = append(resolved.Post.Buildpacks, postBp)
+		} else if !postBp.Optional {
+			return dist.System{}, errors.Errorf("required system buildpack %s@%s is not available", postBp.ID, postBp.Version)
+		}
+	}
+
+	return resolved, nil
 }
 
 // Option is a type of function that mutate settings on the client.
@@ -125,19 +198,18 @@ func WithImageFactory(f ImageFactory) Option {
 	}
 }
 
+// WithIndexFactory supply your own index factory
+func WithIndexFactory(f IndexFactory) Option {
+	return func(c *Client) {
+		c.indexFactory = f
+	}
+}
+
 // WithFetcher supply your own Fetcher.
 // A Fetcher retrieves both local and remote images to make them available.
 func WithFetcher(f ImageFetcher) Option {
 	return func(c *Client) {
 		c.imageFetcher = f
-	}
-}
-
-// WithAccessChecker supply your own AccessChecker.
-// A AccessChecker returns true if an image is accessible for reading.
-func WithAccessChecker(f AccessChecker) Option {
-	return func(c *Client) {
-		c.accessChecker = f
 	}
 }
 
@@ -199,7 +271,7 @@ const DockerAPIVersion = "1.38"
 // NewClient allocates and returns a Client configured with the specified options.
 func NewClient(opts ...Option) (*Client, error) {
 	client := &Client{
-		version:  pack.Version,
+		version:  Version,
 		keychain: authn.DefaultKeychain,
 	}
 
@@ -213,9 +285,8 @@ func NewClient(opts ...Option) (*Client, error) {
 
 	if client.docker == nil {
 		var err error
-		client.docker, err = dockerClient.NewClientWithOpts(
+		client.docker, err = dockerClient.New(
 			dockerClient.FromEnv,
-			dockerClient.WithVersion(DockerAPIVersion),
 		)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating docker client")
@@ -241,8 +312,16 @@ func NewClient(opts ...Option) (*Client, error) {
 		}
 	}
 
-	if client.accessChecker == nil {
-		client.accessChecker = image.NewAccessChecker(client.logger, client.keychain)
+	if client.indexFactory == nil {
+		packHome, err := iconfig.PackHome()
+		if err != nil {
+			return nil, errors.Wrap(err, "getting pack home")
+		}
+		indexRootStoragePath := filepath.Join(packHome, "manifests")
+		if xdgPath, ok := os.LookupEnv(xdgRuntimePath); ok {
+			indexRootStoragePath = xdgPath
+		}
+		client.indexFactory = index.NewIndexFactory(client.keychain, indexRootStoragePath)
 	}
 
 	if client.buildpackDownloader == nil {
@@ -284,8 +363,14 @@ type imageFactory struct {
 	keychain     authn.Keychain
 }
 
-func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (imgutil.Image, error) {
-	platform := imgutil.Platform{OS: imageOS}
+func (f *imageFactory) NewImage(repoName string, daemon bool, target dist.Target) (imgutil.Image, error) {
+	platform := imgutil.Platform{OS: target.OS, Architecture: target.Arch, Variant: target.ArchVariant}
+
+	if len(target.Distributions) > 0 {
+		// We need to set platform distribution information so that it will be reflected in the image config.
+		// We assume the given target's distributions were already expanded, we should be dealing with just 1 distribution name and version.
+		platform.OSVersion = target.Distributions[0].Version
+	}
 
 	if daemon {
 		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(platform))

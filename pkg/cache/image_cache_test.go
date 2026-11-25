@@ -7,11 +7,9 @@ import (
 	"github.com/buildpacks/pack/pkg/cache"
 
 	"github.com/buildpacks/imgutil/local"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
+	"github.com/moby/moby/client"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -28,11 +26,11 @@ func TestImageCache(t *testing.T) {
 
 func testImageCache(t *testing.T, when spec.G, it spec.S) {
 	when("#NewImageCache", func() {
-		var dockerClient client.CommonAPIClient
+		var dockerClient *client.Client
 
 		it.Before(func() {
 			var err error
-			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+			dockerClient, err = client.New(client.FromEnv)
 			h.AssertNil(t, err)
 		})
 
@@ -76,12 +74,12 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Type", func() {
 		var (
-			dockerClient client.CommonAPIClient
+			dockerClient client.APIClient
 		)
 
 		it.Before(func() {
 			var err error
-			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+			dockerClient, err = client.New(client.FromEnv)
 			h.AssertNil(t, err)
 		})
 
@@ -97,14 +95,14 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 	when("#Clear", func() {
 		var (
 			imageName    string
-			dockerClient client.CommonAPIClient
+			dockerClient client.APIClient
 			subject      *cache.ImageCache
 			ctx          context.Context
 		)
 
 		it.Before(func() {
 			var err error
-			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+			dockerClient, err = client.New(client.FromEnv)
 			h.AssertNil(t, err)
 			ctx = context.TODO()
 
@@ -126,14 +124,13 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 			it("removes the image", func() {
 				err := subject.Clear(ctx)
 				h.AssertNil(t, err)
-				images, err := dockerClient.ImageList(context.TODO(), types.ImageListOptions{
-					Filters: filters.NewArgs(filters.KeyValuePair{
-						Key:   "reference",
-						Value: imageName,
-					}),
+				result, err := dockerClient.ImageList(context.TODO(), client.ImageListOptions{
+					Filters: client.Filters{
+						"reference": {imageName: true},
+					},
 				})
 				h.AssertNil(t, err)
-				h.AssertEq(t, len(images), 0)
+				h.AssertEq(t, len(result.Items), 0)
 			})
 		})
 
