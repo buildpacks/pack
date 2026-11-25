@@ -1,0 +1,54 @@
+name: "Triage new contributions"
+# Flags anything that arrives as needing a maintainer decision, so that triage has a
+# batch to work through. It replaces assigning a milestone automatically, which guessed
+# the release wrong and was reset on every push. See #1812.
+#
+# NOTE: This workflow is privileged, and shouldn't be used to checkout the repo or run any
+# of the PR code.
+# See more in: https://securitylab.github.com/research/github-actions-preventing-pwn-requests
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  add-triage-label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add status/triage
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            // The issue templates already apply status/triage, but a blank issue, an issue
+            // or pull request opened through the API, and every pull request bypass them.
+            // Reading the labels back covers all of those paths.
+            const target = await github.rest.issues.get({ owner, repo, issue_number })
+              .then(result => result.data)
+              .catch(err => {throw "ERROR: " + err.message});
+
+            const labels = target.labels.map(label => typeof label === 'string' ? label : label.name);
+            const status = labels.filter(label => label.startsWith('status/'));
+
+            // Something that already carries a status has been categorised, by a template
+            // or by one of the bots that files its own issues, so leave it as it is.
+            if (status.length > 0) {
+              console.log(`#${issue_number} already carries ${status.join(', ')}, skipping.`);
+              return;
+            }
+
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number,
+              labels: ['status/triage'],
+            })
+            .catch(err => {throw "ERROR: " + err.message});
+            console.log(`Added status/triage to #${issue_number}.`);
