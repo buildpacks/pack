@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795528167026,
+  "lastUpdate": 1795614467405,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15676,6 +15676,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 194404595902,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "bustamantejj@gmail.com",
+            "name": "Juan Bustamante",
+            "username": "jjbustamante"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89676970bb9e0783d2722c9f599ba73e263b2113",
+          "message": "fix(acceptance): page through releases when resolving the previous minor (#2765)\n\nEvery acceptance run with lifecycle 'previous' has failed since\n2026-11-24T15:01:52Z with:\n\n    run combinations [p_current cb_current lc_previous] require PREVIOUS_LIFECYCLE_PATH to be set\n    expected nil: obtaining latest patch of previous minor\n\nFetchReleaseVersion called ListReleases with nil options, so it only ever saw\nthe first page of 30 releases. buildpacks/lifecycle published v0.21.30 that\nday, which made v0.21.1 through v0.21.30 fill the page exactly and pushed\nv0.20.20 onto page two. The ~0.20.x constraint then matched nothing. The last\ngreen run on main was 77 minutes before that release.\n\nListReleases is now paged through in full. Picking the target version also\nsteps back over the minors that exist instead of subtracting from the minor\nnumber, so a minor that is never released no longer breaks resolution, and the\nerror names the repository and the line it ran out at.\n\nbuildpacks/pack was unaffected because its minors hold far fewer patches, which\nis why only the lc_previous combinations failed.\n\nVerified against the live API: before, buildpacks/lifecycle n=-1 returns the\nerror above; after, it returns v0.20.20. buildpacks/pack n=-1 returns v0.39.1\neither way.\n\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-11-25T08:43:53-05:00",
+          "tree_id": "5d23906d73b3f5ec2b3a68e799cb8efc21aa78e2",
+          "url": "https://github.com/buildpacks/pack/commit/89676970bb9e0783d2722c9f599ba73e263b2113"
+        },
+        "date": 1795614465804,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 193130017859,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
