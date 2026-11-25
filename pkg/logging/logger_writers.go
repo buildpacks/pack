@@ -93,7 +93,8 @@ func (lw *LogWithWriters) WriterForLevel(level Level) io.Writer {
 		return io.Discard
 	}
 
-	if level == ErrorLevel {
+	// In quiet mode stdout is reserved for command output (e.g. the built image reference), so warnings go to stderr
+	if level == ErrorLevel || (level == WarnLevel && lw.Level == quietLevel) {
 		return newLogWriter(lw.errOut, lw.clock, lw.wantTime)
 	}
 
