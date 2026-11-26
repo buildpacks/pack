@@ -137,9 +137,9 @@ func listRunImageMirror(args []string, logger logging.Logger, cfg config.Config)
 	for _, runImage := range cfg.RunImages {
 		if (reqImage != "" && runImage.Image == reqImage) || reqImage == "" {
 			found = true
-			buf.WriteString(fmt.Sprintf("  %s:\n", style.Symbol(runImage.Image)))
+			fmt.Fprintf(&buf, "  %s:\n", style.Symbol(runImage.Image))
 			for _, mirror := range runImage.Mirrors {
-				buf.WriteString(fmt.Sprintf("    %s\n", mirror))
+				fmt.Fprintf(&buf, "    %s\n", mirror)
 			}
 		}
 	}

@@ -124,7 +124,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 		// `image with reference <image> was found but does not match the specified platform: wanted linux/amd64, actual: linux` or
 		// `image with reference <image> was found but its platform (linux) does not match the specified platform (linux/amd64)`
 		if strings.Contains(err.Error(), "does not match the specified platform") {
-			f.logger.Debugf(fmt.Sprintf("Pulling image %s", style.Symbol(name)))
+			f.logger.Debugf("Pulling image %s", style.Symbol(name))
 			err = f.pullImage(ctx, name, nil)
 		}
 	}

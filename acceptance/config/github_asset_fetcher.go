@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -21,7 +20,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/google/go-github/v30/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
@@ -65,19 +64,25 @@ func NewGithubAssetFetcher(t *testing.T, githubToken string) (*GithubAssetFetche
 	}
 
 	ctx := context.TODO()
-	httpClient := new(http.Client)
+	var opts []github.ClientOptionsFunc
 	if githubToken != "" {
 		t.Log("using provided github token")
 		tokenSource := oauth2.StaticTokenSource(&oauth2.Token{
 			AccessToken: githubToken,
 		})
-		httpClient = oauth2.NewClient(ctx, tokenSource)
+		httpClient := oauth2.NewClient(ctx, tokenSource)
+		opts = append(opts, github.WithHTTPClient(httpClient))
+	}
+
+	githubClient, err := github.NewClient(opts...)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating github client")
 	}
 
 	return &GithubAssetFetcher{
 		ctx:          ctx,
 		testObject:   t,
-		githubClient: github.NewClient(httpClient),
+		githubClient: githubClient,
 		cacheDir:     cacheDir,
 	}, nil
 }
@@ -205,10 +210,21 @@ func (f *GithubAssetFetcher) FetchReleaseVersion(owner, repo string, n int) (str
 		return version, nil
 	}
 
-	// get all release versions
-	rawReleases, _, err := f.githubClient.Repositories.ListReleases(f.ctx, owner, repo, nil)
-	if err != nil {
-		return "", errors.Wrap(err, "listing releases")
+	// Get all release versions. Every page has to be walked: the default page size is
+	// 30, and a single minor can have more than 30 patch releases, in which case the
+	// first page holds nothing but that minor and no older one can be found.
+	var rawReleases []*github.RepositoryRelease
+	listOpts := &github.ListOptions{PerPage: 100}
+	for {
+		page, response, err := f.githubClient.Repositories.ListReleases(f.ctx, owner, repo, listOpts)
+		if err != nil {
+			return "", errors.Wrap(err, "listing releases")
+		}
+		rawReleases = append(rawReleases, page...)
+		if response.NextPage == 0 {
+			break
+		}
+		listOpts.Page = response.NextPage
 	}
 	if len(rawReleases) == 0 {
 		return "", fmt.Errorf("no releases found for %s/%s", owner, repo)
@@ -217,7 +233,7 @@ func (f *GithubAssetFetcher) FetchReleaseVersion(owner, repo string, n int) (str
 	// exclude drafts and pre-releases
 	var releases []*github.RepositoryRelease
 	for _, release := range rawReleases {
-		if !*release.Draft && !*release.Prerelease {
+		if !release.Draft && !release.Prerelease {
 			releases = append(releases, release)
 		}
 	}
@@ -228,7 +244,7 @@ func (f *GithubAssetFetcher) FetchReleaseVersion(owner, repo string, n int) (str
 	// sort all release versions
 	versions := make([]*semver.Version, len(releases))
 	for i, release := range releases {
-		version, err := semver.NewVersion(*release.TagName)
+		version, err := semver.NewVersion(release.TagName)
 		if err != nil {
 			return "", errors.Wrap(err, "parsing semver")
 		}
@@ -238,26 +254,31 @@ func (f *GithubAssetFetcher) FetchReleaseVersion(owner, repo string, n int) (str
 
 	latestVersion := versions[len(versions)-1]
 
-	// get latest patch of previous minor
-	constraint, err := semver.NewConstraint(
-		fmt.Sprintf("~%d.%d.x", latestVersion.Major(), latestVersion.Minor()+int64(n)),
-	)
-	if err != nil {
-		return "", errors.Wrap(err, "parsing semver constraint")
-	}
-	var latestPatchOfPreviousMinor *semver.Version
-	for i := len(versions) - 1; i >= 0; i-- {
-		if constraint.Check(versions[i]) {
-			latestPatchOfPreviousMinor = versions[i]
-			break
+	// Step back one distinct minor at a time and take the highest patch of the minor we
+	// land on. Stepping over the minors that exist, rather than subtracting from the
+	// minor number, keeps this working when a minor is never released.
+	target := latestVersion
+	for steps := n; steps < 0; steps++ {
+		var previousMinor *semver.Version
+		for i := len(versions) - 1; i >= 0; i-- {
+			candidate := versions[i]
+			if candidate.Major() < target.Major() ||
+				(candidate.Major() == target.Major() && candidate.Minor() < target.Minor()) {
+				previousMinor = candidate
+				break
+			}
 		}
+		if previousMinor == nil {
+			return "", fmt.Errorf(
+				"no %s/%s release older than the %d.%d line, cannot go back %d minor version(s) from %s",
+				owner, repo, target.Major(), target.Minor(), -n, latestVersion,
+			)
+		}
+		target = previousMinor
 	}
-	if latestPatchOfPreviousMinor == nil {
-		return "", errors.New("obtaining latest patch of previous minor")
-	}
-	formattedVersion := fmt.Sprintf("v%s", latestPatchOfPreviousMinor.String())
+	formattedVersion := fmt.Sprintf("v%s", target.String())
 
-	err = f.writeCacheManifest(owner, repo, func(cache assetCache) {
+	err := f.writeCacheManifest(owner, repo, func(cache assetCache) {
 		cache[owner][repo].Versions[strconv.Itoa(n)] = formattedVersion
 	})
 	if err != nil {
