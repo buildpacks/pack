@@ -14,15 +14,11 @@ import (
 	"sync"
 	"testing"
 
-	// "github.com/docker/docker/api/types/volume"
-
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/lifecycle/auth"
-	dcontainer "github.com/moby/moby/api/types/container"
-
-	// "github.com/docker/docker/api/types/filters"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/heroku/color"
+	dcontainer "github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"

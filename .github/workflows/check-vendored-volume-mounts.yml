@@ -1,0 +1,55 @@
+name: Check vendored volume mounts
+
+# internal/volume is vendored from moby's daemon/volume/mounts. Nothing in the
+# module graph pins it, so without this the copy rots unnoticed -- which is
+# exactly what happened the first time it was vendored.
+#
+# Two independent checks:
+#   drift    -- our copy still matches the revision it claims to come from
+#   upstream -- that revision is still the latest one
+
+on:
+  schedule:
+    - cron: 0 6 * * 1
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - 'internal/volume/**'
+      - 'tools/vendor-volume-mounts.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: Vendored copy matches its pinned revision
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+      - name: Install goimports
+        run: cd tools && go install golang.org/x/tools/cmd/goimports
+      # Re-fetches the pinned revision, reapplies the documented substitutions
+      # and diffs against the tree, so a hand-edit to internal/volume fails
+      # unless the pin moves with it. mounts.go is hand-reduced and outside this
+      # check by design; the upstream job below is what covers it.
+      - name: Re-derive the vendored files and compare
+        run: tools/vendor-volume-mounts.sh --check
+
+  upstream:
+    name: Pinned revision is still current
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      # Exits non-zero when upstream has moved, after filing or updating a
+      # tracking issue. The non-zero exit is what turns the run red.
+      - name: Look for upstream commits since the pinned revision
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: tools/check-vendored-upstream.sh --open-issue

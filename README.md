@@ -8,6 +8,7 @@
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/4748/badge)](https://bestpractices.coreinfrastructure.org/projects/4748)
 [![Slack](https://img.shields.io/badge/slack-join-ff69b4.svg?logo=slack)](https://slack.cncf.io/)
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/buildpacks/pack)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbuildpacks%2Fpack.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbuildpacks%2Fpack?ref=badge_shield)
 
 `pack` makes it easy for...
 - [**App Developers**][app-dev] to use buildpacks to convert code into runnable images.
@@ -43,3 +44,7 @@ To learn more about the details, check out the [specs repository][specs].
 [specs]: https://github.com/buildpacks/spec/
 [platform-spec]: https://github.com/buildpacks/spec/blob/main/platform.md
 [pack-docs]: https://buildpacks.io/docs/tools/pack/cli/pack/
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fbuildpacks%2Fpack.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fbuildpacks%2Fpack?ref=badge_large)

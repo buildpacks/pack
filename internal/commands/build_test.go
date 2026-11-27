@@ -120,9 +120,9 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 						Return(nil)
 
 					logger.WantVerbose(true)
-					command.SetArgs([]string{"image", "--builder", "heroku/builder:24"})
+					command.SetArgs([]string{"image", "--builder", "heroku/builder:26"})
 					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:24' is trusted")
+					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:26' is trusted")
 				})
 			})
 
@@ -133,9 +133,22 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 						Return(nil)
 
 					logger.WantVerbose(true)
-					command.SetArgs([]string{"image", "--builder", "heroku/builder:22"})
+					command.SetArgs([]string{"image", "--builder", "heroku/builder:24"})
 					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:22' is trusted")
+					h.AssertContains(t, outBuf.String(), "Builder 'heroku/builder:24' is trusted")
+				})
+			})
+
+			when("the builder is a tagged reference of a tagless known trusted builder", func() {
+				it("sets the trust builder option", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(true)).
+						Return(nil)
+
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"image", "--builder", "paketobuildpacks/builder-jammy-base:latest"})
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Builder 'paketobuildpacks/builder-jammy-base:latest' is trusted")
 				})
 			})
 
@@ -170,6 +183,18 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					command.SetArgs([]string{"docker.io/buildpacksio/lifecycle:test", "--builder", "test", "--trust-builder"})
 					h.AssertNotNil(t, command.Execute())
 					h.AssertContains(t, outBuf.String(), "name must not match default lifecycle image name")
+				})
+			})
+
+			when("the image name matches the default builder name", func() {
+				it("refuses to build", func() {
+					cfg := config.Config{DefaultBuilder: "some-org/default-builder:latest"}
+					command = commands.Build(logger, cfg, mockClient)
+
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"some-org/default-builder:test", "--builder", "test", "--trust-builder"})
+					h.AssertNotNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "name must not match default builder image name")
 				})
 			})
 

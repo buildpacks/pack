@@ -121,7 +121,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if err != nil {
 				return err
 			}
-			trustBuilder := isTrusted || bldr.IsKnownTrustedBuilder(builder) || flags.TrustBuilder
+			trustBuilder := isTrusted || flags.TrustBuilder
 			if trustBuilder {
 				logger.Debugf("Builder %s is trusted", style.Symbol(builder))
 				if flags.LifecycleImage != "" {
@@ -477,7 +477,7 @@ func isForbiddenTag(cfg config.Config, input, lifecycle, builder string) error {
 		if err != nil {
 			return errors.Wrapf(err, "parsing default builder %s", cfg.DefaultBuilder)
 		}
-		if inputImage.Context().RepositoryStr() == defaultBuilderImage.Context().RegistryStr() {
+		if inputImage.Context().RepositoryStr() == defaultBuilderImage.Context().RepositoryStr() {
 			return fmt.Errorf("name must not match default builder image name")
 		}
 	}

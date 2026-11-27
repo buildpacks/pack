@@ -70,6 +70,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		fakeMirror2                  *fakes.Image
 		tmpDir                       string
 		outBuf                       bytes.Buffer
+		errBuf                       bytes.Buffer
 		logger                       *logging.LogWithWriters
 		fakeLifecycleImage           *fakes.Image
 
@@ -129,7 +130,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		docker, err := dockerclient.New(dockerclient.FromEnv)
 		h.AssertNil(t, err)
 
-		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &errBuf)
 
 		dlCacheDir, err := os.MkdirTemp(tmpDir, "dl-cache")
 		h.AssertNil(t, err)
@@ -1795,7 +1796,12 @@ api = "0.2"
 
 					it.After(func() {
 						os.Unsetenv("PACK_HOME")
-						h.AssertNil(t, os.RemoveAll(tmpDir))
+						err := os.RemoveAll(tmpDir)
+						if runtime.GOOS != "windows" {
+							// avoid "The process cannot access the file because it is being used by another process"
+							// error on Windows
+							h.AssertNil(t, err)
+						}
 					})
 
 					it("all buildpacks are added to ephemeral builder", func() {

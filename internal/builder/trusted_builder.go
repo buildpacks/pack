@@ -25,21 +25,21 @@ var KnownBuilders = []KnownBuilder{
 	{
 		Vendor:             "Heroku",
 		Image:              "heroku/builder:26",
-		DefaultDescription: "Ubuntu 26.04 AMD64+ARM64 base image with buildpacks for .NET, Go, Java, Node.js, Python & Scala",
-		Suggested:          false,
-		Trusted:            true,
-	},
-	{
-		Vendor:             "Heroku",
-		Image:              "heroku/builder:24",
-		DefaultDescription: "Ubuntu 24.04 AMD64+ARM64 base image with buildpacks for Go, Java, Node.js, PHP, Python, Ruby & Scala.",
+		DefaultDescription: "Ubuntu 26.04 AMD64+ARM64 base image with buildpacks for .NET, Go, Java, Node.js, PHP, Python, Ruby & Scala.",
 		Suggested:          true,
 		Trusted:            true,
 	},
 	{
 		Vendor:             "Heroku",
+		Image:              "heroku/builder:24",
+		DefaultDescription: "Ubuntu 24.04 AMD64+ARM64 base image with buildpacks for .NET, Go, Java, Node.js, PHP, Python, Ruby & Scala.",
+		Suggested:          false,
+		Trusted:            true,
+	},
+	{
+		Vendor:             "Heroku",
 		Image:              "heroku/builder:22",
-		DefaultDescription: "Ubuntu 22.04 AMD64 base image with buildpacks for Go, Java, Node.js, PHP, Python, Ruby & Scala.",
+		DefaultDescription: "Ubuntu 22.04 AMD64 base image with buildpacks for .NET, Go, Java, Node.js, PHP, Python, Ruby & Scala.",
 		Suggested:          false,
 		Trusted:            true,
 	},
@@ -53,35 +53,42 @@ var KnownBuilders = []KnownBuilder{
 	{
 		Vendor:             "Paketo Buildpacks",
 		Image:              "paketobuildpacks/builder-jammy-base",
-		DefaultDescription: "Small base image with buildpacks for Java, Node.js, Golang, .NET Core, Python & Ruby",
+		DefaultDescription: "Ubuntu 22.04 Jammy Jellyfish AMD64 small base image with buildpacks for Java, Node.js, Golang, .NET Core, Python & Ruby",
 		Suggested:          true,
 		Trusted:            true,
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
 		Image:              "paketobuildpacks/builder-jammy-full",
-		DefaultDescription: "Larger base image with buildpacks for Java, Node.js, Golang, .NET Core, Python, Ruby, & PHP",
+		DefaultDescription: "Ubuntu 22.04 Jammy Jellyfish AMD64 larger base image with buildpacks for Java, Node.js, Golang, .NET Core, Python, Ruby, & PHP",
 		Suggested:          true,
 		Trusted:            true,
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
 		Image:              "paketobuildpacks/builder-jammy-tiny",
-		DefaultDescription: "Tiny base image (jammy build image, distroless run image) with buildpacks for Golang & Java",
+		DefaultDescription: "Ubuntu 22.04 Jammy Jellyfish AMD64 tiny base image (jammy build image, distroless run image) with buildpacks for Golang & Java",
 		Suggested:          true,
 		Trusted:            true,
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
 		Image:              "paketobuildpacks/builder-jammy-buildpackless-static",
-		DefaultDescription: "Static base image (jammy build image, distroless run image) suitable for static binaries like Go or Rust",
+		DefaultDescription: "Ubuntu 22.04 Jammy Jellyfish AMD64 static base image (jammy build image, distroless run image) suitable for static binaries like Golang or Rust",
 		Suggested:          true,
 		Trusted:            true,
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
 		Image:              "paketobuildpacks/ubuntu-noble-builder",
-		DefaultDescription: "Small base image with buildpacks for Java, Node.js or .NET Core",
+		DefaultDescription: "Ubuntu 24.04 Noble Numbat AMD64+ARM64 small base image with buildpacks for Java, Golang, Node.js, .NET Core, PHP, Python and Ruby",
+		Suggested:          true,
+		Trusted:            true,
+	},
+	{
+		Vendor:             "Paketo Buildpacks",
+		Image:              "paketobuildpacks/ubuntu-resolute-builder",
+		DefaultDescription: "Ubuntu 26.04 AMD64+ARM64 Resolute Raccoon small base image with buildpacks for Java, Golang, Node.js, .NET Core, PHP and Ruby",
 		Suggested:          true,
 		Trusted:            true,
 	},
@@ -95,26 +102,25 @@ var KnownBuilders = []KnownBuilder{
 	{
 		Vendor:             "Paketo Buildpacks",
 		Image:              "paketobuildpacks/ubi-9-builder",
-		DefaultDescription: "Universal Base Image (RHEL9) with buildpacks to build Node.js runtimes.",
+		DefaultDescription: "Universal Base Image (RHEL9) AMD64+ARM64 with buildpacks to build Node.js runtimes.",
 		Suggested:          true,
 		Trusted:            true,
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
 		Image:              "paketobuildpacks/ubi-10-builder",
-		DefaultDescription: "Universal Base Image (RHEL10) with buildpacks to build Node.js runtimes.",
+		DefaultDescription: "Universal Base Image (RHEL10) AMD64+ARM64 with buildpacks to build Node.js runtimes.",
 		Suggested:          true,
 		Trusted:            true,
 	},
 }
 
 func IsKnownTrustedBuilder(builderName string) bool {
-	for _, knownBuilder := range KnownBuilders {
-		if builderName == knownBuilder.Image && knownBuilder.Trusted {
-			return true
-		}
+	builderReference, err := name.ParseReference(builderName, name.WithDefaultTag(""))
+	if err != nil {
+		return false
 	}
-	return false
+	return matchesAnyKnownTrustedBuilder(builderReference)
 }
 
 func IsTrustedBuilder(cfg config.Config, builderName string) (bool, error) {
@@ -122,20 +128,48 @@ func IsTrustedBuilder(cfg config.Config, builderName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	if matchesAnyKnownTrustedBuilder(builderReference) {
+		return true, nil
+	}
+
 	for _, trustedBuilder := range cfg.TrustedBuilders {
 		trustedBuilderReference, err := name.ParseReference(trustedBuilder.Name, name.WithDefaultTag(""))
 		if err != nil {
 			return false, err
 		}
-		if trustedBuilderReference.Identifier() != "" {
-			if builderReference.Name() == trustedBuilderReference.Name() {
-				return true, nil
-			}
-		} else {
-			if builderReference.Context().RepositoryStr() == trustedBuilderReference.Context().RepositoryStr() {
-				return true, nil
-			}
+		if referencesMatch(builderReference, trustedBuilderReference) {
+			return true, nil
 		}
 	}
+
 	return false, nil
+}
+
+func matchesAnyKnownTrustedBuilder(builderReference name.Reference) bool {
+	for _, knownBuilder := range KnownBuilders {
+		if !knownBuilder.Trusted {
+			continue
+		}
+		trustedBuilderReference, err := name.ParseReference(knownBuilder.Image, name.WithDefaultTag(""))
+		if err != nil {
+			continue
+		}
+		if referencesMatch(builderReference, trustedBuilderReference) {
+			return true
+		}
+	}
+	return false
+}
+
+// referencesMatch reports whether builderReference is trusted by trustedBuilderReference.
+// Tagless trusted entries match any tag in the same repository; tagged entries require an exact match.
+// Both comparisons include the registry: RepositoryStr would drop it, which would trust the same
+// repository path served by any registry, and trusting a builder puts registry credentials on its
+// build image. Trusting a mirror therefore means naming it in full.
+func referencesMatch(builderReference, trustedBuilderReference name.Reference) bool {
+	if trustedBuilderReference.Identifier() != "" {
+		return builderReference.Name() == trustedBuilderReference.Name()
+	}
+	return builderReference.Context().Name() == trustedBuilderReference.Context().Name()
 }

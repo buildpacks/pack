@@ -26,12 +26,12 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 
-	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-git/go-git/v5"
 	"github.com/google/go-cmp/cmp"
 	"github.com/heroku/color"
+	"github.com/moby/moby/api/pkg/stdcopy"
 	dcontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/jsonstream"
 	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 
@@ -325,7 +325,7 @@ func AssertTarball(t *testing.T, path string) {
 }
 
 func isNil(value interface{}) bool {
-	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
+	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Pointer && reflect.ValueOf(value).IsNil())
 }
 
 func hasMatches(actual, exp string) bool {
@@ -428,7 +428,7 @@ func checkResponse(responseBody io.Reader) error {
 			continue
 		}
 
-		var msg jsonmessage.JSONMessage
+		var msg jsonstream.Message
 		err := json.Unmarshal(line, &msg)
 		if err != nil {
 			return errors.Wrapf(err, "expected JSON: %s", string(line))
