@@ -82,4 +82,4 @@ Here's a simple template you can use:
 [contributing]: https://github.com/buildpacks/.github/blob/main/CONTRIBUTING.md
 [security]: https://github.com/buildpacks/.github/blob/main/SECURITY.md
 [support]: https://github.com/buildpacks/.github/blob/main/SUPPORT.md
-[pull-request-process]: https://github.com/buildpacks/.github/blob/main/CONTRIBUTIONS.md#pull-request-process
+[pull-request-process]: https://github.com/buildpacks/.github/blob/main/CONTRIBUTING.md#pull-request-process
