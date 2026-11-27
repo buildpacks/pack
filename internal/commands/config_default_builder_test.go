@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
@@ -195,6 +197,35 @@ func testConfigDefaultBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					h.AssertNotNil(t, cmd.Execute())
 					h.AssertContains(t, outBuf.String(), "builder 'nonexisting/image' not found")
+				})
+			})
+
+			when("SIGINT is received during query", func() {
+				it("aborts the operation", func() {
+					imageName := "myremotehub.com/buildpacks/builder:latest"
+
+					mockClient.EXPECT().InspectBuilder(imageName, true, gomock.Any()).DoAndReturn(func(string, bool, ...client.BuilderInspectionModifier) (*client.BuilderInfo, error) {
+						time.Sleep(5 * time.Second)
+						return nil, nil
+					})
+
+					done := make(chan error, 1)
+					go func() {
+						cmd.SetArgs([]string{imageName})
+						done <- cmd.Execute()
+					}()
+
+					time.Sleep(2 * time.Second)
+
+					p, err := os.FindProcess(os.Getpid())
+					h.AssertNil(t, err)
+					err = p.Signal(syscall.SIGINT)
+					h.AssertNil(t, err)
+
+					err = <-done
+
+					h.AssertError(t, err, "operation aborted")
+					h.AssertContains(t, outBuf.String(), "operation aborted")
 				})
 			})
 		})
