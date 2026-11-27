@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795616448351,
+  "lastUpdate": 1795790489973,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15736,6 +15736,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 174763096083,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rsoerensen@salesforce.com",
+            "name": "Rune Soerensen",
+            "username": "runesoerensen"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "293a0edf0e5bc3115757a4c923dcf47125494a49",
+          "message": "Consolidate trust logic into `IsTrustedBuilder` (#2573)\n\n* Add failing test for `IsTrustedBuilder` not matching tagless known builders\n\nSigned-off-by: Rune Soerensen <rsoerensen@salesforce.com>\n\n* Consolidate trust logic in IsTrustedBuilder with smart tag matching\n\nSigned-off-by: Rune Soerensen <rsoerensen@salesforce.com>\n\n* Apply smart matching to IsKnownTrustedBuilder\n\nMake IsKnownTrustedBuilder use the same name.ParseReference matching as\nIsTrustedBuilder so tagless known entries match any tag in the same\nrepository. This fixes the SDK default at pkg/client/build.go and the\n\"can't untrust a known builder\" guard in config trusted-builders remove,\nboth of which still relied on exact-string matching.\n\nSigned-off-by: Rune Soerensen <rsoerensen@salesforce.com>\n\n* Add caller-level tests for tagged known trusted builders\n\nAdd regression coverage at the command layer to guard against future\nrefactors that bypass the smart-matching helpers: build, builder\ninspect, and config trusted-builders add now each verify that a tagged\nreference (paketobuildpacks/builder-jammy-base:latest) is treated as\ntrusted via the tagless known entry.\n\nSigned-off-by: Rune Soerensen <rsoerensen@salesforce.com>\n\n* Keep trusted builder matching scoped to the registry\n\nreferencesMatch compared Context().RepositoryStr() for tagless trusted\nentries, and that drops the registry. Since IsKnownTrustedBuilder now\nshares this matching, it widened the hardcoded trust list rather than\nonly fixing the tag comparison: example.com/paketobuildpacks/builder-jammy-base\nresolved as trusted, where an exact string match had rejected it. It\napplied to all nine tagless paketobuildpacks entries; the tagged ones\ncompare Name(), which carries the registry, and were unaffected.\n\nTrusting a builder places registry credentials on its build image and\nKnownBuilders needs no user opt-in, so compare Context().Name() instead.\nTagless entries still match any tag, now within one registry only.\n\nThis also scopes user-configured entries, which were already registry\nblind before this branch. Trusting a mirror now means configuring it by\nits full name.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\n\n---------\n\nSigned-off-by: Rune Soerensen <rsoerensen@salesforce.com>\nSigned-off-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>\nCo-authored-by: Claude Opus 5 <noreply@anthropic.com>",
+          "timestamp": "2026-11-27T14:37:12Z",
+          "tree_id": "be1c480c0859a8bf87a69c7a27a669517085dc93",
+          "url": "https://github.com/buildpacks/pack/commit/293a0edf0e5bc3115757a4c923dcf47125494a49"
+        },
+        "date": 1795790488553,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 211440986882,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
