@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/buildpacks/imgutil"
@@ -14,12 +16,15 @@ import (
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/registry"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/heroku/color"
 	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/logging"
@@ -29,6 +34,55 @@ import (
 
 var docker *client.Client
 var registryConfig *h.TestRegistryConfig
+
+type anonymousKeychain struct{}
+
+func (anonymousKeychain) Resolve(authn.Resource) (authn.Authenticator, error) {
+	return authn.Anonymous, nil
+}
+
+func TestFetchPreservesHistoryWhenRequested(t *testing.T) {
+	registryServer := httptest.NewServer(registry.New())
+	defer registryServer.Close()
+
+	registryHost := strings.TrimPrefix(registryServer.URL, "http://")
+	repoName := registryHost + "/pack/history"
+	registryOption := remote.WithRegistrySetting(registryHost, true)
+	keychain := anonymousKeychain{}
+
+	baseLayerPath := filepath.Join(t.TempDir(), "base.tar")
+	h.AssertNil(t, archive.CreateSingleFileTar(baseLayerPath, "/base", "base"))
+	baseLayerDiffID, err := dist.LayerDiffID(baseLayerPath)
+	h.AssertNil(t, err)
+
+	baseImage, err := remote.NewImage(repoName, keychain, registryOption, remote.WithHistory())
+	h.AssertNil(t, err)
+	h.AssertNil(t, baseImage.AddLayerWithDiffIDAndHistory(baseLayerPath, baseLayerDiffID.String(), v1.History{CreatedBy: "Base image layer"}))
+	h.AssertNil(t, baseImage.Save())
+
+	var outBuf bytes.Buffer
+	imageFetcher := image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), nil, image.WithKeychain(keychain))
+	fetchedImage, err := imageFetcher.Fetch(context.Background(), repoName, image.FetchOptions{
+		PullPolicy:         image.PullAlways,
+		InsecureRegistries: []string{registryHost},
+		PreserveHistory:    true,
+	})
+	h.AssertNil(t, err)
+
+	builderLayerPath := filepath.Join(t.TempDir(), "builder.tar")
+	h.AssertNil(t, archive.CreateSingleFileTar(builderLayerPath, "/builder", "builder"))
+	builderLayerDiffID, err := dist.LayerDiffID(builderLayerPath)
+	h.AssertNil(t, err)
+	h.AssertNil(t, fetchedImage.AddLayerWithDiffIDAndHistory(builderLayerPath, builderLayerDiffID.String(), v1.History{CreatedBy: "Builder layer"}))
+	h.AssertNil(t, fetchedImage.Save())
+
+	savedImage, err := remote.NewImage(repoName, keychain, remote.FromBaseImage(repoName), registryOption, remote.WithHistory())
+	h.AssertNil(t, err)
+	history, err := savedImage.History()
+	h.AssertNil(t, err)
+	h.AssertEq(t, len(history), 2)
+	h.AssertEq(t, []string{history[0].CreatedBy, history[1].CreatedBy}, []string{"Base image layer", "Builder layer"})
+}
 
 func TestFetcher(t *testing.T) {
 	color.Disable(true)
