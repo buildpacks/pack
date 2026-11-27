@@ -2,6 +2,7 @@ package archive_test
 
 import (
 	"archive/tar"
+	"bytes"
 	"net"
 	"os"
 	"path/filepath"
@@ -154,6 +155,42 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				reader := strings.NewReader("abcde")
 				_, _, err := archive.ReadTarEntry(reader, "file1")
 				h.AssertError(t, err, "get next tar entry")
+			})
+		})
+
+		when("tar entry exceeds max size via header", func() {
+			it("returns an error", func() {
+				var buf bytes.Buffer
+				tw := tar.NewWriter(&buf)
+				h.AssertNil(t, tw.WriteHeader(&tar.Header{
+					Name: "bigfile",
+					Size: 5 * 1024 * 1024, // 5 MB — over the 4 MB limit
+					Mode: 0644,
+				}))
+				// Don't write data; ReadTarEntry rejects on header size before reading.
+				_ = tw.Close()
+
+				_, _, err := archive.ReadTarEntry(&buf, "bigfile")
+				h.AssertError(t, err, "too large")
+			})
+		})
+
+		when("tar entry exceeds max size via actual content", func() {
+			it("returns an error", func() {
+				var buf bytes.Buffer
+				tw := tar.NewWriter(&buf)
+				content := make([]byte, 5*1024*1024) // 5 MB
+				h.AssertNil(t, tw.WriteHeader(&tar.Header{
+					Name: "bigfile",
+					Size: int64(len(content)),
+					Mode: 0644,
+				}))
+				_, writeErr := tw.Write(content)
+				h.AssertNil(t, writeErr)
+				h.AssertNil(t, tw.Close())
+
+				_, _, err := archive.ReadTarEntry(&buf, "bigfile")
+				h.AssertError(t, err, "too large")
 			})
 		})
 	})
