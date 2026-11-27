@@ -273,6 +273,25 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					h.AssertEq(t, strings.TrimSpace(outBuf.String()), "example.io/some/app@sha256:363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4")
 				})
+
+				it("does not leave a colon after the name when the image has a tag", func() {
+					logger.WantQuiet(true)
+
+					digest, err := name.NewDigest("example.io/some/app@sha256:363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4", name.WeakValidation)
+					h.AssertNil(t, err)
+					taggedImage := fakes.NewImage("example.io/some/app:v1", "", remote.DigestIdentifier{Digest: digest})
+					defer func() { h.AssertNilE(t, taggedImage.Cleanup()) }()
+					fakeImageFetcher.RemoteImages[taggedImage.Name()] = taggedImage
+
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "example.io/some/app:v1",
+						Builder: defaultBuilderName,
+						AppPath: filepath.Join("testdata", "some-app"),
+						Publish: true,
+					}))
+
+					h.AssertEq(t, strings.TrimSpace(outBuf.String()), "example.io/some/app@sha256:363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4")
+				})
 			})
 
 			when("local", func() {
@@ -292,6 +311,24 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:   "some/app",
+						Builder: defaultBuilderName,
+						AppPath: filepath.Join("testdata", "some-app"),
+					}))
+
+					h.AssertEq(t, strings.TrimSpace(outBuf.String()), "some/app@sha256:363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4")
+				})
+
+				it("does not leave a colon after the name when the image has a tag", func() {
+					logger.WantQuiet(true)
+
+					taggedImage := fakes.NewImage("index.docker.io/some/app:v1", "", local.IDIdentifier{
+						ImageID: "363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4",
+					})
+					defer func() { h.AssertNilE(t, taggedImage.Cleanup()) }()
+					fakeImageFetcher.LocalImages[taggedImage.Name()] = taggedImage
+
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app:v1",
 						Builder: defaultBuilderName,
 						AppPath: filepath.Join("testdata", "some-app"),
 					}))
