@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
@@ -87,16 +86,27 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 	if err != nil {
 		return err
 	}
+	targets = dist.ExpandTargetsDistributions(targets...)
 	multiArch := len(targets) > 1 && (opts.Publish || opts.Format == FormatFile)
+	var filePackage *buildpack.FilePackageBuilder
+	if multiArch && opts.Format == FormatFile {
+		filePackage, err = buildpack.NewFilePackageBuilder()
+		if err != nil {
+			return err
+		}
+		defer filePackage.Close()
+	}
 
 	var digests []string
-	targets = dist.ExpandTargetsDistributions(targets...)
 	for _, target := range targets {
-		digest, err := c.packageBuildpackTarget(ctx, opts, target, multiArch)
+		digest, err := c.packageBuildpackTarget(ctx, opts, target, multiArch, filePackage)
 		if err != nil {
 			return err
 		}
 		digests = append(digests, digest)
+	}
+	if filePackage != nil {
+		return filePackage.Save(opts.Name)
 	}
 
 	if opts.Publish && len(digests) > 1 {
@@ -111,7 +121,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 	return nil
 }
 
-func (c *Client) packageBuildpackTarget(ctx context.Context, opts PackageBuildpackOptions, target dist.Target, multiArch bool) (string, error) {
+func (c *Client) packageBuildpackTarget(ctx context.Context, opts PackageBuildpackOptions, target dist.Target, multiArch bool, filePackage *buildpack.FilePackageBuilder) (string, error) {
 	var digest string
 	if target.OS == "windows" && !c.experimental {
 		return "", NewExperimentError("Windows buildpackage support is currently experimental.")
@@ -187,17 +197,11 @@ func (c *Client) packageBuildpackTarget(ctx context.Context, opts PackageBuildpa
 
 	switch opts.Format {
 	case FormatFile:
-		name := opts.Name
-		if multiArch {
-			extension := filepath.Ext(name)
-			origFileName := name[:len(name)-len(filepath.Ext(name))]
-			if target.Arch != "" {
-				name = fmt.Sprintf("%s-%s-%s%s", origFileName, target.OS, target.Arch, extension)
-			} else {
-				name = fmt.Sprintf("%s-%s%s", origFileName, target.OS, extension)
-			}
+		if filePackage != nil {
+			err = filePackage.Add(packageBuilder, target, opts.Labels)
+		} else {
+			err = packageBuilder.SaveAsFile(opts.Name, target, opts.Labels)
 		}
-		err = packageBuilder.SaveAsFile(name, target, opts.Labels)
 		if err != nil {
 			return digest, err
 		}
