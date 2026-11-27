@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795790489973,
+  "lastUpdate": 1795792432929,
   "repoUrl": "https://github.com/buildpacks/pack",
   "entries": {
     "Go Benchmark": [
@@ -15766,6 +15766,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "BenchmarkBuild/with_Additional_Buildpack",
             "value": 211440986882,
+            "unit": "ns/op",
+            "extra": "1 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "rsoerensen@salesforce.com",
+            "name": "Rune Soerensen",
+            "username": "runesoerensen"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0d45cad6fcd5f4438d37adaad065653ee1b7d241",
+          "message": "Pin Beta Release tag to build commit (#2604)\n\nThe `Create Beta Release` step in `build.yml` doesn't set `target_commitish`, so `softprops/action-gh-release` defaults the tag to `main`. Because `release-merge.yml` runs in parallel and pushes the release branch into `main`, by the time the Beta Release step runs, `main` may include commits that aren't in the binary causing the\npublished artifacts and the source at the tag to silently disagree (as happened in v0.40.5; see #2603).\n\nSet `target_commitish: ${{ github.sha }}` to pin the tag to the release-branch commit the binaries were built from. Mirrors what the `Create Pre-Release` step already does.\n\nFixes #2603\n\nSigned-off-by: Rune Soerensen <rsoerensen@salesforce.com>\nCo-authored-by: Juan Bustamante <bustamantejj@gmail.com>",
+          "timestamp": "2026-11-27T15:09:57Z",
+          "tree_id": "7a816f233f522f49d15ee0c1493bdd34d2316267",
+          "url": "https://github.com/buildpacks/pack/commit/0d45cad6fcd5f4438d37adaad065653ee1b7d241"
+        },
+        "date": 1795792431946,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkBuild/with_Additional_Buildpack",
+            "value": 195561528475,
             "unit": "ns/op",
             "extra": "1 times\n4 procs"
           }
