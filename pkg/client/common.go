@@ -78,12 +78,12 @@ func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, run
 }
 
 func getRegistry(logger logging.Logger, registryName string) (registry.Cache, error) {
-	home, err := config.PackHome()
+	cacheDir, err := config.CacheDir()
 	if err != nil {
 		return registry.Cache{}, err
 	}
 
-	if err := config.MkdirAll(home); err != nil {
+	if err := config.MkdirAll(cacheDir); err != nil {
 		return registry.Cache{}, err
 	}
 
@@ -93,12 +93,12 @@ func getRegistry(logger logging.Logger, registryName string) (registry.Cache, er
 	}
 
 	if registryName == "" {
-		return registry.NewDefaultRegistryCache(logger, home)
+		return registry.NewDefaultRegistryCache(logger, cacheDir)
 	}
 
 	for _, reg := range config.GetRegistries(cfg) {
 		if reg.Name == registryName {
-			return registry.NewRegistryCache(logger, home, reg.URL)
+			return registry.NewRegistryCache(logger, cacheDir, reg.URL)
 		}
 	}
 

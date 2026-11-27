@@ -89,7 +89,7 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 					when("no errors on save", func() {
 						it.Before(func() {
 							indexRepoName = h.NewRandomIndexRepoName()
-							indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+							indexLocalPath = filepath.Join(tmpDir, "pack", "manifests", imgutil.MakeFileSafeName(indexRepoName))
 						})
 
 						when("no media type is provided", func() {
@@ -134,7 +134,7 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 					when("no errors on save", func() {
 						it.Before(func() {
 							indexRepoName = h.NewRandomIndexRepoName()
-							indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+							indexLocalPath = filepath.Join(tmpDir, "pack", "manifests", imgutil.MakeFileSafeName(indexRepoName))
 
 							// index stub return to check if push operation was called
 							index = h.NewMockImageIndex(t, indexRepoName, 0, 0)
@@ -176,7 +176,7 @@ func testCreateManifest(t *testing.T, when spec.G, it spec.S) {
 						)
 
 						indexRepoName = h.NewRandomIndexRepoName()
-						indexLocalPath = filepath.Join(tmpDir, imgutil.MakeFileSafeName(indexRepoName))
+						indexLocalPath = filepath.Join(tmpDir, "pack", "manifests", imgutil.MakeFileSafeName(indexRepoName))
 					})
 
 					it("creates an empty index with OCI media-type", func() {
