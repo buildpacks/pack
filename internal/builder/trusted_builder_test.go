@@ -34,6 +34,13 @@ func trustedBuilder(t *testing.T, when spec.G, it spec.S) {
 		it("does not match unknown builders", func() {
 			h.AssertFalse(t, bldr.IsKnownTrustedBuilder("my/private/builder"))
 		})
+		it("does not match the same repository served by another registry", func() {
+			h.AssertFalse(t, bldr.IsKnownTrustedBuilder("example.com/paketobuildpacks/builder-jammy-base"))
+			h.AssertFalse(t, bldr.IsKnownTrustedBuilder("example.com/paketobuildpacks/builder-jammy-base:latest"))
+			h.AssertFalse(t, bldr.IsKnownTrustedBuilder("example.com:5000/paketobuildpacks/builder-jammy-base"))
+			h.AssertFalse(t, bldr.IsKnownTrustedBuilder("example.com/buildpacks/builder:google-22"))
+			h.AssertFalse(t, bldr.IsKnownTrustedBuilder("example.com/heroku/builder:24"))
+		})
 	})
 
 	when("IsTrustedBuilder", func() {
@@ -52,6 +59,52 @@ func trustedBuilder(t *testing.T, when spec.G, it spec.S) {
 			isTrusted, err = bldr.IsTrustedBuilder(config.Config{}, "my/private/builder")
 			h.AssertNil(t, err)
 			h.AssertFalse(t, isTrusted)
+		})
+
+		it("does not trust a known builder's repository served by another registry", func() {
+			for _, builder := range []string{
+				"example.com/paketobuildpacks/builder-jammy-base",
+				"example.com/paketobuildpacks/builder-jammy-base:latest",
+				"example.com/heroku/builder:24",
+			} {
+				isTrusted, err := bldr.IsTrustedBuilder(config.Config{}, builder)
+				h.AssertNil(t, err)
+				h.AssertFalse(t, isTrusted)
+			}
+		})
+
+		it("scopes configured builders to their registry", func() {
+			cfg := config.Config{
+				TrustedBuilders: []config.TrustedBuilder{
+					{
+						Name: "mirror.example.com/paketobuildpacks/builder-jammy-base",
+					},
+				},
+			}
+
+			// The mirror is named in full, so any tag of it is trusted.
+			trustedBuilders := []string{
+				"mirror.example.com/paketobuildpacks/builder-jammy-base",
+				"mirror.example.com/paketobuildpacks/builder-jammy-base:1.2.3",
+			}
+
+			// Configuring one registry must not trust the same path elsewhere.
+			untrustedBuilders := []string{
+				"other.example.com/paketobuildpacks/builder-jammy-base",
+				"other.example.com/paketobuildpacks/builder-jammy-base:1.2.3",
+			}
+
+			for _, builder := range trustedBuilders {
+				isTrusted, err := bldr.IsTrustedBuilder(cfg, builder)
+				h.AssertNil(t, err)
+				h.AssertTrue(t, isTrusted)
+			}
+
+			for _, builder := range untrustedBuilders {
+				isTrusted, err := bldr.IsTrustedBuilder(cfg, builder)
+				h.AssertNil(t, err)
+				h.AssertFalse(t, isTrusted)
+			}
 		})
 
 		it("trust image without tag", func() {

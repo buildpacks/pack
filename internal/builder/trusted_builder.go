@@ -164,9 +164,12 @@ func matchesAnyKnownTrustedBuilder(builderReference name.Reference) bool {
 
 // referencesMatch reports whether builderReference is trusted by trustedBuilderReference.
 // Tagless trusted entries match any tag in the same repository; tagged entries require an exact match.
+// Both comparisons include the registry: RepositoryStr would drop it, which would trust the same
+// repository path served by any registry, and trusting a builder puts registry credentials on its
+// build image. Trusting a mirror therefore means naming it in full.
 func referencesMatch(builderReference, trustedBuilderReference name.Reference) bool {
 	if trustedBuilderReference.Identifier() != "" {
 		return builderReference.Name() == trustedBuilderReference.Name()
 	}
-	return builderReference.Context().RepositoryStr() == trustedBuilderReference.Context().RepositoryStr()
+	return builderReference.Context().Name() == trustedBuilderReference.Context().Name()
 }
