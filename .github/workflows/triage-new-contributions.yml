@@ -18,6 +18,11 @@ permissions:
 
 jobs:
   add-triage-label:
+    # dependabot applies the dependencies label just after opening the pull request, not
+    # in the call that opens it, so the label check below only wins that race because a
+    # runner takes longer than that to start. Skipping the actor makes keeping dependency
+    # bumps out of triage certain rather than timing dependent.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Add status/triage
@@ -38,8 +43,8 @@ jobs:
 
             // Anything already categorised is left alone. A status/ label means a template
             // or one of the bots that file their own issues has set one. The dependencies
-            // label means dependabot, which sets it in dependabot.yml; those pull requests
-            // are kept as they are and reviewed as a group rather than through triage.
+            // label is the second net for dependabot, which the job condition already
+            // skips; those pull requests are reviewed as a group rather than through triage.
             const categorised = labels.filter(label => label.startsWith('status/') || label === 'dependencies');
 
             if (categorised.length > 0) {
