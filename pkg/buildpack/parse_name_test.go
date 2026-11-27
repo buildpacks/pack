@@ -97,6 +97,16 @@ func testParseName(t *testing.T, when spec.G, it spec.S) {
 				expectedImageName: "docker.io/ns/name:latest",
 			},
 			{
+				desc:              "docker scheme w/ host port",
+				locator:           "docker://localhost:5000/ns/name:latest",
+				expectedImageName: "localhost:5000/ns/name:latest",
+			},
+			{
+				desc:              "docker scheme w/ host port (missing host shorthand)",
+				locator:           "docker:///localhost:5000/ns/name:latest",
+				expectedImageName: "localhost:5000/ns/name:latest",
+			},
+			{
 				desc:              "schemaless w/ host",
 				locator:           "docker.io/ns/name:latest",
 				expectedImageName: "docker.io/ns/name:latest",
