@@ -3,6 +3,7 @@ package build_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -324,6 +325,81 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						h.AssertSliceContains(t, entry.ContainerConfig().Cmd, "/some/image")
 					}
 				}
+			})
+
+			when("the export fails", func() {
+				var (
+					phase   *scriptedPhase
+					retries []int
+					opts    build.LifecycleOptions
+				)
+				exportFailed := errors.New("failed with status code: 62")
+
+				it.Before(func() {
+					retries = nil
+					opts = build.LifecycleOptions{
+						RunImage:   "test",
+						Image:      imageName,
+						Builder:    fakeBuilder,
+						UseCreator: true,
+						Termui:     fakeTermui,
+						ExportRetry: func(attempt int, err error) (time.Duration, bool) {
+							retries = append(retries, attempt)
+							return 0, attempt < 3
+						},
+					}
+				})
+
+				run := func() error {
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
+					h.AssertNil(t, err)
+					return lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+						return fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(phase))
+					})
+				}
+
+				it("exports again from the layers already built, without running the creator again", func() {
+					phase = &scriptedPhase{errs: []error{exportFailed}}
+					factory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(phase))
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, "some-temp-dir", opts)
+					h.AssertNil(t, err)
+					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+						return factory
+					})
+					h.AssertNil(t, err)
+					h.AssertEq(t, retries, []int{1})
+					h.AssertEq(t, len(factory.NewCalledWithProvider), 2)
+					h.AssertEq(t, factory.NewCalledWithProvider[0].Name(), "creator")
+					exporter := factory.NewCalledWithProvider[1]
+					h.AssertEq(t, exporter.Name(), "exporter")
+					// No separate lifecycle image in the creator flow: the builder carries the exporter.
+					h.AssertEq(t, exporter.ContainerConfig().Image, fakeBuilder.Name())
+					h.AssertSliceContains(t, exporter.ContainerConfig().Cmd, "/some/image")
+				})
+
+				it("stops when ExportRetry says so and returns the last export error", func() {
+					phase = &scriptedPhase{errs: []error{exportFailed, exportFailed, exportFailed, exportFailed}}
+					err := run()
+					h.AssertError(t, err, "failed with status code: 62")
+					h.AssertEq(t, retries, []int{1, 2, 3})
+					h.AssertEq(t, phase.runs, 3) // the creator and two exports
+				})
+
+				it("does not retry a failure outside the export", func() {
+					phase = &scriptedPhase{errs: []error{errors.New("failed with status code: 51")}}
+					err := run()
+					h.AssertError(t, err, "failed with status code: 51")
+					h.AssertEq(t, len(retries), 0)
+					h.AssertEq(t, phase.runs, 1)
+				})
+
+				it("does not retry without ExportRetry", func() {
+					opts.ExportRetry = nil
+					phase = &scriptedPhase{errs: []error{exportFailed}}
+					err := run()
+					h.AssertError(t, err, "failed with status code: 62")
+					h.AssertEq(t, phase.runs, 1)
+				})
 			})
 
 			when("Run with workspace dir", func() {
@@ -2754,3 +2830,21 @@ func newTestLifecycleExec(t *testing.T, logVerbose bool, tmpDir string, ops ...f
 	h.AssertNil(t, err)
 	return lifecycleExec
 }
+
+// scriptedPhase returns errs in order, one per Run, then succeeds.
+type scriptedPhase struct {
+	errs []error
+	runs int
+}
+
+func (p *scriptedPhase) Run(ctx context.Context) error {
+	p.runs++
+	if len(p.errs) == 0 {
+		return nil
+	}
+	err := p.errs[0]
+	p.errs = p.errs[1:]
+	return err
+}
+
+func (p *scriptedPhase) Cleanup() error { return nil }
