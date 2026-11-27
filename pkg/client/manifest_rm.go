@@ -20,6 +20,7 @@ func (c *Client) RemoveManifest(name string, images []string) error {
 		ref, err := gccrName.NewDigest(image, gccrName.WeakValidation, gccrName.Insecure)
 		if err != nil {
 			allErrors = errors.Join(allErrors, fmt.Errorf("invalid instance '%s': %w", image, err))
+			continue
 		}
 
 		if err = imgIndex.RemoveManifest(ref); err != nil {

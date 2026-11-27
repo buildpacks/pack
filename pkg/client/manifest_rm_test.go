@@ -87,6 +87,23 @@ func testRemoveManifest(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, len(index.Manifests), 1)
 				h.AssertNotEq(t, index.Manifests[0].Digest.String(), digest.Name())
 			})
+
+			it("should only report the parse error when the instance is not a digest", func() {
+				err = subject.RemoveManifest(indexRepoName, []string{"my-image:latest"})
+				h.AssertError(t, err, "invalid instance 'my-image:latest'")
+				h.AssertNotContains(t, err.Error(), "cannot parse hash")
+				h.AssertNotContains(t, out.String(), "Successfully removed")
+			})
+
+			it("should still remove a valid instance that follows an invalid one", func() {
+				err = subject.RemoveManifest(indexRepoName, []string{"my-image:latest", digest.Name()})
+				h.AssertError(t, err, "invalid instance 'my-image:latest'")
+				h.AssertNotContains(t, err.Error(), "cannot parse hash")
+
+				index := h.ReadIndexManifest(t, indexPath)
+				h.AssertEq(t, len(index.Manifests), 1)
+				h.AssertNotEq(t, index.Manifests[0].Digest.String(), digest.Name())
+			})
 		})
 	})
 }
