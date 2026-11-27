@@ -13,7 +13,7 @@
 <!-- NOTE: This can be added (by editing the issue) after the PR is opened. -->
 
 - Should this change be documented?
-    - [ ] Yes, see #___
+    - [ ] Yes, see buildpacks/docs#___
     - [ ] No
 
 ## Related
