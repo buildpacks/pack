@@ -428,6 +428,37 @@ name = "gallant"
 			}
 		})
 
+		for _, schemaVersion := range []string{"0.2", "0.3"} {
+			schemaVersion := schemaVersion
+
+			it("should read the project fields declared in a v"+schemaVersion+" project.toml file", func() {
+				projectToml := `
+[_]
+schema-version = "` + schemaVersion + `"
+id = "com.example.gallant"
+name = "gallant"
+version = "1.0.2"
+authors = ["foo", "bar"]
+documentation-url = "https://example.com/docs"
+source-url = "https://github.com/buildpacks/pack"
+`
+				tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name(), logger)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, projectDescriptor.Project.ID, "com.example.gallant")
+				h.AssertEq(t, projectDescriptor.Project.Name, "gallant")
+				h.AssertEq(t, projectDescriptor.Project.Version, "1.0.2")
+				h.AssertEq(t, projectDescriptor.Project.Authors, []string{"foo", "bar"})
+				h.AssertEq(t, projectDescriptor.Project.DocumentationURL, "https://example.com/docs")
+				h.AssertEq(t, projectDescriptor.Project.SourceURL, "https://github.com/buildpacks/pack")
+			})
+		}
+
 		it("should fail for an invalid project.toml path", func() {
 			_, err := ReadProjectDescriptor("/path/that/does/not/exist/project.toml", logger)
 
