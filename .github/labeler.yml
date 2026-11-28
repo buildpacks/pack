@@ -1,12 +1,16 @@
 # Rules defined here: https://github.com/actions/labeler
 type/chore:
-  - '*.md'
-  - '**/*.yml'
-  - 'acceptance/**/*'
-  - '.github/**/*'
-  - 'go.mod'
-  - 'go.sum'
+  - changed-files:
+      - any-glob-to-any-file:
+          - '*.md'
+          - '**/*.yml'
+          - 'acceptance/**/*'
+          - '.github/**/*'
+          - 'go.mod'
+          - 'go.sum'
 
 type/enhancement:
-  - '*.go'
-  - '**/*.go'
+  - changed-files:
+      - any-glob-to-any-file:
+          - '*.go'
+          - '**/*.go'
